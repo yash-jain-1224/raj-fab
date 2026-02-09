@@ -89,52 +89,58 @@ namespace RajFabAPI.Services
 
         public async Task<bool> AssignRolePrivilegesAsync(AssignRolePrivilegesDto dto)
         {
-            using var tx = await _context.Database.BeginTransactionAsync();
-
-            var role = await _context.Roles
-                .Include(r => r.Privileges)
-                .FirstOrDefaultAsync(r => r.Id == dto.RoleId);
-
-            if (role == null)
-                return false;
-
-            if (role.Privileges.Any())
-                _context.RolePrivileges.RemoveRange(role.Privileges);
-
-            var privilegeIds = new List<Guid>();
-
-            foreach (var mp in dto.ModulePermissions)
+            await using var tx = await _context.Database.BeginTransactionAsync();
+            try
             {
-                if (mp.Permissions == null || mp.Permissions.Count == 0)
-                    continue;
+                var role = await _context.Roles
+                    .Include(r => r.Privileges)
+                    .FirstOrDefaultAsync(r => r.Id == dto.RoleId);
 
-                var ids = await _context.Privileges
-                    .Where(p =>
-                        p.ModuleId == mp.ModuleId &&
-                        mp.Permissions.Contains(p.Action))
-                    .Select(p => p.Id)
-                    .ToListAsync();
+                if (role == null)
+                    return false;
 
-                privilegeIds.AddRange(ids);
+                if (role.Privileges.Any())
+                    _context.RolePrivileges.RemoveRange(role.Privileges);
+
+                var privilegeIds = new List<Guid>();
+
+                foreach (var mp in dto.ModulePermissions)
+                {
+                    if (mp.Permissions == null || mp.Permissions.Count == 0)
+                        continue;
+
+                    // Force materialization (IMPORTANT for SQL 2014)
+                    var permissionsList = mp.Permissions.ToList(); // materialize
+                    var ids = _context.Privileges
+                        .AsEnumerable() // forces evaluation in memory
+                        .Where(p => p.ModuleId == mp.ModuleId && permissionsList.Contains(p.Action))
+                        .Select(p => p.Id)
+                        .ToList();
+
+                    privilegeIds.AddRange(ids);
+                }
+
+                if (privilegeIds.Any())
+                {
+                    var newPrivileges = privilegeIds
+                        .Distinct()
+                        .Select(pid => new RolePrivilege
+                        {
+                            RoleId = role.Id,
+                            PrivilegeId = pid
+                        });
+
+                    await _context.RolePrivileges.AddRangeAsync(newPrivileges);
+                }
+                await _context.SaveChangesAsync();
+                await tx.CommitAsync();
+                return true;
             }
-
-            if (privilegeIds.Any())
+            catch
             {
-                var newPrivileges = privilegeIds
-                    .Distinct()
-                    .Select(pid => new RolePrivilege
-                    {
-                        RoleId = role.Id,
-                        PrivilegeId = pid
-                    })
-                    .ToList();
-
-                await _context.RolePrivileges.AddRangeAsync(newPrivileges);
+                await tx.RollbackAsync();
+                throw;
             }
-            await _context.SaveChangesAsync();
-            await tx.CommitAsync();
-
-            return true;
         }
 
         public async Task<bool> RemoveRoleModulePrivilegesAsync(Guid roleId, Guid moduleId)

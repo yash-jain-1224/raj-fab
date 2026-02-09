@@ -1,0 +1,56 @@
+using System;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace RajFabAPI.Models
+{
+    [Table("FactoryLicenses")]
+    public class FactoryLicense
+    {
+        [Key]
+        [MaxLength(36)]
+        public string Id { get; set; } = Guid.NewGuid().ToString().ToUpper();
+
+        [Required]
+        [MaxLength(100)]
+        public string FactoryLicenseNumber { get; set; } = string.Empty;
+
+        [MaxLength(100)]
+        public string? FactoryRegistrationNumber { get; set; }
+
+        public int NoOfYears { get; set; } = 1;
+
+        [Required]
+        public DateTime ValidFrom { get; set; }
+
+        [Required]
+        public DateTime ValidTo { get; set; }
+
+        [Required]
+        [MaxLength(255)]
+        public string Place { get; set; } = string.Empty;
+
+        [Required]
+        public DateTime Date { get; set; }
+
+        public string? ManagerSignature { get; set; }
+        public string? OccupierSignature { get; set; }
+        public string? AuthorisedSignature { get; set; }
+
+        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime UpdatedAt { get; set; } = DateTime.Now;
+
+        public bool IsActive { get; set; } = true;
+
+        [Column(TypeName = "decimal(3,1)")]
+        public decimal Version { get; set; } = 1.0m;
+
+        [Required]
+        [MaxLength(20)]
+        public string Status { get; set; } = "Pending";
+
+        [Required]
+        [MaxLength(20)]
+        public string Type { get; set; } = "New";
+    }
+}

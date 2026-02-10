@@ -113,14 +113,14 @@ namespace RajFabAPI.Controllers
             return Redirect(redirectUrl);
         }
 
-        [HttpGet("testUser/{userType}")]
-        public async Task<IActionResult> TestUser(string userType)
+        [HttpGet("login/{ssoId}")]
+        public async Task<IActionResult> TestUser(string ssoId)
         {
             var user = await _context.Users
-                .FirstOrDefaultAsync(u => u.UserType == userType);
+                .FirstOrDefaultAsync(u => u.Username == ssoId);
             if (user == null)
             {
-                return NotFound("TEST_USER_NOT_FOUND");
+                return NotFound("USER_NOT_FOUND");
             }
 
             var userData = new UserWithOfficeDto

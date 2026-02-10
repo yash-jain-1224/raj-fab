@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using RajFabAPI.DTOs;
+using RajFabAPI.Services;
 using RajFabAPI.Services.Interface;
+using System.Text;
 using System.Text.Json;
 using static iText.Svg.SvgConstants;
-using RajFabAPI.Services;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using static RajFabAPI.Services.PaymentService;
 
 namespace RajFabAPI.Controllers
 {
@@ -17,22 +19,13 @@ namespace RajFabAPI.Controllers
         public PaymentController(IPaymentService service) => _service = service;
 
         [HttpGet]
-        public IActionResult Payment()
+        public IActionResult PaymentNew()
         {
             try
             {
-                var paymentHTML = _service.BuildPaymentRedirectForm(
-                    amount: 1,
-                    serviceId: 2390,
-                    factoryName: "Pen Pencil Cafe",
-                    sServiceType: 1,
-                    regNo: "RJ-02022026",
-                    userEmail: "dummy@gmail.com",
-                    userMobile: "9898989898",
-                    userName: "Test"
-                );
+                var html = _service.ActionRequestPaymentRPP("rppTestMerchant", 30.00, "http://localhost:5000/api/payment/return", "FF/2026/1001", "TEST USER", "8955499596", "TEST@GMAIL.COM", "TEST1", "", "172.0.0.1", "4157FE34BBAE3A958D8F58CCBFAD7", "UWf6a7cDCP", 123, 123, 1861);
 
-                return Ok(new { paymentHTML });
+                return Content(html, "text/html");
             }
             catch (ArgumentException ex)
             {
@@ -50,143 +43,33 @@ namespace RajFabAPI.Controllers
                 );
             }
         }
-
-        [HttpPost("success")]
-        public IActionResult PaymentSuccess([FromBody] JsonElement data)
+        [HttpPost("return")]
+        public IActionResult PaymentReturn([FromForm] EmitraNewPaymentRes data)
         {
             try
             {
-                switch (data.ValueKind)
+                Console.WriteLine($"data :  {data}");
+                var paymentHTML = new StringBuilder().AppendLine("<h1>Payment Return</h1>");
+                var json = AESDecrypt(data.ENCDATA, "4157FE34BBAE3A958D8F58CCBFAD7");
+                switch (data.STATUS)
                 {
-                    case JsonValueKind.Object:
-                        // JSON object
-                        if (data.TryGetProperty("paymentId", out var paymentId))
-                        {
-                            string id = paymentId.GetString();
-                        }
-
-                        if (data.TryGetProperty("status", out var status))
-                        {
-                            string value = status.GetString();
-                        }
+                    case "SUCCESS":
+                        paymentHTML.AppendLine("<h1>Success</h1>");
+                        paymentHTML.AppendLine("<h1>Return JSON : " + json + "</h1>");
                         break;
-
-                    case JsonValueKind.String:
-                        // Plain string body
-                        string rawString = data.GetString();
+                    case "FAILED":
+                        paymentHTML.AppendLine("<h1>Failed</h1>");
+                        paymentHTML.AppendLine("<h1>Return JSON : " + json + "</h1>");
                         break;
-
-                    case JsonValueKind.Array:
-                        // JSON array
-                        foreach (var item in data.EnumerateArray())
-                        {
-                            // handle items
-                        }
+                    case "PENDING":
+                        paymentHTML.AppendLine("<h1>Pending</h1>");
+                        paymentHTML.AppendLine("<h1>Return JSON : " + json + "</h1>");
                         break;
-
-                    case JsonValueKind.Number:
-                        var number = data.GetDecimal();
-                        break;
-
-                    case JsonValueKind.True:
-                    case JsonValueKind.False:
-                        bool flag = data.GetBoolean();
-                        break;
-
-                    case JsonValueKind.Null:
-                        // body was null
+                    default:
                         break;
                 }
-                Console.WriteLine($"data :  {data}");
 
-                var paymentHTML = "<h1>Payment Successful</h1>";
-                return Content(paymentHTML, "text/html");
-            }
-            catch (Exception)
-            {
-                return StatusCode(
-                    StatusCodes.Status500InternalServerError,
-                    "An error occurred while processing payment."
-                );
-            }
-        }
-
-        [HttpPost("failed")]
-        public IActionResult PaymentFailed([FromBody] JsonElement data)
-        {
-            try
-            {
-                switch (data.ValueKind)
-                {
-                    case JsonValueKind.Object:
-                        // optional access
-                        if (data.TryGetProperty("reason", out var reason))
-                        {
-                            string failReason = reason.GetString();
-                        }
-                        break;
-
-                    case JsonValueKind.String:
-                        string message = data.GetString();
-                        break;
-
-                    case JsonValueKind.Array:
-                        foreach (var item in data.EnumerateArray())
-                        {
-                            // handle array items
-                        }
-                        break;
-
-                    case JsonValueKind.Null:
-                        break;
-                }
-                Console.WriteLine($"data :  {data}");
-
-                var paymentHTML = "<h1>Payment Failed</h1>";
-                return Content(paymentHTML, "text/html");
-            }
-            catch (Exception)
-            {
-                return StatusCode(
-                    StatusCodes.Status500InternalServerError,
-                    "An error occurred while processing payment."
-                );
-            }
-        }
-        [HttpPost("cancel")]
-        public IActionResult CancelPayment([FromBody] JsonElement data)
-        {
-            try
-            {
-                switch (data.ValueKind)
-                {
-                    case JsonValueKind.Object:
-                        if (data.TryGetProperty("paymentId", out var paymentId))
-                        {
-                            string id = paymentId.GetString();
-                        }
-                        break;
-
-                    case JsonValueKind.String:
-                        string cancelMessage = data.GetString();
-                        break;
-
-                    case JsonValueKind.Array:
-                        foreach (var item in data.EnumerateArray())
-                        {
-                            // handle items
-                        }
-                        break;
-
-                    case JsonValueKind.Null:
-                        break;
-                }
-                Console.WriteLine($"data :  {data}");
-                // Always return raw payload if needed
-                return Ok(new
-                {
-                    received = data.GetRawText()
-                });
+                return Content(paymentHTML.ToString(), "text/html");
             }
             catch (Exception)
             {

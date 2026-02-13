@@ -713,6 +713,31 @@ modelBuilder.Entity<FormModule>(entity =>
                       .OnDelete(DeleteBehavior.SetNull);
                 entity.HasIndex(e => new { e.UserId, e.AreaId, e.ModuleId }).IsUnique();
             });
+
+            // Conversion for Establishment and Application entities to handle uniqueidentifier columns as strings
+            modelBuilder.Entity<EstablishmentRegistration>(entity =>
+            {
+                entity.HasKey(e => e.EstablishmentRegistrationId);
+                entity.Property(e => e.EstablishmentRegistrationId).HasConversion(stringToGuid);
+            });
+
+            modelBuilder.Entity<EstablishmentRegistrationDocument>(entity =>
+            {
+                entity.Property(e => e.Id).HasConversion(stringToGuid);
+                entity.Property(e => e.EstablishmentRegistrationId).HasConversion(stringToGuid);
+            });
+
+            modelBuilder.Entity<EstablishmentEntityMapping>(entity =>
+            {
+                entity.Property(e => e.Id).HasConversion(stringToGuid);
+                entity.Property(e => e.EstablishmentRegistrationId).HasConversion(stringToGuid);
+            });
+
+            modelBuilder.Entity<ApplicationRegistration>(entity =>
+            {
+                entity.Property(e => e.Id).HasConversion(stringToGuid);
+                entity.Property(e => e.ApplicationId).HasConversion(stringToGuid);
+            });
         }
 
         public override int SaveChanges()

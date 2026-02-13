@@ -10,7 +10,10 @@ using System.Text.Json;
 using System.Xml.Linq;
 using System.Xml.Serialization;
 using static System.Net.Mime.MediaTypeNames;
-
+using Microsoft.EntityFrameworkCore;
+using RajFabAPI.Data;
+using RajFabAPI.Models;
+using static RajFabAPI.Constants.AppConstants;
 namespace RajFabAPI.Controllers
 {
     [ApiController]
@@ -19,29 +22,55 @@ namespace RajFabAPI.Controllers
     {
         private readonly IMemoryCache _cache;
         private readonly IESignService _eSignService;
+        private readonly IEstablishmentRegistrationService _estRegService;
+        private readonly ApplicationDbContext _db;
         private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
         private readonly string generateTokenURL = "https://rajesignapitest.rajasthan.gov.in/caEsign/auth/generateToken";
         private readonly string generateSignedXmlURL = "https://rajesignapitest.rajasthan.gov.in/caEsign/v2/generateSignedXmlV2_1";
         private readonly string signdocURL = "https://esignuat.rajasthan.gov.in:9006/esign/2.1/signdoc/";
-        private readonly string signingPdf = "https://rajesignapitest.rajasthan.gov.in/caEsign/v2/signingPdfV2_1";        
+        private readonly string signingPdf = "https://rajesignapitest.rajasthan.gov.in/caEsign/v2/signingPdfV2_1";
         private readonly string SSOID = "RJJO201924027728";
         private readonly string SecretKey = "esIXWgfhVzleJG9OlB/jX3DDzFGU0bN3vgrUkyGBUQQ=";
 
-        public ESignController(IMemoryCache cache, IESignService eSignService)
+        public ESignController(IMemoryCache cache, IESignService eSignService, IEstablishmentRegistrationService estRegService, ApplicationDbContext db)
         {
             _cache = cache;
             _eSignService = eSignService;
+            _estRegService = estRegService;
+            _db = db;
         }
 
         [HttpGet("e-sign/{applicationId}")]
         public async Task<IActionResult> Demo(string applicationId)
         {
-            if (applicationId == null)
+            if (string.IsNullOrEmpty(applicationId))
             {
                 return BadRequest("Please provide application Id");
             }
-            var name  = await _eSignService.GetDataFromApplicationId(applicationId);
-            return Ok();
+
+            var applicationData = await(
+                    from appReg in _db.Set<ApplicationRegistration>()
+                    join module in _db.Set<FormModule>()
+                        on appReg.ModuleId equals module.Id
+                    where appReg.ApplicationId == applicationId
+                    select new
+                    {
+                        Application = appReg,
+                        ModuleName = module.Name
+                    }
+                ).FirstOrDefaultAsync();
+
+            if (applicationData == null)
+                return NotFound("Application data not found");
+
+            if (applicationData.ModuleName == ApplicationTypeNames.NewEstablishment)
+            {
+                var data = await _estRegService.GetAllEntitiesByRegistrationIdAsync(applicationId);
+                var html = await _estRegService.GenerateEstablishmentPdf(data);
+                return Content(html, "text/html");
+            }
+
+            return Ok("application.ApplicationRegistrationNumber");
         }
 
 

@@ -9,6 +9,6 @@ namespace RajFabAPI.Services.Interface
         Task<string> GenerateEsignToken();
         Task<SignedXmlData> GenerateESignedXmlAsync(IFormFile pdfFile, string token);
         string GenerateEspRedirectHtml(string xml);
-        Task<string> GetDataFromApplicationId(string applicationId);
+        Task<string> StartEsignAsync(byte[] pdfBytes);
     }
 }

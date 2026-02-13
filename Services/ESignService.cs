@@ -24,53 +24,12 @@ namespace RajFabAPI.Services
         private readonly ApplicationDbContext _db;
         private readonly ESignSettings _settings;
         private readonly IHttpContextAccessor _httpContextAccessor;
-        private readonly IEstablishmentRegistrationService _establishmentRegistrationService;
-
-        public ESignService(HttpClient httpClient, ApplicationDbContext db, IConfiguration config, IHttpContextAccessor httpContextAccessor, IEstablishmentRegistrationService establishmentRegistrationService)
+        public ESignService(HttpClient httpClient, ApplicationDbContext db, IConfiguration config, IHttpContextAccessor httpContextAccessor)
         {
             _httpClient = httpClient;
             _db = db;
             _settings = config.GetSection("ESignSettings").Get<ESignSettings>();
             _httpContextAccessor = httpContextAccessor;
-            _establishmentRegistrationService = establishmentRegistrationService;
-        }
-
-
-        public async Task<string> GetDataFromApplicationId(string applicationId)
-        {
-            using var dbTx = await _db.Database.BeginTransactionAsync();
-
-            try
-            {
-                var applicationData = await (
-                    from appReg in _db.Set<ApplicationRegistration>()
-                    join module in _db.Set<FormModule>()
-                        on appReg.ModuleId equals module.Id
-                    where appReg.ApplicationId == applicationId
-                    select new
-                    {
-                        Application = appReg,
-                        ModuleName = module.Name
-                    }
-                ).FirstOrDefaultAsync();
-
-                if (applicationData == null)
-                    throw new Exception("data not found");
-
-                if (applicationData.ModuleName == ApplicationTypeNames.NewEstablishment)
-                {
-                    var data = await _establishmentRegistrationService.GetAllEntitiesByRegistrationIdAsync(applicationId);
-                    _establishmentRegistrationService.GenerateEstablishmentPdf(data);
-                    return "";
-                }
-
-                return "application.ApplicationRegistrationNumber";
-            }
-            catch
-            {
-                await dbTx.RollbackAsync();
-                throw;
-            }
         }
 
 
@@ -116,13 +75,26 @@ namespace RajFabAPI.Services
                 }
 
                 // Prepare the PDF file content as a memory stream
+                // Prepare the PDF file content as a memory stream
                 using var ms = new MemoryStream();
-                await request.PdfFile.CopyToAsync(ms);
+                if (request.PdfFile != null)
+                {
+                    await request.PdfFile.CopyToAsync(ms);
+                }
+                else if (request.PdfFileBytes != null)
+                {
+                    await ms.WriteAsync(request.PdfFileBytes, 0, request.PdfFileBytes.Length);
+                }
+                else
+                {
+                    throw new Exception("No PDF content provided");
+                }
                 ms.Position = 0;
 
                 // Prepare the multipart form data content for the API request
                 using var form = new MultipartFormDataContent();
-                form.Add(new StreamContent(ms), "pdfFile", request.PdfFile.FileName);
+                var fileName = request.PdfFile?.FileName ?? "document.pdf";
+                form.Add(new StreamContent(ms), "pdfFile", fileName);
                 form.Add(new StringContent(request.ApplicationCode), "applicationCode");
                 form.Add(new StringContent(request.AspId), "aspId");
                 form.Add(new StringContent(request.Xcord.ToString()), "xcord");
@@ -224,6 +196,74 @@ namespace RajFabAPI.Services
                 var request = new ESignRequest
                 {
                     PdfFile = pdfFile,
+                    ApplicationCode = _settings.ApplicationCode,
+                    AspId = _settings.AspId,
+                    ResponseUrl = _settings.ResponseUrl,
+                    Xcord = 400,
+                    Ycord = 30,
+                    Prn = prn,
+                    SignatureOnPageNumber = "1",
+                    PersonName = user.FullName,
+                    SignatureSize = "M",
+                    SsoId = user.Username,
+                    SecretKey = _settings.SecretKey
+                };
+
+                var token = await GenerateTokenAsync();
+                var signedXml = await GenerateSignedXmlAsync(token, request);
+
+                var decodedXml = Encoding.UTF8.GetString(
+                    Convert.FromBase64String(signedXml.SignedXMLData));
+
+                return GenerateEspRedirectHtml(decodedXml);
+            }
+            catch
+            {
+                throw;
+            }
+        }
+
+        public async Task<string> StartEsignAsync(byte[] pdfBytes)
+        {
+            try
+            {
+                var userIdString = _httpContextAccessor.HttpContext?
+                .User?.FindFirstValue(ClaimTypes.NameIdentifier);
+
+                if (string.IsNullOrWhiteSpace(userIdString))
+                    throw new UnauthorizedAccessException("User not authenticated");
+
+                var userId = Guid.Parse(userIdString);
+
+                var user = await _db.Users
+                    .Where(u => u.Id == userId)
+                    .Select(u => new { u.Username, u.FullName })
+                    .FirstOrDefaultAsync();
+
+                if (user == null)
+                    throw new Exception("User not found");
+
+                var prn = $"PRN{DateTime.Now.Ticks}";
+
+                // 🔐 Encrypt PRN
+                var encryptedPrn = AesEncryption.Encrypt(prn, _settings.SecretKey);
+
+                var prnHash = Convert.ToBase64String(
+                    SHA256.HashData(Encoding.UTF8.GetBytes(prn)));
+
+                _db.ESignTransactions.Add(new ESignTransaction
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userId,
+                    EncryptedPrn = encryptedPrn,
+                    PrnHash = prnHash,
+                    Status = "INITIATED"
+                });
+                await _db.SaveChangesAsync();
+
+                var request = new ESignRequest
+                {
+                    PdfFileBytes = pdfBytes,
                     ApplicationCode = _settings.ApplicationCode,
                     AspId = _settings.AspId,
                     ResponseUrl = _settings.ResponseUrl,

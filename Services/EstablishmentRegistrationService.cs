@@ -40,15 +40,18 @@ namespace RajFabAPI.Services
         private readonly IConfiguration _config;
         private readonly IPaymentService _payment;
         private readonly IFeeCalculationService _feeCalculationService;
+        private readonly IESignService _eSignService;
 
-        public EstablishmentRegistrationService(ApplicationDbContext db, IWebHostEnvironment environment, IHttpContextAccessor httpContextAccessor, IConfiguration config, IPaymentService payment, IFeeCalculationService feeCalculationService)
+        public EstablishmentRegistrationService(ApplicationDbContext db, IWebHostEnvironment environment, IHttpContextAccessor httpContextAccessor, IConfiguration config, IPaymentService payment, IFeeCalculationService feeCalculationService, IESignService eSignService)
         {
             _db = db ?? throw new ArgumentNullException(nameof(db));
             _environment = environment;
             _httpContextAccessor = httpContextAccessor;
             _config = config;
             _payment = payment;
+            _payment = payment;
             _feeCalculationService = feeCalculationService;
+            _eSignService = eSignService;
         }
 
         // Create full registration and persist all sub-objects in a single transaction.
@@ -3215,7 +3218,20 @@ namespace RajFabAPI.Services
             _ = document.Add(new Paragraph("This is a computer generated certificate and bears scanned signature. No physical signature is required.")
                 .SetFontSize(7).SetFontColor(ColorConstants.GRAY));
 
-            return fileUrl;
+            document.Close();
+
+            var pdfBytes = await File.ReadAllBytesAsync(filePath);
+
+            var reg = await _db.EstablishmentRegistrations.FirstOrDefaultAsync(x => x.RegistrationNumber == dto.RegistrationDetail.ApplicationRegistrationNumber);
+            if (reg != null)
+            {
+                reg.ApplicationPDFUrl = $"certificates/{fileName}";
+                await _db.SaveChangesAsync();
+            }
+
+            var html = await _eSignService.StartEsignAsync(pdfBytes);
+
+            return html;
         }
         private string FormatAddress(params string[] parts)
         {

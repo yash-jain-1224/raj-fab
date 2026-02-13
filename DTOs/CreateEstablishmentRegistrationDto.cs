@@ -34,6 +34,7 @@ namespace RajFabAPI.DTOs
         public PersonDetailDto MainOwnerDetail { get; set; }
         public PersonDetailDto ManagerOrAgentDetail { get; set; }
         public PersonDetailDto ContractorDetail { get; set; }
+        public DateTime? CreatedAt { get; set; }
     }
 
     public class EstablishmentDetailsDto

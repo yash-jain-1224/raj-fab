@@ -147,7 +147,9 @@ namespace RajFabAPI.Services
                                     {
                                         estRegistration.Status,
                                         estRegistration.CreatedDate,
-                                        establishmentDetail.EstablishmentName
+                                        establishmentDetail.EstablishmentName,
+                                        estRegistration.IsESignCompleted,
+                                        estRegistration.IsPaymentCompleted
                                     };
                     var estDetailSingle = await estDetail.FirstOrDefaultAsync();
 
@@ -159,6 +161,8 @@ namespace RajFabAPI.Services
                         CreatedDate = appRegistration.CreatedDate,
                         ApplicationId = Guid.Parse(appRegistration.ApplicationId),
                         ApplicationTitle = estDetailSingle != null ? estDetailSingle.EstablishmentName : "",
+                        IsPaymentCompleted = estDetailSingle.IsPaymentCompleted,
+                        IsESignCompleted = estDetailSingle.IsESignCompleted,
                     });
                 }
                 else if (appRegistration.ApplicationTypeName == ApplicationTypeNames.MapApproval)
@@ -267,5 +271,56 @@ namespace RajFabAPI.Services
             _logger.LogInformation("Retrieved establishment registration details for RegistrationId {RegistrationId}", registrationNumber);
             return details;
         }
+        public async Task<bool> UpdatePaymentStatusAsync(
+            string applicationId)
+        {
+            using var dbTx = await _db.Database.BeginTransactionAsync();
+
+            try
+            {
+                var applicationData = await (
+                    from appReg in _db.Set<ApplicationRegistration>()
+                    join module in _db.Set<FormModule>()
+                        on appReg.ModuleId equals module.Id
+                    where appReg.ApplicationId == applicationId
+                    select new
+                    {
+                        Application = appReg,
+                        ModuleName = module.Name
+                    }
+                ).FirstOrDefaultAsync();
+
+                if (applicationData == null)
+                    return false;
+
+                if (applicationData.ModuleName == ApplicationTypeNames.NewEstablishment)
+                {
+
+                    var establishment = await _db.Set<EstablishmentRegistration>()
+                        .FirstOrDefaultAsync(x =>
+                            x.EstablishmentRegistrationId.ToString() ==
+                            applicationId);
+
+                    if (establishment != null)
+                    {
+                        establishment.IsPaymentCompleted = true;
+                        establishment.UpdatedDate = DateTime.UtcNow;
+                    }
+
+                    await _db.SaveChangesAsync();
+                    await dbTx.CommitAsync();
+
+                    return true;
+                }
+
+                return false;
+            }
+            catch
+            {
+                await dbTx.RollbackAsync();
+                throw;
+            }
+        }
+
     }
 }

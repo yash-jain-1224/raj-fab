@@ -90,19 +90,19 @@ namespace RajFabAPI.Services
 
             var factoryType = _db.FactoryTypes.FirstOrDefault(x => x.Name == "Not Applicable");
             var factoryTypeIdGuid = dto.EstablishmentDetails.FactoryTypeId ?? factoryType?.Id;
-            
+
             // Calculate total workers
             int totalWorkers =
                 (dto?.EstablishmentDetails.TotalNumberOfEmployee ?? 0)
                 + (dto?.EstablishmentDetails.TotalNumberOfContractEmployee ?? 0)
                 + (dto?.EstablishmentDetails.TotalNumberOfInterstateWorker ?? 0);
 
-            var feeResult = await _feeCalculationService.CalculateFactoryRegistrationFee(
-                    totalWorkers,
-                    dto?.Factory?.SanctionedLoad ?? 0m,
-                    dto.Factory.SanctionedLoadUnit
-                );
-
+            //var feeResult = await _feeCalculationService.CalculateFactoryRegistrationFee(
+            //        totalWorkers,
+            //        dto?.Factory?.SanctionedLoad ?? 0m,
+            //        dto.Factory.SanctionedLoadUnit
+            //    );
+            var feeResult = new { TotalFee = 30 };
             await using var tx = await _db.Database.BeginTransactionAsync();
             try
             {
@@ -121,8 +121,8 @@ namespace RajFabAPI.Services
                     Signature = dto.Signature,
                 };
 
-                _db.Set<EstablishmentRegistration>().Add(registration);
-                await _db.SaveChangesAsync();
+                _ = _db.Set<EstablishmentRegistration>().Add(registration);
+                _ = await _db.SaveChangesAsync();
 
                 // 2) save establishment details (linked to registration)
                 EstablishmentDetail estDetail = null!;
@@ -131,7 +131,7 @@ namespace RajFabAPI.Services
                     estDetail = new EstablishmentDetail
                     {
                         BrnNumber = dto.EstablishmentDetails.BrnNumber,
-                        LinNumber = dto.EstablishmentDetails.LinNumber != null ? dto.EstablishmentDetails.LinNumber  : "",
+                        LinNumber = dto.EstablishmentDetails.LinNumber != null ? dto.EstablishmentDetails.LinNumber : "",
                         EstablishmentName = dto.EstablishmentDetails.EstablishmentName,
                         AddressLine1 = dto.EstablishmentDetails.EstablishmentAddressLine1,
                         AddressLine2 = dto.EstablishmentDetails.EstablishmentAddressLine2,
@@ -149,13 +149,13 @@ namespace RajFabAPI.Services
                         UpdatedAt = DateTime.Now,
                         FactoryTypeId = factoryTypeIdGuid
                     };
-                    _db.Set<EstablishmentDetail>().Add(estDetail);
-                    await _db.SaveChangesAsync();
+                    _ = _db.Set<EstablishmentDetail>().Add(estDetail);
+                    _ = await _db.SaveChangesAsync();
 
                     registration.EstablishmentDetailId = estDetail.Id;
                     registration.UpdatedDate = DateTime.Now;
                     _db.Entry(registration).State = EntityState.Modified;
-                    await _db.SaveChangesAsync();
+                    _ = await _db.SaveChangesAsync();
                 }
 
                 var estId = estDetail?.Id ?? throw new InvalidOperationException("EstablishmentDetail was not created.");
@@ -183,7 +183,7 @@ namespace RajFabAPI.Services
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
                     };
-                    _db.Set<EstablishmentUserDetail>().Add(emp);
+                    _ = _db.Set<EstablishmentUserDetail>().Add(emp);
 
                     var mgr = new EstablishmentUserDetail
                     {
@@ -203,7 +203,7 @@ namespace RajFabAPI.Services
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
                     };
-                    _db.Set<EstablishmentUserDetail>().Add(mgr);
+                    _ = _db.Set<EstablishmentUserDetail>().Add(mgr);
 
                     var factory = new FactoryDetail
                     {
@@ -229,7 +229,7 @@ namespace RajFabAPI.Services
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
                     };
-                    _db.Set<FactoryDetail>().Add(factory);
+                    _ = _db.Set<FactoryDetail>().Add(factory);
 
                     var factoryEstLink = new EstablishmentEntityMapping
                     {
@@ -239,7 +239,7 @@ namespace RajFabAPI.Services
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
                     };
-                    _db.Set<EstablishmentEntityMapping>().Add(factoryEstLink);
+                    _ = _db.Set<EstablishmentEntityMapping>().Add(factoryEstLink);
                 }
 
                 #region Other types
@@ -252,7 +252,7 @@ namespace RajFabAPI.Services
                     if (dto.BeediCigarWorks.EmployerDetail != null)
                     {
                         beediEmployerId = Guid.NewGuid();
-                        _db.Set<EstablishmentUserDetail>().Add(new EstablishmentUserDetail
+                        _ = _db.Set<EstablishmentUserDetail>().Add(new EstablishmentUserDetail
                         {
                             Id = beediEmployerId.Value,
                             RoleType = "Employer",
@@ -274,7 +274,7 @@ namespace RajFabAPI.Services
                     if (dto.BeediCigarWorks.ManagerDetail != null)
                     {
                         beediManagerId = Guid.NewGuid();
-                        _db.Set<EstablishmentUserDetail>().Add(new EstablishmentUserDetail
+                        _ = _db.Set<EstablishmentUserDetail>().Add(new EstablishmentUserDetail
                         {
                             Id = beediManagerId.Value,
                             RoleType = "Manager",
@@ -312,7 +312,7 @@ namespace RajFabAPI.Services
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
                     };
-                    _db.Set<BeediCigarWork>().Add(beedi);
+                    _ = _db.Set<BeediCigarWork>().Add(beedi);
 
                     var cigarEstLink = new EstablishmentEntityMapping
                     {
@@ -322,7 +322,7 @@ namespace RajFabAPI.Services
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
                     };
-                    _db.Set<EstablishmentEntityMapping>().Add(cigarEstLink);
+                    _ = _db.Set<EstablishmentEntityMapping>().Add(cigarEstLink);
                 }
 
                 // 5) MotorTransportServices -- create employer/manager and reference them
@@ -334,7 +334,7 @@ namespace RajFabAPI.Services
                     if (dto.MotorTransportService.EmployerDetail != null)
                     {
                         mtrsEmployerId = Guid.NewGuid();
-                        _db.Set<EstablishmentUserDetail>().Add(new EstablishmentUserDetail
+                        _ = _db.Set<EstablishmentUserDetail>().Add(new EstablishmentUserDetail
                         {
                             Id = mtrsEmployerId.Value,
                             RoleType = "Employer",
@@ -356,7 +356,7 @@ namespace RajFabAPI.Services
                     if (dto.MotorTransportService.ManagerDetail != null)
                     {
                         mtrsManagerId = Guid.NewGuid();
-                        _db.Set<EstablishmentUserDetail>().Add(new EstablishmentUserDetail
+                        _ = _db.Set<EstablishmentUserDetail>().Add(new EstablishmentUserDetail
                         {
                             Id = mtrsManagerId.Value,
                             RoleType = "Manager",
@@ -394,7 +394,7 @@ namespace RajFabAPI.Services
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
                     };
-                    _db.Set<MotorTransportService>().Add(mtrs);
+                    _ = _db.Set<MotorTransportService>().Add(mtrs);
                     var motorEstLink = new EstablishmentEntityMapping
                     {
                         EstablishmentRegistrationId = registration.EstablishmentRegistrationId,
@@ -403,7 +403,7 @@ namespace RajFabAPI.Services
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
                     };
-                    _db.Set<EstablishmentEntityMapping>().Add(motorEstLink);
+                    _ = _db.Set<EstablishmentEntityMapping>().Add(motorEstLink);
                 }
 
                 // 6) BuildingAndConstructionWorks (no user mapping in DTO) - unchanged
@@ -424,7 +424,7 @@ namespace RajFabAPI.Services
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
                     };
-                    _db.Set<BuildingAndConstructionWork>().Add(bcw);
+                    _ = _db.Set<BuildingAndConstructionWork>().Add(bcw);
                     var bcwEstLink = new EstablishmentEntityMapping
                     {
                         EstablishmentRegistrationId = registration.EstablishmentRegistrationId,
@@ -433,7 +433,7 @@ namespace RajFabAPI.Services
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
                     };
-                    _db.Set<EstablishmentEntityMapping>().Add(bcwEstLink);
+                    _ = _db.Set<EstablishmentEntityMapping>().Add(bcwEstLink);
                 }
 
                 // 8) NewsPaperEstablishment - create employer/manager and reference them
@@ -445,7 +445,7 @@ namespace RajFabAPI.Services
                     if (dto.NewsPaperEstablishment.EmployerDetail != null)
                     {
                         newsEmpId = Guid.NewGuid();
-                        _db.Set<EstablishmentUserDetail>().Add(new EstablishmentUserDetail
+                        _ = _db.Set<EstablishmentUserDetail>().Add(new EstablishmentUserDetail
                         {
                             Id = newsEmpId.Value,
                             RoleType = "Employer",
@@ -467,7 +467,7 @@ namespace RajFabAPI.Services
                     if (dto.NewsPaperEstablishment.ManagerDetail != null)
                     {
                         newsMgrId = Guid.NewGuid();
-                        _db.Set<EstablishmentUserDetail>().Add(new EstablishmentUserDetail
+                        _ = _db.Set<EstablishmentUserDetail>().Add(new EstablishmentUserDetail
                         {
                             Id = newsMgrId.Value,
                             RoleType = "Manager",
@@ -504,7 +504,7 @@ namespace RajFabAPI.Services
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
                     };
-                    _db.Set<NewsPaperEstablishment>().Add(news);
+                    _ = _db.Set<NewsPaperEstablishment>().Add(news);
 
                     var newsEstLink = new EstablishmentEntityMapping
                     {
@@ -514,7 +514,7 @@ namespace RajFabAPI.Services
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
                     };
-                    _db.Set<EstablishmentEntityMapping>().Add(newsEstLink);
+                    _ = _db.Set<EstablishmentEntityMapping>().Add(newsEstLink);
                 }
 
                 // 9) AudioVisualWork - create employer/manager and reference them
@@ -526,7 +526,7 @@ namespace RajFabAPI.Services
                     if (dto.AudioVisualWork.EmployerDetail != null)
                     {
                         avEmpId = Guid.NewGuid();
-                        _db.Set<EstablishmentUserDetail>().Add(new EstablishmentUserDetail
+                        _ = _db.Set<EstablishmentUserDetail>().Add(new EstablishmentUserDetail
                         {
                             Id = avEmpId.Value,
                             RoleType = "Employer",
@@ -548,7 +548,7 @@ namespace RajFabAPI.Services
                     if (dto.AudioVisualWork.ManagerDetail != null)
                     {
                         avMgrId = Guid.NewGuid();
-                        _db.Set<EstablishmentUserDetail>().Add(new EstablishmentUserDetail
+                        _ = _db.Set<EstablishmentUserDetail>().Add(new EstablishmentUserDetail
                         {
                             Id = avMgrId.Value,
                             RoleType = "Manager",
@@ -585,7 +585,7 @@ namespace RajFabAPI.Services
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
                     };
-                    _db.Set<AudioVisualWork>().Add(av);
+                    _ = _db.Set<AudioVisualWork>().Add(av);
                     var avEstLink = new EstablishmentEntityMapping
                     {
                         EstablishmentRegistrationId = registration.EstablishmentRegistrationId,
@@ -594,7 +594,7 @@ namespace RajFabAPI.Services
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
                     };
-                    _db.Set<EstablishmentEntityMapping>().Add(avEstLink);
+                    _ = _db.Set<EstablishmentEntityMapping>().Add(avEstLink);
                 }
 
                 // 10) Plantation - create employer/manager and reference them
@@ -606,7 +606,7 @@ namespace RajFabAPI.Services
                     if (dto.Plantation.EmployerDetail != null)
                     {
                         pEmpId = Guid.NewGuid();
-                        _db.Set<EstablishmentUserDetail>().Add(new EstablishmentUserDetail
+                        _ = _db.Set<EstablishmentUserDetail>().Add(new EstablishmentUserDetail
                         {
                             Id = pEmpId.Value,
                             RoleType = "Employer",
@@ -628,7 +628,7 @@ namespace RajFabAPI.Services
                     if (dto.Plantation.ManagerDetail != null)
                     {
                         pMgrId = Guid.NewGuid();
-                        _db.Set<EstablishmentUserDetail>().Add(new EstablishmentUserDetail
+                        _ = _db.Set<EstablishmentUserDetail>().Add(new EstablishmentUserDetail
                         {
                             Id = pMgrId.Value,
                             RoleType = "Manager",
@@ -665,7 +665,7 @@ namespace RajFabAPI.Services
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
                     };
-                    _db.Set<Plantation>().Add(plantation);
+                    _ = _db.Set<Plantation>().Add(plantation);
                     var plantationEstLink = new EstablishmentEntityMapping
                     {
                         EstablishmentRegistrationId = registration.EstablishmentRegistrationId,
@@ -674,19 +674,19 @@ namespace RajFabAPI.Services
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
                     };
-                    _db.Set<EstablishmentEntityMapping>().Add(plantationEstLink);
+                    _ = _db.Set<EstablishmentEntityMapping>().Add(plantationEstLink);
                 }
                 #endregion
 
                 // PersonDetails (MainOwner, ManagerOrAgent, Contractor)
                 Guid? mainOwnerId = null;
                 Guid? managerAgentId = null;
-                Guid? contractorId = null;
+                string? contractorId = "";
 
                 if (dto.MainOwnerDetail != null)
                 {
                     mainOwnerId = Guid.NewGuid();
-                    _db.Set<PersonDetail>().Add(new PersonDetail
+                    _ = _db.Set<PersonDetail>().Add(new PersonDetail
                     {
                         Id = mainOwnerId.Value,
                         Role = "MainOwner",
@@ -712,7 +712,7 @@ namespace RajFabAPI.Services
                 if (dto.ManagerOrAgentDetail != null)
                 {
                     managerAgentId = Guid.NewGuid();
-                    _db.Set<PersonDetail>().Add(new PersonDetail
+                    _ = _db.Set<PersonDetail>().Add(new PersonDetail
                     {
                         Id = managerAgentId.Value,
                         Role = "ManagerOrAgent",
@@ -739,10 +739,10 @@ namespace RajFabAPI.Services
                 {
                     foreach (var contractor in dto.ContractorDetail)
                     {
-
-                        _db.Set<PersonDetail>().Add(new PersonDetail
+                        Guid contractorIdnew = Guid.NewGuid();
+                        _ = _db.Set<PersonDetail>().Add(new PersonDetail
                         {
-                            Id = Guid.NewGuid(),
+                            Id = contractorIdnew,
                             Role = "Contractor",
                             Name = contractor.Name,
                             Designation = string.Empty,
@@ -761,20 +761,21 @@ namespace RajFabAPI.Services
                             UpdatedAt = DateTime.Now
                         });
 
-                        _db.Set<ContractorDetail>().Add(new ContractorDetail
+                        _ = _db.Set<ContractorDetail>().Add(new ContractorDetail
                         {
-                            ContractorPersonalDetailId = contractorId,
+                            ContractorPersonalDetailId = contractorIdnew,
                             NameOfWork = contractor.NameOfWork,
                             MaxContractWorkerCountMale = contractor.MaxContractWorkerCountMale,
                             MaxContractWorkerCountFemale = contractor.MaxContractWorkerCountFemale,
                             DateOfCommencement = contractor.DateOfCommencement,
                             DateOfCompletion = contractor.DateOfCompletion
                         });
+                        contractorId += contractorIdnew;
                     }
                 }
 
                 // Persist all EF Core changes
-                await _db.SaveChangesAsync();
+                _ = await _db.SaveChangesAsync();
 
                 // Persist person ids onto registration
                 registration.MainOwnerDetailId = mainOwnerId;
@@ -785,7 +786,7 @@ namespace RajFabAPI.Services
                 // update registration metadata and commit
                 registration.UpdatedDate = DateTime.Now;
                 _db.Entry(registration).State = EntityState.Modified;
-                await _db.SaveChangesAsync();
+                _ = await _db.SaveChangesAsync();
                 string applicationTypeName = type switch
                 {
                     "new" => ApplicationTypeNames.NewEstablishment,
@@ -808,8 +809,8 @@ namespace RajFabAPI.Services
                     CreatedDate = DateTime.Now,
                     UpdatedDate = DateTime.Now
                 };
-                _db.Set<ApplicationRegistration>().Add(appReg);
-                await _db.SaveChangesAsync();
+                _ = _db.Set<ApplicationRegistration>().Add(appReg);
+                _ = await _db.SaveChangesAsync();
 
                 await tx.CommitAsync();
 
@@ -845,8 +846,8 @@ namespace RajFabAPI.Services
                             CreatedDate = DateTime.Now,
                             UpdatedDate = DateTime.Now
                         };
-                        _db.Set<ApplicationApprovalRequest>().Add(applicationApprovalRequest);
-                        await _db.SaveChangesAsync();
+                        _ = _db.Set<ApplicationApprovalRequest>().Add(applicationApprovalRequest);
+                        _ = await _db.SaveChangesAsync();
                     }
                 }
 
@@ -862,7 +863,7 @@ namespace RajFabAPI.Services
             }
         }
 
-        public async Task<EstablishmentRegistrationDetailsDto?>GetFactoryDetailsByFactoryRegistrationNumberAsync(string factoryRegistrationNumber)
+        public async Task<EstablishmentRegistrationDetailsDto?> GetFactoryDetailsByFactoryRegistrationNumberAsync(string factoryRegistrationNumber)
         {
             if (string.IsNullOrWhiteSpace(factoryRegistrationNumber))
                 return null;
@@ -965,7 +966,7 @@ namespace RajFabAPI.Services
                         }
                     }).FirstOrDefaultAsync();
 
-                return result;         
+                return result;
             }
             catch (Exception ex)
             {
@@ -1270,8 +1271,8 @@ namespace RajFabAPI.Services
                                 AddressLine1 = factory.AddressLine1,
                                 AddressLine2 = factory.AddressLine2,
                                 Area = factory.Area,
-                                DistrictId= factory.DistrictId,
-                                DistrictName= factory.DistrictName,
+                                DistrictId = factory.DistrictId,
+                                DistrictName = factory.DistrictName,
                                 Pincode = factory.Pincode ?? "",
                                 Email = factory.Email ?? "",
                                 Telephone = factory.Telephone ?? "",
@@ -1511,7 +1512,8 @@ namespace RajFabAPI.Services
                     .FirstOrDefaultAsync();
 
                 return registrationNumber;
-            } catch(Exception ex)
+            }
+            catch (Exception ex)
             {
                 throw (ex);
             }
@@ -1594,13 +1596,13 @@ namespace RajFabAPI.Services
                     : _environment.WebRootPath;
                 if (!Directory.Exists(webRoot))
                 {
-                    Directory.CreateDirectory(webRoot);
+                    _ = Directory.CreateDirectory(webRoot);
                 }
                 // Create upload directory if it doesn't exist
                 var uploadPath = Path.Combine(webRoot, "uploads", "establishment-registrations", registrationId);
                 if (!Directory.Exists(uploadPath))
                 {
-                    Directory.CreateDirectory(uploadPath);
+                    _ = Directory.CreateDirectory(uploadPath);
                 }
 
                 var fileName = $"{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
@@ -1622,8 +1624,8 @@ namespace RajFabAPI.Services
                     UploadedAt = DateTime.Now
                 };
 
-                _db.EstablishmentRegistrationDocuments.Add(document);
-                await _db.SaveChangesAsync();
+                _ = _db.EstablishmentRegistrationDocuments.Add(document);
+                _ = await _db.SaveChangesAsync();
 
                 return new ApiResponseDto<EstablishmentRegistrationDocumentDto>
                 {
@@ -1664,7 +1666,7 @@ namespace RajFabAPI.Services
                     : _environment.WebRootPath;
                 if (!Directory.Exists(webRoot))
                 {
-                    Directory.CreateDirectory(webRoot);
+                    _ = Directory.CreateDirectory(webRoot);
                 }
                 var filePath = Path.Combine(webRoot, document.FilePath.TrimStart('/'));
                 if (File.Exists(filePath))
@@ -1672,8 +1674,8 @@ namespace RajFabAPI.Services
                     File.Delete(filePath);
                 }
 
-                _db.EstablishmentRegistrationDocuments.Remove(document);
-                await _db.SaveChangesAsync();
+                _ = _db.EstablishmentRegistrationDocuments.Remove(document);
+                _ = await _db.SaveChangesAsync();
 
                 return new ApiResponseDto<bool>
                 {
@@ -1723,7 +1725,7 @@ namespace RajFabAPI.Services
                     return false;
                 reg.Status = status;
                 reg.UpdatedDate = DateTime.Now;
-                await _db.SaveChangesAsync();
+                _ = await _db.SaveChangesAsync();
                 return true;
             }
             catch (Exception ex)
@@ -1783,7 +1785,7 @@ namespace RajFabAPI.Services
                             CreatedAt = DateTime.Now,
                             UpdatedAt = DateTime.Now
                         };
-                        _db.Set<EstablishmentDetail>().Add(estDetail);
+                        _ = _db.Set<EstablishmentDetail>().Add(estDetail);
                         existingReg.EstablishmentDetailId = estDetail.Id;
                     }
                 }
@@ -1798,62 +1800,62 @@ namespace RajFabAPI.Services
                             var factory = await _db.Set<FactoryDetail>().FindAsync(map.EntityId);
                             if (factory != null)
                             {
-                                if (factory.EmployerId != null) _db.Set<EstablishmentUserDetail>().Remove(await _db.Set<EstablishmentUserDetail>().FindAsync(factory.EmployerId));
-                                if (factory.ManagerId != null) _db.Set<EstablishmentUserDetail>().Remove(await _db.Set<EstablishmentUserDetail>().FindAsync(factory.ManagerId));
-                                _db.Set<FactoryDetail>().Remove(factory);
+                                if (factory.EmployerId != null) _ = _db.Set<EstablishmentUserDetail>().Remove(await _db.Set<EstablishmentUserDetail>().FindAsync(factory.EmployerId));
+                                if (factory.ManagerId != null) _ = _db.Set<EstablishmentUserDetail>().Remove(await _db.Set<EstablishmentUserDetail>().FindAsync(factory.ManagerId));
+                                _ = _db.Set<FactoryDetail>().Remove(factory);
                             }
                             break;
                         case "BeediCigarWork":
                             var beedi = await _db.Set<BeediCigarWork>().FindAsync(map.EntityId);
                             if (beedi != null)
                             {
-                                if (beedi.EmployerId != null) _db.Set<EstablishmentUserDetail>().Remove(await _db.Set<EstablishmentUserDetail>().FindAsync(beedi.EmployerId));
-                                if (beedi.ManagerId != null) _db.Set<EstablishmentUserDetail>().Remove(await _db.Set<EstablishmentUserDetail>().FindAsync(beedi.ManagerId));
-                                _db.Set<BeediCigarWork>().Remove(beedi);
+                                if (beedi.EmployerId != null) _ = _db.Set<EstablishmentUserDetail>().Remove(await _db.Set<EstablishmentUserDetail>().FindAsync(beedi.EmployerId));
+                                if (beedi.ManagerId != null) _ = _db.Set<EstablishmentUserDetail>().Remove(await _db.Set<EstablishmentUserDetail>().FindAsync(beedi.ManagerId));
+                                _ = _db.Set<BeediCigarWork>().Remove(beedi);
                             }
                             break;
                         case "MotorTransportService":
                             var mtrs = await _db.Set<MotorTransportService>().FindAsync(map.EntityId);
                             if (mtrs != null)
                             {
-                                if (mtrs.EmployerId != null) _db.Set<EstablishmentUserDetail>().Remove(await _db.Set<EstablishmentUserDetail>().FindAsync(mtrs.EmployerId));
-                                if (mtrs.ManagerId != null) _db.Set<EstablishmentUserDetail>().Remove(await _db.Set<EstablishmentUserDetail>().FindAsync(mtrs.ManagerId));
-                                _db.Set<MotorTransportService>().Remove(mtrs);
+                                if (mtrs.EmployerId != null) _ = _db.Set<EstablishmentUserDetail>().Remove(await _db.Set<EstablishmentUserDetail>().FindAsync(mtrs.EmployerId));
+                                if (mtrs.ManagerId != null) _ = _db.Set<EstablishmentUserDetail>().Remove(await _db.Set<EstablishmentUserDetail>().FindAsync(mtrs.ManagerId));
+                                _ = _db.Set<MotorTransportService>().Remove(mtrs);
                             }
                             break;
                         case "BuildingAndConstructionWork":
                             var bcw = await _db.Set<BuildingAndConstructionWork>().FindAsync(map.EntityId);
-                            if (bcw != null) _db.Set<BuildingAndConstructionWork>().Remove(bcw);
+                            if (bcw != null) _ = _db.Set<BuildingAndConstructionWork>().Remove(bcw);
                             break;
                         case "NewsPaperEstablishment":
                             var news = await _db.Set<NewsPaperEstablishment>().FindAsync(map.EntityId);
                             if (news != null)
                             {
-                                if (news.EmployerId != null) _db.Set<EstablishmentUserDetail>().Remove(await _db.Set<EstablishmentUserDetail>().FindAsync(news.EmployerId));
-                                if (news.ManagerId != null) _db.Set<EstablishmentUserDetail>().Remove(await _db.Set<EstablishmentUserDetail>().FindAsync(news.ManagerId));
-                                _db.Set<NewsPaperEstablishment>().Remove(news);
+                                if (news.EmployerId != null) _ = _db.Set<EstablishmentUserDetail>().Remove(await _db.Set<EstablishmentUserDetail>().FindAsync(news.EmployerId));
+                                if (news.ManagerId != null) _ = _db.Set<EstablishmentUserDetail>().Remove(await _db.Set<EstablishmentUserDetail>().FindAsync(news.ManagerId));
+                                _ = _db.Set<NewsPaperEstablishment>().Remove(news);
                             }
                             break;
                         case "AudioVisualWork":
                             var av = await _db.Set<AudioVisualWork>().FindAsync(map.EntityId);
                             if (av != null)
                             {
-                                if (av.EmployerId != null) _db.Set<EstablishmentUserDetail>().Remove(await _db.Set<EstablishmentUserDetail>().FindAsync(av.EmployerId));
-                                if (av.ManagerId != null) _db.Set<EstablishmentUserDetail>().Remove(await _db.Set<EstablishmentUserDetail>().FindAsync(av.ManagerId));
-                                _db.Set<AudioVisualWork>().Remove(av);
+                                if (av.EmployerId != null) _ = _db.Set<EstablishmentUserDetail>().Remove(await _db.Set<EstablishmentUserDetail>().FindAsync(av.EmployerId));
+                                if (av.ManagerId != null) _ = _db.Set<EstablishmentUserDetail>().Remove(await _db.Set<EstablishmentUserDetail>().FindAsync(av.ManagerId));
+                                _ = _db.Set<AudioVisualWork>().Remove(av);
                             }
                             break;
                         case "Plantation":
                             var plantation = await _db.Set<Plantation>().FindAsync(map.EntityId);
                             if (plantation != null)
                             {
-                                if (plantation.EmployerId != null) _db.Set<EstablishmentUserDetail>().Remove(await _db.Set<EstablishmentUserDetail>().FindAsync(plantation.EmployerId));
-                                if (plantation.ManagerId != null) _db.Set<EstablishmentUserDetail>().Remove(await _db.Set<EstablishmentUserDetail>().FindAsync(plantation.ManagerId));
-                                _db.Set<Plantation>().Remove(plantation);
+                                if (plantation.EmployerId != null) _ = _db.Set<EstablishmentUserDetail>().Remove(await _db.Set<EstablishmentUserDetail>().FindAsync(plantation.EmployerId));
+                                if (plantation.ManagerId != null) _ = _db.Set<EstablishmentUserDetail>().Remove(await _db.Set<EstablishmentUserDetail>().FindAsync(plantation.ManagerId));
+                                _ = _db.Set<Plantation>().Remove(plantation);
                             }
                             break;
                     }
-                    _db.Set<EstablishmentEntityMapping>().Remove(map);
+                    _ = _db.Set<EstablishmentEntityMapping>().Remove(map);
                 }
 
                 // Re-add entities as in create
@@ -1876,7 +1878,7 @@ namespace RajFabAPI.Services
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
                     };
-                    _db.Set<EstablishmentUserDetail>().Add(emp);
+                    _ = _db.Set<EstablishmentUserDetail>().Add(emp);
 
                     var mgr = new EstablishmentUserDetail
                     {
@@ -1895,7 +1897,7 @@ namespace RajFabAPI.Services
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
                     };
-                    _db.Set<EstablishmentUserDetail>().Add(mgr);
+                    _ = _db.Set<EstablishmentUserDetail>().Add(mgr);
 
                     var factory = new FactoryDetail
                     {
@@ -1918,7 +1920,7 @@ namespace RajFabAPI.Services
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
                     };
-                    _db.Set<FactoryDetail>().Add(factory);
+                    _ = _db.Set<FactoryDetail>().Add(factory);
 
                     var factoryEstLink = new EstablishmentEntityMapping
                     {
@@ -1928,7 +1930,7 @@ namespace RajFabAPI.Services
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
                     };
-                    _db.Set<EstablishmentEntityMapping>().Add(factoryEstLink);
+                    _ = _db.Set<EstablishmentEntityMapping>().Add(factoryEstLink);
                 }
 
                 if (dto.BeediCigarWorks != null)
@@ -1939,7 +1941,7 @@ namespace RajFabAPI.Services
                     if (dto.BeediCigarWorks.EmployerDetail != null)
                     {
                         beediEmployerId = Guid.NewGuid();
-                        _db.Set<EstablishmentUserDetail>().Add(new EstablishmentUserDetail
+                        _ = _db.Set<EstablishmentUserDetail>().Add(new EstablishmentUserDetail
                         {
                             Id = beediEmployerId.Value,
                             RoleType = "Employer",
@@ -1961,7 +1963,7 @@ namespace RajFabAPI.Services
                     if (dto.BeediCigarWorks.ManagerDetail != null)
                     {
                         beediManagerId = Guid.NewGuid();
-                        _db.Set<EstablishmentUserDetail>().Add(new EstablishmentUserDetail
+                        _ = _db.Set<EstablishmentUserDetail>().Add(new EstablishmentUserDetail
                         {
                             Id = beediManagerId.Value,
                             RoleType = "Manager",
@@ -2001,7 +2003,7 @@ namespace RajFabAPI.Services
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
                     };
-                    _db.Set<BeediCigarWork>().Add(beedi);
+                    _ = _db.Set<BeediCigarWork>().Add(beedi);
 
                     var cigarEstLink = new EstablishmentEntityMapping
                     {
@@ -2011,7 +2013,7 @@ namespace RajFabAPI.Services
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
                     };
-                    _db.Set<EstablishmentEntityMapping>().Add(cigarEstLink);
+                    _ = _db.Set<EstablishmentEntityMapping>().Add(cigarEstLink);
                 }
 
                 if (dto.MotorTransportService != null)
@@ -2022,7 +2024,7 @@ namespace RajFabAPI.Services
                     if (dto.MotorTransportService.EmployerDetail != null)
                     {
                         mtrsEmployerId = Guid.NewGuid();
-                        _db.Set<EstablishmentUserDetail>().Add(new EstablishmentUserDetail
+                        _ = _db.Set<EstablishmentUserDetail>().Add(new EstablishmentUserDetail
                         {
                             Id = mtrsEmployerId.Value,
                             RoleType = "Employer",
@@ -2044,7 +2046,7 @@ namespace RajFabAPI.Services
                     if (dto.MotorTransportService.ManagerDetail != null)
                     {
                         mtrsManagerId = Guid.NewGuid();
-                        _db.Set<EstablishmentUserDetail>().Add(new EstablishmentUserDetail
+                        _ = _db.Set<EstablishmentUserDetail>().Add(new EstablishmentUserDetail
                         {
                             Id = mtrsManagerId.Value,
                             RoleType = "Manager",
@@ -2084,7 +2086,7 @@ namespace RajFabAPI.Services
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
                     };
-                    _db.Set<MotorTransportService>().Add(mtrs);
+                    _ = _db.Set<MotorTransportService>().Add(mtrs);
                     var motorEstLink = new EstablishmentEntityMapping
                     {
                         EstablishmentRegistrationId = registrationId,
@@ -2093,7 +2095,7 @@ namespace RajFabAPI.Services
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
                     };
-                    _db.Set<EstablishmentEntityMapping>().Add(motorEstLink);
+                    _ = _db.Set<EstablishmentEntityMapping>().Add(motorEstLink);
                 }
 
                 if (dto.BuildingAndConstructionWork != null)
@@ -2113,7 +2115,7 @@ namespace RajFabAPI.Services
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
                     };
-                    _db.Set<BuildingAndConstructionWork>().Add(bcw);
+                    _ = _db.Set<BuildingAndConstructionWork>().Add(bcw);
                     var bcwEstLink = new EstablishmentEntityMapping
                     {
                         EstablishmentRegistrationId = registrationId,
@@ -2122,7 +2124,7 @@ namespace RajFabAPI.Services
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
                     };
-                    _db.Set<EstablishmentEntityMapping>().Add(bcwEstLink);
+                    _ = _db.Set<EstablishmentEntityMapping>().Add(bcwEstLink);
                 }
 
                 if (dto.NewsPaperEstablishment != null)
@@ -2133,7 +2135,7 @@ namespace RajFabAPI.Services
                     if (dto.NewsPaperEstablishment.EmployerDetail != null)
                     {
                         newsEmpId = Guid.NewGuid();
-                        _db.Set<EstablishmentUserDetail>().Add(new EstablishmentUserDetail
+                        _ = _db.Set<EstablishmentUserDetail>().Add(new EstablishmentUserDetail
                         {
                             Id = newsEmpId.Value,
                             RoleType = "Employer",
@@ -2155,7 +2157,7 @@ namespace RajFabAPI.Services
                     if (dto.NewsPaperEstablishment.ManagerDetail != null)
                     {
                         newsMgrId = Guid.NewGuid();
-                        _db.Set<EstablishmentUserDetail>().Add(new EstablishmentUserDetail
+                        _ = _db.Set<EstablishmentUserDetail>().Add(new EstablishmentUserDetail
                         {
                             Id = newsMgrId.Value,
                             RoleType = "Manager",
@@ -2194,7 +2196,7 @@ namespace RajFabAPI.Services
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
                     };
-                    _db.Set<NewsPaperEstablishment>().Add(news);
+                    _ = _db.Set<NewsPaperEstablishment>().Add(news);
 
                     var newsEstLink = new EstablishmentEntityMapping
                     {
@@ -2204,7 +2206,7 @@ namespace RajFabAPI.Services
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
                     };
-                    _db.Set<EstablishmentEntityMapping>().Add(newsEstLink);
+                    _ = _db.Set<EstablishmentEntityMapping>().Add(newsEstLink);
                 }
 
                 if (dto.AudioVisualWork != null)
@@ -2215,7 +2217,7 @@ namespace RajFabAPI.Services
                     if (dto.AudioVisualWork.EmployerDetail != null)
                     {
                         avEmpId = Guid.NewGuid();
-                        _db.Set<EstablishmentUserDetail>().Add(new EstablishmentUserDetail
+                        _ = _db.Set<EstablishmentUserDetail>().Add(new EstablishmentUserDetail
                         {
                             Id = avEmpId.Value,
                             RoleType = "Employer",
@@ -2236,7 +2238,7 @@ namespace RajFabAPI.Services
                     if (dto.AudioVisualWork.ManagerDetail != null)
                     {
                         avMgrId = Guid.NewGuid();
-                        _db.Set<EstablishmentUserDetail>().Add(new EstablishmentUserDetail
+                        _ = _db.Set<EstablishmentUserDetail>().Add(new EstablishmentUserDetail
                         {
                             Id = avMgrId.Value,
                             RoleType = "Manager",
@@ -2275,7 +2277,7 @@ namespace RajFabAPI.Services
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
                     };
-                    _db.Set<AudioVisualWork>().Add(av);
+                    _ = _db.Set<AudioVisualWork>().Add(av);
                     var avEstLink = new EstablishmentEntityMapping
                     {
                         EstablishmentRegistrationId = registrationId,
@@ -2284,7 +2286,7 @@ namespace RajFabAPI.Services
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
                     };
-                    _db.Set<EstablishmentEntityMapping>().Add(avEstLink);
+                    _ = _db.Set<EstablishmentEntityMapping>().Add(avEstLink);
                 }
 
                 if (dto.Plantation != null)
@@ -2295,7 +2297,7 @@ namespace RajFabAPI.Services
                     if (dto.Plantation.EmployerDetail != null)
                     {
                         pEmpId = Guid.NewGuid();
-                        _db.Set<EstablishmentUserDetail>().Add(new EstablishmentUserDetail
+                        _ = _db.Set<EstablishmentUserDetail>().Add(new EstablishmentUserDetail
                         {
                             Id = pEmpId.Value,
                             RoleType = "Employer",
@@ -2317,7 +2319,7 @@ namespace RajFabAPI.Services
                     if (dto.Plantation.ManagerDetail != null)
                     {
                         pMgrId = Guid.NewGuid();
-                        _db.Set<EstablishmentUserDetail>().Add(new EstablishmentUserDetail
+                        _ = _db.Set<EstablishmentUserDetail>().Add(new EstablishmentUserDetail
                         {
                             Id = pMgrId.Value,
                             RoleType = "Manager",
@@ -2356,7 +2358,7 @@ namespace RajFabAPI.Services
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
                     };
-                    _db.Set<Plantation>().Add(plantation);
+                    _ = _db.Set<Plantation>().Add(plantation);
                     var plantationEstLink = new EstablishmentEntityMapping
                     {
                         EstablishmentRegistrationId = registrationId,
@@ -2365,19 +2367,19 @@ namespace RajFabAPI.Services
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
                     };
-                    _db.Set<EstablishmentEntityMapping>().Add(plantationEstLink);
+                    _ = _db.Set<EstablishmentEntityMapping>().Add(plantationEstLink);
                 }
 
                 // Update PersonDetails
                 if (existingReg.MainOwnerDetailId != null)
                 {
                     var mainOwner = await _db.Set<PersonDetail>().FindAsync(existingReg.MainOwnerDetailId);
-                    if (mainOwner != null) _db.Set<PersonDetail>().Remove(mainOwner);
+                    if (mainOwner != null) _ = _db.Set<PersonDetail>().Remove(mainOwner);
                 }
                 if (existingReg.ManagerOrAgentDetailId != null)
                 {
                     var manager = await _db.Set<PersonDetail>().FindAsync(existingReg.ManagerOrAgentDetailId);
-                    if (manager != null) _db.Set<PersonDetail>().Remove(manager);
+                    if (manager != null) _ = _db.Set<PersonDetail>().Remove(manager);
                 }
                 if (existingReg.ContractorDetailId != null)
                 {
@@ -2385,8 +2387,8 @@ namespace RajFabAPI.Services
                     if (contractorDetail != null)
                     {
                         var contractorPerson = await _db.Set<PersonDetail>().FindAsync(existingReg.ContractorDetailId);
-                        if (contractorPerson != null) _db.Set<PersonDetail>().Remove(contractorPerson);
-                        _db.Set<ContractorDetail>().Remove(contractorDetail);
+                        if (contractorPerson != null) _ = _db.Set<PersonDetail>().Remove(contractorPerson);
+                        _ = _db.Set<ContractorDetail>().Remove(contractorDetail);
                     }
                 }
 
@@ -2397,7 +2399,7 @@ namespace RajFabAPI.Services
                 if (dto.MainOwnerDetail != null)
                 {
                     mainOwnerId = Guid.NewGuid();
-                    _db.Set<PersonDetail>().Add(new PersonDetail
+                    _ = _db.Set<PersonDetail>().Add(new PersonDetail
                     {
                         Id = mainOwnerId.Value,
                         Role = "MainOwner",
@@ -2422,7 +2424,7 @@ namespace RajFabAPI.Services
                 if (dto.ManagerOrAgentDetail != null)
                 {
                     managerAgentId = Guid.NewGuid();
-                    _db.Set<PersonDetail>().Add(new PersonDetail
+                    _ = _db.Set<PersonDetail>().Add(new PersonDetail
                     {
                         Id = managerAgentId.Value,
                         Role = "ManagerOrAgent",
@@ -2448,7 +2450,7 @@ namespace RajFabAPI.Services
                     foreach (var contractor in dto.ContractorDetail)
                     {
 
-                        _db.Set<PersonDetail>().Add(new PersonDetail
+                        _ = _db.Set<PersonDetail>().Add(new PersonDetail
                         {
                             Id = Guid.NewGuid(),
                             Role = "Contractor",
@@ -2469,7 +2471,7 @@ namespace RajFabAPI.Services
                             UpdatedAt = DateTime.Now
                         });
 
-                        _db.Set<ContractorDetail>().Add(new ContractorDetail
+                        _ = _db.Set<ContractorDetail>().Add(new ContractorDetail
                         {
                             ContractorPersonalDetailId = contractorId,
                             NameOfWork = contractor.NameOfWork,
@@ -2491,7 +2493,7 @@ namespace RajFabAPI.Services
                 existingReg.UpdatedDate = DateTime.Now;
                 _db.Entry(existingReg).State = EntityState.Modified;
 
-                await _db.SaveChangesAsync();
+                _ = await _db.SaveChangesAsync();
                 await tx.CommitAsync();
 
                 var module = await _db.Set<FormModule>().FirstOrDefaultAsync(m => m.Name == ApplicationTypeNames.NewEstablishment);
@@ -2533,8 +2535,8 @@ namespace RajFabAPI.Services
                             CreatedDate = DateTime.Now,
                             UpdatedDate = DateTime.Now
                         };
-                        _db.Set<ApplicationApprovalRequest>().Add(applicationApprovalRequest);
-                        await _db.SaveChangesAsync();
+                        _ = _db.Set<ApplicationApprovalRequest>().Add(applicationApprovalRequest);
+                        _ = await _db.SaveChangesAsync();
                     }
                 }
 
@@ -2596,8 +2598,8 @@ namespace RajFabAPI.Services
                 if (estDetail == null)
                     throw new Exception("Establishment details not found");
 
-                _db.EstablishmentRegistrations.Add(renewedRegistration);
-                await _db.SaveChangesAsync();
+                _ = _db.EstablishmentRegistrations.Add(renewedRegistration);
+                _ = await _db.SaveChangesAsync();
 
                 // 4?? Get module
                 var module = await _db.Set<FormModule>()
@@ -2617,8 +2619,8 @@ namespace RajFabAPI.Services
                     UpdatedDate = DateTime.Now
                 };
 
-                _db.ApplicationRegistrations.Add(appReg);
-                await _db.SaveChangesAsync();
+                _ = _db.ApplicationRegistrations.Add(appReg);
+                _ = await _db.SaveChangesAsync();
 
                 int totalWorkers =
                     (estDetail.TotalNumberOfEmployee ?? 0) +
@@ -2658,8 +2660,8 @@ namespace RajFabAPI.Services
                             CreatedDate = DateTime.Now,
                             UpdatedDate = DateTime.Now
                         };
-                        _db.Set<ApplicationApprovalRequest>().Add(applicationApprovalRequest);
-                        await _db.SaveChangesAsync();
+                        _ = _db.Set<ApplicationApprovalRequest>().Add(applicationApprovalRequest);
+                        _ = await _db.SaveChangesAsync();
                     }
                 }
 
@@ -2690,7 +2692,7 @@ namespace RajFabAPI.Services
 
             if (estReg == null)
                 throw new KeyNotFoundException("Establishment registration not found");
-            
+
             var dtoDetails = await GetAllEntitiesByRegistrationIdAsync(registrationId);
 
             var dtoPaylod = new EstablishmentCertificatePdfRequestDto
@@ -2799,8 +2801,8 @@ namespace RajFabAPI.Services
                 Remarks = dto.Remarks
             };
 
-            _db.Certificates.Add(certificate);
-            await _db.SaveChangesAsync();
+            _ = _db.Certificates.Add(certificate);
+            _ = await _db.SaveChangesAsync();
 
             return certificate.CertificateUrl;
         }
@@ -2836,7 +2838,7 @@ namespace RajFabAPI.Services
             $"Duration: {dto.ContractorDetails.DateOfCommencement?.ToString("dd/MM/yyyy") ?? "-"} - {dto.ContractorDetails.DateOfCompletion?.ToString("dd/MM/yyyy") ?? "-"}"
             : "-";
 
-           var fileName = $"certificate_{registrationId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+            var fileName = $"certificate_{registrationId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
 
             // Ensure wwwroot exists
             var webRootPath = _environment.WebRootPath;
@@ -2847,7 +2849,7 @@ namespace RajFabAPI.Services
 
             // Ensure documents folder exists
             var uploadPath = Path.Combine(webRootPath, "certificates");
-            Directory.CreateDirectory(uploadPath);
+            _ = Directory.CreateDirectory(uploadPath);
 
             // Final file path
             var filePath = Path.Combine(uploadPath, fileName);
@@ -2858,7 +2860,7 @@ namespace RajFabAPI.Services
 
             var request = httpContext.Request;
 
-            var baseUrl = _config["BaseUrl"] 
+            var baseUrl = _config["BaseUrl"]
                         ?? $"{request.Scheme}://{request.Host}";
 
             var fileUrl = $"{baseUrl}/certificates/{fileName}";
@@ -2874,103 +2876,103 @@ namespace RajFabAPI.Services
 
             // ================= HEADER =================
             var headerTable = new PdfTable(2).UseAllAvailableWidth();
-            headerTable.AddCell(new PdfCell()
+            _ = headerTable.AddCell(new PdfCell()
                 .Add(new PdfImage(ImageDataFactory.Create("wwwroot/Emblem_of_India.png")).ScaleToFit(40, 40))
                 .SetBorder(Border.NO_BORDER));
 
-            headerTable.AddCell(new PdfCell()
+            _ = headerTable.AddCell(new PdfCell()
                 .Add(new Paragraph("Form - 2").SetFont(boldFont).SetFontSize(18))
                 .Add(new Paragraph("(See clause (d) of sub rule (1) of rule 5)").SetFont(regularFont).SetFontSize(12))
                 .Add(new Paragraph("Certificate of Registration").SetFontColor(ColorConstants.BLUE).SetFontSize(12))
                 .SetBorder(Border.NO_BORDER));
-            document.Add(headerTable);
-            document.Add(new Paragraph("\n"));
+            _ = document.Add(headerTable);
+            _ = document.Add(new Paragraph("\n"));
 
             // ================= APPLICATION INFO =================
             var appTable = new PdfTable(2).UseAllAvailableWidth();
-            appTable.AddCell(new PdfCell().Add(new Paragraph($"Application Registration Number: {dto.ApplicationRegistrationNumber ?? "-"}")).SetBorder(Border.NO_BORDER));
-            appTable.AddCell(new PdfCell().Add(new Paragraph($"Date: {dto.StartDate:dd/MM/yyyy}")).SetBorder(Border.NO_BORDER));
-            document.Add(appTable);
-            document.Add(new Paragraph("\n"));
+            _ = appTable.AddCell(new PdfCell().Add(new Paragraph($"Application Registration Number: {dto.ApplicationRegistrationNumber ?? "-"}")).SetBorder(Border.NO_BORDER));
+            _ = appTable.AddCell(new PdfCell().Add(new Paragraph($"Date: {dto.StartDate:dd/MM/yyyy}")).SetBorder(Border.NO_BORDER));
+            _ = document.Add(appTable);
+            _ = document.Add(new Paragraph("\n"));
 
             // ================= ESTABLISHMENT INFO =================
-            document.Add(new Paragraph($"A Certificate of registration containing the following particulars is hereby granted to {dto.EstablishmentName ?? "-"}").SetFont(regularFont));
-            document.Add(new Paragraph($"Nature of Work carried on in the establishment: {dto.NatureOfWork ?? "Factory"}").SetFont(regularFont));
-            document.Add(new Paragraph("\n"));
+            _ = document.Add(new Paragraph($"A Certificate of registration containing the following particulars is hereby granted to {dto.EstablishmentName ?? "-"}").SetFont(regularFont));
+            _ = document.Add(new Paragraph($"Nature of Work carried on in the establishment: {dto.NatureOfWork ?? "Factory"}").SetFont(regularFont));
+            _ = document.Add(new Paragraph("\n"));
 
             // ================= DETAILS TABLE =================
             var detailsTable = new PdfTable(2).UseAllAvailableWidth();
-            detailsTable.AddCell(new PdfCell().Add(new Paragraph("Total Number of Employees engaged directly:").SetFont(boldFont)));
-            detailsTable.AddCell(new PdfCell().Add(new Paragraph(dto.DirectEmployees?.ToString() ?? "-")));
+            _ = detailsTable.AddCell(new PdfCell().Add(new Paragraph("Total Number of Employees engaged directly:").SetFont(boldFont)));
+            _ = detailsTable.AddCell(new PdfCell().Add(new Paragraph(dto.DirectEmployees?.ToString() ?? "-")));
 
-            detailsTable.AddCell(new PdfCell().Add(new Paragraph("Total Number of Employees engaged through Contractor:").SetFont(boldFont)));
-            detailsTable.AddCell(new PdfCell().Add(new Paragraph(dto.ContractorEmployees?.ToString() ?? "-")));
+            _ = detailsTable.AddCell(new PdfCell().Add(new Paragraph("Total Number of Employees engaged through Contractor:").SetFont(boldFont)));
+            _ = detailsTable.AddCell(new PdfCell().Add(new Paragraph(dto.ContractorEmployees?.ToString() ?? "-")));
 
             // detailsTable.AddCell(new PdfCell().Add(new Paragraph("Total Number of Contractors and their details:").SetFont(boldFont)));
             // detailsTable.AddCell(new PdfCell().Add(new Paragraph(contractorDetails)));
 
-            detailsTable.AddCell(new PdfCell().Add(new Paragraph("Total Number of Inter State Migrant Workers engaged:").SetFont(boldFont)));
-            detailsTable.AddCell(new PdfCell().Add(new Paragraph(dto.InterStateWorkers?.ToString() ?? "-")));
-            document.Add(detailsTable);
-            document.Add(new Paragraph("\n"));
+            _ = detailsTable.AddCell(new PdfCell().Add(new Paragraph("Total Number of Inter State Migrant Workers engaged:").SetFont(boldFont)));
+            _ = detailsTable.AddCell(new PdfCell().Add(new Paragraph(dto.InterStateWorkers?.ToString() ?? "-")));
+            _ = document.Add(detailsTable);
+            _ = document.Add(new Paragraph("\n"));
 
             // ================= ESTABLISHMENT TYPE =================
-            document.Add(new Paragraph($"Establishment Type: {dto.EstablishmentType ?? "Factory"}").SetFont(boldFont));
-            document.Add(new Paragraph("\n"));
+            _ = document.Add(new Paragraph($"Establishment Type: {dto.EstablishmentType ?? "Factory"}").SetFont(boldFont));
+            _ = document.Add(new Paragraph("\n"));
 
             // ================= FACTORY DETAILS =================
             var factoryTable = new PdfTable(2).UseAllAvailableWidth();
-            factoryTable.AddCell(new PdfCell().Add(new Paragraph("Manufacturing Process").SetFont(boldFont)));
-            factoryTable.AddCell(new PdfCell().Add(new Paragraph(dto.FactoryManufacturingDetail ?? "-")));
+            _ = factoryTable.AddCell(new PdfCell().Add(new Paragraph("Manufacturing Process").SetFont(boldFont)));
+            _ = factoryTable.AddCell(new PdfCell().Add(new Paragraph(dto.FactoryManufacturingDetail ?? "-")));
 
-            factoryTable.AddCell(new PdfCell().Add(new Paragraph("Situation of Factory").SetFont(boldFont)));
-            factoryTable.AddCell(new PdfCell().Add(new Paragraph(dto.FactorySituation ?? "-")));
+            _ = factoryTable.AddCell(new PdfCell().Add(new Paragraph("Situation of Factory").SetFont(boldFont)));
+            _ = factoryTable.AddCell(new PdfCell().Add(new Paragraph(dto.FactorySituation ?? "-")));
 
-            factoryTable.AddCell(new PdfCell().Add(new Paragraph("Factory Address").SetFont(boldFont)));
-            factoryTable.AddCell(new PdfCell().Add(new Paragraph(dto.FactoryAddress ?? "-")));
-            document.Add(factoryTable);
-            document.Add(new Paragraph("\n"));
+            _ = factoryTable.AddCell(new PdfCell().Add(new Paragraph("Factory Address").SetFont(boldFont)));
+            _ = factoryTable.AddCell(new PdfCell().Add(new Paragraph(dto.FactoryAddress ?? "-")));
+            _ = document.Add(factoryTable);
+            _ = document.Add(new Paragraph("\n"));
 
             // ================= EMPLOYER DETAILS =================
             var employerTable = new PdfTable(2).UseAllAvailableWidth();
-            employerTable.AddCell(new PdfCell().Add(new Paragraph("Occupier Name").SetFont(boldFont)));
-            employerTable.AddCell(new PdfCell().Add(new Paragraph(dto.EmployerName ?? "-")));
+            _ = employerTable.AddCell(new PdfCell().Add(new Paragraph("Occupier Name").SetFont(boldFont)));
+            _ = employerTable.AddCell(new PdfCell().Add(new Paragraph(dto.EmployerName ?? "-")));
 
             // employerTable.AddCell(new PdfCell().Add(new Paragraph("Designation").SetFont(boldFont)));
             // employerTable.AddCell(new PdfCell().Add(new Paragraph(dto.EmployerDesignation ?? "-")));
 
-            employerTable.AddCell(new PdfCell().Add(new Paragraph("Address").SetFont(boldFont)));
-            employerTable.AddCell(new PdfCell().Add(new Paragraph(dto.EmployerAddress ?? "-")));
-            document.Add(employerTable);
-            document.Add(new Paragraph("\n"));
+            _ = employerTable.AddCell(new PdfCell().Add(new Paragraph("Address").SetFont(boldFont)));
+            _ = employerTable.AddCell(new PdfCell().Add(new Paragraph(dto.EmployerAddress ?? "-")));
+            _ = document.Add(employerTable);
+            _ = document.Add(new Paragraph("\n"));
 
             // ================= MANAGER/AGENT DETAILS =================
             var managerTable = new PdfTable(2).UseAllAvailableWidth();
-            managerTable.AddCell(new PdfCell().Add(new Paragraph("Manager Name").SetFont(boldFont)));
-            managerTable.AddCell(new PdfCell().Add(new Paragraph(dto.ManagerName ?? "-")));
+            _ = managerTable.AddCell(new PdfCell().Add(new Paragraph("Manager Name").SetFont(boldFont)));
+            _ = managerTable.AddCell(new PdfCell().Add(new Paragraph(dto.ManagerName ?? "-")));
 
             // managerTable.AddCell(new PdfCell().Add(new Paragraph("Designation").SetFont(boldFont)));
             // managerTable.AddCell(new PdfCell().Add(new Paragraph(dto.ManagerDesignation ?? "-")));
 
-            managerTable.AddCell(new PdfCell().Add(new Paragraph("Address").SetFont(boldFont)));
-            managerTable.AddCell(new PdfCell().Add(new Paragraph(dto.ManagerAddress ?? "-")));
-            document.Add(managerTable);
-            document.Add(new Paragraph("\n"));
+            _ = managerTable.AddCell(new PdfCell().Add(new Paragraph("Address").SetFont(boldFont)));
+            _ = managerTable.AddCell(new PdfCell().Add(new Paragraph(dto.ManagerAddress ?? "-")));
+            _ = document.Add(managerTable);
+            _ = document.Add(new Paragraph("\n"));
 
             // ================= OTHER INFO =================
             var otherTable = new PdfTable(2).UseAllAvailableWidth();
-            otherTable.AddCell(new PdfCell().Add(new Paragraph("Factory Maximum Workers to be employed on any day").SetFont(boldFont)));
-            otherTable.AddCell(new PdfCell().Add(new Paragraph(dto.MaxWorkers?.ToString() ?? "-")));
+            _ = otherTable.AddCell(new PdfCell().Add(new Paragraph("Factory Maximum Workers to be employed on any day").SetFont(boldFont)));
+            _ = otherTable.AddCell(new PdfCell().Add(new Paragraph(dto.MaxWorkers?.ToString() ?? "-")));
 
-            otherTable.AddCell(new PdfCell().Add(new Paragraph("Amount of registration fees paid").SetFont(boldFont)));
-            otherTable.AddCell(new PdfCell().Add(new Paragraph(dto.RegistrationFeesPaid?.ToString("F2") ?? "-")));
-            document.Add(otherTable);
-            document.Add(new Paragraph("\n"));
+            _ = otherTable.AddCell(new PdfCell().Add(new Paragraph("Amount of registration fees paid").SetFont(boldFont)));
+            _ = otherTable.AddCell(new PdfCell().Add(new Paragraph(dto.RegistrationFeesPaid?.ToString("F2") ?? "-")));
+            _ = document.Add(otherTable);
+            _ = document.Add(new Paragraph("\n"));
 
             // ================= DECLARATION / SIGNATURE =================
             var sigTable = new PdfTable(3).UseAllAvailableWidth();
-            sigTable.AddCell(new PdfCell().Add(new Paragraph(dto.StartDate.ToString("dd/MM/yyyy"))).SetTextAlignment(TextAlignment.CENTER));
-            sigTable.AddCell(new PdfCell().Add(new Paragraph(dto.EndDate.ToString("dd/MM/yyyy"))).SetTextAlignment(TextAlignment.CENTER));
+            _ = sigTable.AddCell(new PdfCell().Add(new Paragraph(dto.StartDate.ToString("dd/MM/yyyy"))).SetTextAlignment(TextAlignment.CENTER));
+            _ = sigTable.AddCell(new PdfCell().Add(new Paragraph(dto.EndDate.ToString("dd/MM/yyyy"))).SetTextAlignment(TextAlignment.CENTER));
 
             var sigCell = new PdfCell().SetTextAlignment(TextAlignment.CENTER);
 
@@ -2983,22 +2985,240 @@ namespace RajFabAPI.Services
                 )
                 .ScaleToFit(80, 35);
 
-                sigCell.Add(signatureImage);
+                _ = sigCell.Add(signatureImage);
             }
 
-            sigCell.Add(new Paragraph("Chief Inspector of Factories and Boilers").SetFontSize(8));
-            sigCell.Add(new Paragraph("Rajasthan, Jaipur").SetFontSize(8));
+            _ = sigCell.Add(new Paragraph("Chief Inspector of Factories and Boilers").SetFontSize(8));
+            _ = sigCell.Add(new Paragraph("Rajasthan, Jaipur").SetFontSize(8));
 
-            sigTable.AddCell(sigCell);
-            document.Add(sigTable);
+            _ = sigTable.AddCell(sigCell);
+            _ = document.Add(sigTable);
 
             // Place & footer note
-            document.Add(new Paragraph($"\nPlace: {dto.DeclarationPlace ?? "-"}").SetFontSize(9));
-            document.Add(new Paragraph("This is a computer generated certificate and bears scanned signature. No physical signature is required.")
+            _ = document.Add(new Paragraph($"\nPlace: {dto.DeclarationPlace ?? "-"}").SetFontSize(9));
+            _ = document.Add(new Paragraph("This is a computer generated certificate and bears scanned signature. No physical signature is required.")
                 .SetFontSize(7)
                 .SetFontColor(ColorConstants.GRAY));
 
             return fileUrl;
         }
+
+
+        public async Task<string> GenerateEstablishmentPdf(EstablishmentRegistrationEntitiesDto dto)
+        {
+            if (dto == null) throw new ArgumentNullException(nameof(dto));
+
+            // File name and paths
+            var fileName = $"establishment_{dto.RegistrationDetail.ApplicationRegistrationNumber}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+            var webRootPath = _environment.WebRootPath;
+            if (string.IsNullOrWhiteSpace(webRootPath))
+                throw new InvalidOperationException("wwwroot is not configured.");
+
+            var uploadPath = Path.Combine(webRootPath, "certificates");
+            _ = Directory.CreateDirectory(uploadPath);
+
+            var filePath = Path.Combine(uploadPath, fileName);
+
+            var httpContext = _httpContextAccessor.HttpContext
+                ?? throw new InvalidOperationException("HTTP context unavailable");
+            var request = httpContext.Request;
+            var baseUrl = _config["BaseUrl"] ?? $"{request.Scheme}://{request.Host}";
+            var fileUrl = $"{baseUrl}/certificates/{fileName}";
+
+            // Create PDF
+            using var writer = new PdfWriter(filePath);
+            using var pdf = new PdfDocument(writer);
+            using var document = new PdfDoc(pdf);
+
+            var boldFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA_BOLD);
+            var regularFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA);
+
+            // ================= HEADER =================
+            var headerTable = new PdfTable(2).UseAllAvailableWidth();
+            _ = headerTable.AddCell(new PdfCell()
+                .Add(new PdfImage(ImageDataFactory.Create("wwwroot/Emblem_of_India.png")).ScaleToFit(40, 40))
+                .SetBorder(Border.NO_BORDER));
+            _ = headerTable.AddCell(new PdfCell()
+                .Add(new Paragraph("FORM – I").SetFont(boldFont).SetFontSize(18))
+                .Add(new Paragraph("(See clause (i) of sub-rule (1) of rule 5)").SetFont(regularFont).SetFontSize(12))
+                .Add(new Paragraph("Application for Registration for existing/new establishment or Amendment").SetFontSize(12))
+                .SetBorder(Border.NO_BORDER));
+            _ = document.Add(headerTable);
+            _ = document.Add(new Paragraph("\n"));
+
+            // ================= REGISTRATION INFO =================
+            var regTable = new PdfTable(2).UseAllAvailableWidth();
+            _ = regTable.AddCell(new PdfCell().Add(new Paragraph($"Application Registration Number: {dto.RegistrationDetail.ApplicationRegistrationNumber ?? "-"}")).SetBorder(Border.NO_BORDER));
+            _ = regTable.AddCell(new PdfCell().Add(new Paragraph($"Date: {dto.RegistrationDetail.CreatedDate:dd/MM/yyyy}")).SetBorder(Border.NO_BORDER));
+            _ = document.Add(regTable);
+            _ = document.Add(new Paragraph("\n"));
+
+            // ================= A. Establishment Details =================
+            var estTable = new PdfTable(2).UseAllAvailableWidth();
+            _ = estTable.AddCell(new PdfCell().Add(new Paragraph("BRN").SetFont(boldFont)));
+            _ = estTable.AddCell(new PdfCell().Add(new Paragraph(dto.EstablishmentDetail.BrnNumber ?? "-")));
+            _ = estTable.AddCell(new PdfCell().Add(new Paragraph("LIN").SetFont(boldFont)));
+            _ = estTable.AddCell(new PdfCell().Add(new Paragraph(dto.EstablishmentDetail.LinNumber ?? "-")));
+
+            _ = estTable.AddCell(new PdfCell().Add(new Paragraph("Name").SetFont(boldFont)));
+            _ = estTable.AddCell(new PdfCell().Add(new Paragraph(dto.EstablishmentDetail.EstablishmentName ?? "-")));
+
+            _ = estTable.AddCell(new PdfCell().Add(new Paragraph("Address").SetFont(boldFont)));
+            _ = estTable.AddCell(new PdfCell()
+                .Add(new Paragraph(FormatAddress(
+                    dto.EstablishmentDetail.EstablishmentAddressLine1,
+                    dto.EstablishmentDetail.EstablishmentAddressLine2,
+                    dto.EstablishmentDetail.Area,
+                    dto.EstablishmentDetail.TehsilName,
+                    dto.EstablishmentDetail.DistrictName,
+                    dto.EstablishmentDetail.EstablishmentPincode
+                ))));
+            _ = estTable.AddCell(new PdfCell().Add(new Paragraph("Direct Employees").SetFont(boldFont)));
+            _ = estTable.AddCell(new PdfCell().Add(new Paragraph(dto.EstablishmentDetail.TotalNumberOfEmployee.ToString() ?? "-")));
+
+            _ = estTable.AddCell(new PdfCell().Add(new Paragraph("Contract Employees").SetFont(boldFont)));
+            _ = estTable.AddCell(new PdfCell().Add(new Paragraph(dto.EstablishmentDetail.TotalNumberOfContractEmployee.ToString() ?? "-")));
+
+            _ = estTable.AddCell(new PdfCell().Add(new Paragraph("Interstate Workers").SetFont(boldFont)));
+            _ = estTable.AddCell(new PdfCell().Add(new Paragraph(dto.EstablishmentDetail.TotalNumberOfInterstateWorker.ToString() ?? "-")));
+            _ = document.Add(estTable);
+            _ = document.Add(new Paragraph("\n"));
+
+            // ================= B. Type of Establishment =================
+            _ = document.Add(new Paragraph(
+                    $"Establishment Type(s): {(dto.EstablishmentTypes != null && dto.EstablishmentTypes.Any() ? string.Join(", ", dto.EstablishmentTypes) : "-")}"
+                ).SetFont(boldFont));
+            _ = document.Add(new Paragraph("\n"));
+
+            // ================= C. Factory Details =================
+            if (dto.Factory != null)
+            {
+                var factoryTable = new PdfTable(2).UseAllAvailableWidth();
+                _ = factoryTable.AddCell(new PdfCell().Add(new Paragraph("Manufacturing Detail").SetFont(boldFont)));
+                _ = factoryTable.AddCell(new PdfCell().Add(new Paragraph(dto.Factory.ManuacturingDetail ?? "-")));
+
+                _ = factoryTable.AddCell(new PdfCell().Add(new Paragraph("Situation").SetFont(boldFont)));
+                _ = factoryTable.AddCell(new PdfCell().Add(new Paragraph(dto.Factory.Situation ?? "-")));
+
+                _ = factoryTable.AddCell(new PdfCell().Add(new Paragraph("Address").SetFont(boldFont)));
+                _ = factoryTable.AddCell(new PdfCell().Add(new Paragraph(FormatAddress(
+                    dto.Factory.AddressLine1,
+                    dto.Factory.AddressLine2,
+                    dto.Factory.Area,
+                    dto.Factory.DistrictName,
+                    dto.Factory.Pincode
+                ))));
+                _ = document.Add(factoryTable);
+                _ = document.Add(new Paragraph("\n"));
+            }
+
+            // ================= D. Employer Details =================
+            if (dto.MainOwnerDetail != null)
+            {
+                var employerTable = new PdfTable(2).UseAllAvailableWidth();
+                _ = employerTable.AddCell(new PdfCell().Add(new Paragraph("Name").SetFont(boldFont)));
+                _ = employerTable.AddCell(new PdfCell().Add(new Paragraph(dto.MainOwnerDetail.Name ?? "-")));
+
+                _ = employerTable.AddCell(new PdfCell().Add(new Paragraph("Designation").SetFont(boldFont)));
+                _ = employerTable.AddCell(new PdfCell().Add(new Paragraph(dto.MainOwnerDetail.Designation ?? "-")));
+
+                _ = employerTable.AddCell(new PdfCell().Add(new Paragraph("Address").SetFont(boldFont)));
+                _ = employerTable.AddCell(new PdfCell().Add(new Paragraph(FormatAddress(
+                    dto.MainOwnerDetail.AddressLine1,
+                    dto.MainOwnerDetail.AddressLine2,
+                    dto.MainOwnerDetail.Area,
+                    dto.MainOwnerDetail.Tehsil,
+                    dto.MainOwnerDetail.District,
+                    dto.MainOwnerDetail.Pincode
+                ))));
+                _ = employerTable.AddCell(new PdfCell().Add(new Paragraph("Email").SetFont(boldFont)));
+                _ = employerTable.AddCell(new PdfCell().Add(new Paragraph(dto.MainOwnerDetail.Email ?? "-")));
+
+                _ = employerTable.AddCell(new PdfCell().Add(new Paragraph("Mobile").SetFont(boldFont)));
+                _ = employerTable.AddCell(new PdfCell().Add(new Paragraph(dto.MainOwnerDetail.Mobile ?? "-")));
+
+                _ = document.Add(employerTable);
+                _ = document.Add(new Paragraph("\n"));
+            }
+
+            // ================= E. Manager/Agent Details =================
+            if (dto.ManagerOrAgentDetail != null)
+            {
+                var managerTable = new PdfTable(2).UseAllAvailableWidth();
+                _ = managerTable.AddCell(new PdfCell().Add(new Paragraph("Name").SetFont(boldFont)));
+                _ = managerTable.AddCell(new PdfCell().Add(new Paragraph(dto.Manager.Name ?? "-")));
+
+                _ = managerTable.AddCell(new PdfCell().Add(new Paragraph("Designation").SetFont(boldFont)));
+                _ = managerTable.AddCell(new PdfCell().Add(new Paragraph(dto.Manager.Designation ?? "-")));
+
+                _ = managerTable.AddCell(new PdfCell().Add(new Paragraph("Address").SetFont(boldFont)));
+                _ = managerTable.AddCell(new PdfCell().Add(new Paragraph(dto.Manager.Address ?? "-")));
+                _ = document.Add(managerTable);
+                _ = document.Add(new Paragraph("\n"));
+            }
+
+            // ================= F. Contractor Details =================
+            if (dto.ContractorDetail != null && dto.ContractorDetail.Any())
+            {
+                foreach (var contractor in dto.ContractorDetail)
+                {
+                    var contractorTable = new PdfTable(2).UseAllAvailableWidth();
+                    _ = contractorTable.AddCell(new PdfCell().Add(new Paragraph("Name").SetFont(boldFont)));
+                    _ = contractorTable.AddCell(new PdfCell().Add(new Paragraph(contractor.Name ?? "-")));
+
+                    _ = contractorTable.AddCell(new PdfCell().Add(new Paragraph("Work").SetFont(boldFont)));
+                    _ = contractorTable.AddCell(new PdfCell().Add(new Paragraph(contractor.NameOfWork ?? "-")));
+
+                    _ = contractorTable.AddCell(new PdfCell().Add(new Paragraph("Max Male Workers").SetFont(boldFont)));
+                    _ = contractorTable.AddCell(new PdfCell().Add(new Paragraph(contractor.MaxContractWorkerCountMale?.ToString() ?? "-")));
+
+                    _ = contractorTable.AddCell(new PdfCell().Add(new Paragraph("Max Female Workers").SetFont(boldFont)));
+                    _ = contractorTable.AddCell(new PdfCell().Add(new Paragraph(contractor.MaxContractWorkerCountFemale?.ToString() ?? "-")));
+
+                    _ = contractorTable.AddCell(new PdfCell().Add(new Paragraph("Duration").SetFont(boldFont)));
+                    _ = contractorTable.AddCell(new PdfCell().Add(new Paragraph($"{contractor.DateOfCommencement:dd/MM/yyyy} - {contractor.DateOfCompletion:dd/MM/yyyy}")));
+
+                    _ = document.Add(contractorTable);
+                    _ = document.Add(new Paragraph("\n"));
+                }
+            }
+
+            // ================= G. Declaration =================
+            var sigTable = new PdfTable(3).UseAllAvailableWidth();
+            _ = sigTable.AddCell(new PdfCell().Add(new Paragraph(dto.StartDate.ToString("dd/MM/yyyy"))).SetTextAlignment(TextAlignment.CENTER));
+            _ = sigTable.AddCell(new PdfCell().Add(new Paragraph(dto.EndDate.ToString("dd/MM/yyyy"))).SetTextAlignment(TextAlignment.CENTER));
+
+            var sigCell = new PdfCell().SetTextAlignment(TextAlignment.CENTER);
+            var signatureBytes = await DownloadImageAsync(dto.SignatureBase64);
+            if (signatureBytes != null)
+            {
+                var signatureImage = new PdfImage(ImageDataFactory.Create(signatureBytes)).ScaleToFit(80, 35);
+                _ = sigCell.Add(signatureImage);
+            }
+            _ = sigCell.Add(new Paragraph("Chief Inspector of Factories and Boilers").SetFontSize(8));
+            _ = sigCell.Add(new Paragraph("Rajasthan, Jaipur").SetFontSize(8));
+            _ = sigTable.AddCell(sigCell);
+            _ = document.Add(sigTable);
+
+            _ = document.Add(new Paragraph($"\nPlace: {dto.DeclarationPlace ?? "-"}").SetFontSize(9));
+            _ = document.Add(new Paragraph("This is a computer generated certificate and bears scanned signature. No physical signature is required.")
+                .SetFontSize(7).SetFontColor(ColorConstants.GRAY));
+
+            return fileUrl;
+        }
+        private string FormatAddress(params string[] parts)
+        {
+            // Filter out null or whitespace
+            var nonEmptyParts = parts?.Where(p => !string.IsNullOrWhiteSpace(p)).ToArray();
+
+            // If nothing left, return "-"
+            if (nonEmptyParts == null || nonEmptyParts.Length == 0)
+                return "-";
+
+            // Join with comma
+            return string.Join(", ", nonEmptyParts);
+        }
+
+
     }
 }

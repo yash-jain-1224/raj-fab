@@ -11,7 +11,7 @@ namespace RajFabAPI.DTOs
         public string? Status { get; set; }
         public PersonDetailDto? MainOwnerDetail { get; set; }
         public PersonDetailDto? ManagerOrAgentDetail { get; set; }
-        public ContractorDetailDto? ContractorDetail { get; set; }
+        public List<ContractorDetailDto> ContractorDetail { get; set; }
         public FactoryDto? Factory { get; set; }
         public BeediCigarWorksDto? BeediCigarWork { get; set; }
         public MotorTransportServiceDto? MotorTransportService { get; set; }

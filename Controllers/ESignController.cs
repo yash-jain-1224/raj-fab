@@ -1,6 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using RajFabAPI.DTOs;
+using RajFabAPI.Services;
 using RajFabAPI.Services.Interface;
 using System.Net.Http;
 using System.Text;
@@ -16,6 +18,7 @@ namespace RajFabAPI.Controllers
     public class ESignController : ControllerBase
     {
         private readonly IMemoryCache _cache;
+        private readonly IESignService _eSignService;
         private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
         private readonly string generateTokenURL = "https://rajesignapitest.rajasthan.gov.in/caEsign/auth/generateToken";
         private readonly string generateSignedXmlURL = "https://rajesignapitest.rajasthan.gov.in/caEsign/v2/generateSignedXmlV2_1";
@@ -24,10 +27,23 @@ namespace RajFabAPI.Controllers
         private readonly string SSOID = "RJJO201924027728";
         private readonly string SecretKey = "esIXWgfhVzleJG9OlB/jX3DDzFGU0bN3vgrUkyGBUQQ=";
 
-        public ESignController(IMemoryCache cache)
+        public ESignController(IMemoryCache cache, IESignService eSignService)
         {
             _cache = cache;
+            _eSignService = eSignService;
         }
+
+        [HttpGet("e-sign/{applicationId}")]
+        public async Task<IActionResult> Demo(string applicationId)
+        {
+            if (applicationId == null)
+            {
+                return BadRequest("Please provide application Id");
+            }
+            var name  = _eSignService.GetDataFromApplicationId(applicationId);
+            return Ok();
+        }
+
 
         // For testing purpose, directly posting form data to signdocURL, you can remove this method later and directly post form data to signdocURL in StartEsign method
         [HttpGet("demo")]

@@ -10,7 +10,9 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.Xml;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Tasks;
 using System.Xml;
+using static RajFabAPI.Constants.AppConstants;
 
 
 namespace RajFabAPI.Services
@@ -22,14 +24,55 @@ namespace RajFabAPI.Services
         private readonly ApplicationDbContext _db;
         private readonly ESignSettings _settings;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IEstablishmentRegistrationService _establishmentRegistrationService;
 
-        public ESignService(HttpClient httpClient, ApplicationDbContext db, IConfiguration config, IHttpContextAccessor httpContextAccessor)
+        public ESignService(HttpClient httpClient, ApplicationDbContext db, IConfiguration config, IHttpContextAccessor httpContextAccessor, IEstablishmentRegistrationService establishmentRegistrationService)
         {
             _httpClient = httpClient;
             _db = db;
             _settings = config.GetSection("ESignSettings").Get<ESignSettings>();
             _httpContextAccessor = httpContextAccessor;
+            _establishmentRegistrationService = establishmentRegistrationService;
         }
+
+
+        public async Task<string> GetDataFromApplicationId(string applicationId)
+        {
+            using var dbTx = await _db.Database.BeginTransactionAsync();
+
+            try
+            {
+                var applicationData = await (
+                    from appReg in _db.Set<ApplicationRegistration>()
+                    join module in _db.Set<FormModule>()
+                        on appReg.ModuleId equals module.Id
+                    where appReg.ApplicationId == applicationId
+                    select new
+                    {
+                        Application = appReg,
+                        ModuleName = module.Name
+                    }
+                ).FirstOrDefaultAsync();
+
+                if (applicationData == null)
+                    throw new Exception("data not found");
+
+                if (applicationData.ModuleName == ApplicationTypeNames.NewEstablishment)
+                {
+                    var data = _establishmentRegistrationService.GetAllEntitiesByRegistrationIdAsync(applicationId);
+                    _establishmentRegistrationService.GenerateEstablishmentPdf(data);
+                    return "";
+                }
+
+                return "application.ApplicationRegistrationNumber";
+            }
+            catch
+            {
+                await dbTx.RollbackAsync();
+                throw;
+            }
+        }
+
 
         private async Task<string> GenerateTokenAsync()
         {

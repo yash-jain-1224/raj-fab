@@ -61,6 +61,7 @@ namespace RajFabAPI.DTOs
         public Guid NewManagerId { get; set; }
         public string AcknowledgementNumber { get; set; } = string.Empty;
         public string Message { get; set; } = "Manager changed successfully";
+        // public string? Html { get; set; } = string.Empty;
     }
 
     public class ManagerChangeGetResponseDto

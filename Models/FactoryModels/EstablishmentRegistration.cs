@@ -15,7 +15,7 @@ namespace RajFabAPI.Models
         // New: links to PersonDetail rows stored for registration-level persons
         public Guid? MainOwnerDetailId { get; set; }
         public Guid? ManagerOrAgentDetailId { get; set; }
-        public Guid? ContractorDetailId { get; set; }
+        public string? ContractorDetailId { get; set; }
 
         // Workflow status e.g. Pending, Approved, Rejected
         public string? Status { get; set; }
@@ -36,6 +36,8 @@ namespace RajFabAPI.Models
         public DateTime? Date { get; set; }
         public bool IsESignCompleted { get; set; } = false;
         public bool IsPaymentCompleted { get; set; } = false;
+        public string? ApplicationPDFUrl { get; set; }
+
         public DateTime CreatedDate { get; set; } = DateTime.Now;
         public DateTime UpdatedDate { get; set; } = DateTime.Now;
     }

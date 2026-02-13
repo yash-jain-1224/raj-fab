@@ -111,9 +111,9 @@ namespace RajFabAPI.Controllers
                         break;
                 }
                 var redirectUrl = $"{_config["FrontendUrl"]}/" + "user/track";
-                //return Redirect(redirectUrl);
+                return Redirect(redirectUrl);
 
-                return Content(paymentHTML.ToString(), "text/html");
+                //return Content(paymentHTML.ToString(), "text/html");
             }
             catch (Exception)
             {

@@ -21,6 +21,7 @@ using System;
 using System.IO;
 using System.Reflection;
 using System.Reflection.Metadata;
+using static iText.StyledXmlParser.Jsoup.Select.Evaluator;
 using static RajFabAPI.Constants.AppConstants;
 using static System.Net.Mime.MediaTypeNames;
 using ImageDataFactory = iText.IO.Image.ImageDataFactory;
@@ -684,12 +685,12 @@ namespace RajFabAPI.Services
                 // PersonDetails (MainOwner, ManagerOrAgent, Contractor)
                 Guid? mainOwnerId = null;
                 Guid? managerAgentId = null;
-                string? contractorId = "";
+                Guid? contractorId = null;
 
                 if (dto.MainOwnerDetail != null)
                 {
                     mainOwnerId = Guid.NewGuid();
-                    _ = _db.Set<PersonDetail>().Add(new PersonDetail
+                    _db.Set<PersonDetail>().Add(new PersonDetail
                     {
                         Id = mainOwnerId.Value,
                         Role = "MainOwner",
@@ -715,7 +716,7 @@ namespace RajFabAPI.Services
                 if (dto.ManagerOrAgentDetail != null)
                 {
                     managerAgentId = Guid.NewGuid();
-                    _ = _db.Set<PersonDetail>().Add(new PersonDetail
+                    _db.Set<PersonDetail>().Add(new PersonDetail
                     {
                         Id = managerAgentId.Value,
                         Role = "ManagerOrAgent",
@@ -742,10 +743,10 @@ namespace RajFabAPI.Services
                 {
                     foreach (var contractor in dto.ContractorDetail)
                     {
-                        Guid contractorIdnew = Guid.NewGuid();
-                        _ = _db.Set<PersonDetail>().Add(new PersonDetail
+
+                        _db.Set<PersonDetail>().Add(new PersonDetail
                         {
-                            Id = contractorIdnew,
+                            Id = Guid.NewGuid(),
                             Role = "Contractor",
                             Name = contractor.Name,
                             Designation = string.Empty,
@@ -764,21 +765,20 @@ namespace RajFabAPI.Services
                             UpdatedAt = DateTime.Now
                         });
 
-                        _ = _db.Set<ContractorDetail>().Add(new ContractorDetail
+                        _db.Set<ContractorDetail>().Add(new ContractorDetail
                         {
-                            ContractorPersonalDetailId = contractorIdnew,
+                            ContractorPersonalDetailId = contractorId,
                             NameOfWork = contractor.NameOfWork,
                             MaxContractWorkerCountMale = contractor.MaxContractWorkerCountMale,
                             MaxContractWorkerCountFemale = contractor.MaxContractWorkerCountFemale,
                             DateOfCommencement = contractor.DateOfCommencement,
                             DateOfCompletion = contractor.DateOfCompletion
                         });
-                        contractorId += contractorIdnew;
                     }
                 }
 
                 // Persist all EF Core changes
-                _ = await _db.SaveChangesAsync();
+                await _db.SaveChangesAsync();
 
                 // Persist person ids onto registration
                 registration.MainOwnerDetailId = mainOwnerId;
@@ -874,100 +874,100 @@ namespace RajFabAPI.Services
             try
             {
                 var result = await (
-                    from reg in _db.Set<EstablishmentRegistration>().AsNoTracking()
-                    where reg.RegistrationNumber == factoryRegistrationNumber && reg.Status == ApplicationStatus.Approved
-                    orderby reg.Version descending
-                    join est in _db.Set<EstablishmentDetail>().AsNoTracking()
-                        on reg.EstablishmentDetailId equals est.Id into estJoin
-                    from estDetail in estJoin.DefaultIfEmpty()
-                    join owner in _db.Set<PersonDetail>().AsNoTracking()
-                        on reg.MainOwnerDetailId equals owner.Id into ownerJoin
-                    from mainOwner in ownerJoin.DefaultIfEmpty()
-                    join manager in _db.Set<PersonDetail>().AsNoTracking()
-                        on reg.ManagerOrAgentDetailId equals manager.Id into managerJoin
-                    from managerDetail in managerJoin.DefaultIfEmpty()
-                    from contractorDetail in _db.Set<PersonDetail>().AsNoTracking()
-                        .Where(c => !string.IsNullOrEmpty(reg.ContractorDetailId) && reg.ContractorDetailId.Contains(c.Id.ToString()))
-                        .DefaultIfEmpty()
-                    join area in _db.Set<Models.City>().AsNoTracking()
-                        on estDetail.SubDivisionId.ToString() equals area.Id.ToString() into areaJoin
-                    from areaDetail in areaJoin.DefaultIfEmpty()
-                    join district in _db.Set<District>().AsNoTracking()
-                        on areaDetail.DistrictId equals district.Id into districtJoin
-                    from districtDetail in districtJoin.DefaultIfEmpty()
-                    join division in _db.Set<Division>().AsNoTracking()
-                        on districtDetail.DivisionId equals division.Id into divisionJoin
-                    from divisionDetail in divisionJoin.DefaultIfEmpty()
-                    select new EstablishmentRegistrationDetailsDto
-                    {
-                        Id = reg.EstablishmentRegistrationId,
-                        RegistrationNumber = factoryRegistrationNumber,
-                        EstablishmentDetail = new EstablishmentDetailsDto
-                        {
-                            Id = estDetail != null ? estDetail.Id.ToString() : null,
-                            LinNumber = estDetail != null ? estDetail.LinNumber : null,
-                            EstablishmentName = estDetail != null ? estDetail.EstablishmentName : null,
-                            SubDivisionId = estDetail != null ? estDetail.SubDivisionId : null,
-                            AreaName = areaDetail != null ? areaDetail.Name : null,
-                            DistrictId = areaDetail != null ? areaDetail.DistrictId.ToString() : null,
-                            DistrictName = districtDetail != null ? districtDetail.Name : null,
-                            EstablishmentAddressLine1 = estDetail != null ? estDetail.AddressLine1 : null,
-                            EstablishmentAddressLine2 = estDetail != null ? estDetail.AddressLine2 : null,
-                            EstablishmentPincode = estDetail != null ? estDetail.Pincode : null,
-                        },
-                        MainOwnerDetail = new PersonDetailDto
-                        {
-                            Id = mainOwner != null ? mainOwner.Id.ToString() : null,
-                            Name = mainOwner != null ? mainOwner.Name : null,
-                            Designation = mainOwner != null ? mainOwner.Designation : null,
-                            TypeOfEmployer = mainOwner != null ? mainOwner.TypeOfEmployer : null,
-                            RelationType = mainOwner != null ? mainOwner.RelationType : null,
-                            RelativeName = mainOwner != null ? mainOwner.RelativeName : null,
-                            AddressLine1 = mainOwner != null ? mainOwner.AddressLine1 : null,
-                            AddressLine2 = mainOwner != null ? mainOwner.AddressLine2 : null,
-                            District = mainOwner != null ? mainOwner.District : null,
-                            Tehsil = mainOwner != null ? mainOwner.Tehsil : null,
-                            Area = mainOwner != null ? mainOwner.Area : null,
-                            Pincode = mainOwner != null ? mainOwner.Pincode : null,
-                            Email = mainOwner != null ? mainOwner.Email : null,
-                            Telephone = mainOwner != null ? mainOwner.Telephone : null,
-                            Mobile = mainOwner != null ? mainOwner.Mobile : null
-                        },
-                        ManagerOrAgentDetail = new PersonDetailDto
-                        {
-                            Id = managerDetail != null ? managerDetail.Id.ToString() : null,
-                            Name = managerDetail != null ? managerDetail.Name : null,
-                            TypeOfEmployer = managerDetail != null ? managerDetail.TypeOfEmployer : null,
-                            Designation = managerDetail != null ? managerDetail.Designation : null,
-                            RelationType = managerDetail != null ? managerDetail.RelationType : null,
-                            RelativeName = managerDetail != null ? managerDetail.RelativeName : null,
-                            AddressLine1 = managerDetail != null ? managerDetail.AddressLine1 : null,
-                            AddressLine2 = managerDetail != null ? managerDetail.AddressLine2 : null,
-                            District = managerDetail != null ? managerDetail.District : null,
-                            Tehsil = managerDetail != null ? managerDetail.Tehsil : null,
-                            Area = managerDetail != null ? managerDetail.Area : null,
-                            Pincode = managerDetail != null ? managerDetail.Pincode : null,
-                            Email = managerDetail != null ? managerDetail.Email : null,
-                            Telephone = managerDetail != null ? managerDetail.Telephone : null,
-                            Mobile = managerDetail != null ? managerDetail.Mobile : null
-                        },
-                        ContractorDetail = new PersonDetailDto
-                        {
-                            Id = contractorDetail != null ? contractorDetail.Id.ToString() : null,
-                            Name = contractorDetail != null ? contractorDetail.Name : null,
-                            Designation = contractorDetail != null ? contractorDetail.Designation : null,
-                            RelationType = contractorDetail != null ? contractorDetail.RelationType : null,
-                            RelativeName = contractorDetail != null ? contractorDetail.RelativeName : null,
-                            AddressLine1 = contractorDetail != null ? contractorDetail.AddressLine1 : null,
-                            AddressLine2 = contractorDetail != null ? contractorDetail.AddressLine2 : null,
-                            District = contractorDetail != null ? contractorDetail.District : null,
-                            Tehsil = contractorDetail != null ? contractorDetail.Tehsil : null,
-                            Area = contractorDetail != null ? contractorDetail.Area : null,
-                            Pincode = contractorDetail != null ? contractorDetail.Pincode : null,
-                            Email = contractorDetail != null ? contractorDetail.Email : null,
-                            Mobile = contractorDetail != null ? contractorDetail.Mobile : null
-                        }
-                    }).FirstOrDefaultAsync();
+                   from reg in _db.Set<EstablishmentRegistration>().AsNoTracking()
+                   where reg.RegistrationNumber == factoryRegistrationNumber && reg.Status == ApplicationStatus.Approved
+                   orderby reg.Version descending
+                   join est in _db.Set<EstablishmentDetail>().AsNoTracking()
+                       on reg.EstablishmentDetailId equals est.Id into estJoin
+                   from estDetail in estJoin.DefaultIfEmpty()
+                   join owner in _db.Set<PersonDetail>().AsNoTracking()
+                       on reg.MainOwnerDetailId equals owner.Id into ownerJoin
+                   from mainOwner in ownerJoin.DefaultIfEmpty()
+                   join manager in _db.Set<PersonDetail>().AsNoTracking()
+                       on reg.ManagerOrAgentDetailId equals manager.Id into managerJoin
+                   from managerDetail in managerJoin.DefaultIfEmpty()
+                   join contractor in _db.Set<PersonDetail>().AsNoTracking()
+                       on reg.ContractorDetailId equals contractor.Id into contractorJoin
+                   from contractorDetail in contractorJoin.DefaultIfEmpty()
+                   join area in _db.Set<Models.City>().AsNoTracking()
+                       on estDetail.SubDivisionId.ToString() equals area.Id.ToString() into areaJoin
+                   from areaDetail in areaJoin.DefaultIfEmpty()
+                   join district in _db.Set<District>().AsNoTracking()
+                       on areaDetail.DistrictId equals district.Id into districtJoin
+                   from districtDetail in districtJoin.DefaultIfEmpty()
+                   join division in _db.Set<Division>().AsNoTracking()
+                       on districtDetail.DivisionId equals division.Id into divisionJoin
+                   from divisionDetail in divisionJoin.DefaultIfEmpty()
+                   select new EstablishmentRegistrationDetailsDto
+                   {
+                       Id = reg.EstablishmentRegistrationId,
+                       RegistrationNumber = factoryRegistrationNumber,
+                       EstablishmentDetail = new EstablishmentDetailsDto
+                       {
+                           Id = estDetail != null ? estDetail.Id.ToString() : null,
+                           LinNumber = estDetail != null ? estDetail.LinNumber : null,
+                           EstablishmentName = estDetail != null ? estDetail.EstablishmentName : null,
+                           SubDivisionId = estDetail != null ? estDetail.SubDivisionId : null,
+                           AreaName = areaDetail != null ? areaDetail.Name : null,
+                           DistrictId = areaDetail != null ? areaDetail.DistrictId.ToString() : null,
+                           DistrictName = districtDetail != null ? districtDetail.Name : null,
+                           EstablishmentAddressLine1 = estDetail != null ? estDetail.AddressLine1 : null,
+                           EstablishmentAddressLine2 = estDetail != null ? estDetail.AddressLine2 : null,
+                           EstablishmentPincode = estDetail != null ? estDetail.Pincode : null,
+                       },
+                       MainOwnerDetail = new PersonDetailDto
+                       {
+                           Id = mainOwner != null ? mainOwner.Id.ToString() : null,
+                           Name = mainOwner != null ? mainOwner.Name : null,
+                           Designation = mainOwner != null ? mainOwner.Designation : null,
+                           TypeOfEmployer = mainOwner != null ? mainOwner.TypeOfEmployer : null,
+                           RelationType = mainOwner != null ? mainOwner.RelationType : null,
+                           RelativeName = mainOwner != null ? mainOwner.RelativeName : null,
+                           AddressLine1 = mainOwner != null ? mainOwner.AddressLine1 : null,
+                           AddressLine2 = mainOwner != null ? mainOwner.AddressLine2 : null,
+                           District = mainOwner != null ? mainOwner.District : null,
+                           Tehsil = mainOwner != null ? mainOwner.Tehsil : null,
+                           Area = mainOwner != null ? mainOwner.Area : null,
+                           Pincode = mainOwner != null ? mainOwner.Pincode : null,
+                           Email = mainOwner != null ? mainOwner.Email : null,
+                           Telephone = mainOwner != null ? mainOwner.Telephone : null,
+                           Mobile = mainOwner != null ? mainOwner.Mobile : null
+                       },
+                       ManagerOrAgentDetail = new PersonDetailDto
+                       {
+                           Id = managerDetail != null ? managerDetail.Id.ToString() : null,
+                           Name = managerDetail != null ? managerDetail.Name : null,
+                           TypeOfEmployer = managerDetail != null ? managerDetail.TypeOfEmployer : null,
+                           Designation = managerDetail != null ? managerDetail.Designation : null,
+                           RelationType = managerDetail != null ? managerDetail.RelationType : null,
+                           RelativeName = managerDetail != null ? managerDetail.RelativeName : null,
+                           AddressLine1 = managerDetail != null ? managerDetail.AddressLine1 : null,
+                           AddressLine2 = managerDetail != null ? managerDetail.AddressLine2 : null,
+                           District = managerDetail != null ? managerDetail.District : null,
+                           Tehsil = managerDetail != null ? managerDetail.Tehsil : null,
+                           Area = managerDetail != null ? managerDetail.Area : null,
+                           Pincode = managerDetail != null ? managerDetail.Pincode : null,
+                           Email = managerDetail != null ? managerDetail.Email : null,
+                           Telephone = managerDetail != null ? managerDetail.Telephone : null,
+                           Mobile = managerDetail != null ? managerDetail.Mobile : null
+                       },
+                       ContractorDetail = new PersonDetailDto
+                       {
+                           Id = contractorDetail != null ? contractorDetail.Id.ToString() : null,
+                           Name = contractorDetail != null ? contractorDetail.Name : null,
+                           Designation = contractorDetail != null ? contractorDetail.Designation : null,
+                           RelationType = contractorDetail != null ? contractorDetail.RelationType : null,
+                           RelativeName = contractorDetail != null ? contractorDetail.RelativeName : null,
+                           AddressLine1 = contractorDetail != null ? contractorDetail.AddressLine1 : null,
+                           AddressLine2 = contractorDetail != null ? contractorDetail.AddressLine2 : null,
+                           District = contractorDetail != null ? contractorDetail.District : null,
+                           Tehsil = contractorDetail != null ? contractorDetail.Tehsil : null,
+                           Area = contractorDetail != null ? contractorDetail.Area : null,
+                           Pincode = contractorDetail != null ? contractorDetail.Pincode : null,
+                           Email = contractorDetail != null ? contractorDetail.Email : null,
+                           Mobile = contractorDetail != null ? contractorDetail.Mobile : null
+                       }
+                   }).FirstOrDefaultAsync();
 
                 return result;
             }
@@ -996,9 +996,9 @@ namespace RajFabAPI.Services
                     join manager in _db.Set<PersonDetail>().AsNoTracking()
                         on reg.ManagerOrAgentDetailId equals manager.Id into managerJoin
                     from managerDetail in managerJoin.DefaultIfEmpty()
-                    from contractorDetail in _db.Set<PersonDetail>().AsNoTracking()
-                        .Where(c => !string.IsNullOrEmpty(reg.ContractorDetailId) && reg.ContractorDetailId.Contains(c.Id.ToString()))
-                        .DefaultIfEmpty()
+                    join contractor in _db.Set<PersonDetail>().AsNoTracking()
+                        on reg.ContractorDetailId equals contractor.Id into contractorJoin
+                    from contractorDetail in contractorJoin.DefaultIfEmpty()
                     join area in _db.Set<Models.City>().AsNoTracking()
                         on estDetail.SubDivisionId.ToString() equals area.Id.ToString() into areaJoin
                     from areaDetail in areaJoin.DefaultIfEmpty()
@@ -1188,8 +1188,7 @@ namespace RajFabAPI.Services
             if (reg.ContractorDetailId != null)
             {
                 var contractor = await _db.Set<ContractorDetail>().AsNoTracking()
-                    .Include(c => c.ContractorPersonalDetail)
-                    .FirstOrDefaultAsync(x => reg.ContractorDetailId.Contains(x.ContractorPersonalDetailId.ToString()));
+                    .FirstOrDefaultAsync(x => x.Id == reg.ContractorDetailId);
                 if (contractor != null)
                 {
                     dto.ContractorDetail = new List<ContractorDetailDto>
@@ -2400,7 +2399,7 @@ namespace RajFabAPI.Services
 
                 Guid? mainOwnerId = null;
                 Guid? managerAgentId = null;
-                string contractorId = "";
+                Guid? contractorId = null;
 
                 if (dto.MainOwnerDetail != null)
                 {
@@ -2455,10 +2454,10 @@ namespace RajFabAPI.Services
                 {
                     foreach (var contractor in dto.ContractorDetail)
                     {
-                        var contractorPersonalDetailId = Guid.NewGuid();
+
                         _ = _db.Set<PersonDetail>().Add(new PersonDetail
                         {
-                            Id = contractorPersonalDetailId,
+                            Id = Guid.NewGuid(),
                             Role = "Contractor",
                             Name = contractor.Name,
                             Designation = string.Empty,
@@ -2479,14 +2478,13 @@ namespace RajFabAPI.Services
 
                         _ = _db.Set<ContractorDetail>().Add(new ContractorDetail
                         {
-                            ContractorPersonalDetailId = contractorPersonalDetailId,
+                            ContractorPersonalDetailId = contractorId,
                             NameOfWork = contractor.NameOfWork,
                             MaxContractWorkerCountMale = contractor.MaxContractWorkerCountMale,
                             MaxContractWorkerCountFemale = contractor.MaxContractWorkerCountFemale,
                             DateOfCommencement = contractor.DateOfCommencement,
                             DateOfCompletion = contractor.DateOfCompletion
                         });
-                        contractorId += contractorPersonalDetailId + "|";
                     }
                 }
 
@@ -3229,9 +3227,9 @@ namespace RajFabAPI.Services
                 await _db.SaveChangesAsync();
             }
 
-            var html = await _eSignService.StartEsignAsync(pdfBytes);
+            //var html = await _eSignService.StartEsignAsync(pdfBytes);
 
-            return html;
+            return filePath;
         }
         private string FormatAddress(params string[] parts)
         {
@@ -3245,7 +3243,5 @@ namespace RajFabAPI.Services
             // Join with comma
             return string.Join(", ", nonEmptyParts);
         }
-
-
     }
 }

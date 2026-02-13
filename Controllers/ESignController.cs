@@ -1,7 +1,11 @@
-﻿using Microsoft.AspNetCore.Http.HttpResults;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using RajFabAPI.Data;
 using RajFabAPI.DTOs;
+using RajFabAPI.Models;
 using RajFabAPI.Services;
 using RajFabAPI.Services.Interface;
 using System.Net.Http;
@@ -9,11 +13,10 @@ using System.Text;
 using System.Text.Json;
 using System.Xml.Linq;
 using System.Xml.Serialization;
-using static System.Net.Mime.MediaTypeNames;
-using Microsoft.EntityFrameworkCore;
-using RajFabAPI.Data;
-using RajFabAPI.Models;
+using static Org.BouncyCastle.Math.EC.ECCurve;
 using static RajFabAPI.Constants.AppConstants;
+using static RajFabAPI.Controllers.ESignController;
+using static System.Net.Mime.MediaTypeNames;
 namespace RajFabAPI.Controllers
 {
     [ApiController]
@@ -24,6 +27,7 @@ namespace RajFabAPI.Controllers
         private readonly IESignService _eSignService;
         private readonly IEstablishmentRegistrationService _estRegService;
         private readonly ApplicationDbContext _db;
+        private readonly IConfiguration _config;
         private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
         private readonly string generateTokenURL = "https://rajesignapitest.rajasthan.gov.in/caEsign/auth/generateToken";
         private readonly string generateSignedXmlURL = "https://rajesignapitest.rajasthan.gov.in/caEsign/v2/generateSignedXmlV2_1";
@@ -32,16 +36,18 @@ namespace RajFabAPI.Controllers
         private readonly string SSOID = "RJJO201924027728";
         private readonly string SecretKey = "esIXWgfhVzleJG9OlB/jX3DDzFGU0bN3vgrUkyGBUQQ=";
 
-        public ESignController(IMemoryCache cache, IESignService eSignService, IEstablishmentRegistrationService estRegService, ApplicationDbContext db)
+        public ESignController(IMemoryCache cache, IESignService eSignService, IEstablishmentRegistrationService estRegService, ApplicationDbContext db, IConfiguration config)
         {
             _cache = cache;
             _eSignService = eSignService;
             _estRegService = estRegService;
             _db = db;
+            _config = config;
         }
 
-        [HttpGet("e-sign/{applicationId}")]
-        public async Task<IActionResult> Demo(string applicationId)
+        [Authorize]
+        [HttpGet("/api/esign/{applicationId}")]
+        public async Task<IActionResult> Test(string applicationId)
         {
             if (string.IsNullOrEmpty(applicationId))
             {
@@ -66,11 +72,44 @@ namespace RajFabAPI.Controllers
             if (applicationData.ModuleName == ApplicationTypeNames.NewEstablishment)
             {
                 var data = await _estRegService.GetAllEntitiesByRegistrationIdAsync(applicationId);
-                var html = await _estRegService.GenerateEstablishmentPdf(data);
-                return Content(html, "text/html");
-            }
+                var filePath = await _estRegService.GenerateEstablishmentPdf(data);
+                var pdfBytes = await System.IO.File.ReadAllBytesAsync(filePath);
+                var html = "";
+                Token_Response? tokenResponse = await getAuthToken();
+                if (tokenResponse == null || tokenResponse.status != "SUCCESS")
+                    return BadRequest("Failed to get auth token");
+                else
+                {
+                    string authToken = tokenResponse.data.encryptedToken;
+                    generateSignedXml_Request Signrequest = new generateSignedXml_Request
+                    {
+                        pdfFile = pdfBytes,
+                        personName = "Yesh Kumar Nagar",
+                        personDesignation = "Developer",
+                        personLocation = "Jaipur, Rajastha",
+                        prn = "RAJFAB" + string.Concat(Guid.NewGuid().ToString("N").Where(char.IsDigit))
+                    };
+                     generateSignedXml_Response? generateSignedXml_Response = await generateSignedXml(Signrequest, authToken);
 
-            return Ok("application.ApplicationRegistrationNumber");
+                    if (generateSignedXml_Response == null || generateSignedXml_Response.status != "SUCCESS")
+                        return BadRequest("Failed to generate signed XML");
+                    else
+                    {
+                        //Temporary keeping value of signedXMLData in caces for testing purpose, you can remove it later and keep it in db                
+                        EsignTempData esignTempData = new EsignTempData
+                        {
+                            prn = generateSignedXml_Response.data.prn,
+                            txnId = generateSignedXml_Response.data.txnId,
+                            authToken = authToken
+                        };
+                        _cache.Set(esignTempData.prn, esignTempData, TimeSpan.FromMinutes(5));
+
+                        html = PostToPage(signdocURL, generateSignedXml_Response.data.signedXMLData);
+                    }
+                }
+                return Ok(new { html });
+            }
+            return Ok(new { data = "data" });
         }
 
 
@@ -123,44 +162,44 @@ namespace RajFabAPI.Controllers
             return Content(html, "text/html");
         }
 
-        [HttpPost("start")]
-        public async Task<IActionResult> StartEsign([FromForm] EsignRequest esignRequest)
-        {
-            var html = "";
-            Token_Response? tokenResponse = await getAuthToken();
-            if (tokenResponse == null || tokenResponse.status != "SUCCESS")
-                return BadRequest("Failed to get auth token");
-            else
-            {
-                string authToken = tokenResponse.data.encryptedToken;
-                generateSignedXml_Request Signrequest = new generateSignedXml_Request
-                {
-                    pdfFile = esignRequest.file,
-                    personName = esignRequest.personName,
-                    personDesignation = "Developer",
-                    personLocation = "Jaipur, Rajastha",
-                    prn = "RAJFAB" + string.Concat(Guid.NewGuid().ToString("N").Where(char.IsDigit))
-                };
-                generateSignedXml_Response? generateSignedXml_Response = await generateSignedXml(Signrequest, authToken);
+        //[HttpPost("start")]
+        //public async Task<IActionResult> StartEsign([FromForm] EsignRequest esignRequest)
+        //{
+        //    var html = "";
+        //    Token_Response? tokenResponse = await getAuthToken();
+        //    if (tokenResponse == null || tokenResponse.status != "SUCCESS")
+        //        return BadRequest("Failed to get auth token");
+        //    else
+        //    {
+        //        string authToken = tokenResponse.data.encryptedToken;
+        //        generateSignedXml_Request Signrequest = new generateSignedXml_Request
+        //        {
+        //            pdfFile = esignRequest.file,
+        //            personName = esignRequest.personName,
+        //            personDesignation = "Developer",
+        //            personLocation = "Jaipur, Rajastha",
+        //            prn = "RAJFAB" + string.Concat(Guid.NewGuid().ToString("N").Where(char.IsDigit))
+        //        };
+        //        generateSignedXml_Response? generateSignedXml_Response = await generateSignedXml(Signrequest, authToken);
                 
-                if (generateSignedXml_Response == null || generateSignedXml_Response.status != "SUCCESS")
-                    return BadRequest("Failed to generate signed XML");
-                else
-                {
-                    //Temporary keeping value of signedXMLData in caces for testing purpose, you can remove it later and keep it in db                
-                    EsignTempData esignTempData = new EsignTempData
-                    {
-                        prn = generateSignedXml_Response.data.prn,
-                        txnId = generateSignedXml_Response.data.txnId,
-                        authToken = authToken
-                    };
-                    _cache.Set(esignTempData.prn, esignTempData, TimeSpan.FromMinutes(5));
+        //        if (generateSignedXml_Response == null || generateSignedXml_Response.status != "SUCCESS")
+        //            return BadRequest("Failed to generate signed XML");
+        //        else
+        //        {
+        //            //Temporary keeping value of signedXMLData in caces for testing purpose, you can remove it later and keep it in db                
+        //            EsignTempData esignTempData = new EsignTempData
+        //            {
+        //                prn = generateSignedXml_Response.data.prn,
+        //                txnId = generateSignedXml_Response.data.txnId,
+        //                authToken = authToken
+        //            };
+        //            _cache.Set(esignTempData.prn, esignTempData, TimeSpan.FromMinutes(5));
 
-                    html = PostToPage(signdocURL, generateSignedXml_Response.data.signedXMLData);
-                }
-            }
-            return Content(html, "text/html");
-        }
+        //            html = PostToPage(signdocURL, generateSignedXml_Response.data.signedXMLData);
+        //        }
+        //    }
+        //    return Content(html, "text/html");
+        //}
 
         [HttpPost("response")]
         public async Task<IActionResult> GetAadhaarEsign([FromForm] string esignData)
@@ -191,11 +230,18 @@ namespace RajFabAPI.Controllers
                 return BadRequest("Failed to generate signed XML");
             else
             {
+                byte[] pdfBytes = Convert.FromBase64String(SigningPdf_Response.data.signedPDFBase64);
+
+                string filePath = @"F:\RajFAB-Main\YashRepo\RajFABBackend\wwwroot\certificates\certificate_668d29f5-ac79-4979-9db9-3b2264b8ee0f_20260131182606-1.pdf";
+                await System.IO.File.WriteAllBytesAsync(filePath, pdfBytes);
+
                 // You can return the signed PDF file as a download response or display it in the browser or write it to filesystem.
                 // Here, I'm displaying it in the browser using an HTML object tag.
                 html = PostToPageView(SigningPdf_Response.data.signedPDFBase64);
             }
-            return Content(html, "text/html");
+            var redirectUrl = $"{_config["FrontendUrl"]}/" + "user/track";
+            return Redirect(redirectUrl);
+            //return Content(html, "text/html");
         }
 
         private async Task<Token_Response?> getAuthToken()
@@ -225,33 +271,37 @@ namespace RajFabAPI.Controllers
             try
             {
                 authToken = "Bearer " + authToken;
-                var client = new HttpClient();
+                using var client = new HttpClient();
 
                 var request = new HttpRequestMessage(HttpMethod.Post, generateSignedXmlURL);
                 request.Headers.Add("Authorization", authToken);
 
                 var content = new MultipartFormDataContent();
+
                 foreach (var prop in Signrequest.GetType().GetProperties())
                 {
                     var value = prop.GetValue(Signrequest);
                     if (value == null) continue;
 
-                    if (value is IFormFile file)
+                    // Check if the property is byte[] (PDF file)
+                    if (value is byte[] bytes)
                     {
-                        var streamContent = new StreamContent(file.OpenReadStream());
-                        content.Add(streamContent, prop.Name, file.FileName);
+                        var streamContent = new StreamContent(new MemoryStream(bytes));
+                        streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pdf");
+
+                        // Use the property name as form field name and provide a filename
+                        content.Add(streamContent, prop.Name, "document.pdf");
                     }
                     else
                     {
-                        content.Add(new StringContent(value.ToString()), prop.Name);
+                        content.Add(new StringContent(value.ToString()!), prop.Name);
                     }
                 }
+
                 request.Content = content;
 
                 var response = await client.SendAsync(request);
                 response.EnsureSuccessStatusCode();
-                if (!response.IsSuccessStatusCode)
-                    return null;
 
                 var json = await response.Content.ReadAsStringAsync();
                 return JsonSerializer.Deserialize<generateSignedXml_Response>(json, JsonOptions);
@@ -261,6 +311,48 @@ namespace RajFabAPI.Controllers
                 return null;
             }
         }
+
+        //private async Task<generateSignedXml_Response?> generateSignedXml(generateSignedXml_Request Signrequest, string authToken)
+        //{
+        //    try
+        //    {
+        //        authToken = "Bearer " + authToken;
+        //        var client = new HttpClient();
+
+        //        var request = new HttpRequestMessage(HttpMethod.Post, generateSignedXmlURL);
+        //        request.Headers.Add("Authorization", authToken);
+
+        //        var content = new MultipartFormDataContent();
+        //        foreach (var prop in Signrequest.GetType().GetProperties())
+        //        {
+        //            var value = prop.GetValue(Signrequest);
+        //            if (value == null) continue;
+
+        //            if (value is IFormFile file)
+        //            {
+        //                var streamContent = new StreamContent(file.OpenReadStream());
+        //                content.Add(streamContent, prop.Name, file.FileName);
+        //            }
+        //            else
+        //            {
+        //                content.Add(new StringContent(value.ToString()), prop.Name);
+        //            }
+        //        }
+        //        request.Content = content;
+
+        //        var response = await client.SendAsync(request);
+        //        response.EnsureSuccessStatusCode();
+        //        if (!response.IsSuccessStatusCode)
+        //            return null;
+
+        //        var json = await response.Content.ReadAsStringAsync();
+        //        return JsonSerializer.Deserialize<generateSignedXml_Response>(json, JsonOptions);
+        //    }
+        //    catch
+        //    {
+        //        return null;
+        //    }
+        //}
         private async Task<signingPdf_Response?> getSigningPdf(signingPdf_Request Signrequest, string authToken)
         {
             try
@@ -367,7 +459,7 @@ namespace RajFabAPI.Controllers
             public string personLocation { get; set; }
             public string responseUrl { get; set; } = "http://localhost:5000/esign/response";
             // FILE
-            public IFormFile pdfFile { get; set; }
+            public byte[] pdfFile { get; set; }
         }
         [Serializable]
         public class generateSignedXml_Response

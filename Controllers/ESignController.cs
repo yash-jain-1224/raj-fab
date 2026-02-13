@@ -40,7 +40,7 @@ namespace RajFabAPI.Controllers
             {
                 return BadRequest("Please provide application Id");
             }
-            var name  = _eSignService.GetDataFromApplicationId(applicationId);
+            var name  = await _eSignService.GetDataFromApplicationId(applicationId);
             return Ok();
         }
 

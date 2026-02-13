@@ -21,5 +21,9 @@ namespace RajFabAPI.DTOs
         public PlantationDto? Plantation { get; set; }
         public List<string> EstablishmentTypes { get; set; } = new List<string>();
         public EstablishmentRegistrationDto RegistrationDetail { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
+        public string? SignatureBase64 { get; set; }
+        public string? DeclarationPlace { get; set; }
     }
 }

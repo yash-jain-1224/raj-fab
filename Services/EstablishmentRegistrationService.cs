@@ -1189,29 +1189,32 @@ namespace RajFabAPI.Services
                     .FirstOrDefaultAsync(x => reg.ContractorDetailId.Contains(x.ContractorPersonalDetailId.ToString()));
                 if (contractor != null)
                 {
-                    dto.ContractorDetail = new ContractorDetailDto
+                    dto.ContractorDetail = new List<ContractorDetailDto>
                     {
-                        Name = contractor?.ContractorPersonalDetail?.Name,
-                        AddressLine1 = contractor?.ContractorPersonalDetail?.AddressLine1,
-                        AddressLine2 = contractor?.ContractorPersonalDetail?.AddressLine2,
-                        District = contractor?.ContractorPersonalDetail?.District,
-                        Tehsil = contractor?.ContractorPersonalDetail?.Tehsil,
-                        Area = contractor?.ContractorPersonalDetail?.Area,
-                        Pincode = contractor?.ContractorPersonalDetail?.Pincode,
-                        Email = contractor?.ContractorPersonalDetail?.Email,
-                        Mobile = contractor?.ContractorPersonalDetail?.Mobile,
-                        Telephone = contractor?.ContractorPersonalDetail?.Telephone,
-                        NameOfWork = contractor?.NameOfWork,
-                        MaxContractWorkerCountMale = contractor?.MaxContractWorkerCountMale,
-                        MaxContractWorkerCountFemale = contractor?.MaxContractWorkerCountFemale,
-                        DateOfCommencement = contractor?.DateOfCommencement,
-                        DateOfCompletion = contractor?.DateOfCompletion
+                        new ContractorDetailDto
+                        {
+                            Name = contractor?.ContractorPersonalDetail?.Name,
+                            AddressLine1 = contractor?.ContractorPersonalDetail?.AddressLine1,
+                            AddressLine2 = contractor?.ContractorPersonalDetail?.AddressLine2,
+                            District = contractor?.ContractorPersonalDetail?.District,
+                            Tehsil = contractor?.ContractorPersonalDetail?.Tehsil,
+                            Area = contractor?.ContractorPersonalDetail?.Area,
+                            Pincode = contractor?.ContractorPersonalDetail?.Pincode,
+                            Email = contractor?.ContractorPersonalDetail?.Email,
+                            Mobile = contractor?.ContractorPersonalDetail?.Mobile,
+                            Telephone = contractor?.ContractorPersonalDetail?.Telephone,
+                            NameOfWork = contractor?.NameOfWork,
+                            MaxContractWorkerCountMale = contractor?.MaxContractWorkerCountMale,
+                            MaxContractWorkerCountFemale = contractor?.MaxContractWorkerCountFemale,
+                            DateOfCommencement = contractor?.DateOfCommencement,
+                            DateOfCompletion = contractor?.DateOfCompletion
+                        }
                     };
                 }
             }
             else
             {
-                dto.ContractorDetail = new ContractorDetailDto();
+                dto.ContractorDetail = new List<ContractorDetailDto>();
             }
 
             // Map all entity types to DTOs
@@ -2394,7 +2397,7 @@ namespace RajFabAPI.Services
 
                 Guid? mainOwnerId = null;
                 Guid? managerAgentId = null;
-                Guid? contractorId = null;
+                string contractorId = "";
 
                 if (dto.MainOwnerDetail != null)
                 {
@@ -2449,10 +2452,10 @@ namespace RajFabAPI.Services
                 {
                     foreach (var contractor in dto.ContractorDetail)
                     {
-
+                        var contractorPersonalDetailId = Guid.NewGuid();
                         _ = _db.Set<PersonDetail>().Add(new PersonDetail
                         {
-                            Id = Guid.NewGuid(),
+                            Id = contractorPersonalDetailId,
                             Role = "Contractor",
                             Name = contractor.Name,
                             Designation = string.Empty,
@@ -2473,13 +2476,14 @@ namespace RajFabAPI.Services
 
                         _ = _db.Set<ContractorDetail>().Add(new ContractorDetail
                         {
-                            ContractorPersonalDetailId = contractorId,
+                            ContractorPersonalDetailId = contractorPersonalDetailId,
                             NameOfWork = contractor.NameOfWork,
                             MaxContractWorkerCountMale = contractor.MaxContractWorkerCountMale,
                             MaxContractWorkerCountFemale = contractor.MaxContractWorkerCountFemale,
                             DateOfCommencement = contractor.DateOfCommencement,
                             DateOfCompletion = contractor.DateOfCompletion
                         });
+                        contractorId += contractorPersonalDetailId + "|";
                     }
                 }
 
@@ -2711,7 +2715,7 @@ namespace RajFabAPI.Services
                 // Employees / contractors
                 DirectEmployees = dtoDetails.EstablishmentDetail?.TotalNumberOfEmployee,
                 ContractorEmployees = dtoDetails.EstablishmentDetail?.TotalNumberOfContractEmployee,
-                ContractorDetails = dtoDetails.ContractorDetail,
+                ContractorDetails = dtoDetails.ContractorDetail?.FirstOrDefault(),
                 InterStateWorkers = dtoDetails.EstablishmentDetail.TotalNumberOfInterstateWorker,
 
                 // Factory details
@@ -3146,13 +3150,20 @@ namespace RajFabAPI.Services
             {
                 var managerTable = new PdfTable(2).UseAllAvailableWidth();
                 _ = managerTable.AddCell(new PdfCell().Add(new Paragraph("Name").SetFont(boldFont)));
-                _ = managerTable.AddCell(new PdfCell().Add(new Paragraph(dto.Manager.Name ?? "-")));
+                _ = managerTable.AddCell(new PdfCell().Add(new Paragraph(dto.ManagerOrAgentDetail.Name ?? "-")));
 
                 _ = managerTable.AddCell(new PdfCell().Add(new Paragraph("Designation").SetFont(boldFont)));
-                _ = managerTable.AddCell(new PdfCell().Add(new Paragraph(dto.Manager.Designation ?? "-")));
+                _ = managerTable.AddCell(new PdfCell().Add(new Paragraph(dto.ManagerOrAgentDetail.Designation ?? "-")));
 
                 _ = managerTable.AddCell(new PdfCell().Add(new Paragraph("Address").SetFont(boldFont)));
-                _ = managerTable.AddCell(new PdfCell().Add(new Paragraph(dto.Manager.Address ?? "-")));
+                _ = managerTable.AddCell(new PdfCell().Add(new Paragraph(FormatAddress(
+                    dto.ManagerOrAgentDetail.AddressLine1,
+                    dto.ManagerOrAgentDetail.AddressLine2,
+                    dto.ManagerOrAgentDetail.Area,
+                    dto.ManagerOrAgentDetail.Tehsil,
+                    dto.ManagerOrAgentDetail.District,
+                    dto.ManagerOrAgentDetail.Pincode
+                ))));
                 _ = document.Add(managerTable);
                 _ = document.Add(new Paragraph("\n"));
             }

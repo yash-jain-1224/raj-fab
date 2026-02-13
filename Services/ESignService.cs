@@ -59,7 +59,7 @@ namespace RajFabAPI.Services
 
                 if (applicationData.ModuleName == ApplicationTypeNames.NewEstablishment)
                 {
-                    var data = _establishmentRegistrationService.GetAllEntitiesByRegistrationIdAsync(applicationId);
+                    var data = await _establishmentRegistrationService.GetAllEntitiesByRegistrationIdAsync(applicationId);
                     _establishmentRegistrationService.GenerateEstablishmentPdf(data);
                     return "";
                 }

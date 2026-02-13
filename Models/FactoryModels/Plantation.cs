@@ -12,8 +12,15 @@ namespace RajFabAPI.Models
         public Guid? ManagerId { get; set; }
 
         public string? Name { get; set; }
-        public string? AreaId { get; set; }
-        public string? Address { get; set; }
+        public string? AddressLine1 { get; set; }
+        public string? AddressLine2 { get; set; }
+        public string SubDivisionId { get; set; }
+        public string TehsilId { get; set; }
+        public string? Area { get; set; }
+        public string? Pincode { get; set; }
+        public string? Email { get; set; }
+        public string? Telephone { get; set; }
+        public string? Mobile { get; set; }
         public int? MaxNumberOfWorkerAnyDay { get; set; }
         public DateTime? DateOfCompletion { get; set; }
 

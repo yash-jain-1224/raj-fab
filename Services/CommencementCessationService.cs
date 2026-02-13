@@ -115,7 +115,7 @@ namespace RajFabAPI.Services
 
                 var areaId = await _context.Set<EstablishmentDetail>()
                     .Where(m => m.Id == EstablishmentDetailId)
-                    .Select(m => m.AreaId)
+                    .Select(m => m.SubDivisionId)
                     .FirstOrDefaultAsync();
 
                 var factoryCategoryId = Guid.Parse("EB857143-2FBB-4C6E-88F8-888C3D6DB671");

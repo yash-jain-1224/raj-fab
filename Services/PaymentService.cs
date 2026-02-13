@@ -1,9 +1,10 @@
+using RajFabAPI.Data;
+using RajFabAPI.DTOs;
+using RajFabAPI.Models;
+using RajFabAPI.Services.Interface;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using RajFabAPI.Data;
-using RajFabAPI.DTOs;
-using RajFabAPI.Services.Interface;
 using System.Text.RegularExpressions;
 
 namespace RajFabAPI.Services
@@ -79,19 +80,53 @@ namespace RajFabAPI.Services
             return sb.ToString();
         }
 
-        public string ActionRequestPaymentRPP(string MERCHANTID, double AMOUNT, string RU, string APPID, string ApplicantName, string ApplicantMobile, string ApplicantEmail, string SSOID, string TOKEN, string IPADDRESS, string EnDnKEY, string CHECKSUMKEY, long ID, int ServiceId, int AppStatus)
+        public async Task<string> ActionRequestPaymentRPP(
+            decimal AMOUNT,
+            string ApplicantName,
+            string ApplicantMobile,
+            string ApplicantEmail,
+            string SSOID,
+            string EnDnKEY,
+            string CHECKSUMKEY,
+            string ApplicationId,
+            string ModuleId,
+            string UserId)
         {
             try
             {
+                using var dbTx = await _db.Database.BeginTransactionAsync();
+
+                string RU = "http://localhost:5000/api/payment/return";
+                string MERCHANTCODE = "rppTestMerchant";
+
                 ApplicantName = ApplicantName.Replace("@rajasthan.gov.in", "");
                 ApplicantName = Regex.Replace(ApplicantName, @"[^a-zA-Z]+", "");
+
                 Guid guid = Guid.NewGuid();
-                EmitraNewPaymentReq PaymentReq = new EmitraNewPaymentReq
+                string PrnNumber = "PRN" + guid.ToString().Split('-')[4];
+
+                var transaction = new Transaction
                 {
-                    MERCHANTCODE = MERCHANTID,
-                    PRN = "FR" + guid.ToString().Split('-')[4],
-                    REQTIMESTAMP = DateTime.Now.ToString("yyyyMMddHHmmssfff"),
-                    AMOUNT = AMOUNT.ToString("0.00"),
+                    PrnNumber = PrnNumber,
+                    ModuleId = ModuleId,
+                    UserId = UserId,
+                    ApplicationId = ApplicationId,
+                    Amount = AMOUNT,
+                    PaidAmount = 0,
+                    Status = "Pending",
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                _db.Transactions.Add(transaction);
+                await _db.SaveChangesAsync();
+
+                EmitraNewPaymentReq paymentReq = new EmitraNewPaymentReq
+                {
+                    MERCHANTCODE = MERCHANTCODE,
+                    PRN = PrnNumber,
+                    REQTIMESTAMP = DateTime.UtcNow.ToString("yyyyMMddHHmmssfff"),
+                    AMOUNT = transaction.Amount.ToString("0.00"),
                     SUCCESSURL = RU,
                     FAILUREURL = RU,
                     CANCELURL = RU,
@@ -99,22 +134,55 @@ namespace RajFabAPI.Services
                     USERNAME = ApplicantName,
                     USERMOBILE = ApplicantMobile,
                     USEREMAIL = ApplicantEmail,
-                    UDF1 = APPID, // form id for whic we are collecting payment
-                    UDF2 = SSOID, // user id of our db to accept the paymenr
-                    UDF3 = "90A" // transaction table recordID
+                    UDF1 = ModuleId,
+                    UDF2 = SSOID,
+                    UDF3 = transaction.Id.ToString(),
                 };
-                PaymentReq.CHECKSUM = CreateMD5(PaymentReq.MERCHANTCODE + "|" + PaymentReq.PRN + "|" + PaymentReq.AMOUNT + "|" + CHECKSUMKEY);
 
-                var json = JsonSerializer.Serialize(PaymentReq);
+                paymentReq.CHECKSUM = CreateMD5(
+                    paymentReq.MERCHANTCODE + "|" +
+                    paymentReq.PRN + "|" +
+                    paymentReq.AMOUNT + "|" +
+                    CHECKSUMKEY
+                );
 
+                var json = JsonSerializer.Serialize(paymentReq);
                 string postEnPara = AESEncrypt(json, EnDnKEY);
-                return PostToPage("https://rpptest.rajasthan.gov.in/payments/v1/init", PaymentReq.MERCHANTCODE, postEnPara, "Payment Gateway");
+
+                transaction.PaymentReq = json;
+                transaction.UpdatedAt = DateTime.UtcNow;
+
+                await _db.SaveChangesAsync();
+
+                await dbTx.CommitAsync();
+
+                return PostToPage(
+                    "https://rpptest.rajasthan.gov.in/payments/v1/init",
+                    paymentReq.MERCHANTCODE,
+                    postEnPara,
+                    "Payment Gateway"
+                );
             }
-            catch (Exception ex)
+            catch
             {
                 throw;
             }
         }
+
+        public bool VerifyChecksum(EmitraPaymentResponse response, string checksumKey)
+        {
+            if (response == null) return false;
+
+            // Build the checksum string the same way as you did while sending
+            string checksumSource = $"{response.MERCHANTCODE}|{response.PRN}|{response.AMOUNT}|{checksumKey}";
+
+            // Compute MD5 of the source string
+            string calculatedChecksum = CreateMD5(checksumSource);
+
+            // Compare with the checksum returned from the payment portal
+            return string.Equals(calculatedChecksum, response.CHECKSUM, StringComparison.OrdinalIgnoreCase);
+        }
+
 
         public static string CreateMD5(string input)
         {

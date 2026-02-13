@@ -136,7 +136,7 @@ namespace RajFabAPI.Services
                 Guid? factoryCategoryId = factoryCategory?.Id;
 
                 var officeApplicationArea = await _context.Set<OfficeApplicationArea>()
-                    .FirstOrDefaultAsync(oaa => oaa.CityId == Guid.Parse(estDetail.AreaId));
+                    .FirstOrDefaultAsync(oaa => oaa.CityId == Guid.Parse(estDetail.SubDivisionId));
 
                 if (officeApplicationArea != null)
                 {
@@ -232,7 +232,7 @@ namespace RajFabAPI.Services
                 Guid? factoryCategoryId = factoryCategory?.Id;
 
                 var officeApplicationArea = await _context.Set<OfficeApplicationArea>()
-                    .FirstOrDefaultAsync(oaa => oaa.CityId == Guid.Parse(estDetail.AreaId));
+                    .FirstOrDefaultAsync(oaa => oaa.CityId == Guid.Parse(estDetail.SubDivisionId));
                 if (officeApplicationArea != null)
                 {
                     var officeId = officeApplicationArea?.OfficeId;

@@ -58,8 +58,10 @@ namespace RajFabAPI.Controllers.FactoryControllers
 
             try
             {
-                var registrationId = await _service.SaveEstablishmentAsync(dto, userIdGuid);
-                return CreatedAtAction(null, new { id = registrationId }, new { registrationId });
+                var html = await _service.SaveEstablishmentAsync(dto, userIdGuid);
+                //return Content(html, "text/html");
+
+                return CreatedAtAction(null, new { html }, new { html });
             }
             catch (ArgumentException ex) { return BadRequest(ex.Message); }
             catch (KeyNotFoundException ex) { return NotFound(ex.Message); }

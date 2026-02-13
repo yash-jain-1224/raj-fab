@@ -52,7 +52,7 @@ namespace RajFabAPI.Services
                             on factory.EstablishmentDetailId equals est.Id into estJoin
                         from establishment in estJoin.DefaultIfEmpty()
                         join area in _context.Areas.AsNoTracking()
-                            on Guid.Parse(establishment.AreaId) equals area.Id into areaJoin
+                            on Guid.Parse(establishment.SubDivisionId) equals area.Id into areaJoin
                         from areaDetail in areaJoin.DefaultIfEmpty()
                         join district in _context.Districts.AsNoTracking()
                             on areaDetail.DistrictId equals district.Id into districtJoin
@@ -73,37 +73,41 @@ namespace RajFabAPI.Services
                             {
                                 Id = oldManager.Id,
                                 Name = oldManager.Name,
-                                Mobile = oldManager.Mobile,
-                                Email = oldManager.Email,
-                                Address = oldManager.Address,
+                                AddressLine1 = oldManager.AddressLine1,
+                                AddressLine2 = oldManager.AddressLine2,
+                                District = oldManager.District,
+                                Tehsil = oldManager.Tehsil,
+                                Area = oldManager.Area,
                                 Pincode = oldManager.Pincode,
-                                DistrictName = oldManager.District,
-                                AreaName = oldManager.City,
-                                StateName = oldManager.State
+                                Email = oldManager.Email,
+                                Telephone = oldManager.Telephone,
+                                Mobile = oldManager.Mobile,
                             },
 
                             NewManager = newManager == null ? null : new PersonBasicDto
                             {
                                 Id = newManager.Id,
                                 Name = newManager.Name,
-                                Mobile = newManager.Mobile,
-                                Email = newManager.Email,
-                                Address = newManager.Address,
+                                AddressLine1 = newManager.AddressLine1,
+                                AddressLine2 = newManager.AddressLine2,
+                                District = newManager.District,
+                                Tehsil = newManager.Tehsil,
+                                Area = newManager.Area,
                                 Pincode = newManager.Pincode,
-                                DistrictName = newManager.District,
-                                AreaName = newManager.City,
-                                StateName = newManager.State
+                                Email = newManager.Email,
+                                Telephone = newManager.Telephone,
+                                Mobile = newManager.Mobile,
                             },
 
                             Factory = establishment == null ? null : new FactoryBasicDto
                             {
                                 FactoryRegistrationId = Guid.Parse(factory.EstablishmentRegistrationId),
                                 FactoryName = establishment.EstablishmentName,
-                                Address = establishment.Address,
+                                AddressLine1 = establishment.AddressLine1,
+                                AddressLine2 = establishment.AddressLine2,
                                 Pincode = establishment.Pincode,
-                                AreaName = areaDetail != null ? areaDetail.Name : null,
+                                Area = areaDetail != null ? areaDetail.Name : null,
                                 DistrictName = districtDetail != null ? districtDetail.Name : null,
-                                DivisionName = divisionDetail != null ? divisionDetail.Name : null
                             }
                         };
 
@@ -124,13 +128,15 @@ namespace RajFabAPI.Services
                     Name = dto.NewManagerName,
                     RelationType = dto.NewManagerRelation,
                     RelativeName = dto.NewManagerFatherOrHusbandName,
-                    Address = dto.NewManagerAddress,
-                    Mobile = dto.NewManagerMobile,
-                    Email = dto.NewManagerEmail,
-                    State = dto.NewManagerState,
+                    AddressLine1 = dto.NewManagerAddressLine1,
+                    AddressLine2 = dto.NewManagerAddressLine2,
                     District = dto.NewManagerDistrict,
-                    City = dto.NewManagerCity,
+                    Tehsil = dto.NewManagerTehsil,
+                    Area = dto.NewManagerArea,
                     Pincode = dto.NewManagerPincode,
+                    Email = dto.NewManagerEmail,
+                    Telephone = dto.NewManagerTelephone,
+                    Mobile = dto.NewManagerMobile,
                     CreatedAt = DateTime.Now,
                     UpdatedAt = DateTime.Now
                 };
@@ -183,7 +189,7 @@ namespace RajFabAPI.Services
                 // 4?? Workflow / Approval
                 var areaId = await _context.Set<EstablishmentDetail>()
                     .Where(m => m.Id == EstablishmentDetailId)
-                    .Select(m => m.AreaId)
+                    .Select(m => m.SubDivisionId)
                     .FirstOrDefaultAsync();
 
                 var officeApplicationArea = await _context.Set<OfficeApplicationArea>()
@@ -259,13 +265,15 @@ namespace RajFabAPI.Services
                 newManager.Name = dto.NewManagerName ?? newManager.Name;
                 newManager.RelationType = dto.NewManagerRelation ?? newManager.RelationType;
                 newManager.RelativeName = dto.NewManagerFatherOrHusbandName ?? newManager.RelativeName;
-                newManager.Address = dto.NewManagerAddress ?? newManager.Address;
-                newManager.Mobile = dto.NewManagerMobile ?? newManager.Mobile;
-                newManager.Email = dto.NewManagerEmail ?? newManager.Email;
-                newManager.State = dto.NewManagerState ?? newManager.State;
+                newManager.AddressLine1 = dto.NewManagerAddressLine1 ?? newManager.AddressLine1;
+                newManager.AddressLine2 = dto.NewManagerAddressLine2 ?? newManager.AddressLine2;
                 newManager.District = dto.NewManagerDistrict ?? newManager.District;
-                newManager.City = dto.NewManagerCity ?? newManager.City;
+                newManager.Tehsil = dto.NewManagerState ?? newManager.Tehsil;
+                newManager.Area = dto.NewManagerCity ?? newManager.Area;
                 newManager.Pincode = dto.NewManagerPincode ?? newManager.Pincode;
+                newManager.Email = dto.NewManagerEmail ?? newManager.Email;
+                newManager.Telephone = dto.NewManagerMobile ?? newManager.Telephone ;
+                newManager.Mobile = dto.NewManagerMobile ?? newManager.Mobile;
                 newManager.UpdatedAt = DateTime.Now;
 
                 _context.PersonDetails.Update(newManager);
@@ -305,7 +313,7 @@ namespace RajFabAPI.Services
 
                         var areaId = await _context.EstablishmentDetails
                             .Where(ed => ed.Id == establishmentDetailId)
-                            .Select(ed => ed.AreaId)
+                            .Select(ed => ed.SubDivisionId)
                             .FirstOrDefaultAsync();
 
                         if (Guid.TryParse(areaId, out var parsedAreaId))
@@ -416,9 +424,9 @@ namespace RajFabAPI.Services
                     .AsNoTracking()
                     .FirstOrDefaultAsync(e => e.Id == managerChange.FactoryReg.EstablishmentDetailId);
 
-                if (est != null && !string.IsNullOrEmpty(est.AreaId))
+                if (est != null && !string.IsNullOrEmpty(est.SubDivisionId))
                 {
-                    var areaId = Guid.Parse(est.AreaId);
+                    var areaId = Guid.Parse(est.SubDivisionId);
                     area = await _context.Areas.AsNoTracking().FirstOrDefaultAsync(a => a.Id == areaId);
 
                     if (area != null)
@@ -435,11 +443,14 @@ namespace RajFabAPI.Services
             {
                 FactoryRegistrationId = managerChange.FactoryReg.FactoryRegistrationId,
                 FactoryName = est.EstablishmentName,
-                Address = est.Address,
-                Pincode = est.Pincode,
-                AreaName = area?.Name,
+                AddressLine1 = est.AddressLine1,
+                AddressLine2 = est.AddressLine2,
                 DistrictName = district?.Name,
-                DivisionName = division?.Name
+                Area = est.Area,
+                Pincode = est.Pincode,
+                Email = est.Email,
+                Telephone = est.Telephone,
+                Mobile = est.Mobile,
             };
 
             return new ManagerChangeGetResponseDto
@@ -457,13 +468,15 @@ namespace RajFabAPI.Services
                 {
                     Id = managerChange.OldManager.Id,
                     Name = managerChange.OldManager.Name,
-                    Mobile = managerChange.OldManager.Mobile,
-                    Email = managerChange.OldManager.Email,
-                    Address = managerChange.OldManager.Address,
+                    AddressLine1 = managerChange.OldManager.AddressLine1,
+                    AddressLine2 = managerChange.OldManager.AddressLine2,
+                    District = managerChange.OldManager.District,
+                    Tehsil = managerChange.OldManager.Tehsil,
+                    Area = managerChange.OldManager.Area,
                     Pincode = managerChange.OldManager.Pincode,
-                    DistrictName = managerChange.OldManager.District,
-                    AreaName = managerChange.OldManager.City,
-                    StateName = managerChange.OldManager.State,
+                    Email = managerChange.OldManager.Email,
+                    Telephone = managerChange.OldManager.Telephone,
+                    Mobile = managerChange.OldManager.Mobile,
                     RelationType = managerChange.OldManager.RelationType,
                     RelativeName = managerChange.OldManager.RelativeName,
                     Designation = managerChange.OldManager.Designation ?? ""
@@ -473,13 +486,15 @@ namespace RajFabAPI.Services
                 {
                     Id = managerChange.NewManager.Id,
                     Name = managerChange.NewManager.Name,
-                    Mobile = managerChange.NewManager.Mobile,
-                    Email = managerChange.NewManager.Email,
-                    Address = managerChange.NewManager.Address,
+                    AddressLine1 = managerChange.NewManager.AddressLine1,
+                    AddressLine2 = managerChange.NewManager.AddressLine2,
+                    District = managerChange.NewManager.District,
+                    Tehsil = managerChange.NewManager.Tehsil,
+                    Area = managerChange.NewManager.Area,
                     Pincode = managerChange.NewManager.Pincode,
-                    DistrictName = managerChange.NewManager.District,
-                    AreaName = managerChange.NewManager.City,
-                    StateName = managerChange.NewManager.State,
+                    Email = managerChange.NewManager.Email,
+                    Telephone = managerChange.NewManager.Telephone,
+                    Mobile = managerChange.NewManager.Mobile,
                     RelationType = managerChange.NewManager.RelationType,
                     RelativeName = managerChange.NewManager.RelativeName,
                     Designation = managerChange.NewManager.Designation ?? ""

@@ -7,6 +7,8 @@ using iText.Layout;
 using iText.Layout.Borders;
 using iText.Layout.Element;
 using iText.Layout.Properties;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.OpenApi.Any;
@@ -27,6 +29,7 @@ using PdfDoc = iText.Layout.Document;
 using PdfImage = iText.Layout.Element.Image;
 using PdfTable = iText.Layout.Element.Table;
 
+
 namespace RajFabAPI.Services
 {
     public partial class EstablishmentRegistrationService : IEstablishmentRegistrationService
@@ -35,13 +38,17 @@ namespace RajFabAPI.Services
         private readonly IWebHostEnvironment _environment;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IConfiguration _config;
+        private readonly IPaymentService _payment;
+        private readonly IFeeCalculationService _feeCalculationService;
 
-        public EstablishmentRegistrationService(ApplicationDbContext db, IWebHostEnvironment environment, IHttpContextAccessor httpContextAccessor, IConfiguration config)
+        public EstablishmentRegistrationService(ApplicationDbContext db, IWebHostEnvironment environment, IHttpContextAccessor httpContextAccessor, IConfiguration config, IPaymentService payment, IFeeCalculationService feeCalculationService)
         {
             _db = db ?? throw new ArgumentNullException(nameof(db));
             _environment = environment;
             _httpContextAccessor = httpContextAccessor;
             _config = config;
+            _payment = payment;
+            _feeCalculationService = feeCalculationService;
         }
 
         // Create full registration and persist all sub-objects in a single transaction.
@@ -51,6 +58,9 @@ namespace RajFabAPI.Services
             if (dto == null) throw new ArgumentNullException(nameof(dto));
             if (string.IsNullOrWhiteSpace(dto.EstablishmentDetails?.EstablishmentName))
                 throw new ArgumentException("EstablishmentDetails.EstablishmentName is required.", nameof(dto));
+            var User = await _db.Users
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
 
             decimal newVersion;
             string finalRegistrationNumber;
@@ -80,6 +90,18 @@ namespace RajFabAPI.Services
 
             var factoryType = _db.FactoryTypes.FirstOrDefault(x => x.Name == "Not Applicable");
             var factoryTypeIdGuid = dto.EstablishmentDetails.FactoryTypeId ?? factoryType?.Id;
+            
+            // Calculate total workers
+            int totalWorkers =
+                (dto?.EstablishmentDetails.TotalNumberOfEmployee ?? 0)
+                + (dto?.EstablishmentDetails.TotalNumberOfContractEmployee ?? 0)
+                + (dto?.EstablishmentDetails.TotalNumberOfInterstateWorker ?? 0);
+
+            var feeResult = await _feeCalculationService.CalculateFactoryRegistrationFee(
+                    totalWorkers,
+                    dto?.Factory?.SanctionedLoad ?? 0m,
+                    dto.Factory.SanctionedLoadUnit
+                );
 
             await using var tx = await _db.Database.BeginTransactionAsync();
             try
@@ -94,8 +116,9 @@ namespace RajFabAPI.Services
                     Date = dto.Date,
                     Version = newVersion,
                     Type = type,
+                    Amount = feeResult.TotalFee,
                     RegistrationNumber = finalRegistrationNumber,
-                    Signature = dto.Signature
+                    Signature = dto.Signature,
                 };
 
                 _db.Set<EstablishmentRegistration>().Add(registration);
@@ -107,18 +130,21 @@ namespace RajFabAPI.Services
                 {
                     estDetail = new EstablishmentDetail
                     {
-                        LinNumber = dto.EstablishmentDetails.LinNumber,
+                        BrnNumber = dto.EstablishmentDetails.BrnNumber,
+                        LinNumber = dto.EstablishmentDetails.LinNumber != null ? dto.EstablishmentDetails.LinNumber  : "",
                         EstablishmentName = dto.EstablishmentDetails.EstablishmentName,
-                        Address = dto.EstablishmentDetails.EstablishmentAddress,
+                        AddressLine1 = dto.EstablishmentDetails.EstablishmentAddressLine1,
+                        AddressLine2 = dto.EstablishmentDetails.EstablishmentAddressLine2,
+                        SubDivisionId = dto.EstablishmentDetails.SubDivisionId,
+                        TehsilId = dto.EstablishmentDetails.TehsilId,
+                        Area = dto.EstablishmentDetails.Area,
                         Pincode = dto.EstablishmentDetails.EstablishmentPincode,
-                        AreaId = dto.EstablishmentDetails.AreaId,
+                        Email = dto.EstablishmentDetails.EstablishmentEmail,
+                        Telephone = dto.EstablishmentDetails.EstablishmentTelephone,
+                        Mobile = dto.EstablishmentDetails.EstablishmentMobile,
                         TotalNumberOfEmployee = dto.EstablishmentDetails.TotalNumberOfEmployee,
                         TotalNumberOfContractEmployee = dto.EstablishmentDetails.TotalNumberOfContractEmployee,
                         TotalNumberOfInterstateWorker = dto.EstablishmentDetails.TotalNumberOfInterstateWorker,
-                        OwnershipTypeSector = dto.AdditionalEstablishmentDetails != null ? dto.AdditionalEstablishmentDetails.OwnershipTypeSector : "",
-                        ActivityAsPerNIC = dto.AdditionalEstablishmentDetails != null ? dto.AdditionalEstablishmentDetails.ActivityAsPerNIC : string.Empty,
-                        NICCodeDetail = dto.AdditionalEstablishmentDetails != null ? dto.AdditionalEstablishmentDetails.NICCodeDetail : string.Empty,
-                        IdentificationOfEstablishment = dto.AdditionalEstablishmentDetails != null ? dto.AdditionalEstablishmentDetails.IdentificationOfEstablishment : string.Empty,
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now,
                         FactoryTypeId = factoryTypeIdGuid
@@ -143,12 +169,17 @@ namespace RajFabAPI.Services
                     {
                         Id = Guid.NewGuid(),
                         RoleType = "Employer",
+                        Designation = dto.Factory.EmployerDetail.Designation,
                         Name = dto.Factory.EmployerDetail?.Name,
-                        Address = dto.Factory.EmployerDetail?.Address,
-                        State = dto.Factory.EmployerDetail?.State,
-                        PinCode = dto.Factory.EmployerDetail?.PinCode,
+                        AddressLine1 = dto.Factory.EmployerDetail?.AddressLine1,
+                        AddressLine2 = dto.Factory.EmployerDetail?.AddressLine2,
                         District = dto.Factory.EmployerDetail?.District,
-                        City = dto.Factory.EmployerDetail?.City,
+                        Tehsil = dto.Factory.EmployerDetail?.Tehsil,
+                        Area = dto.Factory.EmployerDetail?.Area,
+                        Pincode = dto.Factory.EmployerDetail?.Pincode,
+                        Email = dto.Factory.EmployerDetail?.Email,
+                        Telephone = dto.Factory.EmployerDetail?.Telephone,
+                        Mobile = dto.Factory.EmployerDetail?.Mobile,
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
                     };
@@ -158,12 +189,17 @@ namespace RajFabAPI.Services
                     {
                         Id = Guid.NewGuid(),
                         RoleType = "Manager",
+                        Designation = dto.Factory.ManagerDetail.Designation,
                         Name = dto.Factory.ManagerDetail?.Name,
-                        Address = dto.Factory.ManagerDetail?.Address,
-                        State = dto.Factory.ManagerDetail?.State,
-                        PinCode = dto.Factory.ManagerDetail?.PinCode,
+                        AddressLine1 = dto.Factory.ManagerDetail?.AddressLine1,
+                        AddressLine2 = dto.Factory.ManagerDetail?.AddressLine2,
                         District = dto.Factory.ManagerDetail?.District,
-                        City = dto.Factory.ManagerDetail?.City,
+                        Tehsil = dto.Factory.ManagerDetail?.Tehsil,
+                        Area = dto.Factory.ManagerDetail?.Area,
+                        Pincode = dto.Factory.ManagerDetail?.Pincode,
+                        Email = dto.Factory.ManagerDetail?.Email,
+                        Telephone = dto.Factory.ManagerDetail?.Telephone,
+                        Mobile = dto.Factory.ManagerDetail.Mobile,
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
                     };
@@ -173,14 +209,23 @@ namespace RajFabAPI.Services
                     {
                         Id = Guid.NewGuid(),
                         ManufacturingDetail = dto.Factory.ManuacturingDetail,
-                        AreaId = dto.Factory.AreaId,
-                        Address = dto.Factory.Address,
-                        PinCode = dto.Factory.PinCode.ToString(),
                         Situation = dto.Factory.Situation,
+                        SubDivisionId = dto.Factory.SubDivisionId,
+                        TehsilId = dto.Factory.TehsilId,
+                        Area = dto.Factory.Area,
+                        Pincode = dto.Factory.Pincode.ToString(),
+                        Email = dto.Factory.Email,
+                        Telephone = dto.Factory.Telephone,
+                        Mobile = dto.Factory.Mobile,
                         EmployerId = emp.Id,
                         ManagerId = mgr.Id,
                         NumberOfWorker = dto.Factory.NumberOfWorker,
                         SanctionedLoad = dto.Factory.SanctionedLoad,
+                        SanctionedLoadUnit = dto.Factory.SanctionedLoadUnit,
+                        OwnershipTypeSector = dto.Factory.OwnershipTypeSector,
+                        ActivityAsPerNIC = dto.Factory.ActivityAsPerNIC,
+                        NICCodeDetail = dto.Factory.NICCodeDetail,
+                        IdentificationOfEstablishment = dto.Factory.IdentificationOfEstablishment,
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
                     };
@@ -212,11 +257,15 @@ namespace RajFabAPI.Services
                             Id = beediEmployerId.Value,
                             RoleType = "Employer",
                             Name = dto.BeediCigarWorks.EmployerDetail.Name,
-                            Address = dto.BeediCigarWorks.EmployerDetail.Address,
-                            State = dto.BeediCigarWorks.EmployerDetail.State,
-                            PinCode = dto.BeediCigarWorks.EmployerDetail.PinCode,
-                            District = dto.BeediCigarWorks.EmployerDetail.District,
-                            City = dto.BeediCigarWorks.EmployerDetail.City,
+                            AddressLine1 = dto.BeediCigarWorks.EmployerDetail?.AddressLine1,
+                            AddressLine2 = dto.BeediCigarWorks.EmployerDetail?.AddressLine2,
+                            District = dto.BeediCigarWorks.EmployerDetail?.District,
+                            Tehsil = dto.BeediCigarWorks.EmployerDetail?.Tehsil,
+                            Area = dto.BeediCigarWorks.EmployerDetail?.Area,
+                            Pincode = dto.BeediCigarWorks.EmployerDetail?.Pincode,
+                            Email = dto.BeediCigarWorks.EmployerDetail?.Email,
+                            Telephone = dto.BeediCigarWorks.EmployerDetail?.Telephone,
+                            Mobile = dto.BeediCigarWorks.EmployerDetail.Mobile,
                             CreatedAt = DateTime.Now,
                             UpdatedAt = DateTime.Now
                         });
@@ -230,11 +279,15 @@ namespace RajFabAPI.Services
                             Id = beediManagerId.Value,
                             RoleType = "Manager",
                             Name = dto.BeediCigarWorks.ManagerDetail.Name,
-                            Address = dto.BeediCigarWorks.ManagerDetail.Address,
-                            State = dto.BeediCigarWorks.ManagerDetail.State,
-                            PinCode = dto.BeediCigarWorks.ManagerDetail.PinCode,
-                            District = dto.BeediCigarWorks.ManagerDetail.District,
-                            City = dto.BeediCigarWorks.ManagerDetail.City,
+                            AddressLine1 = dto.BeediCigarWorks.ManagerDetail?.AddressLine1,
+                            AddressLine2 = dto.BeediCigarWorks.ManagerDetail?.AddressLine2,
+                            District = dto.BeediCigarWorks.ManagerDetail?.District,
+                            Tehsil = dto.BeediCigarWorks.ManagerDetail?.Tehsil,
+                            Area = dto.BeediCigarWorks.ManagerDetail?.Area,
+                            Pincode = dto.BeediCigarWorks.ManagerDetail?.Pincode,
+                            Email = dto.BeediCigarWorks.ManagerDetail?.Email,
+                            Telephone = dto.BeediCigarWorks.ManagerDetail?.Telephone,
+                            Mobile = dto.BeediCigarWorks.ManagerDetail.Mobile,
                             CreatedAt = DateTime.Now,
                             UpdatedAt = DateTime.Now
                         });
@@ -245,8 +298,13 @@ namespace RajFabAPI.Services
                         Id = Guid.NewGuid(),
                         ManufacturingDetail = dto.BeediCigarWorks.ManuacturingDetail,
                         Situation = dto.BeediCigarWorks.Situation,
-                        AreaId = dto.BeediCigarWorks.AreaId,
-                        Address = dto.BeediCigarWorks.Address,
+                        SubDivisionId = dto.BeediCigarWorks.SubDivisionId,
+                        TehsilId = dto.BeediCigarWorks.TehsilId,
+                        Area = dto.BeediCigarWorks.Area,
+                        Pincode = dto.BeediCigarWorks.Pincode.ToString(),
+                        Email = dto.BeediCigarWorks.Email,
+                        Telephone = dto.BeediCigarWorks.Telephone,
+                        Mobile = dto.BeediCigarWorks.Mobile,
                         EmployerId = beediEmployerId,
                         ManagerId = beediManagerId,
                         MaxNumberOfWorkerAnyDay = dto.BeediCigarWorks.MaxNumberOfWorkerAnyDay,
@@ -281,11 +339,15 @@ namespace RajFabAPI.Services
                             Id = mtrsEmployerId.Value,
                             RoleType = "Employer",
                             Name = dto.MotorTransportService.EmployerDetail.Name,
-                            Address = dto.MotorTransportService.EmployerDetail.Address,
-                            State = dto.MotorTransportService.EmployerDetail.State,
-                            PinCode = dto.MotorTransportService.EmployerDetail.PinCode,
-                            District = dto.MotorTransportService.EmployerDetail.District,
-                            City = dto.MotorTransportService.EmployerDetail.City,
+                            AddressLine1 = dto.MotorTransportService.EmployerDetail?.AddressLine1,
+                            AddressLine2 = dto.MotorTransportService.EmployerDetail?.AddressLine2,
+                            District = dto.MotorTransportService.EmployerDetail?.District,
+                            Tehsil = dto.MotorTransportService.EmployerDetail?.Tehsil,
+                            Area = dto.MotorTransportService.EmployerDetail?.Area,
+                            Pincode = dto.MotorTransportService.EmployerDetail?.Pincode,
+                            Email = dto.MotorTransportService.EmployerDetail?.Email,
+                            Telephone = dto.MotorTransportService.EmployerDetail?.Telephone,
+                            Mobile = dto.MotorTransportService.EmployerDetail.Mobile,
                             CreatedAt = DateTime.Now,
                             UpdatedAt = DateTime.Now
                         });
@@ -299,11 +361,15 @@ namespace RajFabAPI.Services
                             Id = mtrsManagerId.Value,
                             RoleType = "Manager",
                             Name = dto.MotorTransportService.ManagerDetail.Name,
-                            Address = dto.MotorTransportService.ManagerDetail.Address,
-                            State = dto.MotorTransportService.ManagerDetail.State,
-                            PinCode = dto.MotorTransportService.ManagerDetail.PinCode,
-                            District = dto.MotorTransportService.ManagerDetail.District,
-                            City = dto.MotorTransportService.ManagerDetail.City,
+                            AddressLine1 = dto.MotorTransportService.ManagerDetail?.AddressLine1,
+                            AddressLine2 = dto.MotorTransportService.ManagerDetail?.AddressLine2,
+                            District = dto.MotorTransportService.ManagerDetail?.District,
+                            Tehsil = dto.MotorTransportService.ManagerDetail?.Tehsil,
+                            Area = dto.MotorTransportService.ManagerDetail?.Area,
+                            Pincode = dto.MotorTransportService.ManagerDetail?.Pincode,
+                            Email = dto.MotorTransportService.ManagerDetail?.Email,
+                            Telephone = dto.MotorTransportService.ManagerDetail?.Telephone,
+                            Mobile = dto.MotorTransportService.ManagerDetail.Mobile,
                             CreatedAt = DateTime.Now,
                             UpdatedAt = DateTime.Now
                         });
@@ -314,8 +380,13 @@ namespace RajFabAPI.Services
                         Id = Guid.NewGuid(),
                         NatureOfService = dto.MotorTransportService.NatureOfService,
                         Situation = dto.MotorTransportService.Situation,
-                        AreaId = dto.MotorTransportService.AreaId,
-                        Address = dto.MotorTransportService.Address,
+                        SubDivisionId = dto.MotorTransportService.SubDivisionId,
+                        TehsilId = dto.MotorTransportService.TehsilId,
+                        Area = dto.MotorTransportService.Area,
+                        Pincode = dto.MotorTransportService.Pincode.ToString(),
+                        Email = dto.MotorTransportService.Email,
+                        Telephone = dto.MotorTransportService.Telephone,
+                        Mobile = dto.MotorTransportService.Mobile,
                         EmployerId = mtrsEmployerId,
                         ManagerId = mtrsManagerId,
                         MaxNumberOfWorkerDuringRegistration = dto.MotorTransportService.MaxNumberOfWorkerDuringRegistation,
@@ -379,11 +450,15 @@ namespace RajFabAPI.Services
                             Id = newsEmpId.Value,
                             RoleType = "Employer",
                             Name = dto.NewsPaperEstablishment.EmployerDetail.Name,
-                            Address = dto.NewsPaperEstablishment.EmployerDetail.Address,
-                            State = dto.NewsPaperEstablishment.EmployerDetail.State,
-                            PinCode = dto.NewsPaperEstablishment.EmployerDetail.PinCode,
-                            District = dto.NewsPaperEstablishment.EmployerDetail.District,
-                            City = dto.NewsPaperEstablishment.EmployerDetail.City,
+                            AddressLine1 = dto.NewsPaperEstablishment.EmployerDetail?.AddressLine1,
+                            AddressLine2 = dto.NewsPaperEstablishment.EmployerDetail?.AddressLine2,
+                            District = dto.NewsPaperEstablishment.EmployerDetail?.District,
+                            Tehsil = dto.NewsPaperEstablishment.EmployerDetail?.Tehsil,
+                            Area = dto.NewsPaperEstablishment.EmployerDetail?.Area,
+                            Pincode = dto.NewsPaperEstablishment.EmployerDetail?.Pincode,
+                            Email = dto.NewsPaperEstablishment.EmployerDetail?.Email,
+                            Telephone = dto.NewsPaperEstablishment.EmployerDetail?.Telephone,
+                            Mobile = dto.NewsPaperEstablishment.EmployerDetail.Mobile,
                             CreatedAt = DateTime.Now,
                             UpdatedAt = DateTime.Now
                         });
@@ -397,11 +472,15 @@ namespace RajFabAPI.Services
                             Id = newsMgrId.Value,
                             RoleType = "Manager",
                             Name = dto.NewsPaperEstablishment.ManagerDetail.Name,
-                            Address = dto.NewsPaperEstablishment.ManagerDetail.Address,
-                            State = dto.NewsPaperEstablishment.ManagerDetail.State,
-                            PinCode = dto.NewsPaperEstablishment.ManagerDetail.PinCode,
-                            District = dto.NewsPaperEstablishment.ManagerDetail.District,
-                            City = dto.NewsPaperEstablishment.ManagerDetail.City,
+                            AddressLine1 = dto.NewsPaperEstablishment.ManagerDetail?.AddressLine1,
+                            AddressLine2 = dto.NewsPaperEstablishment.ManagerDetail?.AddressLine2,
+                            District = dto.NewsPaperEstablishment.ManagerDetail?.District,
+                            Tehsil = dto.NewsPaperEstablishment.ManagerDetail?.Tehsil,
+                            Area = dto.NewsPaperEstablishment.ManagerDetail?.Area,
+                            Pincode = dto.NewsPaperEstablishment.ManagerDetail?.Pincode,
+                            Email = dto.NewsPaperEstablishment.ManagerDetail?.Email,
+                            Telephone = dto.NewsPaperEstablishment.ManagerDetail?.Telephone,
+                            Mobile = dto.NewsPaperEstablishment.ManagerDetail.Mobile,
                             CreatedAt = DateTime.Now,
                             UpdatedAt = DateTime.Now
                         });
@@ -411,8 +490,13 @@ namespace RajFabAPI.Services
                     {
                         Id = Guid.NewGuid(),
                         Name = dto.NewsPaperEstablishment.Name,
-                        AreaId = dto.NewsPaperEstablishment.AreaId,
-                        Address = dto.NewsPaperEstablishment.Address,
+                        SubDivisionId = dto.NewsPaperEstablishment.SubDivisionId,
+                        TehsilId = dto.NewsPaperEstablishment.TehsilId,
+                        Area = dto.NewsPaperEstablishment.Area,
+                        Pincode = dto.NewsPaperEstablishment.Pincode.ToString(),
+                        Email = dto.NewsPaperEstablishment.Email,
+                        Telephone = dto.NewsPaperEstablishment.Telephone,
+                        Mobile = dto.NewsPaperEstablishment.Mobile,
                         EmployerId = newsEmpId,
                         ManagerId = newsMgrId,
                         MaxNumberOfWorkerAnyDay = dto.NewsPaperEstablishment.MaxNumberOfWorkerAnyDay,
@@ -447,11 +531,15 @@ namespace RajFabAPI.Services
                             Id = avEmpId.Value,
                             RoleType = "Employer",
                             Name = dto.AudioVisualWork.EmployerDetail.Name,
-                            Address = dto.AudioVisualWork.EmployerDetail.Address,
-                            State = dto.AudioVisualWork.EmployerDetail.State,
-                            PinCode = dto.AudioVisualWork.EmployerDetail.PinCode,
-                            District = dto.AudioVisualWork.EmployerDetail.District,
-                            City = dto.AudioVisualWork.EmployerDetail.City,
+                            AddressLine1 = dto.AudioVisualWork.EmployerDetail?.AddressLine1,
+                            AddressLine2 = dto.AudioVisualWork.EmployerDetail?.AddressLine2,
+                            District = dto.AudioVisualWork.EmployerDetail?.District,
+                            Tehsil = dto.AudioVisualWork.EmployerDetail?.Tehsil,
+                            Area = dto.AudioVisualWork.EmployerDetail?.Area,
+                            Pincode = dto.AudioVisualWork.EmployerDetail?.Pincode,
+                            Email = dto.AudioVisualWork.EmployerDetail?.Email,
+                            Telephone = dto.AudioVisualWork.EmployerDetail?.Telephone,
+                            Mobile = dto.AudioVisualWork.EmployerDetail.Mobile,
                             CreatedAt = DateTime.Now,
                             UpdatedAt = DateTime.Now
                         });
@@ -465,11 +553,15 @@ namespace RajFabAPI.Services
                             Id = avMgrId.Value,
                             RoleType = "Manager",
                             Name = dto.AudioVisualWork.ManagerDetail.Name,
-                            Address = dto.AudioVisualWork.ManagerDetail.Address,
-                            State = dto.AudioVisualWork.ManagerDetail.State,
-                            PinCode = dto.AudioVisualWork.ManagerDetail.PinCode,
-                            District = dto.AudioVisualWork.ManagerDetail.District,
-                            City = dto.AudioVisualWork.ManagerDetail.City,
+                            AddressLine1 = dto.AudioVisualWork.ManagerDetail?.AddressLine1,
+                            AddressLine2 = dto.AudioVisualWork.ManagerDetail?.AddressLine2,
+                            District = dto.AudioVisualWork.ManagerDetail?.District,
+                            Tehsil = dto.AudioVisualWork.ManagerDetail?.Tehsil,
+                            Area = dto.AudioVisualWork.ManagerDetail?.Area,
+                            Pincode = dto.AudioVisualWork.ManagerDetail?.Pincode,
+                            Email = dto.AudioVisualWork.ManagerDetail?.Email,
+                            Telephone = dto.AudioVisualWork.ManagerDetail?.Telephone,
+                            Mobile = dto.AudioVisualWork.ManagerDetail.Mobile,
                             CreatedAt = DateTime.Now,
                             UpdatedAt = DateTime.Now
                         });
@@ -479,8 +571,13 @@ namespace RajFabAPI.Services
                     {
                         Id = Guid.NewGuid(),
                         Name = dto.AudioVisualWork.Name,
-                        AreaId = dto.AudioVisualWork.AreaId,
-                        Address = dto.AudioVisualWork.Address,
+                        SubDivisionId = dto.AudioVisualWork.SubDivisionId,
+                        TehsilId = dto.AudioVisualWork.TehsilId,
+                        Area = dto.AudioVisualWork.Area,
+                        Pincode = dto.AudioVisualWork.Pincode.ToString(),
+                        Email = dto.AudioVisualWork.Email,
+                        Telephone = dto.AudioVisualWork.Telephone,
+                        Mobile = dto.AudioVisualWork.Mobile,
                         EmployerId = avEmpId,
                         ManagerId = avMgrId,
                         MaxNumberOfWorkerAnyDay = dto.AudioVisualWork.MaxNumberOfWorkerAnyDay,
@@ -514,11 +611,15 @@ namespace RajFabAPI.Services
                             Id = pEmpId.Value,
                             RoleType = "Employer",
                             Name = dto.Plantation.EmployerDetail.Name,
-                            Address = dto.Plantation.EmployerDetail.Address,
-                            State = dto.Plantation.EmployerDetail.State,
-                            PinCode = dto.Plantation.EmployerDetail.PinCode,
-                            District = dto.Plantation.EmployerDetail.District,
-                            City = dto.Plantation.EmployerDetail.City,
+                            AddressLine1 = dto.Plantation.EmployerDetail?.AddressLine1,
+                            AddressLine2 = dto.Plantation.EmployerDetail?.AddressLine2,
+                            District = dto.Plantation.EmployerDetail?.District,
+                            Tehsil = dto.Plantation.EmployerDetail?.Tehsil,
+                            Area = dto.Plantation.EmployerDetail?.Area,
+                            Pincode = dto.Plantation.EmployerDetail?.Pincode,
+                            Email = dto.Plantation.EmployerDetail?.Email,
+                            Telephone = dto.Plantation.EmployerDetail?.Telephone,
+                            Mobile = dto.Plantation.EmployerDetail.Mobile,
                             CreatedAt = DateTime.Now,
                             UpdatedAt = DateTime.Now
                         });
@@ -532,11 +633,15 @@ namespace RajFabAPI.Services
                             Id = pMgrId.Value,
                             RoleType = "Manager",
                             Name = dto.Plantation.ManagerDetail.Name,
-                            Address = dto.Plantation.ManagerDetail.Address,
-                            State = dto.Plantation.ManagerDetail.State,
-                            PinCode = dto.Plantation.ManagerDetail.PinCode,
-                            District = dto.Plantation.ManagerDetail.District,
-                            City = dto.Plantation.ManagerDetail.City,
+                            AddressLine1 = dto.Plantation.ManagerDetail?.AddressLine1,
+                            AddressLine2 = dto.Plantation.ManagerDetail?.AddressLine2,
+                            District = dto.Plantation.ManagerDetail?.District,
+                            Tehsil = dto.Plantation.ManagerDetail?.Tehsil,
+                            Area = dto.Plantation.ManagerDetail?.Area,
+                            Pincode = dto.Plantation.ManagerDetail?.Pincode,
+                            Email = dto.Plantation.ManagerDetail?.Email,
+                            Telephone = dto.Plantation.ManagerDetail?.Telephone,
+                            Mobile = dto.Plantation.ManagerDetail.Mobile,
                             CreatedAt = DateTime.Now,
                             UpdatedAt = DateTime.Now
                         });
@@ -546,8 +651,13 @@ namespace RajFabAPI.Services
                     {
                         Id = Guid.NewGuid(),
                         Name = dto.Plantation.Name,
-                        AreaId = dto.Plantation.AreaId,
-                        Address = dto.Plantation.Address,
+                        SubDivisionId = dto.Plantation.SubDivisionId,
+                        TehsilId = dto.Plantation.TehsilId,
+                        Area = dto.Plantation.Area,
+                        Pincode = dto.Plantation.Pincode.ToString(),
+                        Email = dto.Plantation.Email,
+                        Telephone = dto.Plantation.Telephone,
+                        Mobile = dto.Plantation.Mobile,
                         EmployerId = pEmpId,
                         ManagerId = pMgrId,
                         MaxNumberOfWorkerAnyDay = dto.Plantation.MaxNumberOfWorkerAnyDay,
@@ -580,16 +690,19 @@ namespace RajFabAPI.Services
                     {
                         Id = mainOwnerId.Value,
                         Role = "MainOwner",
+                        TypeOfEmployer = dto.MainOwnerDetail.TypeOfEmployer,
                         Name = dto.MainOwnerDetail.Name,
-                        Address = dto.MainOwnerDetail.Address,
                         Designation = dto.MainOwnerDetail.Designation,
                         RelationType = dto.MainOwnerDetail.RelationType,
                         RelativeName = dto.MainOwnerDetail.RelativeName,
-                        State = dto.MainOwnerDetail.State,
+                        AddressLine1 = dto.MainOwnerDetail.AddressLine1,
+                        AddressLine2 = dto.MainOwnerDetail.AddressLine2,
                         District = dto.MainOwnerDetail.District,
-                        City = dto.MainOwnerDetail.City,
+                        Tehsil = dto.MainOwnerDetail.Tehsil,
+                        Area = dto.MainOwnerDetail.Area,
                         Pincode = dto.MainOwnerDetail.Pincode,
                         Email = dto.MainOwnerDetail.Email,
+                        Telephone = dto.MainOwnerDetail.Telephone,
                         Mobile = dto.MainOwnerDetail.Mobile,
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
@@ -603,53 +716,61 @@ namespace RajFabAPI.Services
                     {
                         Id = managerAgentId.Value,
                         Role = "ManagerOrAgent",
+                        TypeOfEmployer = dto.ManagerOrAgentDetail.TypeOfEmployer,
                         Name = dto.ManagerOrAgentDetail.Name,
-                        Address = dto.ManagerOrAgentDetail.Address,
                         Designation = dto.ManagerOrAgentDetail.Designation,
                         RelationType = dto.ManagerOrAgentDetail.RelationType,
                         RelativeName = dto.ManagerOrAgentDetail.RelativeName,
-                        Email = dto.ManagerOrAgentDetail.Email,
-                        Mobile = dto.ManagerOrAgentDetail.Mobile,
-                        State = dto.ManagerOrAgentDetail.State,
+                        AddressLine1 = dto.ManagerOrAgentDetail.AddressLine1,
+                        AddressLine2 = dto.ManagerOrAgentDetail.AddressLine2,
                         District = dto.ManagerOrAgentDetail.District,
-                        City = dto.ManagerOrAgentDetail.City,
+                        Tehsil = dto.ManagerOrAgentDetail.Tehsil,
+                        Area = dto.ManagerOrAgentDetail.Area,
                         Pincode = dto.ManagerOrAgentDetail.Pincode,
+                        Email = dto.ManagerOrAgentDetail.Email,
+                        Telephone = dto.ManagerOrAgentDetail.Telephone,
+                        Mobile = dto.ManagerOrAgentDetail.Mobile,
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
                     });
                 }
 
-                if (dto.ContractorDetail != null)
+                if (dto.ContractorDetail != null && dto.ContractorDetail.Any())
                 {
-                    contractorId = Guid.NewGuid();
-                    _db.Set<PersonDetail>().Add(new PersonDetail
+                    foreach (var contractor in dto.ContractorDetail)
                     {
-                        Id = contractorId.Value,
-                        Role = "Contractor",
-                        Name = dto.ContractorDetail.Name,
-                        Address = dto.ContractorDetail.Address,
-                        Designation = string.Empty,
-                        RelationType = string.Empty,
-                        RelativeName = string.Empty,
-                        State = dto.ContractorDetail.State,
-                        District = dto.ContractorDetail.District,
-                        City = dto.ContractorDetail.City,
-                        Pincode = dto.ContractorDetail.Pincode,
-                        Email = dto.ContractorDetail.Email,
-                        Mobile = dto.ContractorDetail.Mobile,
-                        CreatedAt = DateTime.Now,
-                        UpdatedAt = DateTime.Now
-                    });
 
-                    _db.Set<ContractorDetail>().Add(new ContractorDetail
-                    {
-                        ContractorPersonalDetailId = contractorId,
-                        NameOfWork = dto.ContractorDetail.NameOfWork,
-                        MaxContractWorkerCountMale = dto.ContractorDetail.MaxContractWorkerCountMale,
-                        MaxContractWorkerCountFemale = dto.ContractorDetail.MaxContractWorkerCountFemale,
-                        DateOfCommencement = dto.ContractorDetail.DateOfCommencement,
-                        DateOfCompletion = dto.ContractorDetail.DateOfCompletion
-                    });
+                        _db.Set<PersonDetail>().Add(new PersonDetail
+                        {
+                            Id = Guid.NewGuid(),
+                            Role = "Contractor",
+                            Name = contractor.Name,
+                            Designation = string.Empty,
+                            RelationType = string.Empty,
+                            RelativeName = string.Empty,
+                            AddressLine1 = contractor.AddressLine1,
+                            AddressLine2 = contractor.AddressLine2,
+                            District = contractor.District,
+                            Tehsil = contractor.Tehsil,
+                            Area = contractor.Area,
+                            Pincode = contractor.Pincode,
+                            Email = contractor.Email,
+                            Telephone = contractor.Telephone,
+                            Mobile = contractor.Mobile,
+                            CreatedAt = DateTime.Now,
+                            UpdatedAt = DateTime.Now
+                        });
+
+                        _db.Set<ContractorDetail>().Add(new ContractorDetail
+                        {
+                            ContractorPersonalDetailId = contractorId,
+                            NameOfWork = contractor.NameOfWork,
+                            MaxContractWorkerCountMale = contractor.MaxContractWorkerCountMale,
+                            MaxContractWorkerCountFemale = contractor.MaxContractWorkerCountFemale,
+                            DateOfCommencement = contractor.DateOfCommencement,
+                            DateOfCompletion = contractor.DateOfCompletion
+                        });
+                    }
                 }
 
                 // Persist all EF Core changes
@@ -692,9 +813,6 @@ namespace RajFabAPI.Services
 
                 await tx.CommitAsync();
 
-                // Calculate total workers
-                int totalWorkers = estDetail.TotalNumberOfEmployee ?? 0 + estDetail.TotalNumberOfContractEmployee ?? 0 + estDetail.TotalNumberOfInterstateWorker ?? 0;
-
                 // Get WorkerRange and FactoryCategoryId
                 var workerRange = await _db.Set<WorkerRange>()
                     .FirstOrDefaultAsync(wr => totalWorkers >= wr.MinWorkers && totalWorkers <= wr.MaxWorkers);
@@ -705,7 +823,7 @@ namespace RajFabAPI.Services
                 Guid? factoryCategoryId = factoryCategory?.Id;
 
                 var officeApplicationArea = await _db.Set<OfficeApplicationArea>()
-                    .FirstOrDefaultAsync(oaa => oaa.CityId == Guid.Parse(estDetail.AreaId));
+                    .FirstOrDefaultAsync(oaa => oaa.CityId == Guid.Parse(estDetail.SubDivisionId));
                 if (officeApplicationArea != null)
                 {
                     var officeId = officeApplicationArea?.OfficeId;
@@ -732,20 +850,10 @@ namespace RajFabAPI.Services
                     }
                 }
 
-                // Build payment redirect form and return the HTML so caller can render it
-                // var paymentFormHtml = BuildPaymentRedirectForm(
-                //     amount: 0m,
-                //     serviceId: 2390,
-                //     factoryName: estDetail.EstablishmentName ?? string.Empty,
-                //     sServiceType: 1,
-                //     regNo: appReg.ApplicationRegistrationNumber,
-                //     userEmail: null,
-                //     userMobile: null,
-                //     userName: null
-                // );
+                var html = await _payment.ActionRequestPaymentRPP(feeResult.TotalFee, User.FullName, User.Mobile, User.Email, User.Username, "4157FE34BBAE3A958D8F58CCBFAD7", "UWf6a7cDCP", registration.EstablishmentRegistrationId, module.Id.ToString(), userId.ToString());
+                return html;
 
-                // return paymentFormHtml;
-                return appReg.ApplicationRegistrationNumber;
+                //return appReg.ApplicationRegistrationNumber;
             }
             catch
             {
@@ -778,7 +886,7 @@ namespace RajFabAPI.Services
                         on reg.ContractorDetailId equals contractor.Id into contractorJoin
                     from contractorDetail in contractorJoin.DefaultIfEmpty()
                     join area in _db.Set<Models.City>().AsNoTracking()
-                        on estDetail.AreaId.ToString() equals area.Id.ToString() into areaJoin
+                        on estDetail.SubDivisionId.ToString() equals area.Id.ToString() into areaJoin
                     from areaDetail in areaJoin.DefaultIfEmpty()
                     join district in _db.Set<District>().AsNoTracking()
                         on areaDetail.DistrictId equals district.Id into districtJoin
@@ -795,56 +903,62 @@ namespace RajFabAPI.Services
                             Id = estDetail != null ? estDetail.Id.ToString() : null,
                             LinNumber = estDetail != null ? estDetail.LinNumber : null,
                             EstablishmentName = estDetail != null ? estDetail.EstablishmentName : null,
-                            AreaId = estDetail != null ? estDetail.AreaId : null,
+                            SubDivisionId = estDetail != null ? estDetail.SubDivisionId : null,
                             AreaName = areaDetail != null ? areaDetail.Name : null,
                             DistrictId = areaDetail != null ? areaDetail.DistrictId.ToString() : null,
                             DistrictName = districtDetail != null ? districtDetail.Name : null,
-                            DivisionId = areaDetail != null ? districtDetail.DivisionId.ToString() : null,
-                            DivisionName = divisionDetail != null ? divisionDetail.Name : null,
-                            EstablishmentAddress = estDetail != null ? estDetail.Address : null,
+                            EstablishmentAddressLine1 = estDetail != null ? estDetail.AddressLine1 : null,
+                            EstablishmentAddressLine2 = estDetail != null ? estDetail.AddressLine2 : null,
                             EstablishmentPincode = estDetail != null ? estDetail.Pincode : null,
                         },
                         MainOwnerDetail = new PersonDetailDto
                         {
                             Id = mainOwner != null ? mainOwner.Id.ToString() : null,
                             Name = mainOwner != null ? mainOwner.Name : null,
-                            Address = mainOwner != null ? mainOwner.Address : null,
                             Designation = mainOwner != null ? mainOwner.Designation : null,
+                            TypeOfEmployer = mainOwner != null ? mainOwner.TypeOfEmployer : null,
                             RelationType = mainOwner != null ? mainOwner.RelationType : null,
                             RelativeName = mainOwner != null ? mainOwner.RelativeName : null,
-                            State = mainOwner != null ? mainOwner.State : null,
+                            AddressLine1 = mainOwner != null ? mainOwner.AddressLine1 : null,
+                            AddressLine2 = mainOwner != null ? mainOwner.AddressLine2 : null,
                             District = mainOwner != null ? mainOwner.District : null,
-                            City = mainOwner != null ? mainOwner.City : null,
+                            Tehsil = mainOwner != null ? mainOwner.Tehsil : null,
+                            Area = mainOwner != null ? mainOwner.Area : null,
                             Pincode = mainOwner != null ? mainOwner.Pincode : null,
                             Email = mainOwner != null ? mainOwner.Email : null,
+                            Telephone = mainOwner != null ? mainOwner.Telephone : null,
                             Mobile = mainOwner != null ? mainOwner.Mobile : null
                         },
                         ManagerOrAgentDetail = new PersonDetailDto
                         {
                             Id = managerDetail != null ? managerDetail.Id.ToString() : null,
                             Name = managerDetail != null ? managerDetail.Name : null,
-                            Address = managerDetail != null ? managerDetail.Address : null,
+                            TypeOfEmployer = managerDetail != null ? managerDetail.TypeOfEmployer : null,
                             Designation = managerDetail != null ? managerDetail.Designation : null,
                             RelationType = managerDetail != null ? managerDetail.RelationType : null,
                             RelativeName = managerDetail != null ? managerDetail.RelativeName : null,
-                            State = managerDetail != null ? managerDetail.State : null,
+                            AddressLine1 = managerDetail != null ? managerDetail.AddressLine1 : null,
+                            AddressLine2 = managerDetail != null ? managerDetail.AddressLine2 : null,
                             District = managerDetail != null ? managerDetail.District : null,
-                            City = managerDetail != null ? managerDetail.City : null,
+                            Tehsil = managerDetail != null ? managerDetail.Tehsil : null,
+                            Area = managerDetail != null ? managerDetail.Area : null,
                             Pincode = managerDetail != null ? managerDetail.Pincode : null,
                             Email = managerDetail != null ? managerDetail.Email : null,
+                            Telephone = managerDetail != null ? managerDetail.Telephone : null,
                             Mobile = managerDetail != null ? managerDetail.Mobile : null
                         },
                         ContractorDetail = new PersonDetailDto
                         {
                             Id = contractorDetail != null ? contractorDetail.Id.ToString() : null,
                             Name = contractorDetail != null ? contractorDetail.Name : null,
-                            Address = contractorDetail != null ? contractorDetail.Address : null,
                             Designation = contractorDetail != null ? contractorDetail.Designation : null,
                             RelationType = contractorDetail != null ? contractorDetail.RelationType : null,
                             RelativeName = contractorDetail != null ? contractorDetail.RelativeName : null,
-                            State = contractorDetail != null ? contractorDetail.State : null,
+                            AddressLine1 = contractorDetail != null ? contractorDetail.AddressLine1 : null,
+                            AddressLine2 = contractorDetail != null ? contractorDetail.AddressLine2 : null,
                             District = contractorDetail != null ? contractorDetail.District : null,
-                            City = contractorDetail != null ? contractorDetail.City : null,
+                            Tehsil = contractorDetail != null ? contractorDetail.Tehsil : null,
+                            Area = contractorDetail != null ? contractorDetail.Area : null,
                             Pincode = contractorDetail != null ? contractorDetail.Pincode : null,
                             Email = contractorDetail != null ? contractorDetail.Email : null,
                             Mobile = contractorDetail != null ? contractorDetail.Mobile : null
@@ -882,7 +996,7 @@ namespace RajFabAPI.Services
                         on reg.ContractorDetailId equals contractor.Id into contractorJoin
                     from contractorDetail in contractorJoin.DefaultIfEmpty()
                     join area in _db.Set<Models.City>().AsNoTracking()
-                        on estDetail.AreaId.ToString() equals area.Id.ToString() into areaJoin
+                        on estDetail.SubDivisionId.ToString() equals area.Id.ToString() into areaJoin
                     from areaDetail in areaJoin.DefaultIfEmpty()
                     join district in _db.Set<District>().AsNoTracking()
                         on areaDetail.DistrictId equals district.Id into districtJoin
@@ -899,56 +1013,59 @@ namespace RajFabAPI.Services
                             Id = estDetail != null ? estDetail.Id.ToString() : null,
                             LinNumber = estDetail != null ? estDetail.LinNumber : null,
                             EstablishmentName = estDetail != null ? estDetail.EstablishmentName : null,
-                            AreaId = estDetail != null ? estDetail.AreaId : null,
+                            SubDivisionId = estDetail != null ? estDetail.SubDivisionId : null,
                             AreaName = areaDetail != null ? areaDetail.Name : null,
                             DistrictId = areaDetail != null ? areaDetail.DistrictId.ToString() : null,
                             DistrictName = districtDetail != null ? districtDetail.Name : null,
-                            DivisionId = areaDetail != null ? districtDetail.DivisionId.ToString() : null,
-                            DivisionName = divisionDetail != null ? divisionDetail.Name : null,
-                            EstablishmentAddress = estDetail != null ? estDetail.Address : null,
+                            EstablishmentAddressLine1 = estDetail != null ? estDetail.AddressLine1 : null,
+                            EstablishmentAddressLine2 = estDetail != null ? estDetail.AddressLine2 : null,
                             EstablishmentPincode = estDetail != null ? estDetail.Pincode : null,
                         },
                         MainOwnerDetail = new PersonDetailDto
                         {
                             Id = mainOwner != null ? mainOwner.Id.ToString() : null,
                             Name = mainOwner != null ? mainOwner.Name : null,
-                            Address = mainOwner != null ? mainOwner.Address : null,
+                            TypeOfEmployer = mainOwner != null ? mainOwner.TypeOfEmployer : null,
                             Designation = mainOwner != null ? mainOwner.Designation : null,
                             RelationType = mainOwner != null ? mainOwner.RelationType : null,
                             RelativeName = mainOwner != null ? mainOwner.RelativeName : null,
-                            State = mainOwner != null ? mainOwner.State : null,
-                            District = mainOwner != null ? mainOwner.District : null,
-                            City = mainOwner != null ? mainOwner.City : null,
-                            Pincode = mainOwner != null ? mainOwner.Pincode : null,
-                            Email = mainOwner != null ? mainOwner.Email : null,
-                            Mobile = mainOwner != null ? mainOwner.Mobile : null
+                            AddressLine1 = managerDetail != null ? managerDetail.AddressLine1 : null,
+                            AddressLine2 = managerDetail != null ? managerDetail.AddressLine2 : null,
+                            District = managerDetail != null ? managerDetail.District : null,
+                            Tehsil = managerDetail != null ? managerDetail.Tehsil : null,
+                            Area = managerDetail != null ? managerDetail.Area : null,
+                            Pincode = managerDetail != null ? managerDetail.Pincode : null,
+                            Email = managerDetail != null ? managerDetail.Email : null,
+                            Telephone = managerDetail != null ? managerDetail.Telephone : null,
+                            Mobile = managerDetail != null ? managerDetail.Mobile : null
                         },
                         ManagerOrAgentDetail = new PersonDetailDto
                         {
                             Id = managerDetail != null ? managerDetail.Id.ToString() : null,
                             Name = managerDetail != null ? managerDetail.Name : null,
-                            Address = managerDetail != null ? managerDetail.Address : null,
+                            TypeOfEmployer = managerDetail != null ? managerDetail.TypeOfEmployer : null,
                             Designation = managerDetail != null ? managerDetail.Designation : null,
                             RelationType = managerDetail != null ? managerDetail.RelationType : null,
                             RelativeName = managerDetail != null ? managerDetail.RelativeName : null,
-                            State = managerDetail != null ? managerDetail.State : null,
+                            AddressLine1 = managerDetail != null ? managerDetail.AddressLine1 : null,
+                            AddressLine2 = managerDetail != null ? managerDetail.AddressLine2 : null,
                             District = managerDetail != null ? managerDetail.District : null,
-                            City = managerDetail != null ? managerDetail.City : null,
+                            Tehsil = managerDetail != null ? managerDetail.Tehsil : null,
+                            Area = managerDetail != null ? managerDetail.Area : null,
                             Pincode = managerDetail != null ? managerDetail.Pincode : null,
                             Email = managerDetail != null ? managerDetail.Email : null,
+                            Telephone = managerDetail != null ? managerDetail.Telephone : null,
                             Mobile = managerDetail != null ? managerDetail.Mobile : null
                         },
                         ContractorDetail = new PersonDetailDto
                         {
                             Id = contractorDetail != null ? contractorDetail.Id.ToString() : null,
                             Name = contractorDetail != null ? contractorDetail.Name : null,
-                            Address = contractorDetail != null ? contractorDetail.Address : null,
-                            Designation = contractorDetail != null ? contractorDetail.Designation : null,
-                            RelationType = contractorDetail != null ? contractorDetail.RelationType : null,
-                            RelativeName = contractorDetail != null ? contractorDetail.RelativeName : null,
-                            State = contractorDetail != null ? contractorDetail.State : null,
+                            AddressLine1 = contractorDetail != null ? contractorDetail.AddressLine1 : null,
+                            AddressLine2 = contractorDetail != null ? contractorDetail.AddressLine2 : null,
                             District = contractorDetail != null ? contractorDetail.District : null,
-                            City = contractorDetail != null ? contractorDetail.City : null,
+                            Tehsil = contractorDetail != null ? contractorDetail.Tehsil : null,
+                            Area = contractorDetail != null ? contractorDetail.Area : null,
                             Pincode = contractorDetail != null ? contractorDetail.Pincode : null,
                             Email = contractorDetail != null ? contractorDetail.Email : null,
                             Mobile = contractorDetail != null ? contractorDetail.Mobile : null
@@ -985,7 +1102,7 @@ namespace RajFabAPI.Services
                 var estDetail = await (
                     from est in _db.Set<EstablishmentDetail>().AsNoTracking()
                     where est.Id == reg.EstablishmentDetailId
-                    join area in _db.Set<Area>().AsNoTracking() on est.AreaId equals area.Id.ToString() into areaJoin
+                    join area in _db.Set<Area>().AsNoTracking() on est.SubDivisionId equals area.Id.ToString() into areaJoin
                     from areaDetail in areaJoin.DefaultIfEmpty()
                     join district in _db.Set<District>().AsNoTracking() on areaDetail.DistrictId equals district.Id into districtJoin
                     from districtDetail in districtJoin.DefaultIfEmpty()
@@ -996,21 +1113,16 @@ namespace RajFabAPI.Services
                         Id = reg.EstablishmentRegistrationId,
                         LinNumber = est.LinNumber,
                         EstablishmentName = est.EstablishmentName,
-                        AreaId = est.AreaId,
+                        SubDivisionId = est.SubDivisionId,
                         AreaName = areaDetail.Name,
                         DistrictId = areaDetail.DistrictId.ToString(),
                         DistrictName = districtDetail.Name,
-                        DivisionId = districtDetail.DivisionId.ToString(),
-                        DivisionName = divisionDetail.Name,
                         TotalNumberOfEmployee = est.TotalNumberOfEmployee ?? 0,
                         TotalNumberOfContractEmployee = est.TotalNumberOfContractEmployee ?? 0,
                         TotalNumberOfInterstateWorker = est.TotalNumberOfInterstateWorker ?? 0,
-                        EstablishmentAddress = est.Address,
-                        EstablishmentPincode = est.Pincode,
-                        ActivityAsPerNIC = est.ActivityAsPerNIC,
-                        NICCodeDetail = est.NICCodeDetail,
-                        OwnershipTypeSector = est.OwnershipTypeSector,
-                        IdentificationOfEstablishment = est.IdentificationOfEstablishment
+                        EstablishmentAddressLine1 = est.AddressLine1,
+                        EstablishmentAddressLine2 = est.AddressLine2,
+                        EstablishmentPincode = est.Pincode
 
                     }).FirstOrDefaultAsync();
                 dto.EstablishmentDetail = estDetail;
@@ -1031,14 +1143,15 @@ namespace RajFabAPI.Services
                     dto.MainOwnerDetail = new PersonDetailDto
                     {
                         Name = mainOwner.Name,
-                        Address = mainOwner.Address,
+                        AddressLine1 = mainOwner.AddressLine1,
+                        AddressLine2 = mainOwner.AddressLine2,
                         Designation = mainOwner.Designation,
                         Role = mainOwner.Role,
                         RelationType = mainOwner.RelationType,
                         RelativeName = mainOwner.RelativeName,
-                        State = mainOwner.State,
                         District = mainOwner.District,
-                        City = mainOwner.City,
+                        Tehsil = mainOwner.Tehsil,
+                        Area = mainOwner.Area,
                         Pincode = mainOwner.Pincode,
                         Email = mainOwner.Email,
                         Mobile = mainOwner.Mobile
@@ -1053,14 +1166,15 @@ namespace RajFabAPI.Services
                     dto.ManagerOrAgentDetail = new PersonDetailDto
                     {
                         Name = manager.Name,
-                        Address = manager.Address,
+                        AddressLine1 = manager.AddressLine1,
+                        AddressLine2 = manager.AddressLine2,
                         Designation = manager.Designation,
                         Role = manager.Role,
                         RelationType = manager.RelationType,
                         RelativeName = manager.RelativeName,
-                        State = manager.State,
                         District = manager.District,
-                        City = manager.City,
+                        Tehsil = manager.Tehsil,
+                        Area = manager.Area,
                         Pincode = manager.Pincode,
                         Email = manager.Email,
                         Mobile = manager.Mobile
@@ -1077,13 +1191,15 @@ namespace RajFabAPI.Services
                     dto.ContractorDetail = new ContractorDetailDto
                     {
                         Name = contractor?.ContractorPersonalDetail?.Name,
-                        Address = contractor?.ContractorPersonalDetail?.Address,
-                        State = contractor?.ContractorPersonalDetail?.State,
+                        AddressLine1 = contractor?.ContractorPersonalDetail?.AddressLine1,
+                        AddressLine2 = contractor?.ContractorPersonalDetail?.AddressLine2,
                         District = contractor?.ContractorPersonalDetail?.District,
-                        City = contractor?.ContractorPersonalDetail?.City,
+                        Tehsil = contractor?.ContractorPersonalDetail?.Tehsil,
+                        Area = contractor?.ContractorPersonalDetail?.Area,
                         Pincode = contractor?.ContractorPersonalDetail?.Pincode,
                         Email = contractor?.ContractorPersonalDetail?.Email,
                         Mobile = contractor?.ContractorPersonalDetail?.Mobile,
+                        Telephone = contractor?.ContractorPersonalDetail?.Telephone,
                         NameOfWork = contractor?.NameOfWork,
                         MaxContractWorkerCountMale = contractor?.MaxContractWorkerCountMale,
                         MaxContractWorkerCountFemale = contractor?.MaxContractWorkerCountFemale,
@@ -1108,7 +1224,7 @@ namespace RajFabAPI.Services
                             where f.Id == map.EntityId
 
                             join area in _db.Set<Area>().AsNoTracking()
-                                on f.AreaId equals area.Id.ToString() into areaJoin
+                                on f.SubDivisionId equals area.Id.ToString() into areaJoin
                             from areaDetail in areaJoin.DefaultIfEmpty()
 
                             join district in _db.Set<District>().AsNoTracking()
@@ -1124,17 +1240,18 @@ namespace RajFabAPI.Services
                                 ManuacturingDetail = f.ManufacturingDetail,
                                 Situation = f.Situation,
 
-                                AreaId = f.AreaId,
-                                AreaName = areaDetail.Name,
+                                SubDivisionId = f.SubDivisionId,
+                                Area = f.Area,
 
                                 DistrictId = areaDetail.DistrictId.ToString(),
                                 DistrictName = districtDetail.Name,
 
-                                DivisionId = districtDetail.DivisionId.ToString(),
-                                DivisionName = divisionDetail.Name,
-
-                                Address = f.Address,
-                                PinCode = f.PinCode ?? "",
+                                AddressLine1 = f.AddressLine1,
+                                AddressLine2 = f.AddressLine2,
+                                Pincode = f.Pincode ?? "",
+                                Email = f.Email ?? "",
+                                Mobile = f.Mobile ?? "",
+                                Telephone = f.Telephone ?? "",
 
                                 EmployerId = f.EmployerId,
                                 ManagerId = f.ManagerId,
@@ -1149,14 +1266,16 @@ namespace RajFabAPI.Services
                             dto.Factory = new FactoryDto
                             {
                                 ManuacturingDetail = factory.ManuacturingDetail,
-                                AreaId = factory.AreaId,
-                                Address = factory.Address,
-                                AreaName = factory.AreaName,
-                                DivisionId = factory.DivisionId,
-                                DivisionName= factory.DivisionName,
+                                SubDivisionId = factory.SubDivisionId,
+                                AddressLine1 = factory.AddressLine1,
+                                AddressLine2 = factory.AddressLine2,
+                                Area = factory.Area,
                                 DistrictId= factory.DistrictId,
                                 DistrictName= factory.DistrictName,
-                                PinCode = factory.PinCode ?? "",
+                                Pincode = factory.Pincode ?? "",
+                                Email = factory.Email ?? "",
+                                Telephone = factory.Telephone ?? "",
+                                Mobile = factory.Mobile ?? "",
                                 NumberOfWorker = factory.NumberOfWorker,
                                 SanctionedLoad = factory.SanctionedLoad,
                                 Situation = factory.Situation
@@ -1171,11 +1290,15 @@ namespace RajFabAPI.Services
                                         Role = employer.RoleType,
                                         Name = employer.Name,
                                         Designation = employer.Designation,
-                                        Address = employer.Address,
-                                        City = employer.City,
+                                        AddressLine1 = employer.AddressLine1,
+                                        AddressLine2 = employer.AddressLine2,
                                         District = employer.District,
-                                        State = employer.State,
-                                        PinCode = employer.PinCode
+                                        Tehsil = employer.Tehsil,
+                                        Area = employer.Area,
+                                        Pincode = employer.Pincode,
+                                        Email = employer.Email,
+                                        Telephone = employer.Telephone,
+                                        Mobile = employer.Mobile
                                     };
                                 }
                             }
@@ -1189,11 +1312,12 @@ namespace RajFabAPI.Services
                                         Role = manager.RoleType,
                                         Name = manager.Name,
                                         Designation = manager.Designation,
-                                        Address = manager.Address,
-                                        City = manager.City,
-                                        District = manager.District,
-                                        State = manager.State,
-                                        PinCode = manager.PinCode
+                                        Tehsil = manager.Tehsil,
+                                        Area = manager.Area,
+                                        Pincode = manager.Pincode,
+                                        Email = manager.Email,
+                                        Telephone = manager.Telephone,
+                                        Mobile = manager.Mobile
                                     };
                                 }
                             }
@@ -1210,8 +1334,15 @@ namespace RajFabAPI.Services
                             {
                                 ManuacturingDetail = beedi.ManufacturingDetail,
                                 Situation = beedi.Situation,
-                                AreaId = beedi.AreaId,
-                                Address = beedi.Address,
+                                AddressLine1 = beedi.AddressLine1,
+                                AddressLine2 = beedi.AddressLine2,
+                                SubDivisionId = beedi.SubDivisionId,
+                                TehsilId = beedi.TehsilId,
+                                Area = beedi.Area,
+                                Pincode = beedi.Pincode,
+                                Email = beedi.Email,
+                                Telephone = beedi.Telephone,
+                                Mobile = beedi.Mobile,
                                 MaxNumberOfWorkerAnyDay = beedi.MaxNumberOfWorkerAnyDay,
                                 NumberOfHomeWorker = beedi.NumberOfHomeWorker
                             };
@@ -1226,8 +1357,15 @@ namespace RajFabAPI.Services
                             {
                                 NatureOfService = mtrs.NatureOfService,
                                 Situation = mtrs.Situation,
-                                AreaId = mtrs.AreaId,
-                                Address = mtrs.Address,
+                                AddressLine1 = mtrs.AddressLine1,
+                                AddressLine2 = mtrs.AddressLine2,
+                                SubDivisionId = mtrs.SubDivisionId,
+                                TehsilId = mtrs.TehsilId,
+                                Area = mtrs.Area,
+                                Pincode = mtrs.Pincode,
+                                Email = mtrs.Email,
+                                Telephone = mtrs.Telephone,
+                                Mobile = mtrs.Mobile,
                                 MaxNumberOfWorkerDuringRegistation = mtrs.MaxNumberOfWorkerDuringRegistration,
                                 TotalNumberOfVehicles = mtrs.TotalNumberOfVehicles
                             };
@@ -1256,8 +1394,15 @@ namespace RajFabAPI.Services
                             dto.NewsPaperEstablishment = new NewsPaperEstablishmentDto
                             {
                                 Name = news.Name,
-                                AreaId = news.AreaId,
-                                Address = news.Address,
+                                AddressLine1 = news.AddressLine1,
+                                AddressLine2 = news.AddressLine2,
+                                SubDivisionId = news.SubDivisionId,
+                                TehsilId = news.TehsilId,
+                                Area = news.Area,
+                                Pincode = news.Pincode,
+                                Email = news.Email,
+                                Telephone = news.Telephone,
+                                Mobile = news.Mobile,
                                 MaxNumberOfWorkerAnyDay = news.MaxNumberOfWorkerAnyDay,
                                 DateOfCompletion = news.DateOfCompletion?.ToString("yyyy-MM-dd")
                             };
@@ -1271,8 +1416,15 @@ namespace RajFabAPI.Services
                             dto.AudioVisualWork = new AudioVisualWorkDto
                             {
                                 Name = av.Name,
-                                AreaId = av.AreaId,
-                                Address = av.Address,
+                                AddressLine1 = av.AddressLine1,
+                                AddressLine2 = av.AddressLine2,
+                                SubDivisionId = av.SubDivisionId,
+                                TehsilId = av.TehsilId,
+                                Area = av.Area,
+                                Pincode = av.Pincode,
+                                Email = av.Email,
+                                Telephone = av.Telephone,
+                                Mobile = av.Mobile,
                                 MaxNumberOfWorkerAnyDay = av.MaxNumberOfWorkerAnyDay,
                                 DateOfCompletion = av.DateOfCompletion?.ToString("yyyy-MM-dd")
                             };
@@ -1286,8 +1438,15 @@ namespace RajFabAPI.Services
                             dto.Plantation = new PlantationDto
                             {
                                 Name = plantation.Name,
-                                AreaId = plantation.AreaId,
-                                Address = plantation.Address,
+                                AddressLine1 = plantation.AddressLine1,
+                                AddressLine2 = plantation.AddressLine2,
+                                SubDivisionId = plantation.SubDivisionId,
+                                TehsilId = plantation.TehsilId,
+                                Area = plantation.Area,
+                                Pincode = plantation.Pincode,
+                                Email = plantation.Email,
+                                Telephone = plantation.Telephone,
+                                Mobile = plantation.Mobile,
                                 MaxNumberOfWorkerAnyDay = plantation.MaxNumberOfWorkerAnyDay,
                                 DateOfCompletion = plantation.DateOfCompletion?.ToString("yyyy-MM-dd")
                             };
@@ -1330,11 +1489,24 @@ namespace RajFabAPI.Services
                     return null;
 
                 // 3. Get approved establishment registration with highest version
+                //var registrationNumber = await _db.EstablishmentRegistrations
+                //    .Where(e =>
+                //        applicationIds.Contains(e.EstablishmentRegistrationId) &&
+                //        e.Status == "Approved")
+                //    .OrderByDescending(e => e.Version)
+                //    .Select(e => e.RegistrationNumber)
+                //    .FirstOrDefaultAsync();
+                // Step 1: Filter first
+                var sql = @"
+                SELECT TOP 1 RegistrationNumber
+                FROM EstablishmentRegistrations
+                WHERE EstablishmentRegistrationId IN (@ids)
+                  AND Status = 'Approved'
+                ORDER BY Version DESC
+                ";
+
                 var registrationNumber = await _db.EstablishmentRegistrations
-                    .Where(e =>
-                        applicationIds.Contains(e.EstablishmentRegistrationId) &&
-                        e.Status == "Approved")
-                    .OrderByDescending(e => e.Version)
+                    .FromSqlRaw(sql, new SqlParameter("@ids", string.Join(",", applicationIds)))
                     .Select(e => e.RegistrationNumber)
                     .FirstOrDefaultAsync();
 
@@ -1371,22 +1543,21 @@ namespace RajFabAPI.Services
                 join est in _db.Set<EstablishmentDetail>().AsNoTracking()
                     on reg.EstablishmentDetailId equals est.Id
                 join area in _db.Set<Area>().AsNoTracking()
-                    on est.AreaId equals area.Id.ToString()
+                    on est.SubDivisionId equals area.Id.ToString()
                 join district in _db.Set<District>().AsNoTracking()
                     on area.DistrictId equals district.Id
-                join division in _db.Set<Division>().AsNoTracking()
-                    on district.DivisionId equals division.Id
+                //join division in _db.Set<Division>().AsNoTracking()
+                //    on district.DivisionId equals division.Id
                 select new EstablishmentDetailsDto
                 {
                     Id = reg.EstablishmentRegistrationId,
                     LinNumber = est.LinNumber,
                     EstablishmentName = est.EstablishmentName,
-                    AreaId = est.AreaId,
-                    AreaName = area.Name,
+                    EstablishmentAddressLine1 = est.AddressLine1,
+                    EstablishmentAddressLine2 = est.AddressLine2,
+                    Area = est.Area,
                     DistrictId = area.DistrictId.ToString(),
                     DistrictName = district.Name,
-                    DivisionId = district.DivisionId.ToString(),
-                    DivisionName = division.Name,
                     TotalNumberOfEmployee = est.TotalNumberOfEmployee ?? 0,
                     TotalNumberOfContractEmployee = est.TotalNumberOfContractEmployee ?? 0,
                     TotalNumberOfInterstateWorker = est.TotalNumberOfInterstateWorker ?? 0,
@@ -1584,16 +1755,13 @@ namespace RajFabAPI.Services
                         {
                             estDetail.LinNumber = dto.EstablishmentDetails.LinNumber;
                             estDetail.EstablishmentName = dto.EstablishmentDetails.EstablishmentName;
-                            estDetail.Address = dto.EstablishmentDetails.EstablishmentAddress;
+                            estDetail.AddressLine1 = dto.EstablishmentDetails.EstablishmentAddressLine1;
+                            estDetail.AddressLine2 = dto.EstablishmentDetails.EstablishmentAddressLine2;
                             estDetail.Pincode = dto.EstablishmentDetails.EstablishmentPincode;
-                            estDetail.AreaId = dto.EstablishmentDetails.AreaId;
+                            estDetail.Area = dto.EstablishmentDetails.Area;
                             estDetail.TotalNumberOfEmployee = dto.EstablishmentDetails.TotalNumberOfEmployee;
                             estDetail.TotalNumberOfContractEmployee = dto.EstablishmentDetails.TotalNumberOfContractEmployee;
                             estDetail.TotalNumberOfInterstateWorker = dto.EstablishmentDetails.TotalNumberOfInterstateWorker;
-                            estDetail.OwnershipTypeSector = dto.AdditionalEstablishmentDetails != null ? dto.AdditionalEstablishmentDetails.OwnershipTypeSector : "";
-                            estDetail.ActivityAsPerNIC = dto.AdditionalEstablishmentDetails != null ? dto.AdditionalEstablishmentDetails.ActivityAsPerNIC : string.Empty;
-                            estDetail.NICCodeDetail = dto.AdditionalEstablishmentDetails != null ? dto.AdditionalEstablishmentDetails.NICCodeDetail : string.Empty;
-                            estDetail.IdentificationOfEstablishment = dto.AdditionalEstablishmentDetails != null ? dto.AdditionalEstablishmentDetails.IdentificationOfEstablishment : string.Empty;
                             estDetail.UpdatedAt = DateTime.Now;
                             _db.Entry(estDetail).State = EntityState.Modified;
                         }
@@ -1605,16 +1773,13 @@ namespace RajFabAPI.Services
                         {
                             LinNumber = dto.EstablishmentDetails.LinNumber,
                             EstablishmentName = dto.EstablishmentDetails.EstablishmentName,
-                            Address = dto.EstablishmentDetails.EstablishmentAddress,
+                            AddressLine1 = dto.EstablishmentDetails.EstablishmentAddressLine1,
+                            AddressLine2 = dto.EstablishmentDetails.EstablishmentAddressLine2,
                             Pincode = dto.EstablishmentDetails.EstablishmentPincode,
-                            AreaId = dto.EstablishmentDetails.AreaId,
+                            Area = dto.EstablishmentDetails.Area,
                             TotalNumberOfEmployee = dto.EstablishmentDetails.TotalNumberOfEmployee,
                             TotalNumberOfContractEmployee = dto.EstablishmentDetails.TotalNumberOfContractEmployee,
                             TotalNumberOfInterstateWorker = dto.EstablishmentDetails.TotalNumberOfInterstateWorker,
-                            OwnershipTypeSector = dto.AdditionalEstablishmentDetails != null ? dto.AdditionalEstablishmentDetails.OwnershipTypeSector : "",
-                            ActivityAsPerNIC = dto.AdditionalEstablishmentDetails != null ? dto.AdditionalEstablishmentDetails.ActivityAsPerNIC : string.Empty,
-                            NICCodeDetail = dto.AdditionalEstablishmentDetails != null ? dto.AdditionalEstablishmentDetails.NICCodeDetail : string.Empty,
-                            IdentificationOfEstablishment = dto.AdditionalEstablishmentDetails != null ? dto.AdditionalEstablishmentDetails.IdentificationOfEstablishment : string.Empty,
                             CreatedAt = DateTime.Now,
                             UpdatedAt = DateTime.Now
                         };
@@ -1699,11 +1864,15 @@ namespace RajFabAPI.Services
                         Id = Guid.NewGuid(),
                         RoleType = "Employer",
                         Name = dto.Factory.EmployerDetail?.Name,
-                        Address = dto.Factory.EmployerDetail?.Address,
-                        State = dto.Factory.EmployerDetail?.State,
-                        PinCode = dto.Factory.EmployerDetail?.PinCode,
+                        AddressLine1 = dto.Factory.EmployerDetail?.AddressLine1,
+                        AddressLine2 = dto.Factory.EmployerDetail?.AddressLine2,
                         District = dto.Factory.EmployerDetail?.District,
-                        City = dto.Factory.EmployerDetail?.City,
+                        Tehsil = dto.Factory.EmployerDetail?.Tehsil,
+                        Area = dto.Factory.EmployerDetail?.Area,
+                        Pincode = dto.Factory.EmployerDetail?.Pincode,
+                        Email = dto.Factory.EmployerDetail?.Email,
+                        Telephone = dto.Factory.EmployerDetail?.Telephone,
+                        Mobile = dto.Factory.EmployerDetail?.Mobile,
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
                     };
@@ -1714,11 +1883,15 @@ namespace RajFabAPI.Services
                         Id = Guid.NewGuid(),
                         RoleType = "Manager",
                         Name = dto.Factory.ManagerDetail?.Name,
-                        Address = dto.Factory.ManagerDetail?.Address,
-                        State = dto.Factory.ManagerDetail?.State,
-                        PinCode = dto.Factory.ManagerDetail?.PinCode,
+                        AddressLine1 = dto.Factory.ManagerDetail?.AddressLine1,
+                        AddressLine2 = dto.Factory.ManagerDetail?.AddressLine2,
                         District = dto.Factory.ManagerDetail?.District,
-                        City = dto.Factory.ManagerDetail?.City,
+                        Tehsil = dto.Factory.ManagerDetail?.Tehsil,
+                        Area = dto.Factory.ManagerDetail?.Area,
+                        Pincode = dto.Factory.ManagerDetail?.Pincode,
+                        Email = dto.Factory.ManagerDetail?.Email,
+                        Telephone = dto.Factory.ManagerDetail?.Telephone,
+                        Mobile = dto.Factory.ManagerDetail?.Mobile,
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
                     };
@@ -1728,9 +1901,15 @@ namespace RajFabAPI.Services
                     {
                         Id = Guid.NewGuid(),
                         ManufacturingDetail = dto.Factory.ManuacturingDetail,
-                        AreaId = dto.Factory.AreaId,
-                        Address = dto.Factory.Address,
-                        PinCode = dto.Factory.PinCode,
+                        AddressLine1 = dto.Factory.AddressLine1,
+                        AddressLine2 = dto.Factory.AddressLine2,
+                        SubDivisionId = dto.Factory.SubDivisionId,
+                        TehsilId = dto.Factory.TehsilId,
+                        Area = dto.Factory.Area,
+                        Pincode = dto.Factory.Pincode,
+                        Email = dto.Factory.Email,
+                        Telephone = dto.Factory.Telephone,
+                        Mobile = dto.Factory.Mobile,
                         Situation = dto.Factory.Situation,
                         EmployerId = emp.Id,
                         ManagerId = mgr.Id,
@@ -1765,11 +1944,15 @@ namespace RajFabAPI.Services
                             Id = beediEmployerId.Value,
                             RoleType = "Employer",
                             Name = dto.BeediCigarWorks.EmployerDetail.Name,
-                            Address = dto.BeediCigarWorks.EmployerDetail.Address,
-                            State = dto.BeediCigarWorks.EmployerDetail.State,
-                            PinCode = dto.BeediCigarWorks.EmployerDetail.PinCode,
-                            District = dto.BeediCigarWorks.EmployerDetail.District,
-                            City = dto.BeediCigarWorks.EmployerDetail.City,
+                            AddressLine1 = dto.BeediCigarWorks.EmployerDetail?.AddressLine1,
+                            AddressLine2 = dto.BeediCigarWorks.EmployerDetail?.AddressLine2,
+                            District = dto.BeediCigarWorks.EmployerDetail?.District,
+                            Tehsil = dto.BeediCigarWorks.EmployerDetail?.Tehsil,
+                            Area = dto.BeediCigarWorks.EmployerDetail?.Area,
+                            Pincode = dto.BeediCigarWorks.EmployerDetail?.Pincode,
+                            Email = dto.BeediCigarWorks.EmployerDetail?.Email,
+                            Telephone = dto.BeediCigarWorks.EmployerDetail?.Telephone,
+                            Mobile = dto.BeediCigarWorks.EmployerDetail?.Mobile,
                             CreatedAt = DateTime.Now,
                             UpdatedAt = DateTime.Now
                         });
@@ -1783,11 +1966,15 @@ namespace RajFabAPI.Services
                             Id = beediManagerId.Value,
                             RoleType = "Manager",
                             Name = dto.BeediCigarWorks.ManagerDetail.Name,
-                            Address = dto.BeediCigarWorks.ManagerDetail.Address,
-                            State = dto.BeediCigarWorks.ManagerDetail.State,
-                            PinCode = dto.BeediCigarWorks.ManagerDetail.PinCode,
-                            District = dto.BeediCigarWorks.ManagerDetail.District,
-                            City = dto.BeediCigarWorks.ManagerDetail.City,
+                            AddressLine1 = dto.BeediCigarWorks.ManagerDetail?.AddressLine1,
+                            AddressLine2 = dto.BeediCigarWorks.ManagerDetail?.AddressLine2,
+                            District = dto.BeediCigarWorks.ManagerDetail?.District,
+                            Tehsil = dto.BeediCigarWorks.ManagerDetail?.Tehsil,
+                            Area = dto.BeediCigarWorks.ManagerDetail?.Area,
+                            Pincode = dto.BeediCigarWorks.ManagerDetail?.Pincode,
+                            Email = dto.BeediCigarWorks.ManagerDetail?.Email,
+                            Telephone = dto.BeediCigarWorks.ManagerDetail?.Telephone,
+                            Mobile = dto.BeediCigarWorks.ManagerDetail?.Mobile,
                             CreatedAt = DateTime.Now,
                             UpdatedAt = DateTime.Now
                         });
@@ -1798,8 +1985,15 @@ namespace RajFabAPI.Services
                         Id = Guid.NewGuid(),
                         ManufacturingDetail = dto.BeediCigarWorks.ManuacturingDetail,
                         Situation = dto.BeediCigarWorks.Situation,
-                        AreaId = dto.BeediCigarWorks.AreaId,
-                        Address = dto.BeediCigarWorks.Address,
+                        AddressLine1 = dto.BeediCigarWorks.AddressLine1,
+                        AddressLine2 = dto.BeediCigarWorks.AddressLine2,
+                        SubDivisionId = dto.BeediCigarWorks.SubDivisionId,
+                        TehsilId = dto.BeediCigarWorks.TehsilId,
+                        Area = dto.BeediCigarWorks.Area,
+                        Pincode = dto.BeediCigarWorks.Pincode,
+                        Email = dto.BeediCigarWorks.Email,
+                        Telephone = dto.BeediCigarWorks.Telephone,
+                        Mobile = dto.BeediCigarWorks.Mobile,
                         EmployerId = beediEmployerId,
                         ManagerId = beediManagerId,
                         MaxNumberOfWorkerAnyDay = dto.BeediCigarWorks.MaxNumberOfWorkerAnyDay,
@@ -1833,11 +2027,15 @@ namespace RajFabAPI.Services
                             Id = mtrsEmployerId.Value,
                             RoleType = "Employer",
                             Name = dto.MotorTransportService.EmployerDetail.Name,
-                            Address = dto.MotorTransportService.EmployerDetail.Address,
-                            State = dto.MotorTransportService.EmployerDetail.State,
-                            PinCode = dto.MotorTransportService.EmployerDetail.PinCode,
-                            District = dto.MotorTransportService.EmployerDetail.District,
-                            City = dto.MotorTransportService.EmployerDetail.City,
+                            AddressLine1 = dto.MotorTransportService.EmployerDetail?.AddressLine1,
+                            AddressLine2 = dto.MotorTransportService.EmployerDetail?.AddressLine2,
+                            District = dto.MotorTransportService.EmployerDetail?.District,
+                            Tehsil = dto.MotorTransportService.EmployerDetail?.Tehsil,
+                            Area = dto.MotorTransportService.EmployerDetail?.Area,
+                            Pincode = dto.MotorTransportService.EmployerDetail?.Pincode,
+                            Email = dto.MotorTransportService.EmployerDetail?.Email,
+                            Telephone = dto.MotorTransportService.EmployerDetail?.Telephone,
+                            Mobile = dto.MotorTransportService.EmployerDetail?.Mobile,
                             CreatedAt = DateTime.Now,
                             UpdatedAt = DateTime.Now
                         });
@@ -1851,11 +2049,15 @@ namespace RajFabAPI.Services
                             Id = mtrsManagerId.Value,
                             RoleType = "Manager",
                             Name = dto.MotorTransportService.ManagerDetail.Name,
-                            Address = dto.MotorTransportService.ManagerDetail.Address,
-                            State = dto.MotorTransportService.ManagerDetail.State,
-                            PinCode = dto.MotorTransportService.ManagerDetail.PinCode,
-                            District = dto.MotorTransportService.ManagerDetail.District,
-                            City = dto.MotorTransportService.ManagerDetail.City,
+                            AddressLine1 = dto.MotorTransportService.ManagerDetail?.AddressLine1,
+                            AddressLine2 = dto.MotorTransportService.ManagerDetail?.AddressLine2,
+                            District = dto.MotorTransportService.ManagerDetail?.District,
+                            Tehsil = dto.MotorTransportService.ManagerDetail?.Tehsil,
+                            Area = dto.MotorTransportService.ManagerDetail?.Area,
+                            Pincode = dto.MotorTransportService.ManagerDetail?.Pincode,
+                            Email = dto.MotorTransportService.ManagerDetail?.Email,
+                            Telephone = dto.MotorTransportService.ManagerDetail?.Telephone,
+                            Mobile = dto.MotorTransportService.ManagerDetail?.Mobile,
                             CreatedAt = DateTime.Now,
                             UpdatedAt = DateTime.Now
                         });
@@ -1866,8 +2068,15 @@ namespace RajFabAPI.Services
                         Id = Guid.NewGuid(),
                         NatureOfService = dto.MotorTransportService.NatureOfService,
                         Situation = dto.MotorTransportService.Situation,
-                        AreaId = dto.MotorTransportService.AreaId,
-                        Address = dto.MotorTransportService.Address,
+                        AddressLine1 = dto.MotorTransportService.AddressLine1,
+                        AddressLine2 = dto.MotorTransportService.AddressLine2,
+                        SubDivisionId = dto.MotorTransportService.SubDivisionId,
+                        TehsilId = dto.MotorTransportService.TehsilId,
+                        Area = dto.MotorTransportService.Area,
+                        Pincode = dto.MotorTransportService.Pincode,
+                        Email = dto.MotorTransportService.Email,
+                        Telephone = dto.MotorTransportService.Telephone,
+                        Mobile = dto.MotorTransportService.Mobile,
                         EmployerId = mtrsEmployerId,
                         ManagerId = mtrsManagerId,
                         MaxNumberOfWorkerDuringRegistration = dto.MotorTransportService.MaxNumberOfWorkerDuringRegistation,
@@ -1929,11 +2138,15 @@ namespace RajFabAPI.Services
                             Id = newsEmpId.Value,
                             RoleType = "Employer",
                             Name = dto.NewsPaperEstablishment.EmployerDetail.Name,
-                            Address = dto.NewsPaperEstablishment.EmployerDetail.Address,
-                            State = dto.NewsPaperEstablishment.EmployerDetail.State,
-                            PinCode = dto.NewsPaperEstablishment.EmployerDetail.PinCode,
-                            District = dto.NewsPaperEstablishment.EmployerDetail.District,
-                            City = dto.NewsPaperEstablishment.EmployerDetail.City,
+                            AddressLine1 = dto.NewsPaperEstablishment.EmployerDetail?.AddressLine1,
+                            AddressLine2 = dto.NewsPaperEstablishment.EmployerDetail?.AddressLine2,
+                            District = dto.NewsPaperEstablishment.EmployerDetail?.District,
+                            Tehsil = dto.NewsPaperEstablishment.EmployerDetail?.Tehsil,
+                            Area = dto.NewsPaperEstablishment.EmployerDetail?.Area,
+                            Pincode = dto.NewsPaperEstablishment.EmployerDetail?.Pincode,
+                            Email = dto.NewsPaperEstablishment.EmployerDetail?.Email,
+                            Telephone = dto.NewsPaperEstablishment.EmployerDetail?.Telephone,
+                            Mobile = dto.NewsPaperEstablishment.EmployerDetail?.Mobile,
                             CreatedAt = DateTime.Now,
                             UpdatedAt = DateTime.Now
                         });
@@ -1947,11 +2160,15 @@ namespace RajFabAPI.Services
                             Id = newsMgrId.Value,
                             RoleType = "Manager",
                             Name = dto.NewsPaperEstablishment.ManagerDetail.Name,
-                            Address = dto.NewsPaperEstablishment.ManagerDetail.Address,
-                            State = dto.NewsPaperEstablishment.ManagerDetail.State,
-                            PinCode = dto.NewsPaperEstablishment.ManagerDetail.PinCode,
-                            District = dto.NewsPaperEstablishment.ManagerDetail.District,
-                            City = dto.NewsPaperEstablishment.ManagerDetail.City,
+                            AddressLine1 = dto.NewsPaperEstablishment.ManagerDetail?.AddressLine1,
+                            AddressLine2 = dto.NewsPaperEstablishment.ManagerDetail?.AddressLine2,
+                            District = dto.NewsPaperEstablishment.ManagerDetail?.District,
+                            Tehsil = dto.NewsPaperEstablishment.ManagerDetail?.Tehsil,
+                            Area = dto.NewsPaperEstablishment.ManagerDetail?.Area,
+                            Pincode = dto.NewsPaperEstablishment.ManagerDetail?.Pincode,
+                            Email = dto.NewsPaperEstablishment.ManagerDetail?.Email,
+                            Telephone = dto.NewsPaperEstablishment.ManagerDetail?.Telephone,
+                            Mobile = dto.NewsPaperEstablishment.ManagerDetail?.Mobile,
                             CreatedAt = DateTime.Now,
                             UpdatedAt = DateTime.Now
                         });
@@ -1961,8 +2178,15 @@ namespace RajFabAPI.Services
                     {
                         Id = Guid.NewGuid(),
                         Name = dto.NewsPaperEstablishment.Name,
-                        AreaId = dto.NewsPaperEstablishment.AreaId,
-                        Address = dto.NewsPaperEstablishment.Address,
+                        AddressLine1 = dto.NewsPaperEstablishment.AddressLine1,
+                        AddressLine2 = dto.NewsPaperEstablishment.AddressLine2,
+                        SubDivisionId = dto.NewsPaperEstablishment.SubDivisionId,
+                        TehsilId = dto.NewsPaperEstablishment.TehsilId,
+                        Area = dto.NewsPaperEstablishment.Area,
+                        Pincode = dto.NewsPaperEstablishment.Pincode,
+                        Email = dto.NewsPaperEstablishment.Email,
+                        Telephone = dto.NewsPaperEstablishment.Telephone,
+                        Mobile = dto.NewsPaperEstablishment.Mobile,
                         EmployerId = newsEmpId,
                         ManagerId = newsMgrId,
                         MaxNumberOfWorkerAnyDay = dto.NewsPaperEstablishment.MaxNumberOfWorkerAnyDay,
@@ -1996,12 +2220,15 @@ namespace RajFabAPI.Services
                             Id = avEmpId.Value,
                             RoleType = "Employer",
                             Name = dto.AudioVisualWork.EmployerDetail.Name,
-                            Address = dto.AudioVisualWork.EmployerDetail.Address,
-                            State = dto.AudioVisualWork.EmployerDetail.State,
-                            PinCode = dto.AudioVisualWork.EmployerDetail.PinCode,
-                            District = dto.AudioVisualWork.EmployerDetail.District,
-                            City = dto.AudioVisualWork.EmployerDetail.City,
-                            CreatedAt = DateTime.Now,
+                            AddressLine1 = dto.AudioVisualWork.EmployerDetail?.AddressLine1,
+                            AddressLine2 = dto.AudioVisualWork.EmployerDetail?.AddressLine2,
+                            District = dto.AudioVisualWork.EmployerDetail?.District,
+                            Tehsil = dto.AudioVisualWork.EmployerDetail?.Tehsil,
+                            Area = dto.AudioVisualWork.EmployerDetail?.Area,
+                            Pincode = dto.AudioVisualWork.EmployerDetail?.Pincode,
+                            Email = dto.AudioVisualWork.EmployerDetail?.Email,
+                            Telephone = dto.AudioVisualWork.EmployerDetail?.Telephone,
+                            Mobile = dto.AudioVisualWork.EmployerDetail?.Mobile,
                             UpdatedAt = DateTime.Now
                         });
                     }
@@ -2014,11 +2241,15 @@ namespace RajFabAPI.Services
                             Id = avMgrId.Value,
                             RoleType = "Manager",
                             Name = dto.AudioVisualWork.ManagerDetail.Name,
-                            Address = dto.AudioVisualWork.ManagerDetail.Address,
-                            State = dto.AudioVisualWork.ManagerDetail.State,
-                            PinCode = dto.AudioVisualWork.ManagerDetail.PinCode,
-                            District = dto.AudioVisualWork.ManagerDetail.District,
-                            City = dto.AudioVisualWork.ManagerDetail.City,
+                            AddressLine1 = dto.AudioVisualWork.ManagerDetail?.AddressLine1,
+                            AddressLine2 = dto.AudioVisualWork.ManagerDetail?.AddressLine2,
+                            District = dto.AudioVisualWork.ManagerDetail?.District,
+                            Tehsil = dto.AudioVisualWork.ManagerDetail?.Tehsil,
+                            Area = dto.AudioVisualWork.ManagerDetail?.Area,
+                            Pincode = dto.AudioVisualWork.ManagerDetail?.Pincode,
+                            Email = dto.AudioVisualWork.ManagerDetail?.Email,
+                            Telephone = dto.AudioVisualWork.ManagerDetail?.Telephone,
+                            Mobile = dto.AudioVisualWork.ManagerDetail?.Mobile,
                             CreatedAt = DateTime.Now,
                             UpdatedAt = DateTime.Now
                         });
@@ -2028,8 +2259,15 @@ namespace RajFabAPI.Services
                     {
                         Id = Guid.NewGuid(),
                         Name = dto.AudioVisualWork.Name,
-                        AreaId = dto.AudioVisualWork.AreaId,
-                        Address = dto.AudioVisualWork.Address,
+                        AddressLine1 = dto.AudioVisualWork.AddressLine1,
+                        AddressLine2 = dto.AudioVisualWork.AddressLine2,
+                        SubDivisionId = dto.AudioVisualWork.SubDivisionId,
+                        TehsilId = dto.AudioVisualWork.TehsilId,
+                        Area = dto.AudioVisualWork.Area,
+                        Pincode = dto.AudioVisualWork.Pincode,
+                        Email = dto.AudioVisualWork.Email,
+                        Telephone = dto.AudioVisualWork.Telephone,
+                        Mobile = dto.AudioVisualWork.Mobile,
                         EmployerId = avEmpId,
                         ManagerId = avMgrId,
                         MaxNumberOfWorkerAnyDay = dto.AudioVisualWork.MaxNumberOfWorkerAnyDay,
@@ -2062,11 +2300,15 @@ namespace RajFabAPI.Services
                             Id = pEmpId.Value,
                             RoleType = "Employer",
                             Name = dto.Plantation.EmployerDetail.Name,
-                            Address = dto.Plantation.EmployerDetail.Address,
-                            State = dto.Plantation.EmployerDetail.State,
-                            PinCode = dto.Plantation.EmployerDetail.PinCode,
-                            District = dto.Plantation.EmployerDetail.District,
-                            City = dto.Plantation.EmployerDetail.City,
+                            AddressLine1 = dto.Plantation.EmployerDetail?.AddressLine1,
+                            AddressLine2 = dto.Plantation.EmployerDetail?.AddressLine2,
+                            District = dto.Plantation.EmployerDetail?.District,
+                            Tehsil = dto.Plantation.EmployerDetail?.Tehsil,
+                            Area = dto.Plantation.EmployerDetail?.Area,
+                            Pincode = dto.Plantation.EmployerDetail?.Pincode,
+                            Email = dto.Plantation.EmployerDetail?.Email,
+                            Telephone = dto.Plantation.EmployerDetail?.Telephone,
+                            Mobile = dto.Plantation.EmployerDetail?.Mobile,
                             CreatedAt = DateTime.Now,
                             UpdatedAt = DateTime.Now
                         });
@@ -2080,11 +2322,15 @@ namespace RajFabAPI.Services
                             Id = pMgrId.Value,
                             RoleType = "Manager",
                             Name = dto.Plantation.ManagerDetail.Name,
-                            Address = dto.Plantation.ManagerDetail.Address,
-                            State = dto.Plantation.ManagerDetail.State,
-                            PinCode = dto.Plantation.ManagerDetail.PinCode,
-                            District = dto.Plantation.ManagerDetail.District,
-                            City = dto.Plantation.ManagerDetail.City,
+                            AddressLine1 = dto.Plantation.ManagerDetail?.AddressLine1,
+                            AddressLine2 = dto.Plantation.ManagerDetail?.AddressLine2,
+                            District = dto.Plantation.ManagerDetail?.District,
+                            Tehsil = dto.Plantation.ManagerDetail?.Tehsil,
+                            Area = dto.Plantation.ManagerDetail?.Area,
+                            Pincode = dto.Plantation.ManagerDetail?.Pincode,
+                            Email = dto.Plantation.ManagerDetail?.Email,
+                            Telephone = dto.Plantation.ManagerDetail?.Telephone,
+                            Mobile = dto.Plantation.ManagerDetail?.Mobile,
                             CreatedAt = DateTime.Now,
                             UpdatedAt = DateTime.Now
                         });
@@ -2094,8 +2340,15 @@ namespace RajFabAPI.Services
                     {
                         Id = Guid.NewGuid(),
                         Name = dto.Plantation.Name,
-                        AreaId = dto.Plantation.AreaId,
-                        Address = dto.Plantation.Address,
+                        AddressLine1 = dto.Plantation.AddressLine1,
+                        AddressLine2 = dto.Plantation.AddressLine2,
+                        SubDivisionId = dto.Plantation.SubDivisionId,
+                        TehsilId = dto.Plantation.TehsilId,
+                        Area = dto.Plantation.Area,
+                        Pincode = dto.Plantation.Pincode,
+                        Email = dto.Plantation.Email,
+                        Telephone = dto.Plantation.Telephone,
+                        Mobile = dto.Plantation.Mobile,
                         EmployerId = pEmpId,
                         ManagerId = pMgrId,
                         MaxNumberOfWorkerAnyDay = dto.Plantation.MaxNumberOfWorkerAnyDay,
@@ -2149,15 +2402,17 @@ namespace RajFabAPI.Services
                         Id = mainOwnerId.Value,
                         Role = "MainOwner",
                         Name = dto.MainOwnerDetail.Name,
-                        Address = dto.MainOwnerDetail.Address,
                         Designation = dto.MainOwnerDetail.Designation,
                         RelationType = dto.MainOwnerDetail.RelationType,
                         RelativeName = dto.MainOwnerDetail.RelativeName,
-                        State = dto.MainOwnerDetail.State,
+                        AddressLine1 = dto.MainOwnerDetail.AddressLine1,
+                        AddressLine2 = dto.MainOwnerDetail.AddressLine2,
                         District = dto.MainOwnerDetail.District,
-                        City = dto.MainOwnerDetail.City,
+                        Tehsil = dto.MainOwnerDetail.Tehsil,
+                        Area = dto.MainOwnerDetail.Area,
                         Pincode = dto.MainOwnerDetail.Pincode,
                         Email = dto.MainOwnerDetail.Email,
+                        Telephone = dto.MainOwnerDetail.Telephone,
                         Mobile = dto.MainOwnerDetail.Mobile,
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now
@@ -2172,52 +2427,58 @@ namespace RajFabAPI.Services
                         Id = managerAgentId.Value,
                         Role = "ManagerOrAgent",
                         Name = dto.ManagerOrAgentDetail.Name,
-                        Address = dto.ManagerOrAgentDetail.Address,
                         Designation = dto.ManagerOrAgentDetail.Designation,
                         RelationType = dto.ManagerOrAgentDetail.RelationType,
                         RelativeName = dto.ManagerOrAgentDetail.RelativeName,
+                        AddressLine1 = dto.ManagerOrAgentDetail.AddressLine1,
+                        AddressLine2 = dto.ManagerOrAgentDetail.AddressLine2,
+                        District = dto.ManagerOrAgentDetail.District,
+                        Tehsil = dto.ManagerOrAgentDetail.Tehsil,
+                        Area = dto.ManagerOrAgentDetail.Area,
+                        Pincode = dto.ManagerOrAgentDetail.Pincode,
                         Email = dto.ManagerOrAgentDetail.Email,
                         Mobile = dto.ManagerOrAgentDetail.Mobile,
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now,
-                        State = dto.ManagerOrAgentDetail.State,
-                        District = dto.ManagerOrAgentDetail.District,
-                        City = dto.ManagerOrAgentDetail.City,
-                        Pincode = dto.ManagerOrAgentDetail.Pincode
                     });
                 }
 
-                if (dto.ContractorDetail != null)
+                if (dto.ContractorDetail != null && dto.ContractorDetail.Any())
                 {
-                    contractorId = Guid.NewGuid();
-                    _db.Set<PersonDetail>().Add(new PersonDetail
+                    foreach (var contractor in dto.ContractorDetail)
                     {
-                        Id = contractorId.Value,
-                        Role = "Contractor",
-                        Name = dto.ContractorDetail.Name,
-                        Address = dto.ContractorDetail.Address,
-                        Designation = string.Empty,
-                        RelationType = string.Empty,
-                        RelativeName = string.Empty,
-                        State = dto.ContractorDetail.State,
-                        District = dto.ContractorDetail.District,
-                        City = dto.ContractorDetail.City,
-                        Pincode = dto.ContractorDetail.Pincode,
-                        Email = dto.ContractorDetail.Email,
-                        Mobile = dto.ContractorDetail.Mobile,
-                        CreatedAt = DateTime.Now,
-                        UpdatedAt = DateTime.Now
-                    });
 
-                    _db.Set<ContractorDetail>().Add(new ContractorDetail
-                    {
-                        ContractorPersonalDetailId = contractorId,
-                        NameOfWork = dto.ContractorDetail.NameOfWork,
-                        MaxContractWorkerCountMale = dto.ContractorDetail.MaxContractWorkerCountMale,
-                        MaxContractWorkerCountFemale = dto.ContractorDetail.MaxContractWorkerCountFemale,
-                        DateOfCommencement = dto.ContractorDetail.DateOfCommencement,
-                        DateOfCompletion = dto.ContractorDetail.DateOfCompletion
-                    });
+                        _db.Set<PersonDetail>().Add(new PersonDetail
+                        {
+                            Id = Guid.NewGuid(),
+                            Role = "Contractor",
+                            Name = contractor.Name,
+                            Designation = string.Empty,
+                            RelationType = string.Empty,
+                            RelativeName = string.Empty,
+                            AddressLine1 = contractor.AddressLine1,
+                            AddressLine2 = contractor.AddressLine2,
+                            District = contractor.District,
+                            Tehsil = contractor.Tehsil,
+                            Area = contractor.Area,
+                            Pincode = contractor.Pincode,
+                            Email = contractor.Email,
+                            Telephone = contractor.Telephone,
+                            Mobile = contractor.Mobile,
+                            CreatedAt = DateTime.Now,
+                            UpdatedAt = DateTime.Now
+                        });
+
+                        _db.Set<ContractorDetail>().Add(new ContractorDetail
+                        {
+                            ContractorPersonalDetailId = contractorId,
+                            NameOfWork = contractor.NameOfWork,
+                            MaxContractWorkerCountMale = contractor.MaxContractWorkerCountMale,
+                            MaxContractWorkerCountFemale = contractor.MaxContractWorkerCountFemale,
+                            DateOfCommencement = contractor.DateOfCommencement,
+                            DateOfCompletion = contractor.DateOfCompletion
+                        });
+                    }
                 }
 
                 existingReg.MainOwnerDetailId = mainOwnerId;
@@ -2250,7 +2511,7 @@ namespace RajFabAPI.Services
                 Guid? factoryCategoryId = factoryCategory?.Id;
 
                 var officeApplicationArea = await _db.Set<OfficeApplicationArea>()
-                    .FirstOrDefaultAsync(oaa => oaa.CityId == Guid.Parse(estDetail.AreaId));
+                    .FirstOrDefaultAsync(oaa => oaa.CityId == Guid.Parse(estDetail.SubDivisionId));
                 if (officeApplicationArea != null)
                 {
                     var officeId = officeApplicationArea?.OfficeId;
@@ -2375,7 +2636,7 @@ namespace RajFabAPI.Services
                 Guid? factoryCategoryId = factoryCategory?.Id;
 
                 var officeApplicationArea = await _db.Set<OfficeApplicationArea>()
-                    .FirstOrDefaultAsync(oaa => oaa.CityId == Guid.Parse(estDetail.AreaId));
+                    .FirstOrDefaultAsync(oaa => oaa.CityId == Guid.Parse(estDetail.SubDivisionId));
                 if (officeApplicationArea != null)
                 {
                     var officeId = officeApplicationArea?.OfficeId;
@@ -2446,8 +2707,8 @@ namespace RajFabAPI.Services
                 EstablishmentType = dtoDetails.EstablishmentTypes.FirstOrDefault() ?? "Factory",
 
                 // Employees / contractors
-                DirectEmployees = dtoDetails.EstablishmentDetail?.DirectEmployees,
-                ContractorEmployees = dtoDetails.EstablishmentDetail?.ContractorEmployees,
+                DirectEmployees = dtoDetails.EstablishmentDetail?.TotalNumberOfEmployee,
+                ContractorEmployees = dtoDetails.EstablishmentDetail?.TotalNumberOfContractEmployee,
                 ContractorDetails = dtoDetails.ContractorDetail,
                 InterStateWorkers = dtoDetails.EstablishmentDetail.TotalNumberOfInterstateWorker,
 
@@ -2456,11 +2717,11 @@ namespace RajFabAPI.Services
                 FactorySituation = dtoDetails.Factory?.Situation,
                 FactoryAddress = string.Join(", ", new[]
                 {
-                    dtoDetails.Factory?.Address,
-                    dtoDetails.Factory?.AreaName,
+                    dtoDetails.Factory?.AddressLine1,
+                    dtoDetails.Factory?.AddressLine2,
                     dtoDetails.Factory?.DistrictName,
-                    dtoDetails.Factory?.DivisionName,
-                    dtoDetails.Factory?.PinCode
+                    dtoDetails.Factory?.Area,
+                    dtoDetails.Factory?.Pincode
                 }.Where(s => !string.IsNullOrWhiteSpace(s))),
 
                 // Employer / occupier details
@@ -2468,11 +2729,12 @@ namespace RajFabAPI.Services
                 EmployerDesignation = dtoDetails.Factory?.EmployerDetail?.Designation,
                 EmployerAddress = string.Join(", ", new[]
                 {
-                    dtoDetails.Factory?.EmployerDetail?.Address,
-                    dtoDetails.Factory?.EmployerDetail?.City,
+                    dtoDetails.Factory?.EmployerDetail?.AddressLine1,
+                    dtoDetails.Factory?.EmployerDetail?.AddressLine2,
+                    dtoDetails.Factory?.EmployerDetail?.Area,
+                    dtoDetails.Factory?.EmployerDetail?.Tehsil,
                     dtoDetails.Factory?.EmployerDetail?.District,
-                    dtoDetails.Factory?.EmployerDetail?.State,
-                    dtoDetails.Factory?.EmployerDetail?.PinCode
+                    dtoDetails.Factory?.EmployerDetail?.Pincode
                 }.Where(s => !string.IsNullOrWhiteSpace(s))),
 
                 // Manager / Agent details
@@ -2480,11 +2742,12 @@ namespace RajFabAPI.Services
                 ManagerDesignation = dtoDetails.Factory?.ManagerDetail?.Designation,
                 ManagerAddress = string.Join(", ", new[]
                 {
-                    dtoDetails.Factory?.ManagerDetail?.Address,
-                    dtoDetails.Factory?.ManagerDetail?.City,
+                    dtoDetails.Factory?.ManagerDetail?.AddressLine1,
+                    dtoDetails.Factory?.ManagerDetail?.AddressLine2,
+                    dtoDetails.Factory?.ManagerDetail?.Area,
+                    dtoDetails.Factory?.ManagerDetail?.Tehsil,
                     dtoDetails.Factory?.ManagerDetail?.District,
-                    dtoDetails.Factory?.ManagerDetail?.State,
-                    dtoDetails.Factory?.ManagerDetail?.PinCode
+                    dtoDetails.Factory?.ManagerDetail?.Pincode
                 }.Where(s => !string.IsNullOrWhiteSpace(s))),
 
                 // Other info
@@ -2564,7 +2827,7 @@ namespace RajFabAPI.Services
             if (dto == null) throw new ArgumentNullException(nameof(dto));
             var contractorDetails = dto.ContractorDetails != null
             ? $"Name: {dto.ContractorDetails.Name ?? "-"}\n" +
-            $"Address: {dto.ContractorDetails.Address ?? "-"}\n" +
+            $"Address: {dto.ContractorDetails.AddressLine1 + dto.ContractorDetails.AddressLine2 + dto.ContractorDetails.Area + dto.ContractorDetails.Tehsil + dto.ContractorDetails.District + dto.ContractorDetails.Pincode ?? "-"}\n" +
             $"Email: {dto.ContractorDetails.Email ?? "-"}\n" +
             $"Mobile: {dto.ContractorDetails.Mobile ?? "-"}\n" +
             $"Work: {dto.ContractorDetails.NameOfWork ?? "-"}\n" +

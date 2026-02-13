@@ -17,11 +17,9 @@ namespace RajFabAPI.DTOs
         public AudioVisualWorkDto? AudioVisualWork { get; set; }
         public PlantationDto? Plantation { get; set; }
 
-        public AdditionalEstablishmentDetailsDto? AdditionalEstablishmentDetails { get; set; }
-
         public PersonDetailDto? MainOwnerDetail { get; set; }
         public PersonDetailDto? ManagerOrAgentDetail { get; set; }
-        public ContractorDetailDto? ContractorDetail { get; set; }
+        public List<ContractorDetailDto>? ContractorDetail { get; set; }
 
         public string? Place { get; set; }
         public DateTime? Date { get; set; }         // use string for payload dates to match incoming JSON
@@ -42,27 +40,27 @@ namespace RajFabAPI.DTOs
     {
         public string? Id { get; set; }
         public Guid? FactoryTypeId { get; set; }
-        public string LinNumber { get; set; }
+        public string? LinNumber { get; set; }
+        public string BrnNumber { get; set; }
         public string EstablishmentName { get; set; }
-        public string EstablishmentAddress { get; set; }
-        public string DivisionId { get; set; }
+        public string EstablishmentAddressLine1 { get; set; }
+        public string EstablishmentAddressLine2 { get; set; }
         public string DistrictId { get; set; }
+        public string SubDivisionId { get; set; }
+        public string TehsilId { get; set; }
+        public string Area { get; set; }
+        public string EstablishmentPincode { get; set; }
+        public string EstablishmentEmail { get; set; }
+        public string? EstablishmentTelephone { get; set; }
+        public string EstablishmentMobile { get; set; }
         public string NatureOfWork { get; set; } = "";
-        public int DirectEmployees { get; set; }
-        public int ContractorEmployees { get; set; }
-
-        public string AreaId { get; set; }
-        public string? EstablishmentPincode { get; set; }
         public int TotalNumberOfEmployee { get; set; }
         public int TotalNumberOfContractEmployee { get; set; }
         public int TotalNumberOfInterstateWorker { get; set; }
         public string? AreaName { get; internal set; }
         public string? DistrictName { get; internal set; }
-        public string? DivisionName { get; internal set; }
-        public string? OwnershipTypeSector { get;  set; }
-        public string? ActivityAsPerNIC { get; set; }
-        public string? NICCodeDetail { get; set; }
-        public string? IdentificationOfEstablishment { get; set; }
+        public string? SubDivisionName { get; internal set; }
+        public string? TehsilName { get; internal set; }
         public DateTime CreatedAt { get; set; }
         public string? RegistrationNumber { get; set; }
         public string? Status { get; set; }
@@ -74,50 +72,64 @@ namespace RajFabAPI.DTOs
     public class PersonShortDto
     {
         public string? Role { get; set; }
-        public string? Name { get; set; }
-        public string? Designation { get; set; }
-        public string? Address { get; set; }
-        public string? City { get; set; }
-        public string? District { get; set; }
-        public string? State { get; set; }
-        public string? PinCode { get; set; }
+        public string Name { get; set; }
+        public string Designation { get; set; }
+        public string AddressLine1 { get; set; }
+        public string AddressLine2 { get; set; }
+        public string District { get; set; }
+        public string Tehsil { get; set; }
+        public string Area { get; set; }
+        public string Pincode { get; set; }
+        public string Email { get; set; }
+        public string? Telephone { get; set; }
+        public string Mobile { get; set; }
     }
 
     public class FactoryDto
     {
         public string? ManuacturingDetail { get; set; }
-        public string? FactorySituation { get; set; }
-        public string? AreaId { get; set; }
-        public string DistrictId { get; set; }
-        public string DivisionId { get; set; }
-        public string AreaName { get; set; }
-        public string DivisionName { get; set; }
-        public string DistrictName { get; set; }
-        public string? Address { get; set; }
-        public string? PinCode { get; set; }
         public string? Situation { get; set; }
+        public string DistrictId { get; set; }
+        public string SubDivisionId { get; set; }
+        public string TehsilId { get; set; }
+        public string? AddressLine1 { get; set; }
+        public string? AddressLine2 { get; set; }
+        public string? Area { get; set; }
+        public string? Pincode { get; set; }
+        public string? Email { get; set; }
+        public string? Telephone { get; set; }
+        public string? Mobile { get; set; }
+        public string? DistrictName { get; set; }
         public PersonShortDto? EmployerDetail { get; set; }
         public PersonShortDto? ManagerDetail { get; set; }
         public int? NumberOfWorker { get; set; }
         public decimal? SanctionedLoad { get; set; }
+        public string? SanctionedLoadUnit { get; set; }
+
+        public string? OwnershipTypeSector { get; set; }
+        public string? ActivityAsPerNIC { get; set; }
+        public string? NICCodeDetail { get; set; }
+        public string? IdentificationOfEstablishment { get; set; }
     }
 
     public class FactoryDetailsDto
     {
         public string? ManuacturingDetail { get; set; }
         public string? FactorySituation { get; set; }
-        public string? AreaId { get; set; }
+        public string? SubDivisionId { get; set; }
         
         public Guid EmployerId { get; set; }
         public Guid ManagerId { get; set; }
         
         public string DistrictId { get; set; }
-        public string DivisionId { get; set; }
-        public string AreaName { get; set; }
-        public string DivisionName { get; set; }
         public string DistrictName { get; set; }
-        public string? Address { get; set; }
-        public string? PinCode { get; set; }
+        public string Area { get; set; }
+        public string? AddressLine1 { get; set; }
+        public string? AddressLine2 { get; set; }
+        public string? Pincode { get; set; }
+        public string? Email { get; set; }
+        public string? Telephone { get; set; }
+        public string? Mobile { get; set; }
         public string? Situation { get; set; }
         public PersonShortDto? EmployerDetail { get; set; }
         public PersonShortDto? ManagerDetail { get; set; }
@@ -129,8 +141,15 @@ namespace RajFabAPI.DTOs
     {
         public string? ManuacturingDetail { get; set; }
         public string? Situation { get; set; }
-        public string? AreaId { get; set; }
-        public string? Address { get; set; }
+        public string? AddressLine1 { get; set; }
+        public string? AddressLine2 { get; set; }
+        public string SubDivisionId { get; set; }
+        public string TehsilId { get; set; }
+        public string? Area { get; set; }
+        public string? Pincode { get; set; }
+        public string? Email { get; set; }
+        public string? Telephone { get; set; }
+        public string? Mobile { get; set; }
         public PersonShortDto? EmployerDetail { get; set; }
         public PersonShortDto? ManagerDetail { get; set; }
         public int? MaxNumberOfWorkerAnyDay { get; set; }
@@ -141,8 +160,15 @@ namespace RajFabAPI.DTOs
     {
         public string? NatureOfService { get; set; }
         public string? Situation { get; set; }
-        public string? AreaId { get; set; }
-        public string? Address { get; set; }
+        public string? AddressLine1 { get; set; }
+        public string? AddressLine2{ get; set; }
+        public string SubDivisionId { get; set; }
+        public string TehsilId { get; set; }
+        public string? Area { get; set; }
+        public string? Pincode { get; set; }
+        public string? Email { get; set; }
+        public string? Telephone { get; set; }
+        public string? Mobile { get; set; }
         public PersonShortDto? EmployerDetail { get; set; }
         public PersonShortDto? ManagerDetail { get; set; }
         public int? MaxNumberOfWorkerDuringRegistation { get; set; }
@@ -161,8 +187,15 @@ namespace RajFabAPI.DTOs
     public class NewsPaperEstablishmentDto
     {
         public string? Name { get; set; }
-        public string? AreaId { get; set; }
-        public string? Address { get; set; }
+        public string? AddressLine1 { get; set; }
+        public string? AddressLine2 { get; set; }
+        public string SubDivisionId { get; set; }
+        public string TehsilId { get; set; }
+        public string? Area { get; set; }
+        public string? Pincode { get; set; }
+        public string? Email { get; set; }
+        public string? Telephone { get; set; }
+        public string? Mobile { get; set; }
         public PersonShortDto? EmployerDetail { get; set; }
         public PersonShortDto? ManagerDetail { get; set; }
         public int? MaxNumberOfWorkerAnyDay { get; set; }
@@ -172,8 +205,16 @@ namespace RajFabAPI.DTOs
     public class AudioVisualWorkDto
     {
         public string? Name { get; set; }
-        public string? AreaId { get; set; }
-        public string? Address { get; set; }
+        public string? AddressLine1 { get; set; }
+        public string? AddressLine2 { get; set; }
+        public string DistrictId { get; set; }
+        public string SubDivisionId { get; set; }
+        public string TehsilId { get; set; }
+        public string? Area { get; set; }
+        public string? Pincode { get; set; }
+        public string? Email { get; set; }
+        public string? Telephone { get; set; }
+        public string? Mobile { get; set; }
         public PersonShortDto? EmployerDetail { get; set; }
         public PersonShortDto? ManagerDetail { get; set; }
         public int? MaxNumberOfWorkerAnyDay { get; set; }
@@ -183,8 +224,15 @@ namespace RajFabAPI.DTOs
     public class PlantationDto
     {
         public string? Name { get; set; }
-        public string? AreaId { get; set; }
-        public string? Address { get; set; }
+        public string? AddressLine1 { get; set; }
+        public string? AddressLine2 { get; set; }
+        public string SubDivisionId { get; set; }
+        public string TehsilId { get; set; }
+        public string? Area { get; set; }
+        public string? Pincode { get; set; }
+        public string? Email { get; set; }
+        public string? Telephone { get; set; }
+        public string? Mobile { get; set; }
         public PersonShortDto? EmployerDetail { get; set; }
         public PersonShortDto? ManagerDetail { get; set; }
         public int? MaxNumberOfWorkerAnyDay { get; set; }
@@ -203,30 +251,34 @@ namespace RajFabAPI.DTOs
     {
         public string? Id { get; set; }
         public string? Name { get; set; }
-        public string? Address { get; set; }
         public string? Designation { get; set; }
         public string? Role { get; set; }
-
+        public string? TypeOfEmployer { get; set; }
         public string? RelationType { get; set; }
         public string? RelativeName { get; set; }
-        public string? Email { get; set; }
-        public string? Mobile { get; set; }
-        public string? State { get; set; }
+        public string? AddressLine1 { get; set; }
+        public string? AddressLine2 { get; set; }
         public string? District { get; set; }
-        public string? City { get; set; }
+        public string? Tehsil { get; set; }
+        public string? Area { get; set; }
         public string? Pincode { get; set; }
+        public string? Email { get; set; }
+        public string? Telephone { get; set; }
+        public string? Mobile { get; set; }
     }
 
     public class ContractorDetailDto
     {
         public string? Name { get; set; }
-        public string? Address { get; set; }
-        public string? Email { get; set; }
-        public string? Mobile { get; set; }
-        public string? State { get; set; }
+        public string? AddressLine1 { get; set; }
+        public string? AddressLine2 { get; set; }
         public string? District { get; set; }
-        public string? City { get; set; }
+        public string? Tehsil { get; set; }
+        public string? Area { get; set; }
         public string? Pincode { get; set; }
+        public string? Email { get; set; }
+        public string? Telephone { get; set; }
+        public string? Mobile { get; set; }
         public string? NameOfWork { get; set; }
         public int? MaxContractWorkerCountMale { get; set; }
         public int? MaxContractWorkerCountFemale { get; set; }

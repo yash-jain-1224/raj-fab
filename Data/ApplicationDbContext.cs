@@ -99,6 +99,7 @@ namespace RajFabAPI.Data
         public DbSet<ManagerChange> ManagerChanges { get; set; }
         public DbSet<AnnualReturn> AnnualReturns { get; set; }
         public DbSet<Appeal> Appeals { get; set; }
+        public DbSet<Transaction> Transactions { get; set; }
     
         public DbSet<ApplicationHistory> ApplicationHistories { get; set; }
 

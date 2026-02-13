@@ -20,6 +20,10 @@ namespace RajFabAPI.Models
         // Workflow status e.g. Pending, Approved, Rejected
         public string? Status { get; set; }
         public string Type { get; set; }
+
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal Amount { get; set; }
+
         public string? RegistrationNumber { get; set; }
         
         // Version column
@@ -30,7 +34,8 @@ namespace RajFabAPI.Models
         public string? Place { get; set; }
         public string? Signature { get; set; }
         public DateTime? Date { get; set; }
-
+        public bool IsESignCompleted { get; set; } = false;
+        public bool IsPaymentCompleted { get; set; } = false;
         public DateTime CreatedDate { get; set; } = DateTime.Now;
         public DateTime UpdatedDate { get; set; } = DateTime.Now;
     }

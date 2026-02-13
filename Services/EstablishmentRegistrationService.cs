@@ -883,9 +883,9 @@ namespace RajFabAPI.Services
                     join manager in _db.Set<PersonDetail>().AsNoTracking()
                         on reg.ManagerOrAgentDetailId equals manager.Id into managerJoin
                     from managerDetail in managerJoin.DefaultIfEmpty()
-                    join contractor in _db.Set<PersonDetail>().AsNoTracking()
-                        on reg.ContractorDetailId equals contractor.Id into contractorJoin
-                    from contractorDetail in contractorJoin.DefaultIfEmpty()
+                    from contractorDetail in _db.Set<PersonDetail>().AsNoTracking()
+                        .Where(c => !string.IsNullOrEmpty(reg.ContractorDetailId) && reg.ContractorDetailId.Contains(c.Id.ToString()))
+                        .DefaultIfEmpty()
                     join area in _db.Set<Models.City>().AsNoTracking()
                         on estDetail.SubDivisionId.ToString() equals area.Id.ToString() into areaJoin
                     from areaDetail in areaJoin.DefaultIfEmpty()
@@ -993,9 +993,9 @@ namespace RajFabAPI.Services
                     join manager in _db.Set<PersonDetail>().AsNoTracking()
                         on reg.ManagerOrAgentDetailId equals manager.Id into managerJoin
                     from managerDetail in managerJoin.DefaultIfEmpty()
-                    join contractor in _db.Set<PersonDetail>().AsNoTracking()
-                        on reg.ContractorDetailId equals contractor.Id into contractorJoin
-                    from contractorDetail in contractorJoin.DefaultIfEmpty()
+                    from contractorDetail in _db.Set<PersonDetail>().AsNoTracking()
+                        .Where(c => !string.IsNullOrEmpty(reg.ContractorDetailId) && reg.ContractorDetailId.Contains(c.Id.ToString()))
+                        .DefaultIfEmpty()
                     join area in _db.Set<Models.City>().AsNoTracking()
                         on estDetail.SubDivisionId.ToString() equals area.Id.ToString() into areaJoin
                     from areaDetail in areaJoin.DefaultIfEmpty()
@@ -1186,7 +1186,7 @@ namespace RajFabAPI.Services
             {
                 var contractor = await _db.Set<ContractorDetail>().AsNoTracking()
                     .Include(c => c.ContractorPersonalDetail)
-                    .FirstOrDefaultAsync(x => x.ContractorPersonalDetailId == reg.ContractorDetailId);
+                    .FirstOrDefaultAsync(x => reg.ContractorDetailId.Contains(x.ContractorPersonalDetailId.ToString()));
                 if (contractor != null)
                 {
                     dto.ContractorDetail = new ContractorDetailDto

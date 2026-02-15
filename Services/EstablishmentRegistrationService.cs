@@ -60,7 +60,7 @@ namespace RajFabAPI.Services
         public async Task<string> SaveEstablishmentAsync(CreateEstablishmentRegistrationDto dto, Guid userId, string? type, string? establishmentRegistrationId)
         {
             if (dto == null) throw new ArgumentNullException(nameof(dto));
-            if (string.IsNullOrWhiteSpace(dto.EstablishmentDetails?.EstablishmentName))
+            if (string.IsNullOrWhiteSpace(dto.EstablishmentDetails?.Name))
                 throw new ArgumentException("EstablishmentDetails.EstablishmentName is required.", nameof(dto));
             var User = await _db.Users
                 .FirstOrDefaultAsync(u => u.Id == userId);
@@ -136,16 +136,16 @@ namespace RajFabAPI.Services
                     {
                         BrnNumber = dto.EstablishmentDetails.BrnNumber,
                         LinNumber = dto.EstablishmentDetails.LinNumber != null ? dto.EstablishmentDetails.LinNumber : "",
-                        EstablishmentName = dto.EstablishmentDetails.EstablishmentName,
-                        AddressLine1 = dto.EstablishmentDetails.EstablishmentAddressLine1,
-                        AddressLine2 = dto.EstablishmentDetails.EstablishmentAddressLine2,
+                        EstablishmentName = dto.EstablishmentDetails.Name,
+                        AddressLine1 = dto.EstablishmentDetails.AddressLine1,
+                        AddressLine2 = dto.EstablishmentDetails.AddressLine2,
                         SubDivisionId = dto.EstablishmentDetails.SubDivisionId,
                         TehsilId = dto.EstablishmentDetails.TehsilId,
                         Area = dto.EstablishmentDetails.Area,
-                        Pincode = dto.EstablishmentDetails.EstablishmentPincode,
-                        Email = dto.EstablishmentDetails.EstablishmentEmail,
-                        Telephone = dto.EstablishmentDetails.EstablishmentTelephone,
-                        Mobile = dto.EstablishmentDetails.EstablishmentMobile,
+                        Pincode = dto.EstablishmentDetails.Pincode,
+                        Email = dto.EstablishmentDetails.Email,
+                        Telephone = dto.EstablishmentDetails.Telephone,
+                        Mobile = dto.EstablishmentDetails.Mobile,
                         TotalNumberOfEmployee = dto.EstablishmentDetails.TotalNumberOfEmployee,
                         TotalNumberOfContractEmployee = dto.EstablishmentDetails.TotalNumberOfContractEmployee,
                         TotalNumberOfInterstateWorker = dto.EstablishmentDetails.TotalNumberOfInterstateWorker,
@@ -906,14 +906,17 @@ namespace RajFabAPI.Services
                        {
                            Id = estDetail != null ? estDetail.Id.ToString() : null,
                            LinNumber = estDetail != null ? estDetail.LinNumber : null,
-                           EstablishmentName = estDetail != null ? estDetail.EstablishmentName : null,
+                           Name = estDetail != null ? estDetail.EstablishmentName : null,
                            SubDivisionId = estDetail != null ? estDetail.SubDivisionId : null,
                            AreaName = areaDetail != null ? areaDetail.Name : null,
                            DistrictId = areaDetail != null ? areaDetail.DistrictId.ToString() : null,
                            DistrictName = districtDetail != null ? districtDetail.Name : null,
-                           EstablishmentAddressLine1 = estDetail != null ? estDetail.AddressLine1 : null,
-                           EstablishmentAddressLine2 = estDetail != null ? estDetail.AddressLine2 : null,
-                           EstablishmentPincode = estDetail != null ? estDetail.Pincode : null,
+                           AddressLine1 = estDetail != null ? estDetail.AddressLine1 : null,
+                           AddressLine2 = estDetail != null ? estDetail.AddressLine2 : null,
+                           Pincode = estDetail != null ? estDetail.Pincode : null,
+                           Email = estDetail != null ? estDetail.Email : null,
+                           Mobile = estDetail != null ? estDetail.Mobile : null,
+                           Telephone = estDetail != null ? estDetail.Telephone : null,
                        },
                        MainOwnerDetail = new PersonDetailDto
                        {
@@ -1016,14 +1019,17 @@ namespace RajFabAPI.Services
                         {
                             Id = estDetail != null ? estDetail.Id.ToString() : null,
                             LinNumber = estDetail != null ? estDetail.LinNumber : null,
-                            EstablishmentName = estDetail != null ? estDetail.EstablishmentName : null,
+                            Name = estDetail != null ? estDetail.EstablishmentName : null,
                             SubDivisionId = estDetail != null ? estDetail.SubDivisionId : null,
                             AreaName = areaDetail != null ? areaDetail.Name : null,
                             DistrictId = areaDetail != null ? areaDetail.DistrictId.ToString() : null,
                             DistrictName = districtDetail != null ? districtDetail.Name : null,
-                            EstablishmentAddressLine1 = estDetail != null ? estDetail.AddressLine1 : null,
-                            EstablishmentAddressLine2 = estDetail != null ? estDetail.AddressLine2 : null,
-                            EstablishmentPincode = estDetail != null ? estDetail.Pincode : null,
+                            AddressLine1 = estDetail != null ? estDetail.AddressLine1 : null,
+                            AddressLine2 = estDetail != null ? estDetail.AddressLine2 : null,
+                            Pincode = estDetail != null ? estDetail.Pincode : null,
+                            Email = estDetail != null ? estDetail.Email : null,
+                            Telephone = estDetail != null ? estDetail.Telephone : null,
+                            Mobile = estDetail != null ? estDetail.Mobile : null,
                         },
                         MainOwnerDetail = new PersonDetailDto
                         {
@@ -1116,7 +1122,8 @@ namespace RajFabAPI.Services
                     {
                         Id = reg.EstablishmentRegistrationId,
                         LinNumber = est.LinNumber,
-                        EstablishmentName = est.EstablishmentName,
+                        BrnNumber = est.BrnNumber,
+                        Name = est.EstablishmentName,
                         SubDivisionId = est.SubDivisionId,
                         AreaName = areaDetail.Name,
                         DistrictId = areaDetail.DistrictId.ToString(),
@@ -1124,9 +1131,12 @@ namespace RajFabAPI.Services
                         TotalNumberOfEmployee = est.TotalNumberOfEmployee ?? 0,
                         TotalNumberOfContractEmployee = est.TotalNumberOfContractEmployee ?? 0,
                         TotalNumberOfInterstateWorker = est.TotalNumberOfInterstateWorker ?? 0,
-                        EstablishmentAddressLine1 = est.AddressLine1,
-                        EstablishmentAddressLine2 = est.AddressLine2,
-                        EstablishmentPincode = est.Pincode
+                        AddressLine1 = est.AddressLine1,
+                        AddressLine2 = est.AddressLine2,
+                        Pincode = est.Pincode,
+                        Email = est.Email,
+                        Telephone = est.Telephone,
+                        Mobile = est.Mobile,
 
                     }).FirstOrDefaultAsync();
                 dto.EstablishmentDetail = estDetail;
@@ -1263,7 +1273,13 @@ namespace RajFabAPI.Services
                                 ManagerId = f.ManagerId,
 
                                 NumberOfWorker = f.NumberOfWorker ?? 0,
-                                SanctionedLoad = f.SanctionedLoad ?? 0
+                                SanctionedLoad = f.SanctionedLoad ?? 0,
+                                SanctionedLoadUnit = f.SanctionedLoadUnit,
+
+                                OwnershipTypeSector  = f.OwnershipTypeSector,
+                                ActivityAsPerNIC =f.ActivityAsPerNIC,
+                                NICCodeDetail  = f.NICCodeDetail,
+                                IdentificationOfEstablishment  = f.IdentificationOfEstablishment
                             }
                         ).FirstOrDefaultAsync();
 
@@ -1284,7 +1300,11 @@ namespace RajFabAPI.Services
                                 Mobile = factory.Mobile ?? "",
                                 NumberOfWorker = factory.NumberOfWorker,
                                 SanctionedLoad = factory.SanctionedLoad,
-                                Situation = factory.Situation
+                                Situation = factory.Situation,
+                                OwnershipTypeSector = factory.OwnershipTypeSector,
+                                ActivityAsPerNIC = factory.ActivityAsPerNIC,
+                                NICCodeDetail = factory.NICCodeDetail,
+                                IdentificationOfEstablishment = factory.IdentificationOfEstablishment
                             };
                             if (factory.EmployerId != null)
                             {
@@ -1559,12 +1579,17 @@ namespace RajFabAPI.Services
                 {
                     Id = reg.EstablishmentRegistrationId,
                     LinNumber = est.LinNumber,
-                    EstablishmentName = est.EstablishmentName,
-                    EstablishmentAddressLine1 = est.AddressLine1,
-                    EstablishmentAddressLine2 = est.AddressLine2,
+                    BrnNumber = est.BrnNumber,
+                    Name = est.EstablishmentName,
+                    AddressLine1 = est.AddressLine1,
+                    AddressLine2 = est.AddressLine2,
                     Area = est.Area,
                     DistrictId = area.DistrictId.ToString(),
                     DistrictName = district.Name,
+                    Pincode = est.Pincode,
+                    Email = est.Email,
+                    Telephone = est.Telephone,
+                    Mobile = est.Mobile,
                     TotalNumberOfEmployee = est.TotalNumberOfEmployee ?? 0,
                     TotalNumberOfContractEmployee = est.TotalNumberOfContractEmployee ?? 0,
                     TotalNumberOfInterstateWorker = est.TotalNumberOfInterstateWorker ?? 0,
@@ -1742,7 +1767,7 @@ namespace RajFabAPI.Services
         public async Task<string> UpdateEstablishmentAsync(string registrationId, CreateEstablishmentRegistrationDto dto, Guid userId)
         {
             if (dto == null) throw new ArgumentNullException(nameof(dto));
-            if (string.IsNullOrWhiteSpace(dto.EstablishmentDetails?.EstablishmentName))
+            if (string.IsNullOrWhiteSpace(dto.EstablishmentDetails?.Name))
                 throw new ArgumentException("EstablishmentDetails.EstablishmentName is required.", nameof(dto));
 
             var existingReg = await _db.Set<EstablishmentRegistration>().FirstOrDefaultAsync(r => r.EstablishmentRegistrationId == registrationId);
@@ -1761,10 +1786,14 @@ namespace RajFabAPI.Services
                         if (estDetail != null)
                         {
                             estDetail.LinNumber = dto.EstablishmentDetails.LinNumber;
-                            estDetail.EstablishmentName = dto.EstablishmentDetails.EstablishmentName;
-                            estDetail.AddressLine1 = dto.EstablishmentDetails.EstablishmentAddressLine1;
-                            estDetail.AddressLine2 = dto.EstablishmentDetails.EstablishmentAddressLine2;
-                            estDetail.Pincode = dto.EstablishmentDetails.EstablishmentPincode;
+                            estDetail.BrnNumber = dto.EstablishmentDetails.BrnNumber;
+                            estDetail.EstablishmentName = dto.EstablishmentDetails.Name;
+                            estDetail.AddressLine1 = dto.EstablishmentDetails.AddressLine1;
+                            estDetail.AddressLine2 = dto.EstablishmentDetails.AddressLine2;
+                            estDetail.Pincode = dto.EstablishmentDetails.Pincode;
+                            estDetail.Email = dto.EstablishmentDetails.Email;
+                            estDetail.Telephone = dto.EstablishmentDetails.Telephone;
+                            estDetail.Mobile = dto.EstablishmentDetails.Mobile;
                             estDetail.Area = dto.EstablishmentDetails.Area;
                             estDetail.TotalNumberOfEmployee = dto.EstablishmentDetails.TotalNumberOfEmployee;
                             estDetail.TotalNumberOfContractEmployee = dto.EstablishmentDetails.TotalNumberOfContractEmployee;
@@ -1779,10 +1808,14 @@ namespace RajFabAPI.Services
                         estDetail = new EstablishmentDetail
                         {
                             LinNumber = dto.EstablishmentDetails.LinNumber,
-                            EstablishmentName = dto.EstablishmentDetails.EstablishmentName,
-                            AddressLine1 = dto.EstablishmentDetails.EstablishmentAddressLine1,
-                            AddressLine2 = dto.EstablishmentDetails.EstablishmentAddressLine2,
-                            Pincode = dto.EstablishmentDetails.EstablishmentPincode,
+                            BrnNumber = dto.EstablishmentDetails.BrnNumber,
+                            EstablishmentName = dto.EstablishmentDetails.Name,
+                            AddressLine1 = dto.EstablishmentDetails.AddressLine1,
+                            AddressLine2 = dto.EstablishmentDetails.AddressLine2,
+                            Pincode = dto.EstablishmentDetails.Pincode,
+                            Email = dto.EstablishmentDetails.Email,
+                            Telephone = dto.EstablishmentDetails.Telephone,
+                            Mobile = dto.EstablishmentDetails.Mobile,
                             Area = dto.EstablishmentDetails.Area,
                             TotalNumberOfEmployee = dto.EstablishmentDetails.TotalNumberOfEmployee,
                             TotalNumberOfContractEmployee = dto.EstablishmentDetails.TotalNumberOfContractEmployee,
@@ -2709,7 +2742,7 @@ namespace RajFabAPI.Services
                 DeclarationPlace = dtoDetails.RegistrationDetail?.Place,
 
                 // Establishment info
-                EstablishmentName = dtoDetails.EstablishmentDetail?.EstablishmentName,
+                EstablishmentName = dtoDetails.EstablishmentDetail?.Name,
                 NatureOfWork = dtoDetails.EstablishmentDetail?.NatureOfWork,
                 EstablishmentType = dtoDetails.EstablishmentTypes.FirstOrDefault() ?? "Factory",
 
@@ -3066,18 +3099,25 @@ namespace RajFabAPI.Services
             _ = estTable.AddCell(new PdfCell().Add(new Paragraph(dto.EstablishmentDetail.LinNumber ?? "-")));
 
             _ = estTable.AddCell(new PdfCell().Add(new Paragraph("Name").SetFont(boldFont)));
-            _ = estTable.AddCell(new PdfCell().Add(new Paragraph(dto.EstablishmentDetail.EstablishmentName ?? "-")));
+            _ = estTable.AddCell(new PdfCell().Add(new Paragraph(dto.EstablishmentDetail.Name ?? "-")));
 
             _ = estTable.AddCell(new PdfCell().Add(new Paragraph("Address").SetFont(boldFont)));
             _ = estTable.AddCell(new PdfCell()
                 .Add(new Paragraph(FormatAddress(
-                    dto.EstablishmentDetail.EstablishmentAddressLine1,
-                    dto.EstablishmentDetail.EstablishmentAddressLine2,
+                    dto.EstablishmentDetail.AddressLine1,
+                    dto.EstablishmentDetail.AddressLine2,
                     dto.EstablishmentDetail.Area,
                     dto.EstablishmentDetail.TehsilName,
                     dto.EstablishmentDetail.DistrictName,
-                    dto.EstablishmentDetail.EstablishmentPincode
+                    dto.EstablishmentDetail.Pincode
                 ))));
+
+            _ = estTable.AddCell(new PdfCell().Add(new Paragraph("Email").SetFont(boldFont)));
+            _ = estTable.AddCell(new PdfCell().Add(new Paragraph(dto.EstablishmentDetail.Email ?? "-")));
+
+            _ = estTable.AddCell(new PdfCell().Add(new Paragraph("Mobile").SetFont(boldFont)));
+            _ = estTable.AddCell(new PdfCell().Add(new Paragraph(dto.EstablishmentDetail.Mobile ?? "-")));
+
             _ = estTable.AddCell(new PdfCell().Add(new Paragraph("Direct Employees").SetFont(boldFont)));
             _ = estTable.AddCell(new PdfCell().Add(new Paragraph(dto.EstablishmentDetail.TotalNumberOfEmployee.ToString() ?? "-")));
 

@@ -19,7 +19,7 @@ namespace RajFabAPI.DTOs
         [MaxLength(255)]
         public string Place { get; set; } = string.Empty;
 
-        public DateTime Date { get; set; } = DateTime.UtcNow;
+        public DateTime Date { get; set; } = DateTime.Now;
 
         public string? ManagerSignature { get; set; }
         public string? OccupierSignature { get; set; }

@@ -304,7 +304,7 @@ namespace RajFabAPI.Services
                     if (establishment != null)
                     {
                         establishment.IsPaymentCompleted = true;
-                        establishment.UpdatedDate = DateTime.UtcNow;
+                        establishment.UpdatedDate = DateTime.Now;
                     }
 
                     await _db.SaveChangesAsync();

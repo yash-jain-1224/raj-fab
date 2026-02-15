@@ -58,8 +58,8 @@ namespace RajFabAPI.Services
                 ApplicationId = dto.ApplicationId,
                 PaymentReq = dto.PaymentReq,
                 PaymentRes = dto.PaymentRes,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.Now,
+                UpdatedAt = DateTime.Now,
                 Remarks = dto.Remarks ?? "Payment Initiated",
                 Message = dto.Message ?? string.Empty
             };

@@ -15,6 +15,5 @@ namespace RajFabAPI.Services.Interface
         Task<UserResponseDto> CreateAsync(CreateUserDto dto);
         Task<UserResponseDto?> UpdateAsync(Guid id, CreateUserDto dto);
         Task<bool> DeleteAsync(Guid id);
-        string Encrypt(string plainText, string encryptionKey);
     }
 }

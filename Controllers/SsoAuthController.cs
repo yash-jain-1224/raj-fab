@@ -20,7 +20,7 @@ namespace RajFabAPI.Controllers
         private readonly JwtService _jwt;
         private readonly IConfiguration _config;
         private readonly IHttpClientFactory _httpClientFactory;
-        private readonly IUserService _userService;
+        private readonly IUserServiceNew _userService;
 
         private static readonly JsonSerializerOptions JsonOptions =
             new() { PropertyNameCaseInsensitive = true };
@@ -29,7 +29,7 @@ namespace RajFabAPI.Controllers
             ApplicationDbContext context,
             JwtService jwt,
             IConfiguration config,
-            IUserService userService,
+            IUserServiceNew userService,
             IHttpClientFactory httpClientFactory)
         {
             _context = context;

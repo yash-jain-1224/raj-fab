@@ -122,7 +122,7 @@ namespace RajFabAPI.Controllers
 
                 var recordId = Guid.NewGuid();
                 var columns = new List<string> { "Id", "CreatedAt", "UpdatedAt" };
-                var values = new List<object> { recordId, DateTime.UtcNow, DateTime.UtcNow };
+                var values = new List<object> { recordId, DateTime.Now, DateTime.Now };
 
                 // Add user-provided data with validation
                 foreach (var kvp in data)
@@ -202,7 +202,7 @@ namespace RajFabAPI.Controllers
                     return BadRequest("Dynamic table not found.");
 
                 var updatePairs = new List<string> { "[UpdatedAt] = {0}" };
-                var values = new List<object> { DateTime.UtcNow };
+                var values = new List<object> { DateTime.Now };
 
                 // Add user-provided data with validation
                 foreach (var kvp in data)

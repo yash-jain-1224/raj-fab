@@ -102,11 +102,11 @@ namespace RajFabAPI.Services
                 ApplicantName = ApplicantName.Replace("@rajasthan.gov.in", "");
                 ApplicantName = Regex.Replace(ApplicantName, @"[^a-zA-Z]+", "");
 
-                string prnNumber = $"PRN{DateTime.UtcNow:yyyyMMddHHmmssfff}{Random.Shared.Next(100, 999)}";
+                string prnNumber = $"PRN{DateTime.Now:yyyyMMddHHmmss}{Random.Shared.Next(100, 999)}";
 
                 string rppTxnId = Guid.NewGuid().ToString("N");
 
-                string requestTimeStamp = DateTime.UtcNow.ToString("yyyyMMddHHmmssfff");
+                string requestTimeStamp = DateTime.Now.ToString("yyyyMMddHHmmssfff");
 
                 var transaction = new Transaction
                 {
@@ -120,8 +120,8 @@ namespace RajFabAPI.Services
                     Amount = AMOUNT,
                     PaidAmount = 0,
                     Status = "Pending",
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.Now,
+                    UpdatedAt = DateTime.Now
                 };
 
                 _db.Transactions.Add(transaction);
@@ -154,7 +154,7 @@ namespace RajFabAPI.Services
                 string postEnPara = AESEncrypt(json, EnDnKEY);
 
                 transaction.PaymentReq = json;
-                transaction.UpdatedAt = DateTime.UtcNow;
+                transaction.UpdatedAt = DateTime.Now;
 
                 await _db.SaveChangesAsync();
 

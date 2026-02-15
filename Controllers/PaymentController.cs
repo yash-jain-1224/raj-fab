@@ -74,17 +74,24 @@ namespace RajFabAPI.Controllers
 
                 if (transaction != null)
                 {
+                    // Safely parse payment amount
+                    decimal paidAmount = 0;
+                    if (!string.IsNullOrWhiteSpace(paymentResponse.PAYMENTAMOUNT))
+                    {
+                        decimal.TryParse(paymentResponse.PAYMENTAMOUNT, out paidAmount);
+                    }
+
                     var updateDto = new UpdateTransactionDto
                     {
                         PrnNumber = transaction.PrnNumber,
-                        ModuleId = transaction.ModuleId,
-                        UserId = transaction.UserId,
+                        ModuleId = transaction.ModuleId.ToString(),
+                        UserId = transaction.UserId.ToString(),
                         Amount = transaction.Amount,
-                        PaidAmount = Convert.ToDecimal(paymentResponse.PAYMENTAMOUNT ?? "0"),
-                        Status = paymentResponse.STATUS,
+                        PaidAmount = paidAmount,
+                        Status = paymentResponse.STATUS ?? transaction.Status,
                         ApplicationId = transaction.ApplicationId,
                         PaymentReq = transaction.PaymentReq,
-                        PaymentRes = json
+                        PaymentRes = json,
                     };
 
                     await _transactionService.UpdateAsync(transaction.Id, updateDto);

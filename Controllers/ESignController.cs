@@ -54,7 +54,7 @@ namespace RajFabAPI.Controllers
                 return BadRequest("Please provide application Id");
             }
 
-            var applicationData = await(
+            var applicationData = await (
                     from appReg in _db.Set<ApplicationRegistration>()
                     join module in _db.Set<FormModule>()
                         on appReg.ModuleId equals module.Id
@@ -89,7 +89,7 @@ namespace RajFabAPI.Controllers
                         personLocation = "Jaipur, Rajastha",
                         prn = "RAJFAB" + string.Concat(Guid.NewGuid().ToString("N").Where(char.IsDigit))
                     };
-                     generateSignedXml_Response? generateSignedXml_Response = await generateSignedXml(Signrequest, authToken);
+                    generateSignedXml_Response? generateSignedXml_Response = await generateSignedXml(Signrequest, authToken);
 
                     if (generateSignedXml_Response == null || generateSignedXml_Response.status != "SUCCESS")
                         return BadRequest("Failed to generate signed XML");
@@ -181,7 +181,7 @@ namespace RajFabAPI.Controllers
         //            prn = "RAJFAB" + string.Concat(Guid.NewGuid().ToString("N").Where(char.IsDigit))
         //        };
         //        generateSignedXml_Response? generateSignedXml_Response = await generateSignedXml(Signrequest, authToken);
-                
+
         //        if (generateSignedXml_Response == null || generateSignedXml_Response.status != "SUCCESS")
         //            return BadRequest("Failed to generate signed XML");
         //        else
@@ -206,12 +206,12 @@ namespace RajFabAPI.Controllers
         {
             if (string.IsNullOrEmpty(esignData))
                 return BadRequest("Invalid eSign response data");
-                       
+
             var doc = XDocument.Parse(esignData);
             string txn = doc.Root?.Attribute("txn")?.Value;
 
             var html = "";
-            
+
             EsignTempData? esignTempData = _cache.Get<EsignTempData>(txn);
             if (esignTempData == null)
                 return BadRequest("Invalid or expired transaction");

@@ -31,22 +31,37 @@ namespace RajFabAPI.Services
                 .FirstOrDefaultAsync(t => t.Id == id);
         }
 
+        // Get transaction by PRN
+        public async Task<Transaction?> GetByPrnAsync(string prn)
+        {
+            return await _db.Transactions
+                .FirstOrDefaultAsync(t => t.PrnNumber == prn);
+        }
+
         // Create a new transaction
         public async Task<Transaction> AddAsync(CreateTransactionDto dto)
         {
+            if (!Guid.TryParse(dto.ModuleId, out Guid moduleGuid))
+                throw new ArgumentException("Invalid ModuleId");
+
+            if (!Guid.TryParse(dto.UserId, out Guid userGuid))
+                throw new ArgumentException("Invalid UserId");
+
             var transaction = new Transaction
             {
                 PrnNumber = dto.PrnNumber,
-                ModuleId = dto.ModuleId,
-                UserId = dto.UserId,
+                ModuleId = moduleGuid,
+                UserId = userGuid,
                 Amount = dto.Amount,
-                PaidAmount = dto.PaidAmount,
-                Status = dto.Status ?? "Pending",
+                PaidAmount = dto.PaidAmount ?? 0,
+                Status = string.IsNullOrWhiteSpace(dto.Status) ? "Pending" : dto.Status,
                 ApplicationId = dto.ApplicationId,
                 PaymentReq = dto.PaymentReq,
                 PaymentRes = dto.PaymentRes,
                 CreatedAt = DateTime.UtcNow,
-                Remarks = "Payment Initiated"
+                UpdatedAt = DateTime.UtcNow,
+                Remarks = dto.Remarks ?? "Payment Initiated",
+                Message = dto.Message ?? string.Empty
             };
 
             _db.Transactions.Add(transaction);
@@ -62,25 +77,24 @@ namespace RajFabAPI.Services
             if (transaction == null)
                 return null;
 
-            transaction.PrnNumber = dto.PrnNumber;
-            transaction.ModuleId = dto.ModuleId;
-            transaction.UserId = dto.UserId;
-            transaction.Amount = dto.Amount;
-            transaction.PaidAmount = dto.PaidAmount;
-            transaction.Status = dto.Status;
-            transaction.ApplicationId = dto.ApplicationId;
-            transaction.PaymentReq = dto.PaymentReq;
-            transaction.PaymentRes = dto.PaymentRes;
-            transaction.UpdatedAt = DateTime.UtcNow;
+            if (!Guid.TryParse(dto.ModuleId, out Guid moduleGuid))
+                throw new ArgumentException("Invalid ModuleId");
 
+            if (!Guid.TryParse(dto.UserId, out Guid userGuid))
+                throw new ArgumentException("Invalid UserId");
+
+            transaction.PrnNumber = dto.PrnNumber ?? transaction.PrnNumber;
+            transaction.ModuleId = moduleGuid;
+            transaction.UserId = userGuid;
+            transaction.Amount = dto.Amount;
+            transaction.PaidAmount = dto.PaidAmount ?? transaction.PaidAmount;
+            transaction.Status = string.IsNullOrWhiteSpace(dto.Status) ? transaction.Status : dto.Status;
+            transaction.ApplicationId = dto.ApplicationId ?? transaction.ApplicationId;
+            transaction.PaymentReq = dto.PaymentReq ?? transaction.PaymentReq;
+            transaction.PaymentRes = dto.PaymentRes ?? transaction.PaymentRes;
+            transaction.UpdatedAt = DateTime.Now;
             await _db.SaveChangesAsync();
             return transaction;
         }
-        public async Task<Transaction?> GetByPrnAsync(string prn)
-        {
-            return await _db.Transactions
-                .FirstOrDefaultAsync(t => t.PrnNumber == prn);
-        }
-
     }
 }

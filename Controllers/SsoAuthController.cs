@@ -5,6 +5,10 @@ using RajFabAPI.Models;
 using RajFabAPI.Services;
 using System.Text.Json;
 using RajFabAPI.DTOs;
+using System.ComponentModel.DataAnnotations;
+using System.Security.Cryptography;
+using System.Text;
+using RajFabAPI.Services.Interface;
 
 namespace RajFabAPI.Controllers
 {
@@ -16,6 +20,7 @@ namespace RajFabAPI.Controllers
         private readonly JwtService _jwt;
         private readonly IConfiguration _config;
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IUserService _userService;
 
         private static readonly JsonSerializerOptions JsonOptions =
             new() { PropertyNameCaseInsensitive = true };
@@ -24,12 +29,14 @@ namespace RajFabAPI.Controllers
             ApplicationDbContext context,
             JwtService jwt,
             IConfiguration config,
+            IUserService userService,
             IHttpClientFactory httpClientFactory)
         {
             _context = context;
             _jwt = jwt;
             _config = config;
             _httpClientFactory = httpClientFactory;
+            _userService = userService;
         }
 
         [HttpPost("sso-callback")]
@@ -58,7 +65,8 @@ namespace RajFabAPI.Controllers
                 await _context.SaveChangesAsync();
             }
 
-            var userData = new UserWithOfficeDto{
+            var userData = new UserWithOfficeDto
+            {
                 Id = user.Id,
                 Username = user.Username,
                 FullName = user.FullName,
@@ -253,6 +261,72 @@ namespace RajFabAPI.Controllers
             public string Mobile { get; set; } = "";
             public string Gender { get; set; } = "";
             public string UserType { get; set; } = "";
+        }
+
+        [HttpPost("SsoLogin")]
+        public async Task<IActionResult> SsoLogin([FromBody] LoginRequest loginRequest)
+        {
+            try
+            {
+                var ssoLoginUrl = $"{_config["RajSSO:BaseUrl"]}" + "/SSOREST/SSOAuthenticationMobileNew";
+                string encryptedPassword = _userService.Encrypt(loginRequest.Password, _config["RajSSO:Encryption"]);
+
+                SsoLoginRequest ssoLoginRequest = new SsoLoginRequest
+                {
+                    UserName = loginRequest.Username,
+                    Password = encryptedPassword
+                };
+
+                var client = new HttpClient();
+                var request = new HttpRequestMessage(HttpMethod.Post, ssoLoginUrl);
+                var json = JsonSerializer.Serialize(ssoLoginRequest);
+                request.Content = new StringContent(json, Encoding.UTF8, "application/json");
+                var response = await client.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+                if (!response.IsSuccessStatusCode)
+                    return NotFound();
+
+                var jsonres = await response.Content.ReadAsStringAsync();
+                SsoLoginResponse? result = JsonSerializer.Deserialize<SsoLoginResponse?>(jsonres, JsonOptions);
+                return Ok(result);
+            }
+            catch
+            {
+                return NotFound();
+            }
+        }
+
+        [HttpPost("SsoUserProfile")]
+        public async Task<IActionResult> SsoUserProfile([FromBody] UserProfileRequest userProfileRequest)
+        {
+            try
+            {
+                var ssoLoginUrl = $"{_config["RajSSO:BaseUrl"]}" + "/SSOREST/GetUserDetailNew";
+                string encryptedPassword = _userService.Encrypt(_config["RajSSO:Password"], _config["RajSSO:Encryption"]);
+                SsoUserProfileRequest ssoUserProfileRequest = new SsoUserProfileRequest
+                {
+                    SSOID = userProfileRequest.samAccountName,
+                    WSUSERNAME = _config["RajSSO:Username"],
+                    WSPASSWORD = encryptedPassword
+                };
+
+                var client = new HttpClient();
+                var request = new HttpRequestMessage(HttpMethod.Post, ssoLoginUrl);
+                var json = JsonSerializer.Serialize(ssoUserProfileRequest);
+                request.Content = new StringContent(json, Encoding.UTF8, "application/json");
+                var response = await client.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+                if (!response.IsSuccessStatusCode)
+                    return NotFound();
+
+                var jsonres = await response.Content.ReadAsStringAsync();
+                SsoUserProfileResponse? result = JsonSerializer.Deserialize<SsoUserProfileResponse?>(jsonres, JsonOptions);
+                return Ok(result);
+            }
+            catch
+            {
+                return NotFound();
+            }
         }
     }
 }

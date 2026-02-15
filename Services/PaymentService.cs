@@ -102,14 +102,20 @@ namespace RajFabAPI.Services
                 ApplicantName = ApplicantName.Replace("@rajasthan.gov.in", "");
                 ApplicantName = Regex.Replace(ApplicantName, @"[^a-zA-Z]+", "");
 
-                Guid guid = Guid.NewGuid();
-                string PrnNumber = "PRN" + guid.ToString().Split('-')[4];
+                string prnNumber = $"PRN{DateTime.UtcNow:yyyyMMddHHmmssfff}{Random.Shared.Next(100, 999)}";
+
+                string rppTxnId = Guid.NewGuid().ToString("N");
+
+                string requestTimeStamp = DateTime.UtcNow.ToString("yyyyMMddHHmmssfff");
 
                 var transaction = new Transaction
                 {
-                    PrnNumber = PrnNumber,
-                    ModuleId = ModuleId,
-                    UserId = UserId,
+                    PrnNumber = prnNumber,
+                    ModuleId = Guid.Parse(ModuleId),
+                    UserId = Guid.Parse(UserId),
+                    MerchantCode = MERCHANTCODE,
+                    ReqTimeStamp = requestTimeStamp,
+                    RPPTXNID = rppTxnId,
                     ApplicationId = ApplicationId,
                     Amount = AMOUNT,
                     PaidAmount = 0,
@@ -121,11 +127,11 @@ namespace RajFabAPI.Services
                 _db.Transactions.Add(transaction);
                 await _db.SaveChangesAsync();
 
-                EmitraNewPaymentReq paymentReq = new EmitraNewPaymentReq
+                var paymentReq = new EmitraNewPaymentReq
                 {
                     MERCHANTCODE = MERCHANTCODE,
-                    PRN = PrnNumber,
-                    REQTIMESTAMP = DateTime.UtcNow.ToString("yyyyMMddHHmmssfff"),
+                    PRN = prnNumber,
+                    REQTIMESTAMP = requestTimeStamp,
                     AMOUNT = transaction.Amount.ToString("0.00"),
                     SUCCESSURL = RU,
                     FAILUREURL = RU,
@@ -134,17 +140,15 @@ namespace RajFabAPI.Services
                     USERNAME = ApplicantName,
                     USERMOBILE = ApplicantMobile,
                     USEREMAIL = ApplicantEmail,
-                    UDF1 = ModuleId,
+                    UDF1 = ModuleId.ToString(),
                     UDF2 = SSOID,
                     UDF3 = transaction.Id.ToString(),
                 };
 
-                paymentReq.CHECKSUM = CreateMD5(
-                    paymentReq.MERCHANTCODE + "|" +
-                    paymentReq.PRN + "|" +
-                    paymentReq.AMOUNT + "|" +
-                    CHECKSUMKEY
-                );
+                paymentReq.CHECKSUM =
+                    $"{paymentReq.MERCHANTCODE}|{paymentReq.PRN}|{paymentReq.AMOUNT}|{CHECKSUMKEY}";
+
+                paymentReq.CHECKSUM = CreateMD5(paymentReq.CHECKSUM);
 
                 var json = JsonSerializer.Serialize(paymentReq);
                 string postEnPara = AESEncrypt(json, EnDnKEY);

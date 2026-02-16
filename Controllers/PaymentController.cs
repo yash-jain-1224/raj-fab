@@ -1,14 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using RajFabAPI.Data;
 using RajFabAPI.DTOs;
-using RajFabAPI.Services;
-using RajFabAPI.Services.Interface;
-using System;
 using System.Text;
 using System.Text.Json;
-using static iText.Svg.SvgConstants;
-using static RajFabAPI.Services.PaymentService;
+using RajFabAPI.Services.Interface;
 
 namespace RajFabAPI.Controllers
 {
@@ -62,7 +56,7 @@ namespace RajFabAPI.Controllers
             {
                 Console.WriteLine($"data :  {data}");
                 var paymentHTML = new StringBuilder().AppendLine("<h1>Payment Return</h1>");
-                var json = AESDecrypt(data.ENCDATA, "4157FE34BBAE3A958D8F58CCBFAD7");
+                var json = _paymentService.AESDecrypt(data.ENCDATA, "4157FE34BBAE3A958D8F58CCBFAD7");
                 var paymentResponse = JsonSerializer.Deserialize<EmitraPaymentResponse>(json);
 
                 if (paymentResponse == null)

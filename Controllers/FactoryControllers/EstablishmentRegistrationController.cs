@@ -1,11 +1,9 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using RajFabAPI.Controllers.Common;
 using RajFabAPI.DTOs;
 using RajFabAPI.Services.Interface;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace RajFabAPI.Controllers.FactoryControllers
 {
@@ -65,8 +63,9 @@ namespace RajFabAPI.Controllers.FactoryControllers
             }
             catch (ArgumentException ex) { return BadRequest(ex.Message); }
             catch (KeyNotFoundException ex) { return NotFound(ex.Message); }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Console.WriteLine("GetFeeAmountAsync exception: " + ex);
                 // log exception if you have logging; return generic error to client
                 return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while saving the registration.");
             }

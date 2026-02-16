@@ -229,7 +229,7 @@ namespace RajFabAPI.Services
             return Convert.ToBase64String(transform.TransformFinalBlock(plainText, 0, plainText.Length));
         }
 
-        public static string AESDecrypt(string textToDecrypt, string AESENCKEY)
+        public string AESDecrypt(string textToDecrypt, string AESENCKEY)
         {
             RijndaelManaged rijndaelCipher = new RijndaelManaged();
             rijndaelCipher.Mode = CipherMode.CBC;

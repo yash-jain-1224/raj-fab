@@ -1,10 +1,4 @@
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using RajFabAPI.DTOs;
-using RajFabAPI.Models;
-using RajFabAPI.Models.FactoryModels;
-using Microsoft.EntityFrameworkCore;
-using System.Linq;
 
 namespace RajFabAPI.Services.Interface
 {
@@ -23,5 +17,7 @@ namespace RajFabAPI.Services.Interface
         Task<string> GenerateCertificateAsync(EstablishmentCertificateRequestDto  dto, Guid userId, string registrationId);
         Task<string?> GetFactoryRegistrationNumber(Guid userId);
         Task<string> GenerateEstablishmentPdf(EstablishmentRegistrationEntitiesDto dto);
+        Task<bool> UpdatePdfURL(string path, string registrationId, string prnNumber);
+        Task<string?> getFilePathByPrn(string prnNumber);
     }
 }

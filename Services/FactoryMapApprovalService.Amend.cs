@@ -113,7 +113,7 @@ namespace RajFabAPI.Services
                 // Increment amendment count and save history
                 //application.AmendmentCount++;
                 
-                var history = new ApplicationHistory
+                var history = new Models.ApplicationHistory
                 {
                     ApplicationId = application.Id,
                     ApplicationType = "FactoryMapApproval",

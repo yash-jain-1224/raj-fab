@@ -196,6 +196,7 @@ namespace RajFabAPI.Services
                                                    appReg.ApplicationRegistrationNumber
                                                };
                     var appRegistration = await appRegistrationQuery.FirstOrDefaultAsync();
+                    if (appRegistration == null) continue;
 
                     if (appRegistration != null && (appRegistration.ApplicationTypeName == ApplicationTypeNames.NewEstablishment || appRegistration.ApplicationTypeName == ApplicationTypeNames.FactoryAmendment || appRegistration.ApplicationTypeName == ApplicationTypeNames.FactoryRenewal))
                     {

@@ -1,7 +1,3 @@
-using RajFabAPI.Models;
-using System;
-using System.ComponentModel.DataAnnotations;
-
 namespace RajFabAPI.DTOs
 {
     public class CreateEstablishmentRegistrationDto
@@ -33,7 +29,7 @@ namespace RajFabAPI.DTOs
         public EstablishmentDetailsDto EstablishmentDetail { get; set; }
         public PersonDetailDto MainOwnerDetail { get; set; }
         public PersonDetailDto ManagerOrAgentDetail { get; set; }
-        public PersonDetailDto ContractorDetail { get; set; }
+        public List<PersonDetailDto> ContractorDetail { get; set; }
         public DateTime? CreatedAt { get; set; }
     }
 

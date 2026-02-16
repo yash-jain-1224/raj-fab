@@ -343,7 +343,7 @@ namespace RajFabAPI.Services
                 await _context.SaveChangesAsync();
 
                 // Create initial history entry
-                var history = new ApplicationHistory
+                var history = new Models.ApplicationHistory
                 {
                     ApplicationId = application.Id,
                     ApplicationType = "FactoryMapApproval",

@@ -1,5 +1,3 @@
-using iText.Commons.Actions.Contexts;
-using iText.IO.Image;
 using iText.Kernel.Colors;
 using iText.Kernel.Font;
 using iText.Kernel.Pdf;
@@ -7,23 +5,15 @@ using iText.Layout;
 using iText.Layout.Borders;
 using iText.Layout.Element;
 using iText.Layout.Properties;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using Microsoft.OpenApi.Any;
 using RajFabAPI.Data;
 using RajFabAPI.DTOs;
 using RajFabAPI.Models;
 using RajFabAPI.Models.FactoryModels;
 using RajFabAPI.Services.Interface;
-using System;
-using System.IO;
-using System.Reflection;
-using System.Reflection.Metadata;
-using static iText.StyledXmlParser.Jsoup.Select.Evaluator;
+using System.Data;
 using static RajFabAPI.Constants.AppConstants;
-using static System.Net.Mime.MediaTypeNames;
 using ImageDataFactory = iText.IO.Image.ImageDataFactory;
 using PdfCell = iText.Layout.Element.Cell;
 using PdfDoc = iText.Layout.Document;
@@ -101,12 +91,18 @@ namespace RajFabAPI.Services
                 + (dto?.EstablishmentDetails.TotalNumberOfContractEmployee ?? 0)
                 + (dto?.EstablishmentDetails.TotalNumberOfInterstateWorker ?? 0);
 
-            //var feeResult = await _feeCalculationService.CalculateFactoryRegistrationFee(
-            //        totalWorkers,
-            //        dto?.Factory?.SanctionedLoad ?? 0m,
-            //        dto.Factory.SanctionedLoadUnit
-            //    );
-            var feeResult = new { TotalFee = 30 };
+            var feeRequest = new FeeRequest
+            {
+                FormCategory = "Non Electric",
+                FormType = type == "new" ? "Registration" : "Renewal License",
+                GivenHP = dto.Factory.SanctionedLoad ?? 0,
+                TotalPerson = totalWorkers,
+                Type = type
+            };
+
+
+            var feeResult = await GetFeeAmountAsync(feeRequest);
+            //var feeResult = new { TotalFee = 30 };
             await using var tx = await _db.Database.BeginTransactionAsync();
             try
             {
@@ -120,7 +116,7 @@ namespace RajFabAPI.Services
                     Date = dto.Date,
                     Version = newVersion,
                     Type = type,
-                    Amount = feeResult.TotalFee,
+                    Amount = feeResult ?? 0,
                     RegistrationNumber = finalRegistrationNumber,
                     Signature = dto.Signature,
                 };
@@ -685,7 +681,6 @@ namespace RajFabAPI.Services
                 // PersonDetails (MainOwner, ManagerOrAgent, Contractor)
                 Guid? mainOwnerId = null;
                 Guid? managerAgentId = null;
-                Guid? contractorId = null;
 
                 if (dto.MainOwnerDetail != null)
                 {
@@ -743,15 +738,12 @@ namespace RajFabAPI.Services
                 {
                     foreach (var contractor in dto.ContractorDetail)
                     {
-
-                        _db.Set<PersonDetail>().Add(new PersonDetail
+                        // Create PersonDetail
+                        var personDetail = new PersonDetail
                         {
                             Id = Guid.NewGuid(),
                             Role = "Contractor",
                             Name = contractor.Name,
-                            Designation = string.Empty,
-                            RelationType = string.Empty,
-                            RelativeName = string.Empty,
                             AddressLine1 = contractor.AddressLine1,
                             AddressLine2 = contractor.AddressLine2,
                             District = contractor.District,
@@ -763,17 +755,30 @@ namespace RajFabAPI.Services
                             Mobile = contractor.Mobile,
                             CreatedAt = DateTime.Now,
                             UpdatedAt = DateTime.Now
-                        });
+                        };
+                        _db.Set<PersonDetail>().Add(personDetail);
 
-                        _db.Set<ContractorDetail>().Add(new ContractorDetail
+                        // Create ContractorDetail linked to PersonDetail
+                        var contractorDetail = new ContractorDetail
                         {
-                            ContractorPersonalDetailId = contractorId,
+                            ContractorPersonalDetailId = personDetail.Id,
                             NameOfWork = contractor.NameOfWork,
                             MaxContractWorkerCountMale = contractor.MaxContractWorkerCountMale,
                             MaxContractWorkerCountFemale = contractor.MaxContractWorkerCountFemale,
                             DateOfCommencement = contractor.DateOfCommencement,
                             DateOfCompletion = contractor.DateOfCompletion
-                        });
+                        };
+                        _db.Set<ContractorDetail>().Add(contractorDetail);
+                        await _db.SaveChangesAsync();
+
+                        // Create mapping using navigation object instead of manually generated Id
+                        var mapping = new FactoryContractorMapping
+                        {
+                            EstablishmentRegistrationId = registration.EstablishmentRegistrationId,
+                            ContractorDetailId = contractorDetail.Id // EF will set this after SaveChanges if Id is identity
+                        };
+                        _db.Set<FactoryContractorMapping>().Add(mapping);
+                        await _db.SaveChangesAsync();
                     }
                 }
 
@@ -783,7 +788,6 @@ namespace RajFabAPI.Services
                 // Persist person ids onto registration
                 registration.MainOwnerDetailId = mainOwnerId;
                 registration.ManagerOrAgentDetailId = managerAgentId;
-                registration.ContractorDetailId = contractorId;
                 registration.Place = dto.Place;
                 //registration.Date = dto.Date;
                 // update registration metadata and commit
@@ -816,48 +820,8 @@ namespace RajFabAPI.Services
                 _ = await _db.SaveChangesAsync();
 
                 await tx.CommitAsync();
-
-                // Get WorkerRange and FactoryCategoryId
-                var workerRange = await _db.Set<WorkerRange>()
-                    .FirstOrDefaultAsync(wr => totalWorkers >= wr.MinWorkers && totalWorkers <= wr.MaxWorkers);
-
-                Guid? workerRangeId = workerRange?.Id;
-                var factoryCategory = await _db.Set<FactoryCategory>()
-                    .FirstOrDefaultAsync(fc => fc.WorkerRangeId == workerRangeId && fc.FactoryTypeId == factoryTypeIdGuid);
-                Guid? factoryCategoryId = factoryCategory?.Id;
-
-                var officeApplicationArea = await _db.Set<OfficeApplicationArea>()
-                    .FirstOrDefaultAsync(oaa => oaa.CityId == Guid.Parse(estDetail.SubDivisionId));
-                if (officeApplicationArea != null)
-                {
-                    var officeId = officeApplicationArea?.OfficeId;
-                    var workflow = await _db.Set<ApplicationWorkFlow>()
-                        .FirstOrDefaultAsync(wf => wf.ModuleId == module.Id && wf.FactoryCategoryId == factoryCategoryId && wf.OfficeId == officeId);
-                    var workflowLevel = await _db.Set<ApplicationWorkFlowLevel>()
-                        .Where(wfl => wfl.ApplicationWorkFlowId == (workflow != null ? workflow.Id : Guid.Empty))
-                        .OrderBy(wfl => wfl.LevelNumber)
-                        .FirstOrDefaultAsync();
-
-                    if (workflow != null)
-                    {
-                        var applicationApprovalRequest = new ApplicationApprovalRequest
-                        {
-                            ModuleId = module.Id,
-                            ApplicationRegistrationId = appReg.Id,
-                            ApplicationWorkFlowLevelId = workflowLevel.Id,
-                            Status = "Pending",
-                            CreatedDate = DateTime.Now,
-                            UpdatedDate = DateTime.Now
-                        };
-                        _ = _db.Set<ApplicationApprovalRequest>().Add(applicationApprovalRequest);
-                        _ = await _db.SaveChangesAsync();
-                    }
-                }
-
-                var html = await _payment.ActionRequestPaymentRPP(feeResult.TotalFee, User.FullName, User.Mobile, User.Email, User.Username, "4157FE34BBAE3A958D8F58CCBFAD7", "UWf6a7cDCP", registration.EstablishmentRegistrationId, module.Id.ToString(), userId.ToString());
+                var html = await _payment.ActionRequestPaymentRPP(feeResult ?? 0, User.FullName, User.Mobile, User.Email, User.Username, "4157FE34BBAE3A958D8F58CCBFAD7", "UWf6a7cDCP", registration.EstablishmentRegistrationId, module.Id.ToString(), userId.ToString());
                 return html;
-
-                //return appReg.ApplicationRegistrationNumber;
             }
             catch
             {
@@ -886,9 +850,6 @@ namespace RajFabAPI.Services
                    join manager in _db.Set<PersonDetail>().AsNoTracking()
                        on reg.ManagerOrAgentDetailId equals manager.Id into managerJoin
                    from managerDetail in managerJoin.DefaultIfEmpty()
-                   join contractor in _db.Set<PersonDetail>().AsNoTracking()
-                       on reg.ContractorDetailId equals contractor.Id into contractorJoin
-                   from contractorDetail in contractorJoin.DefaultIfEmpty()
                    join area in _db.Set<Models.City>().AsNoTracking()
                        on estDetail.SubDivisionId.ToString() equals area.Id.ToString() into areaJoin
                    from areaDetail in areaJoin.DefaultIfEmpty()
@@ -953,24 +914,37 @@ namespace RajFabAPI.Services
                            Email = managerDetail != null ? managerDetail.Email : null,
                            Telephone = managerDetail != null ? managerDetail.Telephone : null,
                            Mobile = managerDetail != null ? managerDetail.Mobile : null
-                       },
-                       ContractorDetail = new PersonDetailDto
-                       {
-                           Id = contractorDetail != null ? contractorDetail.Id.ToString() : null,
-                           Name = contractorDetail != null ? contractorDetail.Name : null,
-                           Designation = contractorDetail != null ? contractorDetail.Designation : null,
-                           RelationType = contractorDetail != null ? contractorDetail.RelationType : null,
-                           RelativeName = contractorDetail != null ? contractorDetail.RelativeName : null,
-                           AddressLine1 = contractorDetail != null ? contractorDetail.AddressLine1 : null,
-                           AddressLine2 = contractorDetail != null ? contractorDetail.AddressLine2 : null,
-                           District = contractorDetail != null ? contractorDetail.District : null,
-                           Tehsil = contractorDetail != null ? contractorDetail.Tehsil : null,
-                           Area = contractorDetail != null ? contractorDetail.Area : null,
-                           Pincode = contractorDetail != null ? contractorDetail.Pincode : null,
-                           Email = contractorDetail != null ? contractorDetail.Email : null,
-                           Mobile = contractorDetail != null ? contractorDetail.Mobile : null
                        }
                    }).FirstOrDefaultAsync();
+                if (result != null)
+                {
+                    var contractors = await (
+                        from fcm in _db.Set<FactoryContractorMapping>().AsNoTracking()
+                        join cd in _db.Set<ContractorDetail>().AsNoTracking()
+                            on fcm.ContractorDetailId equals cd.Id
+                        join pd in _db.Set<PersonDetail>().AsNoTracking()
+                            on cd.ContractorPersonalDetailId equals pd.Id
+                        where fcm.EstablishmentRegistrationId == result.Id
+                        select new PersonDetailDto
+                        {
+                            Id = pd.Id.ToString(),
+                            Name = pd.Name,
+                            Designation = pd.Designation,
+                            RelationType = pd.RelationType,
+                            RelativeName = pd.RelativeName,
+                            AddressLine1 = pd.AddressLine1,
+                            AddressLine2 = pd.AddressLine2,
+                            District = pd.District,
+                            Tehsil = pd.Tehsil,
+                            Area = pd.Area,
+                            Pincode = pd.Pincode,
+                            Email = pd.Email,
+                            Mobile = pd.Mobile
+                        }
+                    ).ToListAsync();
+
+                    result.ContractorDetail = contractors;
+                }
 
                 return result;
             }
@@ -999,9 +973,6 @@ namespace RajFabAPI.Services
                     join manager in _db.Set<PersonDetail>().AsNoTracking()
                         on reg.ManagerOrAgentDetailId equals manager.Id into managerJoin
                     from managerDetail in managerJoin.DefaultIfEmpty()
-                    join contractor in _db.Set<PersonDetail>().AsNoTracking()
-                        on reg.ContractorDetailId equals contractor.Id into contractorJoin
-                    from contractorDetail in contractorJoin.DefaultIfEmpty()
                     join area in _db.Set<Models.City>().AsNoTracking()
                         on estDetail.SubDivisionId.ToString() equals area.Id.ToString() into areaJoin
                     from areaDetail in areaJoin.DefaultIfEmpty()
@@ -1066,21 +1037,37 @@ namespace RajFabAPI.Services
                             Email = managerDetail != null ? managerDetail.Email : null,
                             Telephone = managerDetail != null ? managerDetail.Telephone : null,
                             Mobile = managerDetail != null ? managerDetail.Mobile : null
-                        },
-                        ContractorDetail = new PersonDetailDto
-                        {
-                            Id = contractorDetail != null ? contractorDetail.Id.ToString() : null,
-                            Name = contractorDetail != null ? contractorDetail.Name : null,
-                            AddressLine1 = contractorDetail != null ? contractorDetail.AddressLine1 : null,
-                            AddressLine2 = contractorDetail != null ? contractorDetail.AddressLine2 : null,
-                            District = contractorDetail != null ? contractorDetail.District : null,
-                            Tehsil = contractorDetail != null ? contractorDetail.Tehsil : null,
-                            Area = contractorDetail != null ? contractorDetail.Area : null,
-                            Pincode = contractorDetail != null ? contractorDetail.Pincode : null,
-                            Email = contractorDetail != null ? contractorDetail.Email : null,
-                            Mobile = contractorDetail != null ? contractorDetail.Mobile : null
                         }
                     }).FirstOrDefaultAsync();
+                if (result != null)
+                {
+                    var contractors = await (
+                        from fcm in _db.Set<FactoryContractorMapping>().AsNoTracking()
+                        join cd in _db.Set<ContractorDetail>().AsNoTracking()
+                            on fcm.ContractorDetailId equals cd.Id
+                        join pd in _db.Set<PersonDetail>().AsNoTracking()
+                            on cd.ContractorPersonalDetailId equals pd.Id
+                        where fcm.EstablishmentRegistrationId == result.Id
+                        select new PersonDetailDto
+                        {
+                            Id = pd.Id.ToString(),
+                            Name = pd.Name,
+                            Designation = pd.Designation,
+                            RelationType = pd.RelationType,
+                            RelativeName = pd.RelativeName,
+                            AddressLine1 = pd.AddressLine1,
+                            AddressLine2 = pd.AddressLine2,
+                            District = pd.District,
+                            Tehsil = pd.Tehsil,
+                            Area = pd.Area,
+                            Pincode = pd.Pincode,
+                            Email = pd.Email,
+                            Mobile = pd.Mobile
+                        }
+                    ).ToListAsync();
+
+                    result.ContractorDetail = contractors;
+                }
 
                 return result;
             }
@@ -1195,39 +1182,35 @@ namespace RajFabAPI.Services
                     };
                 }
             }
-            if (reg.ContractorDetailId != null)
-            {
-                var contractor = await _db.Set<ContractorDetail>().AsNoTracking()
-                    .FirstOrDefaultAsync(x => x.Id == reg.ContractorDetailId);
-                if (contractor != null)
-                {
-                    dto.ContractorDetail = new List<ContractorDetailDto>
-                    {
-                        new ContractorDetailDto
-                        {
-                            Name = contractor?.ContractorPersonalDetail?.Name,
-                            AddressLine1 = contractor?.ContractorPersonalDetail?.AddressLine1,
-                            AddressLine2 = contractor?.ContractorPersonalDetail?.AddressLine2,
-                            District = contractor?.ContractorPersonalDetail?.District,
-                            Tehsil = contractor?.ContractorPersonalDetail?.Tehsil,
-                            Area = contractor?.ContractorPersonalDetail?.Area,
-                            Pincode = contractor?.ContractorPersonalDetail?.Pincode,
-                            Email = contractor?.ContractorPersonalDetail?.Email,
-                            Mobile = contractor?.ContractorPersonalDetail?.Mobile,
-                            Telephone = contractor?.ContractorPersonalDetail?.Telephone,
-                            NameOfWork = contractor?.NameOfWork,
-                            MaxContractWorkerCountMale = contractor?.MaxContractWorkerCountMale,
-                            MaxContractWorkerCountFemale = contractor?.MaxContractWorkerCountFemale,
-                            DateOfCommencement = contractor?.DateOfCommencement,
-                            DateOfCompletion = contractor?.DateOfCompletion
-                        }
-                    };
-                }
-            }
-            else
-            {
-                dto.ContractorDetail = new List<ContractorDetailDto>();
-            }
+            var contractors = await (
+    from fcm in _db.Set<FactoryContractorMapping>().AsNoTracking()
+    join cd in _db.Set<ContractorDetail>().AsNoTracking()
+        on fcm.ContractorDetailId equals cd.Id
+    join pd in _db.Set<PersonDetail>().AsNoTracking()
+        on cd.ContractorPersonalDetailId equals pd.Id
+    where fcm.EstablishmentRegistrationId == reg.EstablishmentRegistrationId
+    select new ContractorDetailDto
+    {
+        Name = pd.Name,
+        AddressLine1 = pd.AddressLine1,
+        AddressLine2 = pd.AddressLine2,
+        District = pd.District,
+        Tehsil = pd.Tehsil,
+        Area = pd.Area,
+        Pincode = pd.Pincode,
+        Email = pd.Email,
+        Mobile = pd.Mobile,
+        Telephone = pd.Telephone,
+        NameOfWork = cd.NameOfWork,
+        MaxContractWorkerCountMale = cd.MaxContractWorkerCountMale,
+        MaxContractWorkerCountFemale = cd.MaxContractWorkerCountFemale,
+        DateOfCommencement = cd.DateOfCommencement,
+        DateOfCompletion = cd.DateOfCompletion
+    }
+).ToListAsync();
+
+            dto.ContractorDetail = contractors ?? new List<ContractorDetailDto>();
+
 
             // Map all entity types to DTOs
             foreach (var map in mappings)
@@ -1276,10 +1259,10 @@ namespace RajFabAPI.Services
                                 SanctionedLoad = f.SanctionedLoad ?? 0,
                                 SanctionedLoadUnit = f.SanctionedLoadUnit,
 
-                                OwnershipTypeSector  = f.OwnershipTypeSector,
-                                ActivityAsPerNIC =f.ActivityAsPerNIC,
-                                NICCodeDetail  = f.NICCodeDetail,
-                                IdentificationOfEstablishment  = f.IdentificationOfEstablishment
+                                OwnershipTypeSector = f.OwnershipTypeSector,
+                                ActivityAsPerNIC = f.ActivityAsPerNIC,
+                                NICCodeDetail = f.NICCodeDetail,
+                                IdentificationOfEstablishment = f.IdentificationOfEstablishment
                             }
                         ).FirstOrDefaultAsync();
 
@@ -3282,6 +3265,86 @@ namespace RajFabAPI.Services
 
             // Join with comma
             return string.Join(", ", nonEmptyParts);
+        }
+
+        public async Task<bool> UpdatePdfURL(string path, string registrationId, string prnNumber)
+        {
+            var appReg = await _db.Set<ApplicationRegistration>()
+                .FirstOrDefaultAsync(r => r.ApplicationId == registrationId);
+            var existingReg = await _db.Set<EstablishmentRegistration>()
+                .FirstOrDefaultAsync(r => r.EstablishmentRegistrationId == registrationId);
+
+            if (appReg == null)
+                return false;
+
+            if (existingReg == null)
+                return false;
+            appReg.ESignPrnNumber = prnNumber;
+            existingReg.ApplicationPDFUrl = path;
+            existingReg.ESignPrnNumber = prnNumber;
+            existingReg.UpdatedDate = DateTime.Now;
+
+            await _db.SaveChangesAsync();
+
+            return true;
+        }
+
+        public async Task<string?> getFilePathByPrn(string prnNumber)
+        {
+            var existingReg = await _db.Set<EstablishmentRegistration>()
+                .FirstOrDefaultAsync(r => r.ESignPrnNumber == prnNumber);
+
+            if (existingReg == null)
+                return null;
+
+            return existingReg.ApplicationPDFUrl;
+        }
+
+        private async Task<decimal?> GetFeeAmountAsync(FeeRequest request)
+        {
+            try
+            {
+                // Stored proc signature expects: @FormCategory, @FormType, @CategorySubType, @GivenHP, @TotalPerson, @Type
+                var parameters = new[]
+                {
+                    new SqlParameter("@FormCategory", SqlDbType.NVarChar, 150) { Value = (object?)request.FormCategory ?? DBNull.Value },
+                    new SqlParameter("@FormType", SqlDbType.NVarChar, 150) { Value = (object?)request.FormType ?? DBNull.Value },
+                    // optional parameter present in the SP - supply NULL unless you have a value
+                    new SqlParameter("@CategorySubType", SqlDbType.NVarChar, 150) { Value = DBNull.Value },
+                    // SP expects BIGINT - pass a long (rounding decimal HP to nearest whole number)
+                    new SqlParameter("@GivenHP", SqlDbType.BigInt) { Value = Convert.ToInt64(Math.Round(request.GivenHP)) },
+                    new SqlParameter("@TotalPerson", SqlDbType.BigInt) { Value = Convert.ToInt64(request.TotalPerson) },
+                    new SqlParameter("@Type", SqlDbType.NVarChar, 20) { Value = (object?)request.Type ?? DBNull.Value }
+                };
+
+                var result = await _db.FeeResults
+                    .FromSqlRaw(
+                        "EXEC [dbo].[GetFeeAmount] @FormCategory, @FormType, @CategorySubType, @GivenHP, @TotalPerson, @Type",
+                        parameters
+                    )
+                    .AsNoTracking()
+                    .ToListAsync();
+
+                return result.FirstOrDefault()?.Amount;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("GetFeeAmountAsync exception: " + ex);
+                return null;
+            }
+        }
+
+        public class FeeResult
+        {
+            public decimal? Amount { get; set; }
+        }
+        public class FeeRequest
+        {
+            public string FormCategory { get; set; }
+            public string FormType { get; set; }
+            public decimal GivenHP { get; set; }
+            public int TotalPerson { get; set; }
+            public string Type { get; set; } // new, update, renew
         }
     }
 }

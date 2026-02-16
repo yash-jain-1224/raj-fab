@@ -457,7 +457,7 @@ namespace RajFabAPI.Services
                 application.UpdatedAt = DateTime.Now;
 
                 // Add history
-                var history = new ApplicationHistory
+                var history = new Models.ApplicationHistory
                 {
                     ApplicationId = applicationId,
                     ApplicationType = "FactoryMapApproval",
@@ -487,7 +487,7 @@ namespace RajFabAPI.Services
                 application.UpdatedAt = DateTime.Now;
 
                 // Add history
-                var history = new ApplicationHistory
+                var history = new Models.ApplicationHistory
                 {
                     ApplicationId = applicationId,
                     ApplicationType = "FactoryRegistration",
@@ -519,7 +519,7 @@ namespace RajFabAPI.Services
 
             var remarkType = request.IsInternal ? "Internal Note" : "Remark";
 
-            var history = new ApplicationHistory
+            var history = new Models.ApplicationHistory
             {
                 ApplicationId = applicationId,
                 ApplicationType = applicationType.ToLower().Contains("map") ? "FactoryMapApproval" : "FactoryRegistration",
@@ -558,7 +558,7 @@ namespace RajFabAPI.Services
                 //application.Comments = request.ApprovalComments;
                 application.UpdatedAt = DateTime.Now;
 
-                var history = new ApplicationHistory
+                var history = new Models.ApplicationHistory
                 {
                     ApplicationId = applicationId,
                     ApplicationType = "FactoryMapApproval",
@@ -586,7 +586,7 @@ namespace RajFabAPI.Services
                 application.Comments = request.ApprovalComments;
                 application.UpdatedAt = DateTime.Now;
 
-                var history = new ApplicationHistory
+                var history = new Models.ApplicationHistory
                 {
                     ApplicationId = applicationId,
                     ApplicationType = "FactoryRegistration",
@@ -627,7 +627,7 @@ namespace RajFabAPI.Services
                 //application.Comments = request.RejectionReason;
                 application.UpdatedAt = DateTime.Now;
 
-                var history = new ApplicationHistory
+                var history = new Models.ApplicationHistory
                 {
                     ApplicationId = applicationId,
                     ApplicationType = "FactoryMapApproval",
@@ -655,7 +655,7 @@ namespace RajFabAPI.Services
                 application.Comments = request.RejectionReason;
                 application.UpdatedAt = DateTime.Now;
 
-                var history = new ApplicationHistory
+                var history = new Models.ApplicationHistory
                 {
                     ApplicationId = applicationId,
                     ApplicationType = "FactoryRegistration",
@@ -700,7 +700,7 @@ namespace RajFabAPI.Services
                 //application.Comments = fullComments;
                 application.UpdatedAt = DateTime.Now;
 
-                var history = new ApplicationHistory
+                var history = new Models.ApplicationHistory
                 {
                     ApplicationId = applicationId,
                     ApplicationType = "FactoryMapApproval",
@@ -726,7 +726,7 @@ namespace RajFabAPI.Services
                 application.Comments = fullComments;
                 application.UpdatedAt = DateTime.Now;
 
-                var history = new ApplicationHistory
+                var history = new Models.ApplicationHistory
                 {
                     ApplicationId = applicationId,
                     ApplicationType = "FactoryRegistration",

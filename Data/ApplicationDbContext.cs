@@ -4,6 +4,7 @@ using RajFabAPI.Models;
 using RajFabAPI.Models.FactoryModels;
 using System.Data;
 using System.Text.Json;
+using static RajFabAPI.Services.EstablishmentRegistrationService;
 
 namespace RajFabAPI.Data
 {
@@ -29,6 +30,7 @@ namespace RajFabAPI.Data
         public DbSet<BeediCigarWork> BeediCigarWorks { get; set; }
         public DbSet<PersonDetail> PersonDetails { get; set; }
         public DbSet<EstablishmentEntityMapping> EstablishmentEntityMapping { get; set; }
+        public DbSet<FactoryContractorMapping> FactoryContractorMapping { get; set; }
         public DbSet<ApplicationApprovalRequest> ApplicationApprovalRequests { get; set; }
         public DbSet<ApplicationRegistration> ApplicationRegistrations { get; set; }
         public DbSet<Certificate> Certificates { get; set; }
@@ -130,6 +132,7 @@ namespace RajFabAPI.Data
         public DbSet<UserRole> UserRoles { get; set; } = null!;
         public DbSet<FactoryLicense> FactoryLicenses { get; set; }
         public DbSet<ESignTransaction> ESignTransactions { get; set; }
+        public DbSet<FeeResult> FeeResults { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -866,6 +869,39 @@ namespace RajFabAPI.Data
                 entity.Property(e => e.UserId)
                       .HasColumnType("uniqueidentifier");
             });
+            modelBuilder.Entity<FactoryContractorMapping>(entity =>
+            {
+                  // Composite Primary Key
+                  entity.HasKey(e => new 
+                  { 
+                        e.EstablishmentRegistrationId, 
+                        e.ContractorDetailId 
+                  });
+
+                  entity.Property(e => e.EstablishmentRegistrationId)
+                        .HasMaxLength(100)
+                        .IsRequired();
+
+                  entity.Property(e => e.ContractorDetailId)
+                        .IsRequired();
+
+                  // Foreign Key to EstablishmentRegistration
+                  entity.HasOne<EstablishmentRegistration>()
+                        .WithMany()
+                        .HasForeignKey(e => e.EstablishmentRegistrationId)
+                        .HasPrincipalKey(r => r.EstablishmentRegistrationId)
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                  // Optional: Foreign Key to ContractorDetail (if exists)
+                  entity.HasOne<PersonDetail>() // replace with correct entity
+                        .WithMany()
+                        .HasForeignKey(e => e.ContractorDetailId)
+                        .OnDelete(DeleteBehavior.Cascade);
+            });
+
+
+            modelBuilder.Entity<FeeResult>().HasNoKey();
+            base.OnModelCreating(modelBuilder);
         }
 
         public override int SaveChanges()

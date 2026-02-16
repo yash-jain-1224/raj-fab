@@ -35,6 +35,9 @@ namespace RajFabAPI.Models
         public bool IsPaymentCompleted { get; set; } = false;
         public string? ApplicationPDFUrl { get; set; }
 
+        [StringLength(100)]
+        public string? ESignPrnNumber { get; set; }
+
         public DateTime CreatedDate { get; set; } = DateTime.Now;
         public DateTime UpdatedDate { get; set; } = DateTime.Now;
 

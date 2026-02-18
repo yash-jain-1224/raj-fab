@@ -185,7 +185,7 @@ namespace RajFabAPI.Services
             }
         }
 
-        public async Task<ApiResponseDto<FactoryMapApprovalDto>> CreateApplicationAsync(CreateFactoryMapApprovalRequest request, Guid userId, bool? isNew, string? factoryMapApprovalId)
+        public async Task<string> CreateApplicationAsync(CreateFactoryMapApprovalRequest request, Guid userId, bool? isNew, string? factoryMapApprovalId)
         {
             try
             {
@@ -376,76 +376,77 @@ namespace RajFabAPI.Services
 				_context.Set<ApplicationRegistration>().Add(appReg);
 				await _context.SaveChangesAsync();
 
-				// Calculate total workers
-				int totalWorkers = application.MaxWorkerMale + application.MaxWorkerFemale;
-				
-                
-				// Get WorkerRange and FactoryCategoryId
-				var workerRange = await _context.Set<WorkerRange>()
-					.FirstOrDefaultAsync(wr => totalWorkers >= wr.MinWorkers && totalWorkers <= wr.MaxWorkers);
+                // Calculate total workers
+                //int totalWorkers = application.MaxWorkerMale + application.MaxWorkerFemale;
 
-				var factoryType = _context.FactoryTypes.FirstOrDefault(x => x.Name == "Not Applicable");
-				var factoryTypeIdGuid = factoryType?.Id;
-				Guid? workerRangeId = workerRange?.Id;
-				var factoryCategory = await _context.Set<FactoryCategory>()
-					.FirstOrDefaultAsync(fc => fc.WorkerRangeId == workerRangeId && fc.FactoryTypeId == factoryTypeIdGuid);
-				Guid? factoryCategoryId = factoryCategory?.Id;
+                // Get WorkerRange and FactoryCategoryId
+                //var workerRange = await _context.Set<WorkerRange>()
+                //	.FirstOrDefaultAsync(wr => totalWorkers >= wr.MinWorkers && totalWorkers <= wr.MaxWorkers);
 
-				var officeApplicationArea = await _context.Set<OfficeApplicationArea>()
-					.FirstOrDefaultAsync(oaa => oaa.CityId == Guid.Parse(application.MapApprovalFactoryDetails.AreaId));
-				if (officeApplicationArea != null)  
-				{
-					var officeId = officeApplicationArea?.OfficeId;
-					var workflow = await _context.Set<ApplicationWorkFlow>()
-						.FirstOrDefaultAsync(wf => wf.ModuleId == module.Id && wf.FactoryCategoryId == factoryCategoryId && wf.OfficeId == officeId);
-					var workflowLevel = await _context.Set<ApplicationWorkFlowLevel>()
-						.Where(wfl => wfl.ApplicationWorkFlowId == (workflow != null ? workflow.Id : Guid.Empty))
-						.OrderBy(wfl => wfl.LevelNumber)
-						.FirstOrDefaultAsync();
+                //var factoryType = _context.FactoryTypes.FirstOrDefault(x => x.Name == "Not Applicable");
+                //var factoryTypeIdGuid = factoryType?.Id;
+                //Guid? workerRangeId = workerRange?.Id;
+                //var factoryCategory = await _context.Set<FactoryCategory>()
+                //	.FirstOrDefaultAsync(fc => fc.WorkerRangeId == workerRangeId && fc.FactoryTypeId == factoryTypeIdGuid);
+                //Guid? factoryCategoryId = factoryCategory?.Id;
 
-					if (workflow != null)
-					{
-						var applicationApprovalRequest = new ApplicationApprovalRequest
-						{
-							ModuleId = module.Id,
-							ApplicationRegistrationId = appReg.Id,
-							ApplicationWorkFlowLevelId = workflowLevel.Id,
-							Status = "Pending",
-							CreatedDate = DateTime.Now,
-							UpdatedDate = DateTime.Now
-						};
-						_context.Set<ApplicationApprovalRequest>().Add(applicationApprovalRequest);
-						await _context.SaveChangesAsync();
-					}
-				}
+                //var officeApplicationArea = await _context.Set<OfficeApplicationArea>()
+                //	.FirstOrDefaultAsync(oaa => oaa.CityId == Guid.Parse(application.MapApprovalFactoryDetails.AreaId));
+                //if (officeApplicationArea != null)  
+                //{
+                //	var officeId = officeApplicationArea?.OfficeId;
+                //	var workflow = await _context.Set<ApplicationWorkFlow>()
+                //		.FirstOrDefaultAsync(wf => wf.ModuleId == module.Id && wf.FactoryCategoryId == factoryCategoryId && wf.OfficeId == officeId);
+                //	var workflowLevel = await _context.Set<ApplicationWorkFlowLevel>()
+                //		.Where(wfl => wfl.ApplicationWorkFlowId == (workflow != null ? workflow.Id : Guid.Empty))
+                //		.OrderBy(wfl => wfl.LevelNumber)
+                //		.FirstOrDefaultAsync();
+
+                //	if (workflow != null)
+                //	{
+                //		var applicationApprovalRequest = new ApplicationApprovalRequest
+                //		{
+                //			ModuleId = module.Id,
+                //			ApplicationRegistrationId = appReg.Id,
+                //			ApplicationWorkFlowLevelId = workflowLevel.Id,
+                //			Status = "Pending",
+                //			CreatedDate = DateTime.Now,
+                //			UpdatedDate = DateTime.Now
+                //		};
+                //		_context.Set<ApplicationApprovalRequest>().Add(applicationApprovalRequest);
+                //		await _context.SaveChangesAsync();
+                //	}
+                //}
 
 
-				// Reload with related data
-				application = await _context.FactoryMapApprovals
-                    .Include(f => f.MapApprovalFactoryDetails)
-                    .Include(f => f.MapApprovalOccupierDetails)
-                    .Include(f => f.RawMaterials)
-                    .Include(f => f.IntermediateProducts)
-                    .Include(f => f.FinishGoods)
-                    .Include(f => f.Chemicals)
-                    .FirstAsync();
+                // Reload with related data
+                //application = await _context.FactoryMapApprovals
+                //                .Include(f => f.MapApprovalFactoryDetails)
+                //                .Include(f => f.MapApprovalOccupierDetails)
+                //                .Include(f => f.RawMaterials)
+                //                .Include(f => f.IntermediateProducts)
+                //                .Include(f => f.FinishGoods)
+                //                .Include(f => f.Chemicals)
+                //                .FirstAsync();
 
-                var districts = await LoadDistricts(new[] { application.MapApprovalFactoryDetails.DistrictId });
-                var areas = await LoadAreas(new[] { application.MapApprovalFactoryDetails.AreaId });
-                return new ApiResponseDto<FactoryMapApprovalDto>
-                {
-                    Success = true,
-                    Message = "Application created successfully. Acknowledgement Number: " + application.AcknowledgementNumber,
-                    Data = new FactoryMapApprovalDto { Id = application.Id, AcknowledgementNumber = application.AcknowledgementNumber }
-                };
+                //            var districts = await LoadDistricts(new[] { application.MapApprovalFactoryDetails.DistrictId });
+                //            var areas = await LoadAreas(new[] { application.MapApprovalFactoryDetails.AreaId });
+                //return new ApiResponseDto<FactoryMapApprovalDto>
+                //{
+                //    Success = true,
+                //    Message = "Application created successfully. Acknowledgement Number: " + application.AcknowledgementNumber,
+                //    Data = new FactoryMapApprovalDto { Id = application.Id, AcknowledgementNumber = application.AcknowledgementNumber }
+                //};
+                return application.Id;
             }
             catch (Exception ex)
             {
-                return new ApiResponseDto<FactoryMapApprovalDto>
-                {
-                    Success = false,
-                    Message = $"Error creating application: {ex.Message}"
-                };
+                throw new Exception($"Error creating application: {ex.Message}");
+                //return new ApiResponseDto<FactoryMapApprovalDto>
+                //{
+                //    Success = false,
+                //    Message = $"Error creating application: {ex.Message}"
+                //};
             }
         }
 

@@ -4,6 +4,7 @@ using RajFabAPI.DTOs;
 using RajFabAPI.Models;
 using RajFabAPI.Services.Interface;
 using static RajFabAPI.Constants.AppConstants;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace RajFabAPI.Services
 {
@@ -332,19 +333,7 @@ namespace RajFabAPI.Services
             var module = await _db.Set<FormModule>()
                 .FirstOrDefaultAsync(m => m.Id == appReg.ModuleId);
 
-            if (module?.Name != ApplicationTypeNames.NewEstablishment)
-                return true;
-
-            var estReg = await _db.Set<EstablishmentRegistration>()
-                .FirstOrDefaultAsync(x => x.EstablishmentRegistrationId == appReg.ApplicationId);
-
-            if (estReg == null)
-                return false;
-
-            var estDetails = await _db.Set<EstablishmentDetail>()
-                .FirstOrDefaultAsync(ed => ed.Id == estReg.EstablishmentDetailId);
-
-            if (estDetails == null)
+            if (module == null)
                 return false;
 
             if (signedPDFBase64.Contains(","))
@@ -352,22 +341,73 @@ namespace RajFabAPI.Services
 
             byte[] pdfBytes = Convert.FromBase64String(signedPDFBase64);
 
-            int totalWorkers =
-                (estDetails.TotalNumberOfEmployee ?? 0) +
-                (estDetails.TotalNumberOfContractEmployee ?? 0) +
-                (estDetails.TotalNumberOfInterstateWorker ?? 0);
-
-            Guid factoryTypeId = estDetails.FactoryTypeId ?? Guid.Empty;
-
-            if (!Guid.TryParse(estDetails.SubDivisionId, out Guid subDivisionId))
-                return false;
+            int totalWorkers = 0;
+            Guid? factoryTypeId = null;
+            Guid? subDivisionId = null;
+            string pdfPath = null;
 
             using var transaction = await _db.Database.BeginTransactionAsync();
 
             try
             {
-                estReg.IsESignCompleted = true;
-                estReg.UpdatedDate = DateTime.Now;
+                if (module.Name == ApplicationTypeNames.NewEstablishment)
+                {
+                    var estReg = await _db.Set<EstablishmentRegistration>()
+                        .FirstOrDefaultAsync(x => x.EstablishmentRegistrationId == appReg.ApplicationId);
+
+                    if (estReg == null)
+                        return false;
+
+                    var estDetails = await _db.Set<EstablishmentDetail>()
+                        .FirstOrDefaultAsync(ed => ed.Id == estReg.EstablishmentDetailId);
+
+                    if (estDetails == null)
+                        return false;
+
+                    totalWorkers =
+                        (estDetails.TotalNumberOfEmployee ?? 0) +
+                        (estDetails.TotalNumberOfContractEmployee ?? 0) +
+                        (estDetails.TotalNumberOfInterstateWorker ?? 0);
+
+                    factoryTypeId = estDetails.FactoryTypeId ?? Guid.Empty;
+
+                    if (!Guid.TryParse(estDetails.SubDivisionId, out Guid parsedSubDiv))
+                        return false;
+
+                    subDivisionId = parsedSubDiv;
+
+                    estReg.IsESignCompleted = true;
+                    estReg.UpdatedDate = DateTime.Now;
+
+                    pdfPath = estReg.ApplicationPDFUrl;
+                }
+                else if (module.Name == ApplicationTypeNames.MapApproval)
+                {
+                    var mapReg = await _db.Set<FactoryMapApproval>()
+                        .FirstOrDefaultAsync(x => x.Id == appReg.ApplicationId);
+
+                    if (mapReg == null)
+                        return false;
+
+                    var mapDetails = await _db.Set<MapApprovalFactoryDetail>()
+                        .FirstOrDefaultAsync(ed => ed.FactoryMapApprovalId == mapReg.Id);
+
+                    if (mapDetails == null)
+                        return false;
+
+                    totalWorkers = mapReg.MaxWorkerMale + mapReg.MaxWorkerFemale;
+
+                    var factoryType = _db.FactoryTypes.FirstOrDefault(x => x.Name == "Not Applicable");
+                    factoryTypeId = factoryType?.Id;
+
+                    if (!Guid.TryParse(mapDetails.AreaId, out Guid parsedSubDiv))
+                        return false;
+
+                    subDivisionId = parsedSubDiv;
+                    mapReg.IsESignCompleted = true;
+                    mapReg.UpdatedAt = DateTime.Now;
+                    pdfPath = mapReg.ApplicationPDFUrl;
+                }
 
                 var workerRange = await _db.Set<WorkerRange>()
                     .FirstOrDefaultAsync(wr =>
@@ -425,71 +465,16 @@ namespace RajFabAPI.Services
 
                 await _db.SaveChangesAsync();
                 await transaction.CommitAsync();
+
+                if (!string.IsNullOrWhiteSpace(pdfPath))
+                    await File.WriteAllBytesAsync(pdfPath, pdfBytes);
+                return true;
             }
             catch
             {
                 await transaction.RollbackAsync();
                 throw;
             }
-
-            await File.WriteAllBytesAsync(estReg.ApplicationPDFUrl, pdfBytes);
-
-            return true;
         }
-
-        //public async Task<bool> UpdateApplicationESignData(string prnNumber, string signedPDFBase64)
-        //{
-        //    if (string.IsNullOrWhiteSpace(prnNumber) || string.IsNullOrWhiteSpace(signedPDFBase64))
-        //        return false;
-
-        //    var appReg = await _db.Set<ApplicationRegistration>()
-        //        .FirstOrDefaultAsync(r => r.ESignPrnNumber == prnNumber);
-
-        //    if (appReg == null)
-        //        return false;
-
-        //    var moduleName = await _db.Set<FormModule>()
-        //        .Where(m => m.Id == appReg.ModuleId)
-        //        .Select(m => m.Name)
-        //        .FirstOrDefaultAsync();
-
-        //    if (moduleName != ApplicationTypeNames.NewEstablishment)
-        //        return true;
-
-        //    var estReg = await _db.Set<EstablishmentRegistration>()
-        //        .FirstOrDefaultAsync(x => x.EstablishmentRegistrationId == appReg.ApplicationId);
-
-        //    if (estReg == null)
-        //        return false;
-
-        //    if (signedPDFBase64.Contains(","))
-        //        signedPDFBase64 = signedPDFBase64.Split(',')[1];
-
-        //    byte[] pdfBytes = Convert.FromBase64String(signedPDFBase64);
-
-        //    using var transaction = await _db.Database.BeginTransactionAsync();
-
-        //    try
-        //    {
-        //        estReg.IsESignCompleted = true;
-        //        estReg.UpdatedDate = DateTime.Now;
-
-        //        await _applicationWorkFlowService
-        //            .AddApplicationToWorkFlow(appReg.ApplicationId);
-
-        //        await _db.SaveChangesAsync();
-        //        await transaction.CommitAsync();
-        //    }
-        //    catch
-        //    {
-        //        await transaction.RollbackAsync();
-        //        throw;
-        //    }
-
-        //    // Write file AFTER commit
-        //    await File.WriteAllBytesAsync(estReg.ApplicationPDFUrl, pdfBytes);
-
-        //    return true;
-        //}
     }
 }

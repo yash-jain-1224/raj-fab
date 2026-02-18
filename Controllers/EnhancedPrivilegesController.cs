@@ -1,4 +1,6 @@
+using iTextSharp.text.log;
 using Microsoft.AspNetCore.Mvc;
+using RajFabAPI.Controllers.Common;
 using RajFabAPI.DTOs;
 using RajFabAPI.Services;
 
@@ -9,9 +11,11 @@ namespace RajFabAPI.Controllers
     public class EnhancedPrivilegesController : ControllerBase
     {
         private readonly IEnhancedPrivilegeService _service;
+        private readonly ILogger<ApplicationApprovalRequestsController> _logger;
 
-        public EnhancedPrivilegesController(IEnhancedPrivilegeService service)
+        public EnhancedPrivilegesController(IEnhancedPrivilegeService service, ILogger<ApplicationApprovalRequestsController> logger)
         {
+            _logger = logger;
             _service = service;
         }
 
@@ -42,18 +46,32 @@ namespace RajFabAPI.Controllers
         }
 
         [HttpPost("role/assign")]
-        public async Task<IActionResult> AssignRolePrivileges(
-            [FromBody] AssignRolePrivilegesDto dto)
+        public async Task<IActionResult> AssignRolePrivileges([FromBody] AssignRolePrivilegesDto dto)
         {
-           
+            if (dto == null)
+                return BadRequest(new { success = false, message = "Request body is required" });
 
-            var success = await _service.AssignRolePrivilegesAsync(dto);
-            if (!success)
+            if (dto.RoleId == Guid.Empty)
+                return BadRequest(new { success = false, message = "Valid RoleId is required" });
+
+            if (dto.ModulePermissions == null || !dto.ModulePermissions.Any())
+                return BadRequest(new { success = false, message = "At least one module permission is required" });
+
+            try
             {
-                return BadRequest(new { success = false, message = "Failed to assign role privileges" });
-            }
+                var success = await _service.AssignRolePrivilegesAsync(dto);
 
-            return Ok(new { success = true, message = "Role privileges assigned successfully" });
+                if (!success)
+                    return NotFound(new { success = false, message = "Role not found" });
+
+                return Ok(new { success = true, message = "Role privileges assigned successfully" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error assigning privileges to role {RoleId}", dto.RoleId);
+
+                return StatusCode(500, new { success = false, message = "An error occurred while assigning privileges" });
+            }
         }
 
         [HttpPost("role/{roleId}/modules/{moduleId}/remove")]

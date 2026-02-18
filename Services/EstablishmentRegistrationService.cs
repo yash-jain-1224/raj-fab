@@ -20,7 +20,6 @@ using PdfDoc = iText.Layout.Document;
 using PdfImage = iText.Layout.Element.Image;
 using PdfTable = iText.Layout.Element.Table;
 
-
 namespace RajFabAPI.Services
 {
     public partial class EstablishmentRegistrationService : IEstablishmentRegistrationService
@@ -31,9 +30,8 @@ namespace RajFabAPI.Services
         private readonly IConfiguration _config;
         private readonly IPaymentService _payment;
         private readonly IFeeCalculationService _feeCalculationService;
-        private readonly IESignService _eSignService;
 
-        public EstablishmentRegistrationService(ApplicationDbContext db, IWebHostEnvironment environment, IHttpContextAccessor httpContextAccessor, IConfiguration config, IPaymentService payment, IFeeCalculationService feeCalculationService, IESignService eSignService)
+        public EstablishmentRegistrationService(ApplicationDbContext db, IWebHostEnvironment environment, IHttpContextAccessor httpContextAccessor, IConfiguration config, IPaymentService payment, IFeeCalculationService feeCalculationService)
         {
             _db = db ?? throw new ArgumentNullException(nameof(db));
             _environment = environment;
@@ -42,7 +40,6 @@ namespace RajFabAPI.Services
             _payment = payment;
             _payment = payment;
             _feeCalculationService = feeCalculationService;
-            _eSignService = eSignService;
         }
 
         // Create full registration and persist all sub-objects in a single transaction.
@@ -101,7 +98,7 @@ namespace RajFabAPI.Services
             };
 
 
-            var feeResult = await GetFeeAmountAsync(feeRequest);
+            var feeResult = type == "new" ? await GetFeeAmountAsync(feeRequest) : 100;
             //var feeResult = new { TotalFee = 30 };
             await using var tx = await _db.Database.BeginTransactionAsync();
             try
@@ -3249,8 +3246,6 @@ namespace RajFabAPI.Services
                 reg.ApplicationPDFUrl = $"certificates/{fileName}";
                 await _db.SaveChangesAsync();
             }
-
-            //var html = await _eSignService.StartEsignAsync(pdfBytes);
 
             return filePath;
         }

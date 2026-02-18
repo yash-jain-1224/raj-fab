@@ -43,6 +43,8 @@ namespace RajFabAPI.Models
         public string? PremiseOwnerAddressPinCode { get; set; }
         public string? Place { get; set; }
         public DateTime? Date { get; set; }
+        public bool IsESignCompleted { get; set; } = false;
+        public string? ApplicationPDFUrl { get; set; } = string.Empty;
 
         [StringLength(20)]
         public string Status { get; set; } = "Pending"; // Pending, Approved, Rejected

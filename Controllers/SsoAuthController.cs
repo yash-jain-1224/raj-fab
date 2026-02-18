@@ -187,6 +187,71 @@ namespace RajFabAPI.Controllers
             return Redirect(redirectUrl);
         }
 
+        [HttpPost("mobile-login")]
+        public async Task<IActionResult> Mobile(string ssoId)
+        {
+            var user = await _context.Users
+                .FirstOrDefaultAsync(u => u.Username == ssoId);
+            if (user == null)
+            {
+                return NotFound("USER_NOT_FOUND");
+            }
+
+            var userData = new UserWithOfficeDto
+            {
+                Id = user.Id,
+                Username = user.Username,
+                FullName = user.FullName,
+                Email = user.Email,
+                Mobile = user.Mobile,
+                OfficeId = "",
+                OfficeName = "",
+                OfficePostId = "",
+                OfficePostName = "",
+                UserType = user.UserType,
+                IsActive = user.IsActive
+            };
+
+            if (user.UserType == "department")
+            {
+                var details = await _context.UserRoles
+                    .Where(ur => ur.UserId == user.Id)
+                    .Join(_context.Roles,
+                        ur => ur.RoleId,
+                        r => r.Id,
+                        (ur, r) => new { ur.RoleId, r.OfficeId, r.PostId })
+                    .Join(_context.Offices,
+                        r => r.OfficeId,
+                        o => o.Id,
+                        (r, o) => new { r.RoleId, r.OfficeId, OfficeName = o.Name, r.PostId })
+                    .Join(_context.Posts,
+                        ro => ro.PostId,
+                        p => p.Id,
+                        (ro, p) => new
+                        {
+                            ro.RoleId,
+                            ro.OfficeId,
+                            ro.OfficeName,
+                            PostId = p.Id,
+                            PostName = p.Name
+                        })
+                    .FirstOrDefaultAsync();
+
+                if (details != null)
+                {
+                    userData.OfficePostId = details.RoleId.ToString();
+                    userData.OfficeId = details.OfficeId.ToString();
+                    userData.OfficeName = details.OfficeName;
+                    userData.OfficePostName = details.PostName;
+                }
+            }
+
+            if (!userData.IsActive)
+                return Unauthorized("USER_INACTIVE");
+            var token = _jwt.GenerateToken(userData);
+            return Ok(new { token });
+        }
+
         // ===================== Helpers =====================
 
         private async Task<SSOUser?> FetchSsoTokenAsync(string userdetails)

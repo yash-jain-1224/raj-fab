@@ -7,7 +7,7 @@ namespace RajFabAPI.Services.Interface
         Task<ApiResponseDto<List<FactoryMapApprovalDto>>> GetAllApplicationsAsync(Guid userId);
         Task<ApiResponseDto<FactoryMapApprovalDto>> GetApplicationByIdAsync(string id);
         Task<ApiResponseDto<FactoryMapApprovalDto>> GetApplicationByAcknowledgementNumberAsync(string acknowledgementNumber);
-        Task<ApiResponseDto<FactoryMapApprovalDto>> CreateApplicationAsync(CreateFactoryMapApprovalRequest request, Guid userId, bool? isNew = true, string? factoryMapApprovalId = "");
+        Task<string> CreateApplicationAsync(CreateFactoryMapApprovalRequest request, Guid userId, bool? isNew = true, string? factoryMapApprovalId = "");
         Task<ApiResponseDto<FactoryMapApprovalDto>> UpdateApplicationStatusAsync(string id, UpdateFactoryMapApprovalStatusRequest request, string reviewedBy);
         Task<ApiResponseDto<bool>> DeleteApplicationAsync(string id);
         Task<ApiResponseDto<FactoryMapDocumentDto>> UploadDocumentAsync(string applicationId, IFormFile file, string documentType);

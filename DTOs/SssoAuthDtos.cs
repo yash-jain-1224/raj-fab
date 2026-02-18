@@ -41,6 +41,7 @@ namespace RajFabAPI.DTOs
         public string userStatus { get; set; }
         public string mfa { get; set; }
         public object sansthaAadhaar { get; set; }
+        public string token { get; internal set; }
     }
     #endregion
     #region Sso User Profile,used to fetch user details using samAccountName. its not mandatory to use this API, but it is used in some cases where we need to fetch user details using samAccountName(SSOID).

@@ -142,6 +142,13 @@ builder.Services.AddScoped<IFactoryLicenseService, FactoryLicenseService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<IESignService, ESignService>();
 builder.Services.AddScoped<ITransactionService, TransactionService>();
+
+builder.Services.AddScoped<IBoilerRegistartionService, BoilerRegistrationService>();
+builder.Services.AddScoped<IBoilerNewService, BoilerNewService>();
+builder.Services.AddScoped<ISteamPipeLineApplicationService, SteamPipeLineApplicationService>();
+builder.Services.AddScoped<IBoilerManufactureService, BoilerManufactureService>();
+
+
 builder.Services.AddHttpContextAccessor();
 
 
@@ -153,7 +160,7 @@ builder.Services.AddCors(options =>
          policy.WithOrigins(
                 "http://10.68.108.29",
                 "http://localhost:8080",
-                 "http://10.68.108.29:8080"
+                 "http://10.68.108.29:8081"
             )
             .AllowAnyHeader()
             .AllowAnyMethod()

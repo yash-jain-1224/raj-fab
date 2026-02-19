@@ -1,5 +1,7 @@
+using RajFabAPI.Models.BoilerModels;
 using System;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace RajFabAPI.Models
 {
@@ -7,6 +9,14 @@ namespace RajFabAPI.Models
     {
         [Key]
         public Guid Id { get; set; } = Guid.NewGuid();
+
+
+        // ? FK to BoilerRegistration
+        public Guid BoilerRegistrationId { get; set; }
+
+        [ForeignKey(nameof(BoilerRegistrationId))]
+        public BoilerRegistration? BoilerRegistration { get; set; }
+
 
         [MaxLength(50)]
         public string? Role { get; set; }    // MainOwner, ManagerOrAgent, Contractor

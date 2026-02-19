@@ -36,6 +36,7 @@ namespace RajFabAPI.DTOs
         public string? PremiseOwnerAddressPinCode { get; set; }
         public string? Place { get; set; }
         public string Status { get; set; }
+        public string ApplicationPDFUrl { get; set; }
         public bool IsNew { get; set; }
         public DateTime? Date { get; set; }
         public DateTime CreatedAt { get; set; }

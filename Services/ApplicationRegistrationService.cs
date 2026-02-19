@@ -1,3 +1,4 @@
+using iText.Commons.Actions.Contexts;
 using Microsoft.EntityFrameworkCore;
 using RajFabAPI.Data;
 using RajFabAPI.DTOs;
@@ -15,13 +16,14 @@ namespace RajFabAPI.Services
         private readonly ILogger<ApplicationRegistrationService> _logger;
         private readonly IEstablishmentRegistrationService _establishmentService;
         private readonly IApplicationWorkFlowService _applicationWorkFlowService;
-
-        public ApplicationRegistrationService(ApplicationDbContext db, ILogger<ApplicationRegistrationService> logger, IEstablishmentRegistrationService establishmentService, IApplicationWorkFlowService applicationWorkFlowService)
+        private readonly IWebHostEnvironment _environment;
+        public ApplicationRegistrationService(IWebHostEnvironment environment, ApplicationDbContext db, ILogger<ApplicationRegistrationService> logger, IEstablishmentRegistrationService establishmentService, IApplicationWorkFlowService applicationWorkFlowService)
         {
             _db = db;
             _logger = logger;
             _establishmentService = establishmentService;
             _applicationWorkFlowService = applicationWorkFlowService;
+            _environment = environment;
         }
 
         public async Task<List<ApplicationRegistrationDto>> GetAllAsync()
@@ -344,7 +346,7 @@ namespace RajFabAPI.Services
             int totalWorkers = 0;
             Guid? factoryTypeId = null;
             Guid? subDivisionId = null;
-            string pdfPath = null;
+            string applicationUrl = null;
 
             using var transaction = await _db.Database.BeginTransactionAsync();
 
@@ -379,7 +381,7 @@ namespace RajFabAPI.Services
                     estReg.IsESignCompleted = true;
                     estReg.UpdatedDate = DateTime.Now;
 
-                    pdfPath = estReg.ApplicationPDFUrl;
+                    applicationUrl = estReg.ApplicationPDFUrl;
                 }
                 else if (module.Name == ApplicationTypeNames.MapApproval)
                 {
@@ -411,7 +413,7 @@ namespace RajFabAPI.Services
                     subDivisionId = parsedSubDiv;
                     mapReg.IsESignCompleted = true;
                     mapReg.UpdatedAt = DateTime.Now;
-                    pdfPath = mapReg.ApplicationPDFUrl;
+                    applicationUrl = mapReg.ApplicationPDFUrl;
                 }
 
                 var workerRange = await _db.Set<WorkerRange>()
@@ -471,8 +473,7 @@ namespace RajFabAPI.Services
                 await _db.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                if (!string.IsNullOrWhiteSpace(pdfPath))
-                    await File.WriteAllBytesAsync(pdfPath, pdfBytes);
+                await OverwriteExistingPdfAsync(applicationUrl, pdfBytes);
                 return true;
             }
             catch
@@ -480,6 +481,49 @@ namespace RajFabAPI.Services
                 await transaction.RollbackAsync();
                 throw;
             }
+        }
+        public async Task OverwriteExistingPdfAsync(string fileUrl, byte[] newPdfBytes)
+        {
+            if (string.IsNullOrWhiteSpace(fileUrl))
+                throw new ArgumentException("File URL is required.", nameof(fileUrl));
+
+            if (newPdfBytes == null || newPdfBytes.Length == 0)
+                throw new ArgumentException("PDF content is empty.", nameof(newPdfBytes));
+
+            // Convert URL → Relative Path
+            string relativePath;
+
+            if (fileUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+            {
+                var uri = new Uri(fileUrl);
+                relativePath = uri.AbsolutePath.TrimStart('/');
+            }
+            else
+            {
+                // In case DB already stores relative path
+                relativePath = fileUrl.TrimStart('/');
+            }
+
+            // Convert Relative Path → Physical Path
+            var physicalPath = Path.Combine(_environment.WebRootPath, relativePath);
+
+            if (!File.Exists(physicalPath))
+                throw new FileNotFoundException("PDF file not found on server.", physicalPath);
+
+            // Overwrite file
+            await File.WriteAllBytesAsync(physicalPath, newPdfBytes);
+        }
+
+        public async Task<bool> SavePRNNumber(string registrationId, string prnNumber)
+        {
+            var appReg = await _db.Set<ApplicationRegistration>()
+                .FirstOrDefaultAsync(r => r.ApplicationId == registrationId);
+            if (appReg == null)
+                return false;
+            appReg.ESignPrnNumber = prnNumber;
+            appReg.UpdatedDate = DateTime.Now;
+            await _db.SaveChangesAsync();
+            return true;
         }
     }
 }

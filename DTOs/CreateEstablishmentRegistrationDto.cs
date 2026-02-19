@@ -26,6 +26,7 @@ namespace RajFabAPI.DTOs
     {
         public string Id { get; set; }
         public string RegistrationNumber { get; set; }
+        public string ApplicationPDFUrl { get; set; }
         public EstablishmentDetailsDto EstablishmentDetail { get; set; }
         public PersonDetailDto MainOwnerDetail { get; set; }
         public PersonDetailDto ManagerOrAgentDetail { get; set; }

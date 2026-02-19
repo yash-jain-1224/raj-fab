@@ -860,6 +860,7 @@ namespace RajFabAPI.Services
                    {
                        Id = reg.EstablishmentRegistrationId,
                        RegistrationNumber = factoryRegistrationNumber,
+                       ApplicationPDFUrl = reg.ApplicationPDFUrl,
                        EstablishmentDetail = new EstablishmentDetailsDto
                        {
                            Id = estDetail != null ? estDetail.Id.ToString() : null,
@@ -3259,28 +3260,6 @@ namespace RajFabAPI.Services
 
             // Join with comma
             return string.Join(", ", nonEmptyParts);
-        }
-
-        public async Task<bool> UpdatePdfURL(string path, string registrationId, string prnNumber)
-        {
-            var appReg = await _db.Set<ApplicationRegistration>()
-                .FirstOrDefaultAsync(r => r.ApplicationId == registrationId);
-            var existingReg = await _db.Set<EstablishmentRegistration>()
-                .FirstOrDefaultAsync(r => r.EstablishmentRegistrationId == registrationId);
-
-            if (appReg == null)
-                return false;
-
-            if (existingReg == null)
-                return false;
-            appReg.ESignPrnNumber = prnNumber;
-            existingReg.ApplicationPDFUrl = path;
-            existingReg.ESignPrnNumber = prnNumber;
-            existingReg.UpdatedDate = DateTime.Now;
-
-            await _db.SaveChangesAsync();
-
-            return true;
         }
 
         public async Task<string?> getFilePathByPrn(string prnNumber)

@@ -91,12 +91,9 @@ namespace RajFabAPI.Services
             {
                 var data = await _estRegService.GetAllEntitiesByRegistrationIdAsync(applicationId);
                 var filePath = await _estRegService.GenerateEstablishmentPdf(data);
-
                 if (!File.Exists(filePath))
                     throw new Exception("Generated PDF not found");
-
                 pdfBytes = await File.ReadAllBytesAsync(filePath);
-                await _estRegService.UpdatePdfURL(filePath, applicationId, prnNumber);
             } else if (applicationData.ModuleName == ApplicationTypeNames.MapApproval)
             {
                 var response = await _factoryMapApprovalService.GetApplicationByIdAsync(applicationId);
@@ -106,14 +103,11 @@ namespace RajFabAPI.Services
                     throw new Exception(response.Message ?? "Unable to fetch application.");
                 }
                 var filePath = await _factoryMapApprovalService.GenerateFactoryMapApprovalPdf(response.Data);
-
                 if (!File.Exists(filePath))
                     throw new Exception("Generated PDF not found");
-
                 pdfBytes = await File.ReadAllBytesAsync(filePath);
-                await _factoryMapApprovalService.UpdatePdfURL(filePath, applicationId, prnNumber);
-
             }
+            await _applicationRegistrationService.SavePRNNumber(applicationId, prnNumber);
 
             if (pdfBytes == null || pdfBytes.Length == 0)
                 throw new Exception("PDF not available");

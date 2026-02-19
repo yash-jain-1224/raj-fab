@@ -5,6 +5,7 @@ using iText.Layout;
 using iText.Layout.Borders;
 using iText.Layout.Element;
 using iText.Layout.Properties;
+using iTextSharp.text.log;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -98,13 +99,20 @@ namespace RajFabAPI.Services
                 await _estRegService.UpdatePdfURL(filePath, applicationId, prnNumber);
             } else if (applicationData.ModuleName == ApplicationTypeNames.MapApproval)
             {
-                var data = await _factoryMapApprovalService.GetApplicationByIdAsync(applicationId);
-                //var filePath = await _estRegService.GenerateEstablishmentPdf(data);
+                var response = await _factoryMapApprovalService.GetApplicationByIdAsync(applicationId);
 
-                //if (!File.Exists(filePath))
-                //    throw new Exception("Generated PDF not found");
+                if (!response.Success || response.Data == null)
+                {
+                    throw new Exception(response.Message ?? "Unable to fetch application.");
+                }
+                var filePath = await _factoryMapApprovalService.GenerateFactoryMapApprovalPdf(response.Data);
 
-                //pdfBytes = await File.ReadAllBytesAsync(filePath);
+                if (!File.Exists(filePath))
+                    throw new Exception("Generated PDF not found");
+
+                pdfBytes = await File.ReadAllBytesAsync(filePath);
+                await _factoryMapApprovalService.UpdatePdfURL(filePath, applicationId, prnNumber);
+
             }
 
             if (pdfBytes == null || pdfBytes.Length == 0)
@@ -127,7 +135,7 @@ namespace RajFabAPI.Services
                 generateSignedXml_Response? generateSignedXml_Response = await generateSignedXml(Signrequest, authToken);
 
                 if (generateSignedXml_Response == null || generateSignedXml_Response.status != "SUCCESS")
-                    throw new Exception("Failed to generate signed XML");
+                    throw new Exception(generateSignedXml_Response?.data?.responseMsg ?? "Failed to generate signed XML");
                 else
                 {
                     //Temporary keeping value of signedXMLData in caces for testing purpose, you can remove it later and keep it in db                
@@ -255,7 +263,7 @@ namespace RajFabAPI.Services
             }
             catch
             {
-                return null;
+                throw;
             }
         }
 

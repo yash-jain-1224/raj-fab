@@ -3,6 +3,7 @@ using RajFabAPI.Data;
 using RajFabAPI.DTOs;
 using RajFabAPI.Models;
 using RajFabAPI.Services.Interface;
+using System.Text.Json;
 using static RajFabAPI.Constants.AppConstants;
 using static System.Net.Mime.MediaTypeNames;
 
@@ -164,8 +165,7 @@ namespace RajFabAPI.Services
                 }
                 else if (appRegistration.ApplicationTypeName == ApplicationTypeNames.MapApproval)
                 {
-                    var mapApproval = _db.FactoryMapApprovals
-                            .Include(x => x.MapApprovalFactoryDetails).FirstOrDefault(x => x.Id == appRegistration.ApplicationId);
+                    var mapApproval = _db.FactoryMapApprovals.FirstOrDefault(x => x.Id == appRegistration.ApplicationId);
                     if (mapApproval != null)
                     {
                         applicationUserDashboardDtos.Add(new ApplicationUserDashboardDto
@@ -175,7 +175,7 @@ namespace RajFabAPI.Services
                             Status = mapApproval.Status,
                             CreatedDate = appRegistration.CreatedDate,
                             ApplicationId = Guid.Parse(appRegistration.ApplicationId),
-                            ApplicationTitle = mapApproval != null ? mapApproval.MapApprovalFactoryDetails?.FactoryName : "",
+                            ApplicationTitle = mapApproval != null ? "Map Approval" : "",
                         });
                     }
                 }
@@ -388,19 +388,24 @@ namespace RajFabAPI.Services
 
                     if (mapReg == null)
                         return false;
+                    var options = new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    };
 
-                    var mapDetails = await _db.Set<MapApprovalFactoryDetail>()
-                        .FirstOrDefaultAsync(ed => ed.FactoryMapApprovalId == mapReg.Id);
+                    var factoryDetails = JsonSerializer.Deserialize<FactoryDetailsModel>(
+                        mapReg.FactoryDetails,
+                        options
+                    );
 
-                    if (mapDetails == null)
-                        return false;
-
-                    totalWorkers = mapReg.MaxWorkerMale + mapReg.MaxWorkerFemale;
+                    totalWorkers =
+                        (mapReg?.MaxWorkerMale ?? 0) +
+                        (mapReg?.MaxWorkerFemale ?? 0);
 
                     var factoryType = _db.FactoryTypes.FirstOrDefault(x => x.Name == "Not Applicable");
                     factoryTypeId = factoryType?.Id;
 
-                    if (!Guid.TryParse(mapDetails.AreaId, out Guid parsedSubDiv))
+                    if (!Guid.TryParse(factoryDetails.subDivisionId, out Guid parsedSubDiv))
                         return false;
 
                     subDivisionId = parsedSubDiv;

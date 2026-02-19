@@ -27,4 +27,9 @@
     <PackageReference Include="System.Drawing.Common" Version="10.0.3" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="wwwroot\factory-map-forms\" />
+    <Folder Include="wwwroot\factory-establishment-forms\" />
+  </ItemGroup>
+
 </Project>

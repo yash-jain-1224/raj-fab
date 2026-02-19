@@ -53,7 +53,7 @@ namespace RajFabAPI.Controllers.FactoryControllers
 
         [Authorize]
         [HttpPost]
-        public async Task<ActionResult<ApiResponseDto<FactoryMapApprovalDto>>> CreateApplication([FromBody] CreateFactoryMapApprovalRequest request)
+        public async Task<ActionResult<ApiResponseDto<string>>> CreateApplication([FromBody] CreateFactoryMapApprovalRequest request)
         {
             try
             {
@@ -69,15 +69,6 @@ namespace RajFabAPI.Controllers.FactoryControllers
                     throw new Exception("Application not created");
                 var html = await _eSignService.GenerateESignHtmlAsync(applicationId);
                 return CreatedAtAction(null, new { html }, new { html });
-
-                //return new ApiResponseDto<FactoryMapApprovalDto>
-                //{
-                //    Success = true,
-                //    Message = "Application created successfully. Acknowledgement Number: " + application.AcknowledgementNumber,
-                //    Data = new FactoryMapApprovalDto { Id = application.Id, AcknowledgementNumber = application.AcknowledgementNumber }
-                //};
-
-                //return CreatedAtAction(nameof(GetApplicationById), new { id = result.Data!.Id }, result);
             }
             catch (Exception ex)
             {

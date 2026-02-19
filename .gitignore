@@ -58,5 +58,4 @@ nunit-*.xml
 /.config/dotnet-tools.json
 /RajFabAPI.csproj.user
 /RajFabAPI.csproj.user
-/wwwroot/documents/
-/wwwroot/certificates/
+/wwwroot/

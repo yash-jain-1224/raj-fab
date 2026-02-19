@@ -153,3 +153,46 @@ CREATE TABLE CommencementCessationApplication (
     Version DECIMAL(3,1) NOT NULL DEFAULT 1.0,
     IsActive BIT NOT NULL DEFAULT 1
 );
+
+
+ DROP TABLE FactoryMapApprovals
+CREATE TABLE FactoryMapApprovals
+(
+    Id NVARCHAR(50) NOT NULL PRIMARY KEY,
+    
+    AcknowledgementNumber NVARCHAR(255) NOT NULL,
+    PlantParticulars NVARCHAR(200) NOT NULL,
+    ProductName NVARCHAR(MAX) NOT NULL,
+    ManufacturingProcess NVARCHAR(MAX) NOT NULL,
+    
+    MaxWorkerMale INT NOT NULL,
+    MaxWorkerFemale INT NOT NULL,
+    
+    Version DECIMAL(3,1) NOT NULL DEFAULT 1.0,
+    IsNew BIT NOT NULL DEFAULT 1,
+    
+    AreaFactoryPremise DECIMAL(18,2) NOT NULL DEFAULT 0,
+    NoOfFactoriesIfCommonPremise INT NULL,
+    
+    PremiseOwnerName NVARCHAR(MAX) NULL,
+    PremiseOwnerContactNo NVARCHAR(50) NULL,
+    PremiseOwnerAddressPlotNo NVARCHAR(100) NULL,
+    PremiseOwnerAddressStreet NVARCHAR(200) NULL,
+    PremiseOwnerAddressCity NVARCHAR(100) NULL,
+    PremiseOwnerAddressDistrict NVARCHAR(100) NULL,
+    PremiseOwnerAddressState NVARCHAR(100) NULL,
+    PremiseOwnerAddressPinCode NVARCHAR(20) NULL,
+    
+    Place NVARCHAR(100) NULL,
+    Date DATETIME NULL,
+    IsESignCompleted BIT NOT NULL DEFAULT 0,
+    ApplicationPDFUrl NVARCHAR(MAX) NULL DEFAULT '',
+    
+    Status NVARCHAR(20) NOT NULL DEFAULT 'Pending',
+    CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+    UpdatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+    
+    FactoryDetails NVARCHAR(MAX) NOT NULL DEFAULT '',
+    OccupierDetails NVARCHAR(MAX) NOT NULL DEFAULT '',
+    
+);

@@ -1,9 +1,21 @@
+using iText.Kernel.Colors;
+using iText.Kernel.Font;
+using iText.Kernel.Pdf;
+using iText.Layout;
+using iText.Layout.Borders;
+using iText.Layout.Element;
 using Microsoft.EntityFrameworkCore;
 using RajFabAPI.Data;
 using RajFabAPI.DTOs;
 using RajFabAPI.Models;
 using RajFabAPI.Services.Interface;
+using System.Data;
+using System.Text.Json;
 using static RajFabAPI.Constants.AppConstants;
+using ImageDataFactory = iText.IO.Image.ImageDataFactory;
+using PdfCell = iText.Layout.Element.Cell;
+using PdfImage = iText.Layout.Element.Image;
+using PdfTable = iText.Layout.Element.Table;
 
 namespace RajFabAPI.Services
 {
@@ -11,10 +23,15 @@ namespace RajFabAPI.Services
     {
         private readonly ApplicationDbContext _context;
         private readonly IWebHostEnvironment _environment;
+        private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IConfiguration _config;
 
-        public FactoryMapApprovalService(ApplicationDbContext context, IWebHostEnvironment environment)
+
+        public FactoryMapApprovalService(ApplicationDbContext context, IConfiguration config, IWebHostEnvironment environment, IHttpContextAccessor httpContextAccessor)
         {
             _context = context;
+            _httpContextAccessor = httpContextAccessor;
+            _config = config;
             _environment = environment;
         }
 
@@ -51,39 +68,11 @@ namespace RajFabAPI.Services
                     .Include(f => f.IntermediateProducts)
                     .Include(f => f.FinishGoods)
                     .Include(f => f.Chemicals)
-                    .Include(f => f.MapApprovalFactoryDetails)
-                    .Include(f => f.MapApprovalOccupierDetails)
                     .OrderByDescending(f => f.CreatedAt)
                     .ToListAsync();
 
-                var districtIds = applications
-                    .SelectMany(a => new[]
-                    {
-                        a.MapApprovalFactoryDetails?.DistrictId,
-                        a.MapApprovalOccupierDetails?.OfficeAddressDistrict,
-                        a.MapApprovalOccupierDetails?.ResidentialAddressDistrict,
-                        a.PremiseOwnerAddressDistrict
-                    })
-                    .Where(d => !string.IsNullOrEmpty(d))
-                    .Distinct()
-                    .ToList();
-
-                var areaIds = applications
-                    .Select(a => a.MapApprovalFactoryDetails?.AreaId)
-                    .Where(a => !string.IsNullOrEmpty(a))
-                    .Distinct()
-                    .ToList();
-
-                var districts = await _context.Districts
-                    .Where(d => districtIds.Contains(d.Id.ToString()))
-                    .ToDictionaryAsync(d => d.Id.ToString(), d => d.Name ?? string.Empty);
-
-                var areas = await _context.Areas
-                    .Where(a => areaIds.Contains(a.Id.ToString()))
-                    .ToDictionaryAsync(a => a.Id.ToString(), a => a.Name ?? string.Empty);
-
                 var applicationDtos = applications
-                    .Select(a => MapToDto(a, districts, areas))
+                    .Select(a => MapToDto(a))
                     .ToList();
                 return new ApiResponseDto<List<FactoryMapApprovalDto>>
                 {
@@ -111,8 +100,6 @@ namespace RajFabAPI.Services
                     .Include(f => f.IntermediateProducts)
                     .Include(f => f.FinishGoods)
                     .Include(f => f.Chemicals)
-                    .Include(f => f.MapApprovalFactoryDetails)
-                    .Include(f => f.MapApprovalOccupierDetails)
                     .FirstOrDefaultAsync(f => f.Id == id);
 
                 if (application == null)
@@ -124,14 +111,11 @@ namespace RajFabAPI.Services
                     };
                 }
 
-                var districts = await LoadDistricts(new[] { application.MapApprovalFactoryDetails.DistrictId, application.MapApprovalOccupierDetails.OfficeAddressDistrict, application.MapApprovalOccupierDetails.ResidentialAddressDistrict });
-                var areas = await LoadAreas(new[] { application.MapApprovalFactoryDetails.AreaId});
-
                 return new ApiResponseDto<FactoryMapApprovalDto>
                 {
                     Success = true,
                     Message = "Application retrieved successfully",
-                    Data = MapToDto(application, districts, areas)
+                    Data = MapToDto(application)
                 };
             }
             catch (Exception ex)
@@ -152,8 +136,6 @@ namespace RajFabAPI.Services
                     .Include(f => f.RawMaterials)
                     .Include(f => f.IntermediateProducts)
                     .Include(f => f.Chemicals)
-                    .Include(f => f.MapApprovalFactoryDetails)
-                    .Include(f => f.MapApprovalOccupierDetails)
                     .FirstOrDefaultAsync(f => f.AcknowledgementNumber == acknowledgementNumber);
 
                 if (application == null)
@@ -165,14 +147,11 @@ namespace RajFabAPI.Services
                     };
                 }
 
-                var districts = await LoadDistricts(new[] { application.MapApprovalFactoryDetails.DistrictId});
-                var areas = await LoadAreas(new[] { application.MapApprovalFactoryDetails.AreaId });
-
                 return new ApiResponseDto<FactoryMapApprovalDto>
                 {
                     Success = true,
                     Message = "Application retrieved successfully",
-                    Data = MapToDto(application, districts, areas)
+                    Data = MapToDto(application)
                 };
             }
             catch (Exception ex)
@@ -233,46 +212,10 @@ namespace RajFabAPI.Services
                     PremiseOwnerAddressPinCode = request.PremiseOwnerAddressPinCode,
                     Place = request.Place,
                     Date = request.Date,
+                    OccupierDetails = request.OccupierDetails,
+                    FactoryDetails = request.FactoryDetails,
                     IsNew = isNew ?? true,
                     Version = newVersion
-                };
-                
-                var factoryDetails = new MapApprovalFactoryDetail
-                {
-                    FactoryMapApprovalId = application.Id, // Set FK for navigation
-                    FactoryName = request.MapApprovalFactoryDetail.FactoryName,
-                    FactorySituation = request.MapApprovalFactoryDetail.FactorySituation,
-                    FactoryPlotNo = request.MapApprovalFactoryDetail.FactoryPlotNo,
-                    DivisionId = request.MapApprovalFactoryDetail.DivisionId,
-                    DistrictId = request.MapApprovalFactoryDetail.DistrictId,
-                    AreaId = request.MapApprovalFactoryDetail.AreaId,
-                    FactoryPincode = request.MapApprovalFactoryDetail.FactoryPincode,
-                    ContactNo = request.MapApprovalFactoryDetail.ContactNo,
-                    Email = request.MapApprovalFactoryDetail.Email,
-                    Website = request.MapApprovalFactoryDetail.Website
-                };
-
-                application.MapApprovalFactoryDetails = factoryDetails;
-                application.MapApprovalOccupierDetails = new MapApprovalOccupierDetail
-                {
-                    FactoryMapApprovalId = application.Id,
-                    Name = request.OccupierDetail.Name,
-                    RelationTypeId = request.OccupierDetail.RelationTypeId,
-                    RelativeName = request.OccupierDetail.RelativeName,
-                    OfficeAddressPlotno = request.OccupierDetail.OfficeAddressPlotno,
-                    OfficeAddressStreet = request.OccupierDetail.OfficeAddressStreet,
-                    OfficeAddressCity = request.OccupierDetail.OfficeAddressCity,
-                    OfficeAddressDistrict = request.OccupierDetail.OfficeAddressDistrict,
-                    OfficeAddressState = request.OccupierDetail.OfficeAddressState,
-                    OfficeAddressPinCode = request.OccupierDetail.OfficeAddressPinCode,
-                    ResidentialAddressPlotno = request.OccupierDetail.ResidentialAddressPlotno,
-                    ResidentialAddressStreet = request.OccupierDetail.ResidentialAddressStreet,
-                    ResidentialAddressCity = request.OccupierDetail.ResidentialAddressCity,
-                    ResidentialAddressDistrict = request.OccupierDetail.ResidentialAddressDistrict,
-                    ResidentialAddressState = request.OccupierDetail.ResidentialAddressState,
-                    ResidentialAddressPinCode = request.OccupierDetail.ResidentialAddressPinCode,
-                    OccupierMobile = request.OccupierDetail.OccupierMobile,
-                    OccupierEmail = request.OccupierDetail.OccupierEmail
                 };
 
                 // Add raw materials if provided
@@ -298,7 +241,7 @@ namespace RajFabAPI.Services
                         {
                             FactoryMapApprovalId = application.Id,
                             ProductName = product.ProductName,
-                            MaxStorageQuantity = product.MaxStorageQuantity,                            
+                            MaxStorageQuantity = product.MaxStorageQuantity,
                         });
                     }
                 }
@@ -363,18 +306,18 @@ namespace RajFabAPI.Services
 
                 var module = await _context.Set<FormModule>().FirstOrDefaultAsync(m => m.Name == moduleName);
 
-				var appReg = new ApplicationRegistration
-				{
-					Id = Guid.NewGuid().ToString(),
-					ModuleId = module.Id,
-					UserId = userId,
-					ApplicationId = application.Id,
-					ApplicationRegistrationNumber = acknowledgementNumber,
-					CreatedDate = DateTime.Now,
-					UpdatedDate = DateTime.Now
-				};
-				_context.Set<ApplicationRegistration>().Add(appReg);
-				await _context.SaveChangesAsync();
+                var appReg = new ApplicationRegistration
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    ModuleId = module.Id,
+                    UserId = userId,
+                    ApplicationId = application.Id,
+                    ApplicationRegistrationNumber = acknowledgementNumber,
+                    CreatedDate = DateTime.Now,
+                    UpdatedDate = DateTime.Now
+                };
+                _context.Set<ApplicationRegistration>().Add(appReg);
+                await _context.SaveChangesAsync();
 
                 // Calculate total workers
                 //int totalWorkers = application.MaxWorkerMale + application.MaxWorkerFemale;
@@ -475,14 +418,11 @@ namespace RajFabAPI.Services
 
                 await _context.SaveChangesAsync();
 
-                var districts = await LoadDistricts(new[] { application.MapApprovalFactoryDetails.DistrictId, application.MapApprovalOccupierDetails.OfficeAddressDistrict, application.MapApprovalOccupierDetails.ResidentialAddressDistrict });
-                var areas = await LoadAreas(new[] { application.MapApprovalFactoryDetails.AreaId });
-
                 return new ApiResponseDto<FactoryMapApprovalDto>
                 {
                     Success = true,
                     Message = "Application status updated successfully",
-                    Data = MapToDto(application, districts, areas)
+                    Data = MapToDto(application)
                 };
             }
             catch (Exception ex)
@@ -700,7 +640,7 @@ namespace RajFabAPI.Services
                 if (!ids.Any()) return new Dictionary<string, string>();
                 List<District> districtList = new List<District>();
                 var guidIds = ids.Select(Guid.Parse).ToList();
-                foreach(var id in guidIds)
+                foreach (var id in guidIds)
                 {
                     districtList.Add(
                         await _context.Districts
@@ -768,51 +708,14 @@ namespace RajFabAPI.Services
         }
 
         private static FactoryMapApprovalDto MapToDto(
-            FactoryMapApproval application,
-            Dictionary<string, string> districts,
-            Dictionary<string, string> areas)
+            FactoryMapApproval application)
         {
             var res = new FactoryMapApprovalDto
             {
                 Id = application.Id,
                 AcknowledgementNumber = application.AcknowledgementNumber,
-                MapApprovalFactoryDetail = application.MapApprovalFactoryDetails != null ? new MapApprovalFactoryDetailsDto
-                {
-                    FactoryName = application.MapApprovalFactoryDetails.FactoryName,
-                    FactorySituation = application.MapApprovalFactoryDetails.FactorySituation,
-                    FactoryPlotNo = application.MapApprovalFactoryDetails.FactoryPlotNo,
-                    DivisionId = application.MapApprovalFactoryDetails.DivisionId,
-                    DistrictId = application.MapApprovalFactoryDetails.DistrictId,
-                    DistrictName = districts.GetValueOrDefault(application.MapApprovalFactoryDetails.DistrictId),
-                    AreaId = application.MapApprovalFactoryDetails.AreaId,
-                    AreaName = areas.GetValueOrDefault(application.MapApprovalFactoryDetails.AreaId),
-                    FactoryPincode = application.MapApprovalFactoryDetails.FactoryPincode,
-                    ContactNo = application.MapApprovalFactoryDetails.ContactNo,
-                    Email = application.MapApprovalFactoryDetails.Email,
-                    Website = application.MapApprovalFactoryDetails.Website
-                } : null,
-                OccupierDetail = application.MapApprovalOccupierDetails != null ? new OccupierDetailsDto
-                {
-                    Name = application.MapApprovalOccupierDetails.Name,
-                    RelationTypeId = application.MapApprovalOccupierDetails.RelationTypeId,
-                    RelativeName = application.MapApprovalOccupierDetails.RelativeName,
-                    OfficeAddressPlotno = application.MapApprovalOccupierDetails.OfficeAddressPlotno,
-                    OfficeAddressStreet = application.MapApprovalOccupierDetails.OfficeAddressStreet,
-                    OfficeAddressCity = application.MapApprovalOccupierDetails.OfficeAddressCity,
-                    OfficeAddressDistrict = application.MapApprovalOccupierDetails.OfficeAddressDistrict,
-                    OfficeAddressDistrictName = districts.GetValueOrDefault(application.MapApprovalOccupierDetails.OfficeAddressDistrict),
-                    OfficeAddressState = application.MapApprovalOccupierDetails.OfficeAddressState,
-                    OfficeAddressPinCode = application.MapApprovalOccupierDetails.OfficeAddressPinCode,
-                    ResidentialAddressPlotno = application.MapApprovalOccupierDetails.ResidentialAddressPlotno,
-                    ResidentialAddressStreet = application.MapApprovalOccupierDetails.ResidentialAddressStreet,
-                    ResidentialAddressCity = application.MapApprovalOccupierDetails.ResidentialAddressCity,
-                    ResidentialAddressDistrict = application.MapApprovalOccupierDetails.ResidentialAddressDistrict,
-                    ResidentialAddressDistrictName = districts.GetValueOrDefault(application.MapApprovalOccupierDetails.ResidentialAddressDistrict),
-                    ResidentialAddressState = application.MapApprovalOccupierDetails.ResidentialAddressState,
-                    ResidentialAddressPinCode = application.MapApprovalOccupierDetails.ResidentialAddressPinCode,
-                    OccupierMobile = application.MapApprovalOccupierDetails.OccupierMobile,
-                    OccupierEmail = application.MapApprovalOccupierDetails.OccupierEmail
-                } : null,
+                FactoryDetails = application.FactoryDetails != null ? application?.FactoryDetails : null,
+                OccupierDetails = application.OccupierDetails != null ? application.OccupierDetails : null,
                 PlantParticulars = application.PlantParticulars,
                 ProductName = application.ProductName,
                 ManufacturingProcess = application.ManufacturingProcess,
@@ -824,7 +727,7 @@ namespace RajFabAPI.Services
                 PremiseOwnerAddressPlotNo = application.PremiseOwnerAddressPlotNo,
                 PremiseOwnerAddressStreet = application.PremiseOwnerAddressStreet,
                 PremiseOwnerAddressCity = application.PremiseOwnerAddressCity,
-                PremiseOwnerAddressDistrict = districts.GetValueOrDefault(application.PremiseOwnerAddressDistrict),
+                PremiseOwnerAddressDistrict = application.PremiseOwnerAddressDistrict,
                 PremiseOwnerAddressState = application.PremiseOwnerAddressState,
                 PremiseOwnerAddressPinCode = application.PremiseOwnerAddressPinCode,
                 PremiseOwnerContactNo = application.PremiseOwnerContactNo,
@@ -885,6 +788,254 @@ namespace RajFabAPI.Services
             var year = DateTime.Now.Year;
             var sequence = DateTime.Now.Ticks.ToString().Substring(8, 6);
             return $"FMA{year}{sequence}";
+        }
+
+        public async Task<string> GenerateFactoryMapApprovalPdf(FactoryMapApprovalDto dto)
+        {
+            if (dto == null) throw new ArgumentNullException(nameof(dto));
+
+            var fileName = $"factory_map_{dto.AcknowledgementNumber}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+
+            var webRootPath = _environment.WebRootPath;
+            if (string.IsNullOrWhiteSpace(webRootPath))
+                throw new InvalidOperationException("wwwroot is not configured.");
+
+            var uploadPath = Path.Combine(webRootPath, "factory-map-forms");
+            Directory.CreateDirectory(uploadPath);
+
+            var filePath = Path.Combine(uploadPath, fileName);
+
+            var httpContext = _httpContextAccessor.HttpContext
+                ?? throw new InvalidOperationException("HTTP context unavailable");
+
+            var request = httpContext.Request;
+            var baseUrl = _config["BaseUrl"] ?? $"{request.Scheme}://{request.Host}";
+            var fileUrl = $"{baseUrl}/factory-map-forms/{fileName}";
+
+            using var writer = new PdfWriter(filePath);
+            using var pdf = new PdfDocument(writer);
+            using var document = new Document(pdf);
+
+            var boldFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA_BOLD);
+            var regularFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA);
+
+            var occupier = string.IsNullOrWhiteSpace(dto.OccupierDetails)
+                ? null
+                : JsonSerializer.Deserialize<OccupierDetailsModel>(dto.OccupierDetails);
+
+            var factory = string.IsNullOrWhiteSpace(dto.FactoryDetails)
+                ? null
+                : JsonSerializer.Deserialize<FactoryDetailsModel>(dto.FactoryDetails);
+
+            var headerTable = new PdfTable(2).UseAllAvailableWidth();
+            _ = headerTable.AddCell(new PdfCell()
+                .Add(new PdfImage(ImageDataFactory.Create("wwwroot/Emblem_of_India.png")).ScaleToFit(40, 40))
+                .SetBorder(Border.NO_BORDER));
+
+            _ = headerTable.AddCell(new PdfCell()
+                .Add(new Paragraph("Form - 6").SetFont(boldFont).SetFontSize(18))
+                .Add(new Paragraph("(See clause (d) of sub rule (1) of rule 5)").SetFont(regularFont).SetFontSize(12))
+                .Add(new Paragraph("FACTORY MAP APPROVAL FORM").SetFontColor(ColorConstants.BLUE).SetFontSize(12))
+                .SetBorder(Border.NO_BORDER));
+            _ = document.Add(headerTable);
+            _ = document.Add(new Paragraph("\n"));
+
+            document.Add(new Paragraph($"\nAcknowledgement No: {dto.AcknowledgementNumber}")
+                .SetFont(regularFont));
+
+            document.Add(new Paragraph($"Date: {(dto.Date?.ToString("dd/MM/yyyy") ?? "-")}"));
+            document.Add(new Paragraph("\n"));
+
+            // ================= FACTORY DETAILS =================
+            var factoryTable = new Table(2).UseAllAvailableWidth();
+
+            if (factory != null)
+            {
+                factoryTable.AddCell(new Cell().Add(new Paragraph("Factory Name").SetFont(boldFont)));
+                factoryTable.AddCell(new Cell().Add(new Paragraph(factory.name ?? "-")));
+
+                factoryTable.AddCell(new Cell().Add(new Paragraph("Situation").SetFont(boldFont)));
+                factoryTable.AddCell(new Cell().Add(new Paragraph(factory.situation ?? "-")));
+
+                factoryTable.AddCell(new Cell().Add(new Paragraph("Address").SetFont(boldFont)));
+                factoryTable.AddCell(new Cell().Add(new Paragraph(
+                    $"{factory.addressLine1}, {factory.addressLine2}, {factory.area} - {factory.pincode}"
+                )));
+
+                factoryTable.AddCell(new Cell().Add(new Paragraph("Email").SetFont(boldFont)));
+                factoryTable.AddCell(new Cell().Add(new Paragraph(factory.email ?? "-")));
+
+                factoryTable.AddCell(new Cell().Add(new Paragraph("Mobile").SetFont(boldFont)));
+                factoryTable.AddCell(new Cell().Add(new Paragraph(factory.mobile ?? "-")));
+
+                factoryTable.AddCell(new Cell().Add(new Paragraph("Telephone").SetFont(boldFont)));
+                factoryTable.AddCell(new Cell().Add(new Paragraph(factory.telephone ?? "-")));
+
+                factoryTable.AddCell(new Cell().Add(new Paragraph("Website").SetFont(boldFont)));
+                factoryTable.AddCell(new Cell().Add(new Paragraph(factory.website ?? "-")));
+            }
+            
+            if (occupier != null)
+            {
+                factoryTable.AddCell(new Cell().Add(new Paragraph("Occupier Name").SetFont(boldFont)));
+                factoryTable.AddCell(new Cell().Add(new Paragraph(occupier.name ?? "-")));
+
+                factoryTable.AddCell(new Cell().Add(new Paragraph("Designation").SetFont(boldFont)));
+                factoryTable.AddCell(new Cell().Add(new Paragraph(occupier.designation ?? "-")));
+
+                factoryTable.AddCell(new Cell().Add(new Paragraph("Relation").SetFont(boldFont)));
+                factoryTable.AddCell(new Cell().Add(new Paragraph(
+                    $"{occupier.relationType} {occupier.relativeName}"
+                )));
+
+                factoryTable.AddCell(new Cell().Add(new Paragraph("Address").SetFont(boldFont)));
+                factoryTable.AddCell(new Cell().Add(new Paragraph(
+                    $"{occupier.addressLine1}, {occupier.addressLine2}, {occupier.area}, {occupier.tehsil}, {occupier.district} - {occupier.pincode}"
+                )));
+
+                factoryTable.AddCell(new Cell().Add(new Paragraph("Email").SetFont(boldFont)));
+                factoryTable.AddCell(new Cell().Add(new Paragraph(occupier.email ?? "-")));
+
+                factoryTable.AddCell(new Cell().Add(new Paragraph("Mobile").SetFont(boldFont)));
+                factoryTable.AddCell(new Cell().Add(new Paragraph(occupier.mobile ?? "-")));
+
+                factoryTable.AddCell(new Cell().Add(new Paragraph("Telephone").SetFont(boldFont)));
+                factoryTable.AddCell(new Cell().Add(new Paragraph(occupier.telephone ?? "-")));
+            }
+
+            factoryTable.AddCell(new Cell().Add(new Paragraph("Plant Particulars").SetFont(boldFont)));
+            factoryTable.AddCell(new Cell().Add(new Paragraph(dto.PlantParticulars ?? "-")));
+
+            factoryTable.AddCell(new Cell().Add(new Paragraph("Product Name").SetFont(boldFont)));
+            factoryTable.AddCell(new Cell().Add(new Paragraph(dto.ProductName ?? "-")));
+
+            factoryTable.AddCell(new Cell().Add(new Paragraph("Manufacturing Process").SetFont(boldFont)));
+            factoryTable.AddCell(new Cell().Add(new Paragraph(dto.ManufacturingProcess ?? "-")));
+
+            factoryTable.AddCell(new Cell().Add(new Paragraph("Max Workers (Male)").SetFont(boldFont)));
+            factoryTable.AddCell(new Cell().Add(new Paragraph(dto.MaxWorkerMale.ToString())));
+
+            factoryTable.AddCell(new Cell().Add(new Paragraph("Max Workers (Female)").SetFont(boldFont)));
+            factoryTable.AddCell(new Cell().Add(new Paragraph(dto.MaxWorkerFemale.ToString())));
+
+            factoryTable.AddCell(new Cell().Add(new Paragraph("Factory Area (Sq. Mtr)").SetFont(boldFont)));
+            factoryTable.AddCell(new Cell().Add(new Paragraph(dto.AreaFactoryPremise.ToString())));
+
+            document.Add(factoryTable);
+            document.Add(new Paragraph("\n"));
+
+            // ================= PREMISE OWNER DETAILS =================
+            if (dto.NoOfFactoriesIfCommonPremise.HasValue)
+            {
+                var premiseTable = new Table(2).UseAllAvailableWidth();
+
+                premiseTable.AddCell(new Cell().Add(new Paragraph("No. of Factories (Common Premise)").SetFont(boldFont)));
+                premiseTable.AddCell(new Cell().Add(new Paragraph(dto.NoOfFactoriesIfCommonPremise.ToString())));
+
+                premiseTable.AddCell(new Cell().Add(new Paragraph("Premise Owner Name").SetFont(boldFont)));
+                premiseTable.AddCell(new Cell().Add(new Paragraph(dto.PremiseOwnerName ?? "-")));
+
+                premiseTable.AddCell(new Cell().Add(new Paragraph("Owner Contact").SetFont(boldFont)));
+                premiseTable.AddCell(new Cell().Add(new Paragraph(dto.PremiseOwnerContactNo ?? "-")));
+
+                premiseTable.AddCell(new Cell().Add(new Paragraph("Owner Address").SetFont(boldFont)));
+                premiseTable.AddCell(new Cell().Add(new Paragraph(
+                    $"{dto.PremiseOwnerAddressPlotNo}, {dto.PremiseOwnerAddressStreet}, {dto.PremiseOwnerAddressCity}, {dto.PremiseOwnerAddressDistrict}, {dto.PremiseOwnerAddressState} - {dto.PremiseOwnerAddressPinCode}"
+                )));
+
+                document.Add(premiseTable);
+                document.Add(new Paragraph("\n"));
+            }
+
+            // ================= RAW MATERIALS =================
+            if (dto.RawMaterials.Any())
+            {
+                document.Add(new Paragraph("Raw Materials").SetFont(boldFont));
+
+                foreach (var item in dto.RawMaterials)
+                {
+                    document.Add(new Paragraph($"• {item.MaterialName} - {item.MaxStorageQuantity}"));
+                }
+                document.Add(new Paragraph("\n"));
+            }
+
+            // ================= INTERMEDIATE PRODUCTS =================
+            if (dto.IntermediateProducts.Any())
+            {
+                document.Add(new Paragraph("Intermediate Products").SetFont(boldFont));
+
+                foreach (var item in dto.IntermediateProducts)
+                {
+                    document.Add(new Paragraph($"• {item.ProductName} - {item.MaxStorageQuantity}"));
+                }
+                document.Add(new Paragraph("\n"));
+            }
+
+            // ================= FINISHED GOODS =================
+            if (dto.FinishGoods.Any())
+            {
+                document.Add(new Paragraph("Finished Goods").SetFont(boldFont));
+
+                foreach (var item in dto.FinishGoods)
+                {
+                    document.Add(new Paragraph($"• {item.ProductName} - {item.MaxStorageCapacity}"));
+                }
+                document.Add(new Paragraph("\n"));
+            }
+
+            // ================= CHEMICALS =================
+            if (dto.Chemicals.Any())
+            {
+                document.Add(new Paragraph("Chemicals Used").SetFont(boldFont));
+
+                foreach (var item in dto.Chemicals)
+                {
+                    document.Add(new Paragraph($"• {item.ChemicalName} - {item.MaxStorageQuantity}"));
+                }
+                document.Add(new Paragraph("\n"));
+            }
+
+            // ================= DECLARATION =================
+            document.Add(new Paragraph("\nDeclaration")
+                .SetFont(boldFont));
+
+            document.Add(new Paragraph($"Place: {dto.Place ?? "-"}"));
+            document.Add(new Paragraph($"Status: {dto.Status}"));
+            document.Add(new Paragraph("This is a system generated Factory Map Approval document.")
+                .SetFontSize(8)
+                .SetFontColor(ColorConstants.GRAY));
+
+            document.Close();
+
+            var approval = await _context.FactoryMapApprovals.FirstOrDefaultAsync(x => x.Id == dto.Id);
+            if (approval != null)
+            {
+                approval.ApplicationPDFUrl = fileUrl;
+                await _context.SaveChangesAsync();
+            }
+
+            return filePath;
+        }
+
+        public async Task<bool> UpdatePdfURL(string path, string registrationId, string prnNumber)
+        {
+            var appReg = await _context.Set<ApplicationRegistration>()
+                .FirstOrDefaultAsync(r => r.ApplicationId == registrationId);
+            var existingReg = await _context.Set<FactoryMapApproval>()
+                .FirstOrDefaultAsync(r => r.Id == registrationId);
+
+            if (appReg == null)
+                return false;
+
+            if (existingReg == null)
+                return false;
+            appReg.ESignPrnNumber = prnNumber;
+            existingReg.ApplicationPDFUrl = path;
+            existingReg.UpdatedAt = DateTime.Now;
+
+            await _context.SaveChangesAsync();
+
+            return true;
         }
     }
 }

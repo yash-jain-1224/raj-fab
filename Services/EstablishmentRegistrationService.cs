@@ -984,6 +984,7 @@ namespace RajFabAPI.Services
                     {
                         Id = reg.EstablishmentRegistrationId,
                         RegistrationNumber = reg.RegistrationNumber,
+                        ApplicationPDFUrl = reg.ApplicationPDFUrl,
                         EstablishmentDetail = new EstablishmentDetailsDto
                         {
                             Id = estDetail != null ? estDetail.Id.ToString() : null,
@@ -1131,6 +1132,7 @@ namespace RajFabAPI.Services
                     Date = reg.Date,
                     Status = reg.Status,
                     Signature = reg.Signature,
+                    ApplicationPDFUrl = reg.ApplicationPDFUrl,
                     ApplicationRegistrationNumber = reg.RegistrationNumber
                 };
             }

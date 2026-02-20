@@ -376,7 +376,8 @@ namespace RajFabAPI.Controllers
                     OfficePostId = "",
                     OfficePostName = "",
                     UserType = user.UserType,
-                    IsActive = user.IsActive
+                    IsActive = user.IsActive,
+                    token = "",
                 };
 
                 if (user.UserType == "department")
@@ -416,8 +417,10 @@ namespace RajFabAPI.Controllers
                 if (!userData.IsActive)
                     return Unauthorized("USER_INACTIVE");
                 var token = _jwt.GenerateToken(userData);
-                result.token = token;
-                return Ok(new { result });
+                Console.WriteLine("Generated JWT Token: " + token);
+                userData.token = token;
+                Console.WriteLine("Returning User Data: " + JsonSerializer.Serialize(userData));
+                return Ok(userData);
             }
             catch
             {

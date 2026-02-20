@@ -225,8 +225,7 @@ namespace RajFabAPI.Services
                     }
                     else if (appRegistration != null && appRegistration.ApplicationTypeName == ApplicationTypeNames.MapApproval || appRegistration.ApplicationTypeName == ApplicationTypeNames.MapApprovalAmendment)
                     {
-                        var mapApproval = _db.FactoryMapApprovals
-                            .Include(x => x.MapApprovalFactoryDetails).FirstOrDefault(x => x.Id == appRegistration.ApplicationId);
+                        var mapApproval = _db.FactoryMapApprovals.FirstOrDefault(x => x.Id == appRegistration.ApplicationId);
                         if (mapApproval != null)
                         {
                             result.Add(new ApplicationApprovalDashboardDto
@@ -236,7 +235,7 @@ namespace RajFabAPI.Services
                                 ApplicationId = Guid.Parse(appRegistration.ApplicationId),
                                 CreatedDate = appRegistration.CreatedDate,
                                 ApplicationType = appRegistration.ApplicationTypeName,
-                                ApplicationTitle = mapApproval.MapApprovalFactoryDetails.FactoryName,
+                                ApplicationTitle = "Map Approval",
                                 ApplicationRegistrationNumber = mapApproval.AcknowledgementNumber,
                                 Status = item.Status,
                                 TotalEmployees = (mapApproval.MaxWorkerMale + mapApproval.MaxWorkerFemale)

@@ -14,12 +14,13 @@ namespace RajFabAPI.DTOs
         public Guid? EstablishmentDetailId { get; set; }
 
         // Workflow / processing status (e.g. "Pending", "Approved", "Rejected")
-        public string? Status { get; set; }
+        public string? Status { get; set; } 
 
         public string? Place { get; set; }
         public string? Signature { get; set; }
         public DateTime? Date { get; set; }
         public string ApplicationRegistrationNumber { get; set; }
+        public string ApplicationPDFUrl { get; set; }
 
         // Audit
         public DateTime? CreatedDate { get; set; }

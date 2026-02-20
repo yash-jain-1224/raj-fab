@@ -860,6 +860,7 @@ namespace RajFabAPI.Services
                    {
                        Id = reg.EstablishmentRegistrationId,
                        RegistrationNumber = factoryRegistrationNumber,
+                       ApplicationPDFUrl = reg.ApplicationPDFUrl,
                        EstablishmentDetail = new EstablishmentDetailsDto
                        {
                            Id = estDetail != null ? estDetail.Id.ToString() : null,
@@ -983,6 +984,7 @@ namespace RajFabAPI.Services
                     {
                         Id = reg.EstablishmentRegistrationId,
                         RegistrationNumber = reg.RegistrationNumber,
+                        ApplicationPDFUrl = reg.ApplicationPDFUrl,
                         EstablishmentDetail = new EstablishmentDetailsDto
                         {
                             Id = estDetail != null ? estDetail.Id.ToString() : null,
@@ -1130,6 +1132,7 @@ namespace RajFabAPI.Services
                     Date = reg.Date,
                     Status = reg.Status,
                     Signature = reg.Signature,
+                    ApplicationPDFUrl = reg.ApplicationPDFUrl,
                     ApplicationRegistrationNumber = reg.RegistrationNumber
                 };
             }
@@ -3021,7 +3024,6 @@ namespace RajFabAPI.Services
             return fileUrl;
         }
 
-
         public async Task<string> GenerateEstablishmentPdf(EstablishmentRegistrationEntitiesDto dto)
         {
             if (dto == null) throw new ArgumentNullException(nameof(dto));
@@ -3032,7 +3034,7 @@ namespace RajFabAPI.Services
             if (string.IsNullOrWhiteSpace(webRootPath))
                 throw new InvalidOperationException("wwwroot is not configured.");
 
-            var uploadPath = Path.Combine(webRootPath, "certificates");
+            var uploadPath = Path.Combine(webRootPath, "factory-establishment-forms");
             _ = Directory.CreateDirectory(uploadPath);
 
             var filePath = Path.Combine(uploadPath, fileName);
@@ -3041,7 +3043,7 @@ namespace RajFabAPI.Services
                 ?? throw new InvalidOperationException("HTTP context unavailable");
             var request = httpContext.Request;
             var baseUrl = _config["BaseUrl"] ?? $"{request.Scheme}://{request.Host}";
-            var fileUrl = $"{baseUrl}/certificates/{fileName}";
+            var fileUrl = $"{baseUrl}/factory-establishment-forms/{fileName}";
 
             // Create PDF
             using var writer = new PdfWriter(filePath);
@@ -3243,7 +3245,7 @@ namespace RajFabAPI.Services
             var reg = await _db.EstablishmentRegistrations.FirstOrDefaultAsync(x => x.RegistrationNumber == dto.RegistrationDetail.ApplicationRegistrationNumber);
             if (reg != null)
             {
-                reg.ApplicationPDFUrl = $"certificates/{fileName}";
+                reg.ApplicationPDFUrl = fileUrl;
                 await _db.SaveChangesAsync();
             }
 
@@ -3260,28 +3262,6 @@ namespace RajFabAPI.Services
 
             // Join with comma
             return string.Join(", ", nonEmptyParts);
-        }
-
-        public async Task<bool> UpdatePdfURL(string path, string registrationId, string prnNumber)
-        {
-            var appReg = await _db.Set<ApplicationRegistration>()
-                .FirstOrDefaultAsync(r => r.ApplicationId == registrationId);
-            var existingReg = await _db.Set<EstablishmentRegistration>()
-                .FirstOrDefaultAsync(r => r.EstablishmentRegistrationId == registrationId);
-
-            if (appReg == null)
-                return false;
-
-            if (existingReg == null)
-                return false;
-            appReg.ESignPrnNumber = prnNumber;
-            existingReg.ApplicationPDFUrl = path;
-            existingReg.ESignPrnNumber = prnNumber;
-            existingReg.UpdatedDate = DateTime.Now;
-
-            await _db.SaveChangesAsync();
-
-            return true;
         }
 
         public async Task<string?> getFilePathByPrn(string prnNumber)

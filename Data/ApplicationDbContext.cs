@@ -245,14 +245,6 @@ namespace RajFabAPI.Data
                 //entity.Property(e => e.MapApprovalFactoryDetail.FactoryName).IsRequired().HasMaxLength(200);
                 //entity.Property(e => e.MapApprovalFactoryDetail.AreaId).IsRequired().HasMaxLength(200);
                 entity.Property(e => e.Status).HasMaxLength(20);
-
-                entity.HasOne(f => f.MapApprovalFactoryDetails)
-                      .WithOne(d => d.FactoryMapApproval)
-                      .HasForeignKey<MapApprovalFactoryDetail>(d => d.FactoryMapApprovalId);
-
-                entity.HasOne(f => f.MapApprovalOccupierDetails)
-                      .WithOne(d => d.FactoryMapApproval)
-                      .HasForeignKey<MapApprovalOccupierDetail>(d => d.FactoryMapApprovalId);
             });
 
             // Configure FactoryMapDocument

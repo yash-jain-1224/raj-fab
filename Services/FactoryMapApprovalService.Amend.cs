@@ -144,14 +144,11 @@ namespace RajFabAPI.Services
                     .Include(f => f.Chemicals)
                     .FirstAsync(f => f.Id == application.Id);
 
-                var districts = await LoadDistricts(new[] { application.MapApprovalOccupierDetails.OfficeAddressDistrict, application.MapApprovalOccupierDetails.ResidentialAddressDistrict });
-                var areas = await LoadAreas(new[] { application.MapApprovalFactoryDetails.AreaId});
-
                 return new ApiResponseDto<FactoryMapApprovalDto>
                 {
                     Success = true,
                     Message = "Application amended and resubmitted successfully",
-                    Data = MapToDto(application, districts, areas)
+                    Data = MapToDto(application)
                 };
             }
             catch (Exception ex)

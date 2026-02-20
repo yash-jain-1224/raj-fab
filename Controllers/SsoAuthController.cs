@@ -257,7 +257,6 @@ namespace RajFabAPI.Controllers
         private async Task<SSOUser?> FetchSsoTokenAsync(string userdetails)
         {
             var client = _httpClientFactory.CreateClient();
-
             var apiUrl =
                 $"{_config["RajSSO:BaseUrl"]}/SSOREST/GetTokenDetailJSON/{userdetails}";
 

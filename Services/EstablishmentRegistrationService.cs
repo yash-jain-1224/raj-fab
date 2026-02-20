@@ -3245,7 +3245,7 @@ namespace RajFabAPI.Services
             var reg = await _db.EstablishmentRegistrations.FirstOrDefaultAsync(x => x.RegistrationNumber == dto.RegistrationDetail.ApplicationRegistrationNumber);
             if (reg != null)
             {
-                reg.ApplicationPDFUrl = $"factory-establishment-forms/{fileName}";
+                reg.ApplicationPDFUrl = fileUrl;
                 await _db.SaveChangesAsync();
             }
 

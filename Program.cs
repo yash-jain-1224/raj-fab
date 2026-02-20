@@ -24,7 +24,7 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
         options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
     });
-builder.Services.AddEndpointsApiExplorer(); 
+builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddSwaggerGen(options =>
 {
@@ -85,16 +85,16 @@ builder.Services.AddMemoryCache();
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddScoped<JwtService>();
-builder.Services.AddScoped< RailwayStationService>();   // <-- required
-builder.Services.AddScoped< PoliceStationService>();
+builder.Services.AddScoped<RailwayStationService>();   // <-- required
+builder.Services.AddScoped<PoliceStationService>();
 builder.Services.AddScoped<IDivisionService, DivisionService>();
 builder.Services.AddScoped<IDistrictService, DistrictService>();
 builder.Services.AddScoped<IAreaService, AreaService>();
 builder.Services.AddScoped<IApplicationApprovalRequestService, ApplicationApprovalRequestService>();
 builder.Services.AddScoped<IApplicationRegistrationService, ApplicationRegistrationService>();
 // builder.Services.AddScoped<IOfficeService, OfficeService>();
-builder.Services.AddScoped< UserService>();
-builder.Services.AddScoped< UserHierarchyService>();
+builder.Services.AddScoped<UserService>();
+builder.Services.AddScoped<UserHierarchyService>();
 builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddScoped<IEnhancedPrivilegeService, EnhancedPrivilegeService>();
 builder.Services.AddScoped<IModuleService, ModuleService>();
@@ -151,16 +151,18 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
     {
-         policy.WithOrigins(
-                "http://10.68.108.29",
-                 "http://10.68.108.29:8080",
-                "http://10.68.211.24",
-                "http://10.68.211.24:8080",
-                "http://localhost:8080"
-            )
-            .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials();
+        policy.WithOrigins(
+               "http://10.68.108.29",
+                "http://10.68.108.29:8080",
+               "http://10.68.211.24",
+               "http://10.68.211.24:8080",
+               "http://10.70.234.214",
+               "http://10.70.234.214:8080",
+               "http://localhost:8080"
+           )
+           .AllowAnyHeader()
+           .AllowAnyMethod()
+           .AllowCredentials();
     });
 });
 
@@ -175,7 +177,6 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    
     // Apply pending migrations with error handling
     try
     {
@@ -766,8 +767,8 @@ BEGIN CATCH
 END CATCH
 ");
 
-    // Ensure Offices table exists
-    context.Database.ExecuteSqlRaw(@"
+        // Ensure Offices table exists
+        context.Database.ExecuteSqlRaw(@"
 BEGIN TRY
     IF OBJECT_ID(N'[dbo].[Offices]', N'U') IS NULL
     BEGIN
@@ -819,25 +820,27 @@ if (app.Environment.IsDevelopment())
 
 var webRootPath = env.WebRootPath;
 
-// Ensure wwwroot path is not null or empty
 if (string.IsNullOrWhiteSpace(webRootPath))
 {
     throw new InvalidOperationException("wwwroot path is not configured.");
 }
 
-// Define folders inside wwwroot
-var documentsPath = Path.Combine(webRootPath, "documents");
-var certificatesPath = Path.Combine(webRootPath, "certificates");
-
-// Create the folders if they do not exist
-if (!Directory.Exists(documentsPath))
+var folders = new[]
 {
-    Directory.CreateDirectory(documentsPath);
-}
+    "documents",
+    "certificates",
+    "factory-establishment-forms",
+    "factory-map-forms"
+};
 
-if (!Directory.Exists(certificatesPath))
+foreach (var folder in folders)
 {
-    Directory.CreateDirectory(certificatesPath);
+    var fullPath = Path.Combine(webRootPath, folder);
+
+    if (!Directory.Exists(fullPath))
+    {
+        Directory.CreateDirectory(fullPath);
+    }
 }
 
 app.UseStaticFiles();

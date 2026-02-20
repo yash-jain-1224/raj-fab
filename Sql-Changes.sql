@@ -196,3 +196,6 @@ CREATE TABLE FactoryMapApprovals
     OccupierDetails NVARCHAR(MAX) NOT NULL DEFAULT '',
     
 );
+
+ALTER TABLE EstablishmentRegistrations
+ADD ApplicationPDFUrl NVARCHAR(MAX) NULL DEFAULT '',

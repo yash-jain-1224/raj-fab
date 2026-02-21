@@ -282,6 +282,12 @@ namespace RajFabAPI.Services
             Directory.CreateDirectory(uploadPath);
 
             var filePath = Path.Combine(uploadPath, fileName);
+            var httpContext = _httpContextAccessor.HttpContext
+                ?? throw new InvalidOperationException("HTTP context unavailable");
+
+            var request = httpContext.Request;
+            var baseUrl = _config["BaseUrl"] ?? $"{request.Scheme}://{request.Host}";
+            var fileUrl = $"{baseUrl}/commencement-cessation-forms/{fileName}";
 
             using var writer = new PdfWriter(filePath);
             using var pdf = new PdfDocument(writer);
@@ -360,6 +366,13 @@ namespace RajFabAPI.Services
             document.Add(signTable);
 
             document.Close();
+
+            var commReg = await _context.CommencementCessationApplication.FirstOrDefaultAsync(x => x.Id == dto.CommencementCessationData.Id);
+            if (commReg != null)
+            {
+                commReg.ApplicationPDFUrl = fileUrl;
+                await _context.SaveChangesAsync();
+            }
 
             return filePath;
         }

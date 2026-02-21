@@ -28,7 +28,7 @@ namespace RajFabAPI.Controllers
         {
             var dto = await _service.GetByIdAsync(id);
             if (dto == null) return NotFound();
-            var filePath = await _service.GenerateCommencementCessationPdf(dto);
+            // var filePath = await _service.GenerateCommencementCessationPdf(dto);
             return dto;
         }
 

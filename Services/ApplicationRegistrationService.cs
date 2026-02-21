@@ -365,6 +365,8 @@ namespace RajFabAPI.Services
 
                     if (estDetails == null)
                         return false;
+                    if (!Guid.TryParse(estDetails.SubDivisionId, out Guid parsedSubDiv))
+                        return false;
 
                     totalWorkers =
                         (estDetails.TotalNumberOfEmployee ?? 0) +
@@ -372,10 +374,6 @@ namespace RajFabAPI.Services
                         (estDetails.TotalNumberOfInterstateWorker ?? 0);
 
                     factoryTypeId = estDetails.FactoryTypeId ?? Guid.Empty;
-
-                    if (!Guid.TryParse(estDetails.SubDivisionId, out Guid parsedSubDiv))
-                        return false;
-
                     subDivisionId = parsedSubDiv;
 
                     estReg.IsESignCompleted = true;
@@ -400,20 +398,50 @@ namespace RajFabAPI.Services
                         options
                     );
 
-                    totalWorkers =
-                        (mapReg?.MaxWorkerMale ?? 0) +
-                        (mapReg?.MaxWorkerFemale ?? 0);
-
                     var factoryType = _db.FactoryTypes.FirstOrDefault(x => x.Name == "Not Applicable");
-                    factoryTypeId = factoryType?.Id;
 
                     if (!Guid.TryParse(factoryDetails.subDivisionId, out Guid parsedSubDiv))
                         return false;
 
+                    totalWorkers =
+                        (mapReg?.MaxWorkerMale ?? 0) +
+                        (mapReg?.MaxWorkerFemale ?? 0);
+                    factoryTypeId = factoryType?.Id;
                     subDivisionId = parsedSubDiv;
                     mapReg.IsESignCompleted = true;
                     mapReg.UpdatedAt = DateTime.Now;
                     applicationUrl = mapReg.ApplicationPDFUrl;
+                }
+                else if (module.Name == ApplicationTypeNames.FactoryCommencementCessation)
+                {
+                    var comReg = await _db.Set<CommencementCessationApplication>()
+                        .FirstOrDefaultAsync(x => x.ApplicationId == appReg.ApplicationId);
+
+                    if (comReg == null)
+                        return false;
+
+                    var EstablishmentDetailId = await _db.Set<EstablishmentRegistration>()
+                                   .Where(m => m.RegistrationNumber == comReg.FactoryRegistrationNumber)
+                                   .Select(m => m.EstablishmentDetailId)
+                                   .FirstOrDefaultAsync();
+
+                    var establishmentDetail = await _db.Set<EstablishmentDetail>()
+                        .FirstOrDefaultAsync(m => m.Id == EstablishmentDetailId);
+
+
+                    if (!Guid.TryParse(establishmentDetail.SubDivisionId, out Guid parsedSubDiv))
+                        return false;
+
+                    totalWorkers =
+                       (establishmentDetail?.TotalNumberOfEmployee ?? 0) +
+                       (establishmentDetail?.TotalNumberOfContractEmployee ?? 0) +
+                       (establishmentDetail?.TotalNumberOfInterstateWorker ?? 0);
+                    
+                    factoryTypeId = establishmentDetail.FactoryTypeId;
+                    subDivisionId = parsedSubDiv;
+                    comReg.IsESignCompleted = true;
+                    comReg.UpdatedDate = DateTime.Now;
+                    applicationUrl = comReg.ApplicationPDFUrl;
                 }
 
                 var workerRange = await _db.Set<WorkerRange>()

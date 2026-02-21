@@ -865,6 +865,7 @@ namespace RajFabAPI.Services
                        {
                            Id = estDetail != null ? estDetail.Id.ToString() : null,
                            LinNumber = estDetail != null ? estDetail.LinNumber : null,
+                           BrnNumber = estDetail != null ? estDetail.BrnNumber : null,
                            Name = estDetail != null ? estDetail.EstablishmentName : null,
                            SubDivisionId = estDetail != null ? estDetail.SubDivisionId : null,
                            AreaName = areaDetail != null ? areaDetail.Name : null,

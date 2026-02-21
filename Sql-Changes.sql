@@ -199,3 +199,7 @@ CREATE TABLE FactoryMapApprovals
 
 ALTER TABLE EstablishmentRegistrations
 ADD ApplicationPDFUrl NVARCHAR(MAX) NULL DEFAULT '',
+
+ALTER TABLE CommencementCessationApplications
+ADD IsESignCompleted BIT NOT NULL CONSTRAINT DF_CommencementCessation_IsESignCompleted DEFAULT 0,
+    ApplicationPDFUrl NVARCHAR(MAX) NULL;

@@ -7,7 +7,8 @@ namespace RajFabAPI.Services
     {
         Task<string> CreateAsync(AppealCreateDto dto);
         Task<IEnumerable<AppealListDto>> GetAllAsync();
-        Task<AppealDetailDto?> GetByIdAsync(string id);
+        Task<AppealResDto?> GetByIdAsync(string id);
         Task<bool> UpdateAsync(string id, AppealUpdateDto dto);
+        Task<string> GenerateAppealPdf(AppealResDto dto);
     }
 }

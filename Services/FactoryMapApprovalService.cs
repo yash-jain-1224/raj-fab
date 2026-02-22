@@ -816,194 +816,201 @@ namespace RajFabAPI.Services
 
         public async Task<string> GenerateFactoryMapApprovalPdf(FactoryMapApprovalDto dto)
         {
-            if (dto == null) throw new ArgumentNullException(nameof(dto));
-
-            var fileName = $"factory_map_{dto.AcknowledgementNumber}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
-
-            var webRootPath = _environment.WebRootPath;
-            if (string.IsNullOrWhiteSpace(webRootPath))
-                throw new InvalidOperationException("wwwroot is not configured.");
-
-            var uploadPath = Path.Combine(webRootPath, "factory-map-forms");
-            Directory.CreateDirectory(uploadPath);
-
-            var filePath = Path.Combine(uploadPath, fileName);
-
-            var httpContext = _httpContextAccessor.HttpContext
-                ?? throw new InvalidOperationException("HTTP context unavailable");
-
-            var request = httpContext.Request;
-            var baseUrl = _config["BaseUrl"] ?? $"{request.Scheme}://{request.Host}";
-            var fileUrl = $"{baseUrl}/factory-map-forms/{fileName}";
-
-            using var writer = new PdfWriter(filePath);
-            using var pdf = new PdfDocument(writer);
-            using var document = new Document(pdf);
-
-            var boldFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA_BOLD);
-            var regularFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA);
-
-            var occupier = string.IsNullOrWhiteSpace(dto.OccupierDetails)
-                ? null
-                : JsonSerializer.Deserialize<OccupierDetailsModel>(dto.OccupierDetails);
-
-            var factory = string.IsNullOrWhiteSpace(dto.FactoryDetails)
-                ? null
-                : JsonSerializer.Deserialize<FactoryDetailsModel>(dto.FactoryDetails);
-
-            if (dto == null) throw new ArgumentNullException(nameof(dto));
-
-            // ================= HEADER =================
-            var headerTable = new Table(UnitValue.CreatePercentArray(new float[] { 1, 4 })).UseAllAvailableWidth();
-            headerTable.AddCell(new Cell().Add(new PdfImage(ImageDataFactory.Create("wwwroot/Emblem_of_India.png")).ScaleToFit(40, 40)).SetBorder(Border.NO_BORDER));
-            headerTable.AddCell(new Cell()
-                .Add(new Paragraph("Form - 6").SetFont(boldFont).SetFontSize(18))
-                .Add(new Paragraph("(See clause (d) of sub rule (1) of rule 5)").SetFont(regularFont).SetFontSize(12))
-                .Add(new Paragraph("FACTORY MAP APPROVAL FORM").SetFontColor(ColorConstants.BLUE).SetFontSize(12))
-                .SetBorder(Border.NO_BORDER));
-            document.Add(headerTable);
-            document.Add(new Paragraph().SetMarginBottom(10));
-
-            // ================= ACKNOWLEDGEMENT =================
-            document.Add(new Paragraph($"Acknowledgement No: {dto.AcknowledgementNumber}").SetFont(regularFont));
-            document.Add(new Paragraph($"Date: {(dto.Date?.ToString("dd/MM/yyyy") ?? "-")}").SetMarginBottom(10));
-
-            // ================= FACTORY + OCCUPIER DETAILS =================
-            var sectionDiv = new Div().SetKeepTogether(true);
-            var factoryTable = new Table(UnitValue.CreatePercentArray(new float[] { 1, 2 })).UseAllAvailableWidth().SetMarginBottom(5);
-
-            if (factory != null)
+            try
             {
-                factoryTable.AddCell(new Cell().Add(new Paragraph("Factory Name").SetFont(boldFont)));
-                factoryTable.AddCell(new Cell().Add(new Paragraph(factory.name ?? "-")));
+                if (dto == null) throw new ArgumentNullException(nameof(dto));
 
-                factoryTable.AddCell(new Cell().Add(new Paragraph("Situation").SetFont(boldFont)));
-                factoryTable.AddCell(new Cell().Add(new Paragraph(factory.situation ?? "-")));
+                var fileName = $"factory_map_{dto.AcknowledgementNumber}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
 
-                factoryTable.AddCell(new Cell().Add(new Paragraph("Address").SetFont(boldFont)));
-                factoryTable.AddCell(new Cell().Add(new Paragraph($"{factory.addressLine1}, {factory.addressLine2}, {factory.area} - {factory.pincode}")));
+                var webRootPath = _environment.WebRootPath;
+                if (string.IsNullOrWhiteSpace(webRootPath))
+                    throw new InvalidOperationException("wwwroot is not configured.");
 
-                factoryTable.AddCell(new Cell().Add(new Paragraph("Email").SetFont(boldFont)));
-                factoryTable.AddCell(new Cell().Add(new Paragraph(factory.email ?? "-")));
+                var uploadPath = Path.Combine(webRootPath, "factory-map-forms");
+                Directory.CreateDirectory(uploadPath);
 
-                factoryTable.AddCell(new Cell().Add(new Paragraph("Mobile").SetFont(boldFont)));
-                factoryTable.AddCell(new Cell().Add(new Paragraph(factory.mobile ?? "-")));
+                var filePath = Path.Combine(uploadPath, fileName);
 
-                factoryTable.AddCell(new Cell().Add(new Paragraph("Telephone").SetFont(boldFont)));
-                factoryTable.AddCell(new Cell().Add(new Paragraph(factory.telephone ?? "-")));
+                var httpContext = _httpContextAccessor.HttpContext
+                    ?? throw new InvalidOperationException("HTTP context unavailable");
 
-                factoryTable.AddCell(new Cell().Add(new Paragraph("Website").SetFont(boldFont)));
-                factoryTable.AddCell(new Cell().Add(new Paragraph(factory.website ?? "-")));
-            }
+                var request = httpContext.Request;
+                var baseUrl = _config["BaseUrl"] ?? $"{request.Scheme}://{request.Host}";
+                var fileUrl = $"{baseUrl}/factory-map-forms/{fileName}";
 
-            if (occupier != null)
-            {
-                factoryTable.AddCell(new Cell().Add(new Paragraph("Occupier Name").SetFont(boldFont)));
-                factoryTable.AddCell(new Cell().Add(new Paragraph(occupier.name ?? "-")));
+                using var writer = new PdfWriter(filePath);
+                using var pdf = new PdfDocument(writer);
+                using var document = new Document(pdf);
 
-                factoryTable.AddCell(new Cell().Add(new Paragraph("Designation").SetFont(boldFont)));
-                factoryTable.AddCell(new Cell().Add(new Paragraph(occupier.designation ?? "-")));
+                var boldFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA_BOLD);
+                var regularFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA);
 
-                factoryTable.AddCell(new Cell().Add(new Paragraph("Relation").SetFont(boldFont)));
-                factoryTable.AddCell(new Cell().Add(new Paragraph($"{occupier.relationType} {occupier.relativeName}")));
+                var occupier = string.IsNullOrWhiteSpace(dto.OccupierDetails)
+                    ? null
+                    : JsonSerializer.Deserialize<OccupierDetailsModel>(dto.OccupierDetails);
 
-                factoryTable.AddCell(new Cell().Add(new Paragraph("Address").SetFont(boldFont)));
-                factoryTable.AddCell(new Cell().Add(new Paragraph($"{occupier.addressLine1}, {occupier.addressLine2}, {occupier.area}, {occupier.tehsil}, {occupier.district} - {occupier.pincode}")));
+                var factory = string.IsNullOrWhiteSpace(dto.FactoryDetails)
+                    ? null
+                    : JsonSerializer.Deserialize<FactoryDetailsModel>(dto.FactoryDetails);
 
-                factoryTable.AddCell(new Cell().Add(new Paragraph("Email").SetFont(boldFont)));
-                factoryTable.AddCell(new Cell().Add(new Paragraph(occupier.email ?? "-")));
+                if (dto == null) throw new ArgumentNullException(nameof(dto));
 
-                factoryTable.AddCell(new Cell().Add(new Paragraph("Mobile").SetFont(boldFont)));
-                factoryTable.AddCell(new Cell().Add(new Paragraph(occupier.mobile ?? "-")));
+                // ================= HEADER =================
+                var headerTable = new Table(UnitValue.CreatePercentArray(new float[] { 1, 4 })).UseAllAvailableWidth();
+                headerTable.AddCell(new Cell().Add(new PdfImage(ImageDataFactory.Create("wwwroot/Emblem_of_India.png")).ScaleToFit(40, 40)).SetBorder(Border.NO_BORDER));
+                headerTable.AddCell(new Cell()
+                    .Add(new Paragraph("Form - 6").SetFont(boldFont).SetFontSize(18))
+                    .Add(new Paragraph("(See clause (d) of sub rule (1) of rule 5)").SetFont(regularFont).SetFontSize(12))
+                    .Add(new Paragraph("FACTORY MAP APPROVAL FORM").SetFontColor(ColorConstants.BLUE).SetFontSize(12))
+                    .SetBorder(Border.NO_BORDER));
+                document.Add(headerTable);
+                document.Add(new Paragraph().SetMarginBottom(10));
 
-                factoryTable.AddCell(new Cell().Add(new Paragraph("Telephone").SetFont(boldFont)));
-                factoryTable.AddCell(new Cell().Add(new Paragraph(occupier.telephone ?? "-")));
-            }
+                // ================= ACKNOWLEDGEMENT =================
+                document.Add(new Paragraph($"Acknowledgement No: {dto.AcknowledgementNumber}").SetFont(regularFont));
+                document.Add(new Paragraph($"Date: {(dto.Date?.ToString("dd/MM/yyyy") ?? "-")}").SetMarginBottom(10));
 
-            factoryTable.AddCell(new Cell().Add(new Paragraph("Plant Particulars").SetFont(boldFont)));
-            factoryTable.AddCell(new Cell().Add(new Paragraph(dto.PlantParticulars ?? "-")));
+                // ================= FACTORY + OCCUPIER DETAILS =================
+                var sectionDiv = new Div().SetKeepTogether(true);
+                var factoryTable = new Table(UnitValue.CreatePercentArray(new float[] { 1, 2 })).UseAllAvailableWidth().SetMarginBottom(5);
 
-            factoryTable.AddCell(new Cell().Add(new Paragraph("Product Name").SetFont(boldFont)));
-            factoryTable.AddCell(new Cell().Add(new Paragraph(dto.ProductName ?? "-")));
-
-            factoryTable.AddCell(new Cell().Add(new Paragraph("Manufacturing Process").SetFont(boldFont)));
-            factoryTable.AddCell(new Cell().Add(new Paragraph(dto.ManufacturingProcess ?? "-")));
-
-            factoryTable.AddCell(new Cell().Add(new Paragraph("Max Workers (Male)").SetFont(boldFont)));
-            factoryTable.AddCell(new Cell().Add(new Paragraph(dto.MaxWorkerMale.ToString())));
-
-            factoryTable.AddCell(new Cell().Add(new Paragraph("Max Workers (Female)").SetFont(boldFont)));
-            factoryTable.AddCell(new Cell().Add(new Paragraph(dto.MaxWorkerFemale.ToString())));
-
-            factoryTable.AddCell(new Cell().Add(new Paragraph("Factory Area (Sq. Mtr)").SetFont(boldFont)));
-            factoryTable.AddCell(new Cell().Add(new Paragraph(dto.AreaFactoryPremise.ToString())));
-
-            sectionDiv.Add(factoryTable);
-            document.Add(sectionDiv);
-
-            // ================= PREMISE OWNER =================
-            if (dto.NoOfFactoriesIfCommonPremise.HasValue)
-            {
-                var premiseTable = new Table(UnitValue.CreatePercentArray(new float[] { 1, 2 })).UseAllAvailableWidth().SetKeepTogether(true).SetMarginBottom(5);
-                premiseTable.AddCell(new Cell().Add(new Paragraph("No. of Factories (Common Premise)").SetFont(boldFont)));
-                premiseTable.AddCell(new Cell().Add(new Paragraph(dto.NoOfFactoriesIfCommonPremise.ToString())));
-
-                premiseTable.AddCell(new Cell().Add(new Paragraph("Premise Owner Name").SetFont(boldFont)));
-                premiseTable.AddCell(new Cell().Add(new Paragraph(dto.PremiseOwnerName ?? "-")));
-
-                premiseTable.AddCell(new Cell().Add(new Paragraph("Owner Contact").SetFont(boldFont)));
-                premiseTable.AddCell(new Cell().Add(new Paragraph(dto.PremiseOwnerContactNo ?? "-")));
-
-                premiseTable.AddCell(new Cell().Add(new Paragraph("Owner Address").SetFont(boldFont)));
-                premiseTable.AddCell(new Cell().Add(new Paragraph(
-                    $"{dto.PremiseOwnerAddressPlotNo}, {dto.PremiseOwnerAddressStreet}, {dto.PremiseOwnerAddressCity}, {dto.PremiseOwnerAddressDistrict}, {dto.PremiseOwnerAddressState} - {dto.PremiseOwnerAddressPinCode}"
-                )));
-                document.Add(premiseTable);
-            }
-
-            // ================= DYNAMIC TABLES =================
-            void AddItemTable<T>(string title, List<T> items, Func<T, string> nameSelector, Func<T, string> qtySelector)
-            {
-                if (!items.Any()) return;
-
-                document.Add(new Paragraph(title).SetFont(boldFont).SetMarginBottom(3));
-                var table = new Table(UnitValue.CreatePercentArray(new float[] { 3, 1 })).UseAllAvailableWidth().SetKeepTogether(true);
-
-                table.AddHeaderCell(new Cell().Add(new Paragraph(title).SetFont(boldFont)));
-                table.AddHeaderCell(new Cell().Add(new Paragraph("Quantity/Capacity").SetFont(boldFont)));
-
-                foreach (var item in items)
+                if (factory != null)
                 {
-                    table.AddCell(new Cell().Add(new Paragraph(nameSelector(item))));
-                    table.AddCell(new Cell().Add(new Paragraph(qtySelector(item))));
+                    factoryTable.AddCell(new Cell().Add(new Paragraph("Factory Name").SetFont(boldFont)));
+                    factoryTable.AddCell(new Cell().Add(new Paragraph(factory.name ?? "-")));
+
+                    factoryTable.AddCell(new Cell().Add(new Paragraph("Situation").SetFont(boldFont)));
+                    factoryTable.AddCell(new Cell().Add(new Paragraph(factory.situation ?? "-")));
+
+                    factoryTable.AddCell(new Cell().Add(new Paragraph("Address").SetFont(boldFont)));
+                    factoryTable.AddCell(new Cell().Add(new Paragraph($"{factory.addressLine1}, {factory.addressLine2}, {factory.area} - {factory.pincode}")));
+
+                    factoryTable.AddCell(new Cell().Add(new Paragraph("Email").SetFont(boldFont)));
+                    factoryTable.AddCell(new Cell().Add(new Paragraph(factory.email ?? "-")));
+
+                    factoryTable.AddCell(new Cell().Add(new Paragraph("Mobile").SetFont(boldFont)));
+                    factoryTable.AddCell(new Cell().Add(new Paragraph(factory.mobile ?? "-")));
+
+                    factoryTable.AddCell(new Cell().Add(new Paragraph("Telephone").SetFont(boldFont)));
+                    factoryTable.AddCell(new Cell().Add(new Paragraph(factory.telephone ?? "-")));
+
+                    factoryTable.AddCell(new Cell().Add(new Paragraph("Website").SetFont(boldFont)));
+                    factoryTable.AddCell(new Cell().Add(new Paragraph(factory.website ?? "-")));
                 }
 
-                document.Add(table.SetMarginBottom(5));
+                if (occupier != null)
+                {
+                    factoryTable.AddCell(new Cell().Add(new Paragraph("Occupier Name").SetFont(boldFont)));
+                    factoryTable.AddCell(new Cell().Add(new Paragraph(occupier.name ?? "-")));
+
+                    factoryTable.AddCell(new Cell().Add(new Paragraph("Designation").SetFont(boldFont)));
+                    factoryTable.AddCell(new Cell().Add(new Paragraph(occupier.designation ?? "-")));
+
+                    factoryTable.AddCell(new Cell().Add(new Paragraph("Relation").SetFont(boldFont)));
+                    factoryTable.AddCell(new Cell().Add(new Paragraph($"{occupier.relationType} {occupier.relativeName}")));
+
+                    factoryTable.AddCell(new Cell().Add(new Paragraph("Address").SetFont(boldFont)));
+                    factoryTable.AddCell(new Cell().Add(new Paragraph($"{occupier.addressLine1}, {occupier.addressLine2}, {occupier.area}, {occupier.tehsil}, {occupier.district} - {occupier.pincode}")));
+
+                    factoryTable.AddCell(new Cell().Add(new Paragraph("Email").SetFont(boldFont)));
+                    factoryTable.AddCell(new Cell().Add(new Paragraph(occupier.email ?? "-")));
+
+                    factoryTable.AddCell(new Cell().Add(new Paragraph("Mobile").SetFont(boldFont)));
+                    factoryTable.AddCell(new Cell().Add(new Paragraph(occupier.mobile ?? "-")));
+
+                    factoryTable.AddCell(new Cell().Add(new Paragraph("Telephone").SetFont(boldFont)));
+                    factoryTable.AddCell(new Cell().Add(new Paragraph(occupier.telephone ?? "-")));
+                }
+
+                factoryTable.AddCell(new Cell().Add(new Paragraph("Plant Particulars").SetFont(boldFont)));
+                factoryTable.AddCell(new Cell().Add(new Paragraph(dto.PlantParticulars ?? "-")));
+
+                factoryTable.AddCell(new Cell().Add(new Paragraph("Product Name").SetFont(boldFont)));
+                factoryTable.AddCell(new Cell().Add(new Paragraph(dto.ProductName ?? "-")));
+
+                factoryTable.AddCell(new Cell().Add(new Paragraph("Manufacturing Process").SetFont(boldFont)));
+                factoryTable.AddCell(new Cell().Add(new Paragraph(dto.ManufacturingProcess ?? "-")));
+
+                factoryTable.AddCell(new Cell().Add(new Paragraph("Max Workers (Male)").SetFont(boldFont)));
+                factoryTable.AddCell(new Cell().Add(new Paragraph(dto.MaxWorkerMale.ToString())));
+
+                factoryTable.AddCell(new Cell().Add(new Paragraph("Max Workers (Female)").SetFont(boldFont)));
+                factoryTable.AddCell(new Cell().Add(new Paragraph(dto.MaxWorkerFemale.ToString())));
+
+                factoryTable.AddCell(new Cell().Add(new Paragraph("Factory Area (Sq. Mtr)").SetFont(boldFont)));
+                factoryTable.AddCell(new Cell().Add(new Paragraph(dto.AreaFactoryPremise.ToString())));
+
+                sectionDiv.Add(factoryTable);
+                document.Add(sectionDiv);
+
+                // ================= PREMISE OWNER =================
+                if (dto.NoOfFactoriesIfCommonPremise.HasValue)
+                {
+                    var premiseTable = new Table(UnitValue.CreatePercentArray(new float[] { 1, 2 })).UseAllAvailableWidth().SetKeepTogether(true).SetMarginBottom(5);
+                    premiseTable.AddCell(new Cell().Add(new Paragraph("No. of Factories (Common Premise)").SetFont(boldFont)));
+                    premiseTable.AddCell(new Cell().Add(new Paragraph(dto.NoOfFactoriesIfCommonPremise.ToString())));
+
+                    premiseTable.AddCell(new Cell().Add(new Paragraph("Premise Owner Name").SetFont(boldFont)));
+                    premiseTable.AddCell(new Cell().Add(new Paragraph(dto.PremiseOwnerName ?? "-")));
+
+                    premiseTable.AddCell(new Cell().Add(new Paragraph("Owner Contact").SetFont(boldFont)));
+                    premiseTable.AddCell(new Cell().Add(new Paragraph(dto.PremiseOwnerContactNo ?? "-")));
+
+                    premiseTable.AddCell(new Cell().Add(new Paragraph("Owner Address").SetFont(boldFont)));
+                    premiseTable.AddCell(new Cell().Add(new Paragraph(
+                        $"{dto.PremiseOwnerAddressPlotNo}, {dto.PremiseOwnerAddressStreet}, {dto.PremiseOwnerAddressCity}, {dto.PremiseOwnerAddressDistrict}, {dto.PremiseOwnerAddressState} - {dto.PremiseOwnerAddressPinCode}"
+                    )));
+                    document.Add(premiseTable);
+                }
+
+                // ================= DYNAMIC TABLES =================
+                void AddItemTable<T>(string title, List<T> items, Func<T, string> nameSelector, Func<T, string> qtySelector)
+                {
+                    if (!items.Any()) return;
+
+                    document.Add(new Paragraph(title).SetFont(boldFont).SetMarginBottom(3));
+                    var table = new Table(UnitValue.CreatePercentArray(new float[] { 3, 1 })).UseAllAvailableWidth().SetKeepTogether(true);
+
+                    table.AddHeaderCell(new Cell().Add(new Paragraph(title).SetFont(boldFont)));
+                    table.AddHeaderCell(new Cell().Add(new Paragraph("Quantity/Capacity").SetFont(boldFont)));
+
+                    foreach (var item in items)
+                    {
+                        table.AddCell(new Cell().Add(new Paragraph(nameSelector(item))));
+                        table.AddCell(new Cell().Add(new Paragraph(qtySelector(item))));
+                    }
+
+                    document.Add(table.SetMarginBottom(5));
+                }
+
+                AddItemTable("Raw Materials", dto.RawMaterials, x => x.MaterialName, x => (x.MaxStorageQuantity ?? "-").ToString());
+                AddItemTable("Intermediate Products", dto.IntermediateProducts, x => x.ProductName, x => (x.MaxStorageQuantity ?? "-").ToString());
+                AddItemTable("Finished Goods", dto.FinishGoods, x => x.ProductName, x => (x.MaxStorageCapacity ?? 0).ToString());
+                AddItemTable("Chemicals Used", dto.Chemicals, x => x.ChemicalName, x => (x.MaxStorageQuantity ?? "-").ToString());
+
+                // ================= DECLARATION =================
+                document.Add(new Paragraph("Declaration").SetFont(boldFont).SetMarginTop(10));
+                document.Add(new Paragraph($"Place: {dto.Place ?? "-"}"));
+                document.Add(new Paragraph($"Status: {dto.Status}"));
+                document.Add(new Paragraph("This is a system generated Factory Map Approval document.")
+                    .SetFontSize(8)
+                    .SetFontColor(ColorConstants.GRAY));
+
+                document.Close();
+
+                var approval = await _context.FactoryMapApprovals.FirstOrDefaultAsync(x => x.Id == dto.Id);
+                if (approval != null)
+                {
+                    approval.ApplicationPDFUrl = fileUrl;
+                    await _context.SaveChangesAsync();
+                }
+
+                return filePath;
             }
-
-            AddItemTable("Raw Materials", dto.RawMaterials, x => x.MaterialName, x => (x.MaxStorageQuantity ?? "-").ToString());
-            AddItemTable("Intermediate Products", dto.IntermediateProducts, x => x.ProductName, x => (x.MaxStorageQuantity?? "-").ToString());
-            AddItemTable("Finished Goods", dto.FinishGoods, x => x.ProductName, x => (x.MaxStorageCapacity ?? 0).ToString());
-            AddItemTable("Chemicals Used", dto.Chemicals, x => x.ChemicalName, x => (x.MaxStorageQuantity ?? "-").ToString());
-
-            // ================= DECLARATION =================
-            document.Add(new Paragraph("Declaration").SetFont(boldFont).SetMarginTop(10));
-            document.Add(new Paragraph($"Place: {dto.Place ?? "-"}"));
-            document.Add(new Paragraph($"Status: {dto.Status}"));
-            document.Add(new Paragraph("This is a system generated Factory Map Approval document.")
-                .SetFontSize(8)
-                .SetFontColor(ColorConstants.GRAY));
-
-            document.Close();
-
-            var approval = await _context.FactoryMapApprovals.FirstOrDefaultAsync(x => x.Id == dto.Id);
-            if (approval != null)
+            catch
             {
-                approval.ApplicationPDFUrl = fileUrl;
-                await _context.SaveChangesAsync();
+                throw;
             }
-
-            return filePath;
         }
     }
 }

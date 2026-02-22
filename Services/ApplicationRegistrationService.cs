@@ -178,6 +178,7 @@ namespace RajFabAPI.Services
                             CreatedDate = appRegistration.CreatedDate,
                             ApplicationId = Guid.Parse(appRegistration.ApplicationId),
                             ApplicationTitle = mapApproval != null ? "Map Approval" : "",
+                            IsESignCompleted = mapApproval.IsESignCompleted,
                         });
                     }
                 }
@@ -199,6 +200,7 @@ namespace RajFabAPI.Services
                             CreatedDate = appRegistration.CreatedDate,
                             ApplicationId = Guid.Parse(appRegistration.ApplicationId),
                             ApplicationTitle = estDetails != null ? estDetails.EstablishmentName : "",
+                            IsESignCompleted = commCess.IsESignCompleted,
                         });
                     }
                 }
@@ -258,6 +260,35 @@ namespace RajFabAPI.Services
                         ApplicationTitle = estDetails?.EstablishmentName ?? "Factory License",
                         IsPaymentCompleted = factoryLicense.IsPaymentCompleted,
                         IsESignCompleted = factoryLicense.IsESignCompletedManager && factoryLicense.IsESignCompletedOccupier
+                    });
+                }
+                else if (
+                    appRegistration.ApplicationTypeName == ApplicationTypeNames.Appeal)
+                {
+                    var appeal = _db.Appeals
+                        .FirstOrDefault(x => x.Id == appRegistration.ApplicationId);
+
+                    if (appeal == null)
+                        continue;
+
+                    // Get establishment using FactoryRegistrationNumber
+                    var estReg = _db.EstablishmentRegistrations
+                        .FirstOrDefault(x => x.RegistrationNumber == appeal.FactoryRegistrationNumber);
+
+                    var estDetails = estReg != null
+                        ? _db.EstablishmentDetails
+                            .FirstOrDefault(x => x.Id == estReg.EstablishmentDetailId)
+                        : null;
+
+                    applicationUserDashboardDtos.Add(new ApplicationUserDashboardDto
+                    {
+                        ApplicationRegistrationId = appRegistration.Id,
+                        ApplicationType = appRegistration.ApplicationTypeName, // FactoryLicense / Amendment / Renewal
+                        Status = appeal.Status,
+                        CreatedDate = appRegistration.CreatedDate,
+                        ApplicationId = Guid.Parse(appeal.Id),
+                        ApplicationTitle = estDetails?.EstablishmentName ?? "Appeal",
+                        IsESignCompleted = appeal.IsESignCompleted
                     });
                 }
             }
@@ -492,7 +523,36 @@ namespace RajFabAPI.Services
                     comReg.UpdatedDate = DateTime.Now;
                     applicationUrl = comReg.ApplicationPDFUrl;
                 }
+                else if (module.Name == ApplicationTypeNames.Appeal)
+                {
+                    var appealReg = await _db.Set<Appeal>()
+                        .FirstOrDefaultAsync(x => x.AppealApplicationNumber == appReg.ApplicationId);
 
+                    if (appealReg == null)
+                        return false;
+
+                    var EstablishmentDetailId = await _db.Set<EstablishmentRegistration>()
+                                   .Where(m => m.RegistrationNumber == appealReg.FactoryRegistrationNumber)
+                                   .Select(m => m.EstablishmentDetailId)
+                                   .FirstOrDefaultAsync();
+
+                    var establishmentDetail = await _db.Set<EstablishmentDetail>()
+                        .FirstOrDefaultAsync(m => m.Id == EstablishmentDetailId);
+
+                    if (!Guid.TryParse(establishmentDetail.SubDivisionId, out Guid parsedSubDiv))
+                        return false;
+
+                    totalWorkers =
+                       (establishmentDetail?.TotalNumberOfEmployee ?? 0) +
+                       (establishmentDetail?.TotalNumberOfContractEmployee ?? 0) +
+                       (establishmentDetail?.TotalNumberOfInterstateWorker ?? 0);
+
+                    factoryTypeId = establishmentDetail.FactoryTypeId;
+                    subDivisionId = parsedSubDiv;
+                    appealReg.IsESignCompleted = true;
+                    appealReg.UpdatedAt = DateTime.Now;
+                    applicationUrl = appealReg.ApplicationPDFUrl;
+                }
                 var workerRange = await _db.Set<WorkerRange>()
                     .FirstOrDefaultAsync(wr =>
                         totalWorkers >= wr.MinWorkers &&

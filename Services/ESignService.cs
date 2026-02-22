@@ -40,7 +40,6 @@ namespace RajFabAPI.Services
         private readonly IMemoryCache _cache;
         private readonly ApplicationDbContext _db;
         private readonly IConfiguration _config;
-        private readonly IApplicationWorkFlowService _applicationWorkFlowService;
         private readonly IApplicationRegistrationService _applicationRegistrationService;
         private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
         private readonly IHttpContextAccessor _httpContextAccessor;
@@ -48,22 +47,25 @@ namespace RajFabAPI.Services
         private readonly IFactoryMapApprovalService _factoryMapApprovalService;
         private readonly ICommencementCessationService _commencementCessationService;
         private readonly IFactoryLicenseService _factoryLicenseService;
+        private readonly IAppealService _appealService;
 
         public ESignService(
-            IMemoryCache cache, IEstablishmentRegistrationService estRegService, ApplicationDbContext db, IConfiguration config, IApplicationWorkFlowService applicationWorkFlowService,
-            IApplicationRegistrationService applicationRegistrationService, IHttpContextAccessor httpContextAccessor, IFactoryMapApprovalService factoryMapApprovalService,
-            ICommencementCessationService commencementCessationService, IFactoryLicenseService factoryLicenseService)
+            IMemoryCache cache, IEstablishmentRegistrationService estRegService, ApplicationDbContext db, IConfiguration config,
+            IApplicationWorkFlowService applicationWorkFlowService, IApplicationRegistrationService applicationRegistrationService,
+            IHttpContextAccessor httpContextAccessor, IFactoryMapApprovalService factoryMapApprovalService,
+            ICommencementCessationService commencementCessationService, IFactoryLicenseService factoryLicenseService,
+            IAppealService appealService)
         {
             _cache = cache;
             _db = db;
             _config = config;
-            _applicationWorkFlowService = applicationWorkFlowService;
             _applicationRegistrationService = applicationRegistrationService;
             _httpContextAccessor = httpContextAccessor;
             _estRegService = estRegService;
             _factoryMapApprovalService = factoryMapApprovalService;
             _commencementCessationService = commencementCessationService;
             _factoryLicenseService = factoryLicenseService;
+            _appealService = appealService;
         }
 
         public async Task<string> GenerateESignHtmlAsync(string applicationId)
@@ -142,6 +144,23 @@ namespace RajFabAPI.Services
 
                 pdfBytes = await File.ReadAllBytesAsync(filePath);
             }
+            else if (applicationData.ModuleName == ApplicationTypeNames.Appeal)
+            {
+                var response = await _appealService.GetByIdAsync(applicationId);
+
+                if (response == null || response.AppealData.FactoryRegistrationNumber == null)
+                {
+                    throw new Exception("Unable to fetch application.");
+                }
+
+                var filePath = await _appealService.GenerateAppealPdf(response);
+                if (!File.Exists(filePath))
+                    throw new Exception("Generated PDF not found");
+
+                pdfBytes = await File.ReadAllBytesAsync(filePath);
+            }
+
+            // saving prn Number in application table
             await _applicationRegistrationService.SavePRNNumber(applicationId, prnNumber);
 
             if (pdfBytes == null || pdfBytes.Length == 0)
@@ -225,8 +244,6 @@ namespace RajFabAPI.Services
 
             return $"{_config["FrontendUrl"]}/user/track";
         }
-
-
 
         private async Task<Token_Response?> getAuthToken()
         {

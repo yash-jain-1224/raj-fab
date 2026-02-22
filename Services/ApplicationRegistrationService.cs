@@ -255,7 +255,9 @@ namespace RajFabAPI.Services
                         Status = factoryLicense.Status,
                         CreatedDate = appRegistration.CreatedDate,
                         ApplicationId = Guid.Parse(factoryLicense.Id),
-                        ApplicationTitle = estDetails?.EstablishmentName ?? "Factory License"
+                        ApplicationTitle = estDetails?.EstablishmentName ?? "Factory License",
+                        IsPaymentCompleted = factoryLicense.IsPaymentCompleted,
+                        IsESignCompleted = factoryLicense.IsESignCompletedManager && factoryLicense.IsESignCompletedOccupier
                     });
                 }
             }
@@ -304,6 +306,23 @@ namespace RajFabAPI.Services
                     {
                         estReg.IsPaymentCompleted = true;
                         estReg.UpdatedDate = DateTime.Now;
+                    }
+
+                    await _db.SaveChangesAsync();
+                    await dbTx.CommitAsync();
+
+                    return true;
+                } else if (applicationData.ModuleName == ApplicationTypeNames.FactoryLicense)
+                {
+                    var factoryLicense = await _db.Set<FactoryLicense>()
+                        .FirstOrDefaultAsync(x =>
+                            x.Id.ToString() ==
+                            applicationId);
+
+                    if (factoryLicense != null)
+                    {
+                        factoryLicense.IsPaymentCompleted = true;
+                        factoryLicense.UpdatedAt = DateTime.Now;
                     }
 
                     await _db.SaveChangesAsync();
@@ -411,6 +430,36 @@ namespace RajFabAPI.Services
                     mapReg.IsESignCompleted = true;
                     mapReg.UpdatedAt = DateTime.Now;
                     applicationUrl = mapReg.ApplicationPDFUrl;
+                }
+                else if (module.Name == ApplicationTypeNames.FactoryLicense)
+                {
+                    var factoryLicenseReg = await _db.Set<FactoryLicense>()
+                        .FirstOrDefaultAsync(x => x.Id == appReg.ApplicationId);
+
+                    if (factoryLicenseReg == null)
+                        return false;
+
+                    var EstablishmentDetailId = await _db.Set<EstablishmentRegistration>()
+                                   .Where(m => m.RegistrationNumber == factoryLicenseReg.FactoryRegistrationNumber)
+                                   .Select(m => m.EstablishmentDetailId)
+                                   .FirstOrDefaultAsync();
+
+                    var establishmentDetail = await _db.Set<EstablishmentDetail>()
+                        .FirstOrDefaultAsync(m => m.Id == EstablishmentDetailId);
+
+                    if (!Guid.TryParse(establishmentDetail.SubDivisionId, out Guid parsedSubDiv))
+                        return false;
+
+                    totalWorkers =
+                       (establishmentDetail?.TotalNumberOfEmployee ?? 0) +
+                       (establishmentDetail?.TotalNumberOfContractEmployee ?? 0) +
+                       (establishmentDetail?.TotalNumberOfInterstateWorker ?? 0);
+
+                    factoryTypeId = establishmentDetail.FactoryTypeId;
+                    subDivisionId = parsedSubDiv;
+                    factoryLicenseReg.IsESignCompletedOccupier = true;
+                    factoryLicenseReg.UpdatedAt = DateTime.Now;
+                    applicationUrl = factoryLicenseReg.ApplicationPDFUrl;
                 }
                 else if (module.Name == ApplicationTypeNames.FactoryCommencementCessation)
                 {

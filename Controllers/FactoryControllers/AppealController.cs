@@ -23,8 +23,8 @@ namespace RajFabAPI.Controllers
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            var result = await _service.CreateAsync(dto);
-            return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+            var applicationId = await _service.CreateAsync(dto);
+            return CreatedAtAction(nameof(GetById), new { id = applicationId });
         }
 
         // GET ALL

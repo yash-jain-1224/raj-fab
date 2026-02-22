@@ -15,7 +15,7 @@ namespace RajFabAPI.Services
         }
 
         // CREATE
-        public async Task<AppealDetailDto> CreateAsync(AppealCreateDto dto)
+        public async Task<string> CreateAsync(AppealCreateDto dto)
         {
             // 1. Check if any appeals exist for this factory
             var existingAppeal = await _context.Appeals
@@ -69,7 +69,7 @@ namespace RajFabAPI.Services
             _context.Appeals.Add(appeal);
             await _context.SaveChangesAsync();
 
-            return MapToDetailDto(appeal);
+            return appeal.AppealApplicationNumber;
         }
 
 

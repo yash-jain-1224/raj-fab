@@ -1,3 +1,4 @@
+using RajFabAPI.Models;
 using System;
 using System.ComponentModel.DataAnnotations;
 
@@ -24,5 +25,10 @@ namespace RajFabAPI.DTOs
         public string? ManagerSignature { get; set; }
         public string? OccupierSignature { get; set; }
         public string? AuthorisedSignature { get; set; }
+    }
+    public class FactoryLicenseData
+    {
+        public FactoryLicense FactoryLicense { get; set; }
+        public EstablishmentRegistrationDetailsDto EstFullDetails { get; set; }
     }
 }

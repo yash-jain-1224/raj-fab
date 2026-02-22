@@ -47,10 +47,12 @@ namespace RajFabAPI.Services
         private readonly IEstablishmentRegistrationService _estRegService;
         private readonly IFactoryMapApprovalService _factoryMapApprovalService;
         private readonly ICommencementCessationService _commencementCessationService;
+        private readonly IFactoryLicenseService _factoryLicenseService;
 
         public ESignService(
             IMemoryCache cache, IEstablishmentRegistrationService estRegService, ApplicationDbContext db, IConfiguration config, IApplicationWorkFlowService applicationWorkFlowService,
-            IApplicationRegistrationService applicationRegistrationService, IHttpContextAccessor httpContextAccessor, IFactoryMapApprovalService factoryMapApprovalService, ICommencementCessationService commencementCessationService)
+            IApplicationRegistrationService applicationRegistrationService, IHttpContextAccessor httpContextAccessor, IFactoryMapApprovalService factoryMapApprovalService,
+            ICommencementCessationService commencementCessationService, IFactoryLicenseService factoryLicenseService)
         {
             _cache = cache;
             _db = db;
@@ -61,6 +63,7 @@ namespace RajFabAPI.Services
             _estRegService = estRegService;
             _factoryMapApprovalService = factoryMapApprovalService;
             _commencementCessationService = commencementCessationService;
+            _factoryLicenseService = factoryLicenseService;
         }
 
         public async Task<string> GenerateESignHtmlAsync(string applicationId)
@@ -119,6 +122,21 @@ namespace RajFabAPI.Services
                 }
 
                 var filePath = await _commencementCessationService.GenerateCommencementCessationPdf(response);
+                if (!File.Exists(filePath))
+                    throw new Exception("Generated PDF not found");
+
+                pdfBytes = await File.ReadAllBytesAsync(filePath);
+            }
+            else if (applicationData.ModuleName == ApplicationTypeNames.FactoryLicense)
+            {
+                var response = await _factoryLicenseService.GetByIdAsync(applicationId);
+
+                if (response == null || response.FactoryLicense == null)
+                {
+                    throw new Exception("Unable to fetch application.");
+                }
+
+                var filePath = await _factoryLicenseService.GenerateFactoryLicensePdf(response);
                 if (!File.Exists(filePath))
                     throw new Exception("Generated PDF not found");
 

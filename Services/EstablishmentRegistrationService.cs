@@ -915,6 +915,136 @@ namespace RajFabAPI.Services
                            Mobile = managerDetail != null ? managerDetail.Mobile : null
                        }
                    }).FirstOrDefaultAsync();
+
+                var mappings = await _db.Set<EstablishmentEntityMapping>()
+                    .AsNoTracking()
+                    .Where(x => x.EstablishmentRegistrationId == result.Id)
+                    .ToListAsync();
+                // Map all entity types to DTOs
+                foreach (var map in mappings)
+                {
+                    switch (map.EntityType)
+                    {
+                        case "Factory":
+                            var factory = await (
+                                from f in _db.Set<FactoryDetail>().AsNoTracking()
+                                where f.Id == map.EntityId
+
+                                join area in _db.Set<Area>().AsNoTracking()
+                                    on f.SubDivisionId equals area.Id.ToString() into areaJoin
+                                from areaDetail in areaJoin.DefaultIfEmpty()
+
+                                join district in _db.Set<District>().AsNoTracking()
+                                    on areaDetail.DistrictId equals district.Id into districtJoin
+                                from districtDetail in districtJoin.DefaultIfEmpty()
+
+                                join division in _db.Set<Division>().AsNoTracking()
+                                    on districtDetail.DivisionId equals division.Id into divisionJoin
+                                from divisionDetail in divisionJoin.DefaultIfEmpty()
+
+                                select new FactoryDetailsDto
+                                {
+                                    ManuacturingDetail = f.ManufacturingDetail,
+                                    Situation = f.Situation,
+
+                                    SubDivisionId = f.SubDivisionId,
+                                    Area = f.Area,
+
+                                    DistrictId = areaDetail.DistrictId.ToString(),
+                                    DistrictName = districtDetail.Name,
+
+                                    AddressLine1 = f.AddressLine1,
+                                    AddressLine2 = f.AddressLine2,
+                                    Pincode = f.Pincode ?? "",
+                                    Email = f.Email ?? "",
+                                    Mobile = f.Mobile ?? "",
+                                    Telephone = f.Telephone ?? "",
+
+                                    EmployerId = f.EmployerId,
+                                    ManagerId = f.ManagerId,
+
+                                    NumberOfWorker = f.NumberOfWorker ?? 0,
+                                    SanctionedLoad = f.SanctionedLoad ?? 0,
+                                    SanctionedLoadUnit = f.SanctionedLoadUnit,
+
+                                    OwnershipTypeSector = f.OwnershipTypeSector,
+                                    ActivityAsPerNIC = f.ActivityAsPerNIC,
+                                    NICCodeDetail = f.NICCodeDetail,
+                                    IdentificationOfEstablishment = f.IdentificationOfEstablishment
+                                }
+                            ).FirstOrDefaultAsync();
+
+                            if (factory != null)
+                            {
+                                result.Factory = new FactoryDto
+                                {
+                                    ManuacturingDetail = factory.ManuacturingDetail,
+                                    SubDivisionId = factory.SubDivisionId,
+                                    AddressLine1 = factory.AddressLine1,
+                                    AddressLine2 = factory.AddressLine2,
+                                    Area = factory.Area,
+                                    DistrictId = factory.DistrictId,
+                                    DistrictName = factory.DistrictName,
+                                    Pincode = factory.Pincode ?? "",
+                                    Email = factory.Email ?? "",
+                                    Telephone = factory.Telephone ?? "",
+                                    Mobile = factory.Mobile ?? "",
+                                    NumberOfWorker = factory.NumberOfWorker,
+                                    SanctionedLoad = factory.SanctionedLoad,
+                                    Situation = factory.Situation,
+                                    OwnershipTypeSector = factory.OwnershipTypeSector,
+                                    ActivityAsPerNIC = factory.ActivityAsPerNIC,
+                                    NICCodeDetail = factory.NICCodeDetail,
+                                    IdentificationOfEstablishment = factory.IdentificationOfEstablishment
+                                };
+                                if (factory.EmployerId != null)
+                                {
+                                    var employer = await _db.Set<EstablishmentUserDetail>().FindAsync(factory.EmployerId);
+                                    if (employer != null)
+                                    {
+                                        result.Factory.EmployerDetail = new PersonShortDto
+                                        {
+                                            Role = employer.RoleType,
+                                            Name = employer.Name,
+                                            Designation = employer.Designation,
+                                            AddressLine1 = employer.AddressLine1,
+                                            AddressLine2 = employer.AddressLine2,
+                                            District = employer.District,
+                                            Tehsil = employer.Tehsil,
+                                            Area = employer.Area,
+                                            Pincode = employer.Pincode,
+                                            Email = employer.Email,
+                                            Telephone = employer.Telephone,
+                                            Mobile = employer.Mobile
+                                        };
+                                    }
+                                }
+                                if (factory.ManagerId != null)
+                                {
+                                    var manager = await _db.Set<EstablishmentUserDetail>().FindAsync(factory.ManagerId);
+                                    if (manager != null)
+                                    {
+                                        result.Factory.ManagerDetail = new PersonShortDto
+                                        {
+                                            Role = manager.RoleType,
+                                            Name = manager.Name,
+                                            Designation = manager.Designation,
+                                            Tehsil = manager.Tehsil,
+                                            Area = manager.Area,
+                                            Pincode = manager.Pincode,
+                                            Email = manager.Email,
+                                            Telephone = manager.Telephone,
+                                            Mobile = manager.Mobile
+                                        };
+                                    }
+                                }
+                                result.EstablishmentTypes.Add("Factory");
+                            }
+                            break;
+
+                    }
+                }
+
                 if (result != null)
                 {
                     var contractors = await (
@@ -1184,31 +1314,31 @@ namespace RajFabAPI.Services
                 }
             }
             var contractors = await (
-    from fcm in _db.Set<FactoryContractorMapping>().AsNoTracking()
-    join cd in _db.Set<ContractorDetail>().AsNoTracking()
-        on fcm.ContractorDetailId equals cd.Id
-    join pd in _db.Set<PersonDetail>().AsNoTracking()
-        on cd.ContractorPersonalDetailId equals pd.Id
-    where fcm.EstablishmentRegistrationId == reg.EstablishmentRegistrationId
-    select new ContractorDetailDto
-    {
-        Name = pd.Name,
-        AddressLine1 = pd.AddressLine1,
-        AddressLine2 = pd.AddressLine2,
-        District = pd.District,
-        Tehsil = pd.Tehsil,
-        Area = pd.Area,
-        Pincode = pd.Pincode,
-        Email = pd.Email,
-        Mobile = pd.Mobile,
-        Telephone = pd.Telephone,
-        NameOfWork = cd.NameOfWork,
-        MaxContractWorkerCountMale = cd.MaxContractWorkerCountMale,
-        MaxContractWorkerCountFemale = cd.MaxContractWorkerCountFemale,
-        DateOfCommencement = cd.DateOfCommencement,
-        DateOfCompletion = cd.DateOfCompletion
-    }
-).ToListAsync();
+                    from fcm in _db.Set<FactoryContractorMapping>().AsNoTracking()
+                    join cd in _db.Set<ContractorDetail>().AsNoTracking()
+                        on fcm.ContractorDetailId equals cd.Id
+                    join pd in _db.Set<PersonDetail>().AsNoTracking()
+                        on cd.ContractorPersonalDetailId equals pd.Id
+                    where fcm.EstablishmentRegistrationId == reg.EstablishmentRegistrationId
+                    select new ContractorDetailDto
+                    {
+                        Name = pd.Name,
+                        AddressLine1 = pd.AddressLine1,
+                        AddressLine2 = pd.AddressLine2,
+                        District = pd.District,
+                        Tehsil = pd.Tehsil,
+                        Area = pd.Area,
+                        Pincode = pd.Pincode,
+                        Email = pd.Email,
+                        Mobile = pd.Mobile,
+                        Telephone = pd.Telephone,
+                        NameOfWork = cd.NameOfWork,
+                        MaxContractWorkerCountMale = cd.MaxContractWorkerCountMale,
+                        MaxContractWorkerCountFemale = cd.MaxContractWorkerCountFemale,
+                        DateOfCommencement = cd.DateOfCommencement,
+                        DateOfCompletion = cd.DateOfCompletion
+                    }
+                ).ToListAsync();
 
             dto.ContractorDetail = contractors ?? new List<ContractorDetailDto>();
 

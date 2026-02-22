@@ -32,6 +32,8 @@ namespace RajFabAPI.DTOs
         public PersonDetailDto ManagerOrAgentDetail { get; set; }
         public List<PersonDetailDto> ContractorDetail { get; set; }
         public DateTime? CreatedAt { get; set; }
+        public FactoryDto? Factory { get; set; }
+        public List<string> EstablishmentTypes { get; set; } = new List<string>();
     }
 
     public class EstablishmentDetailsDto

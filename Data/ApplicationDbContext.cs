@@ -4,6 +4,7 @@ using RajFabAPI.Models;
 using RajFabAPI.Models.FactoryModels;
 using System.Data;
 using System.Text.Json;
+using RajFabAPI.Models.BoilerModels;
 using static RajFabAPI.Services.EstablishmentRegistrationService;
 
 namespace RajFabAPI.Data
@@ -113,6 +114,11 @@ namespace RajFabAPI.Data
         public DbSet<BoilerApplication> BoilerApplications { get; set; }
         public DbSet<BoilerDocumentType> BoilerDocumentTypes { get; set; }
 
+        public DbSet<BoilerDetail> BoilerDetails { get; set; }
+        public DbSet<BoilerRegistration> BoilerRegistrations { get; set; }
+        public DbSet<RegisteredBoilerNew> RegisteredBoilerNews { get; set; }
+        public DbSet<SteamPipeLineApplication> SteamPipeLineApplications { get; set; }
+      
         // Fee Calculation entities
         public DbSet<ScheduleA_FactoryFees> ScheduleA_FactoryFees { get; set; }
         public DbSet<ScheduleB_ElectricityFees> ScheduleB_ElectricityFees { get; set; }
@@ -132,6 +138,17 @@ namespace RajFabAPI.Data
         public DbSet<UserRole> UserRoles { get; set; } = null!;
         public DbSet<FactoryLicense> FactoryLicenses { get; set; }
         public DbSet<ESignTransaction> ESignTransactions { get; set; }
+        public DbSet<BoilerClosure> BoilerClosures { get; set; }
+
+        public DbSet<BoilerRepairModification> BoilerRepairModifications { get; set; }
+        public DbSet<BoilerManufactureRegistration> BoilerManufactureRegistrations { get; set; }
+
+        public DbSet<DesignFacility> DesignFacilities { get; set; }
+        public DbSet<TestingFacility> TestingFacilities { get; set; }
+        public DbSet<RDFacility> RDFacilities { get; set; }
+        public DbSet<NDTPersonnel> NDTPersonnels { get; set; }
+        public DbSet<QualifiedWelder> QualifiedWelders { get; set; }
+        public DbSet<TechnicalManpower> TechnicalManpowers { get; set; }
         public DbSet<FeeResult> FeeResults { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

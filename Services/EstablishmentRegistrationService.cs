@@ -1212,7 +1212,7 @@ namespace RajFabAPI.Services
         {
             var reg = await _db.Set<EstablishmentRegistration>()
                 .AsNoTracking()
-                .FirstOrDefaultAsync(x => x.EstablishmentRegistrationId == registrationId);
+                .FirstOrDefaultAsync(x => x.EstablishmentRegistrationId == registrationId.ToUpperInvariant());
             //var approvalStatus = _db.ApplicationApprovalRequests.FirstOrDefault(x => x.ApplicationRegistrationId == registrationId);
             if (reg == null) return null;
 

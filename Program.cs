@@ -142,6 +142,13 @@ builder.Services.AddScoped<IFactoryLicenseService, FactoryLicenseService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<IESignService, ESignService>();
 builder.Services.AddScoped<ITransactionService, TransactionService>();
+
+builder.Services.AddScoped<IBoilerRegistartionService, BoilerRegistrationService>();
+builder.Services.AddScoped<IBoilerNewService, BoilerNewService>();
+builder.Services.AddScoped<ISteamPipeLineApplicationService, SteamPipeLineApplicationService>();
+builder.Services.AddScoped<IBoilerManufactureService, BoilerManufactureService>();
+
+
 builder.Services.AddScoped<IDynamicPDFGenerationFormService, DynamicPDFGenerationFormService>();
 builder.Services.AddHttpContextAccessor();
 

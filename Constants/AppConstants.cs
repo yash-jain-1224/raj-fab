@@ -37,6 +37,16 @@ namespace RajFabAPI.Constants
             public const string Appeal = "Appeal";
         }
 
+        public static class BoilerApplicationType
+        {
+            public const string New = "new";
+            public const string Renew = "renew";
+            public const string Repair = "repair";
+            public const string Modification = "modification";
+            public const string Transfer = "transfer";
+            public const string Closure = "closure";
+        }
+
         public static class UserTypeNames
         {
             public const string Citizen = "citizen";

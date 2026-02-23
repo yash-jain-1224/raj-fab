@@ -12,7 +12,7 @@ namespace RajFabAPI.Models
 
 
         // ? FK to BoilerRegistration
-        public Guid BoilerRegistrationId { get; set; }
+        public Guid? BoilerRegistrationId { get; set; } = null;
 
         [ForeignKey(nameof(BoilerRegistrationId))]
         public BoilerRegistration? BoilerRegistration { get; set; }

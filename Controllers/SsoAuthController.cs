@@ -280,7 +280,8 @@ namespace RajFabAPI.Controllers
             var client = _httpClientFactory.CreateClient();
 
             var url =
-                $"http://sso.rajasthan.gov.in:8888/SSOREST/GetUserDetailJSON/{encodedId}/madarsa.test/Test@1234";
+               $"{_config["RajSSO:BaseUrl"]}/SSOREST/GetUserDetailJSON/{encodedId}/{_config["RajSSO:Username"]}/{_config["RajSSO:Password"]}";
+                // $"https://ssotest.rajasthan.gov.in:4443/SSOREST/GetUserDetailJSON/{encodedId}/madarsa.test/Test@1234";
 
             try
             {

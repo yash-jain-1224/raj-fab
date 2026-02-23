@@ -1,3 +1,4 @@
+using RajFabAPI.Models;
 using System;
 using System.ComponentModel.DataAnnotations;
 
@@ -19,10 +20,15 @@ namespace RajFabAPI.DTOs
         [MaxLength(255)]
         public string Place { get; set; } = string.Empty;
 
-        public DateTime Date { get; set; } = DateTime.UtcNow;
+        public DateTime Date { get; set; } = DateTime.Now;
 
         public string? ManagerSignature { get; set; }
         public string? OccupierSignature { get; set; }
         public string? AuthorisedSignature { get; set; }
+    }
+    public class FactoryLicenseData
+    {
+        public FactoryLicense FactoryLicense { get; set; }
+        public EstablishmentRegistrationDetailsDto EstFullDetails { get; set; }
     }
 }

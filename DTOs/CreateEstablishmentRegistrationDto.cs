@@ -1,7 +1,3 @@
-using RajFabAPI.Models;
-using System;
-using System.ComponentModel.DataAnnotations;
-
 namespace RajFabAPI.DTOs
 {
     public class CreateEstablishmentRegistrationDto
@@ -30,10 +26,14 @@ namespace RajFabAPI.DTOs
     {
         public string Id { get; set; }
         public string RegistrationNumber { get; set; }
+        public string ApplicationPDFUrl { get; set; }
         public EstablishmentDetailsDto EstablishmentDetail { get; set; }
         public PersonDetailDto MainOwnerDetail { get; set; }
         public PersonDetailDto ManagerOrAgentDetail { get; set; }
-        public PersonDetailDto ContractorDetail { get; set; }
+        public List<PersonDetailDto> ContractorDetail { get; set; }
+        public DateTime? CreatedAt { get; set; }
+        public FactoryDto? Factory { get; set; }
+        public List<string> EstablishmentTypes { get; set; } = new List<string>();
     }
 
     public class EstablishmentDetailsDto
@@ -42,17 +42,17 @@ namespace RajFabAPI.DTOs
         public Guid? FactoryTypeId { get; set; }
         public string? LinNumber { get; set; }
         public string BrnNumber { get; set; }
-        public string EstablishmentName { get; set; }
-        public string EstablishmentAddressLine1 { get; set; }
-        public string EstablishmentAddressLine2 { get; set; }
+        public string Name { get; set; }
+        public string AddressLine1 { get; set; }
+        public string AddressLine2 { get; set; }
         public string DistrictId { get; set; }
         public string SubDivisionId { get; set; }
         public string TehsilId { get; set; }
         public string Area { get; set; }
-        public string EstablishmentPincode { get; set; }
-        public string EstablishmentEmail { get; set; }
-        public string? EstablishmentTelephone { get; set; }
-        public string EstablishmentMobile { get; set; }
+        public string Pincode { get; set; }
+        public string Email { get; set; }
+        public string? Telephone { get; set; }
+        public string Mobile { get; set; }
         public string NatureOfWork { get; set; } = "";
         public int TotalNumberOfEmployee { get; set; }
         public int TotalNumberOfContractEmployee { get; set; }
@@ -105,7 +105,6 @@ namespace RajFabAPI.DTOs
         public int? NumberOfWorker { get; set; }
         public decimal? SanctionedLoad { get; set; }
         public string? SanctionedLoadUnit { get; set; }
-
         public string? OwnershipTypeSector { get; set; }
         public string? ActivityAsPerNIC { get; set; }
         public string? NICCodeDetail { get; set; }
@@ -135,6 +134,12 @@ namespace RajFabAPI.DTOs
         public PersonShortDto? ManagerDetail { get; set; }
         public int? NumberOfWorker { get; set; }
         public decimal? SanctionedLoad { get; set; }
+        public string? SanctionedLoadUnit { get; set; }
+
+        public string? OwnershipTypeSector { get; set; }
+        public string? ActivityAsPerNIC { get; set; }
+        public string? NICCodeDetail { get; set; }
+        public string? IdentificationOfEstablishment { get; set; }
     }
 
     public class BeediCigarWorksDto

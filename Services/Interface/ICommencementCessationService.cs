@@ -8,8 +8,9 @@ namespace RajFabAPI.Services.Interface
     public interface ICommencementCessationService
     {
         Task<List<CommencementCessationDto>> GetAllAsync();
-        Task<CommencementCessationDto?> GetByIdAsync(string id);
-        Task<CommencementCessationDto> CreateAsync(CommencementCessationRequestDto request);
+        Task<CommencementCessationResDto?> GetByIdAsync(string id);
+        Task<string> CreateAsync(CommencementCessationRequestDto request);
         Task<bool> UpdateStatusAndRemark(string registrationId, string status);
+        Task<string> GenerateCommencementCessationPdf(CommencementCessationResDto dto);
     }
 }

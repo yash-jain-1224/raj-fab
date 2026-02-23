@@ -1,13 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using RajFabAPI.Data;
 using RajFabAPI.DTOs;
-using RajFabAPI.Services;
-using RajFabAPI.Services.Interface;
 using System.Text;
 using System.Text.Json;
-using static iText.Svg.SvgConstants;
-using static RajFabAPI.Services.PaymentService;
+using RajFabAPI.Services.Interface;
 
 namespace RajFabAPI.Controllers
 {
@@ -19,13 +14,15 @@ namespace RajFabAPI.Controllers
         private readonly IConfiguration _config;
         private readonly ITransactionService _transactionService;
         private readonly IPaymentService _paymentService;
+        private readonly IApplicationRegistrationService _applicationRegistrationService;
 
-        public PaymentController(IPaymentService service, IConfiguration config, ITransactionService transactionService, IPaymentService paymentService)
+        public PaymentController(IPaymentService service, IConfiguration config, ITransactionService transactionService, IPaymentService paymentService, IApplicationRegistrationService applicationRegistrationService)
         {
             _service = service;
             _config = config;
             _transactionService = transactionService;
             _paymentService = paymentService;
+            _applicationRegistrationService = applicationRegistrationService;
         }
         [HttpGet]
         public async Task<IActionResult> PaymentNew()
@@ -59,29 +56,36 @@ namespace RajFabAPI.Controllers
             {
                 Console.WriteLine($"data :  {data}");
                 var paymentHTML = new StringBuilder().AppendLine("<h1>Payment Return</h1>");
-                var json = AESDecrypt(data.ENCDATA, "4157FE34BBAE3A958D8F58CCBFAD7");
+                var json = _paymentService.AESDecrypt(data.ENCDATA, "4157FE34BBAE3A958D8F58CCBFAD7");
                 var paymentResponse = JsonSerializer.Deserialize<EmitraPaymentResponse>(json);
 
                 if (paymentResponse == null)
                     return BadRequest("Invalid payment response");
-                if (!_paymentService.VerifyChecksum(paymentResponse, "UWf6a7cDCP"))
-                    return BadRequest("Checksum mismatch! Possible tampering detected.");
+                //if (!_paymentService.VerifyChecksum(paymentResponse, "UWf6a7cDCP"))
+                //    return BadRequest("Checksum mismatch! Possible tampering detected.");
 
                 var transaction = await _transactionService.GetByPrnAsync(paymentResponse.PRN);
 
                 if (transaction != null)
                 {
+                    // Safely parse payment amount
+                    decimal paidAmount = 0;
+                    if (!string.IsNullOrWhiteSpace(paymentResponse.PAYMENTAMOUNT))
+                    {
+                        decimal.TryParse(paymentResponse.PAYMENTAMOUNT, out paidAmount);
+                    }
+
                     var updateDto = new UpdateTransactionDto
                     {
                         PrnNumber = transaction.PrnNumber,
-                        ModuleId = transaction.ModuleId,
-                        UserId = transaction.UserId,
+                        ModuleId = transaction.ModuleId.ToString(),
+                        UserId = transaction.UserId.ToString(),
                         Amount = transaction.Amount,
-                        PaidAmount = Convert.ToDecimal(paymentResponse.PAYMENTAMOUNT ?? "0"),
-                        Status = paymentResponse.STATUS,
+                        PaidAmount = paidAmount,
+                        Status = paymentResponse.STATUS ?? transaction.Status,
                         ApplicationId = transaction.ApplicationId,
                         PaymentReq = transaction.PaymentReq,
-                        PaymentRes = json
+                        PaymentRes = json,
                     };
 
                     await _transactionService.UpdateAsync(transaction.Id, updateDto);
@@ -89,6 +93,10 @@ namespace RajFabAPI.Controllers
                 switch (data.STATUS)
                 {
                     case "SUCCESS":
+                        if (transaction != null)
+                        {
+                            await _applicationRegistrationService.UpdatePaymentStatusAsync(transaction?.ApplicationId);
+                        }
                         paymentHTML.AppendLine("<h1>Success</h1>");
                         paymentHTML.AppendLine("<h1>Return JSON : " + json + "</h1>");
                         break;
@@ -104,9 +112,9 @@ namespace RajFabAPI.Controllers
                         break;
                 }
                 var redirectUrl = $"{_config["FrontendUrl"]}/" + "user/track";
-                //return Redirect(redirectUrl);
+                return Redirect(redirectUrl);
 
-                return Content(paymentHTML.ToString(), "text/html");
+                //return Content(paymentHTML.ToString(), "text/html");
             }
             catch (Exception)
             {

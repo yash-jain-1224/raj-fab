@@ -31,6 +31,8 @@ namespace RajFabAPI.Models
 
         [Required]
         public string OccupierSignature { get; set; }
+        public bool IsESignCompleted { get; set; } = false;
+        public string? ApplicationPDFUrl { get; set; }
 
         [Required]
         [StringLength(50)]

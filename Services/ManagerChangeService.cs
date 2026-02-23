@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RajFabAPI.Data;
 using RajFabAPI.DTOs;
@@ -10,10 +11,12 @@ namespace RajFabAPI.Services
     public class ManagerChangeService : IManagerChangeService
     {
         private readonly ApplicationDbContext _context;
+        private readonly IPaymentService _payment;
 
-        public ManagerChangeService(ApplicationDbContext context, IWebHostEnvironment environment)
+        public ManagerChangeService(ApplicationDbContext context, IWebHostEnvironment environment, IPaymentService payment)
         {
             _context = context;
+            _payment = payment;
         }
 
         public string GenerateAcknowledgementNumber()
@@ -224,9 +227,11 @@ namespace RajFabAPI.Services
                         await _context.SaveChangesAsync();
                     }
                 }
+                var User = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+                var html = await _payment.ActionRequestPaymentRPP(1000, User.FullName, User.Mobile, User.Email, User.Username, "4157FE34BBAE3A958D8F58CCBFAD7", "UWf6a7cDCP", managerChange.AcknowledgementNumber, module.Id.ToString(), userId.ToString()) ?? "";
 
                 await tx.CommitAsync();
-
+                //return html;
                 return new ManagerChangeResponseDto
                 {
                     ManagerChangeId = managerChange.Id,

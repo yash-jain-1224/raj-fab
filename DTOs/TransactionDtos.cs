@@ -14,6 +14,8 @@ namespace RajFabAPI.DTOs
         public string? ApplicationId { get; set; }
         public string? PaymentReq { get; set; }
         public string? PaymentRes { get; set; }
+        public string? Remarks { get; set; }
+        public string? Message { get; set; }
     }
 
     public class UpdateTransactionDto

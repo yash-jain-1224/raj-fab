@@ -34,6 +34,7 @@ namespace RajFabAPI.Constants
             public const string FactoryLicenseAmendment = "Factory License Amendment";
             public const string FactoryLicenseRenewal = "Factory License Renewal";
             public const string FactoryCommencementCessation = "Factory Commencement And Cessation";
+            public const string Appeal = "Appeal";
         }
 
         public static class BoilerApplicationType

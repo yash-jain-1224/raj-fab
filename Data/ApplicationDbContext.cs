@@ -5,6 +5,7 @@ using RajFabAPI.Models.FactoryModels;
 using System.Data;
 using System.Text.Json;
 using RajFabAPI.Models.BoilerModels;
+using static RajFabAPI.Services.EstablishmentRegistrationService;
 
 namespace RajFabAPI.Data
 {
@@ -13,8 +14,6 @@ namespace RajFabAPI.Data
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
         {
         }
-
-       
         public DbSet<FormModule> Modules { get; set; }
         public DbSet<DynamicForm> Forms { get; set; }
         public DbSet<FormSubmission> Submissions { get; set; }
@@ -32,6 +31,7 @@ namespace RajFabAPI.Data
         public DbSet<BeediCigarWork> BeediCigarWorks { get; set; }
         public DbSet<PersonDetail> PersonDetails { get; set; }
         public DbSet<EstablishmentEntityMapping> EstablishmentEntityMapping { get; set; }
+        public DbSet<FactoryContractorMapping> FactoryContractorMapping { get; set; }
         public DbSet<ApplicationApprovalRequest> ApplicationApprovalRequests { get; set; }
         public DbSet<ApplicationRegistration> ApplicationRegistrations { get; set; }
         public DbSet<Certificate> Certificates { get; set; }
@@ -65,22 +65,22 @@ namespace RajFabAPI.Data
         public DbSet<UserLocationAssignment> UserLocationAssignments { get; set; }
         public DbSet<Privilege> Privileges { get; set; }
         public DbSet<RolePrivilege> RolePrivileges { get; set; }
-        
+
         // Enhanced Privilege System
         public DbSet<ModulePermission> ModulePermissions { get; set; }
         public DbSet<UserModulePermission> UserModulePermissions { get; set; }
         public DbSet<UserAreaAssignment> UserAreaAssignments { get; set; }
-        
+
         // Factory Type related entities
         public DbSet<FactoryTypeOld> FactoryTypes_Old { get; set; }
         public DbSet<FactoryTypeDocument> FactoryTypeDocuments { get; set; }
         public DbSet<DocumentType> DocumentTypes { get; set; }
         public DbSet<ManufacturingProcessType> ManufacturingProcessTypes { get; set; }
         public DbSet<ProcessDocument> ProcessDocuments { get; set; }
-        
+
         // Occupier Master
         public DbSet<Occupier> Occupiers { get; set; }
-        
+
         // Factory Applications
         public DbSet<FactoryMapApproval> FactoryMapApprovals { get; set; }
         public DbSet<MapApprovalFactoryDetail> MapApprovalFactoryDetails { get; set; }
@@ -101,7 +101,7 @@ namespace RajFabAPI.Data
         public DbSet<AnnualReturn> AnnualReturns { get; set; }
         public DbSet<Appeal> Appeals { get; set; }
         public DbSet<Transaction> Transactions { get; set; }
-    
+
         public DbSet<ApplicationHistory> ApplicationHistories { get; set; }
 
         // Boiler entities
@@ -149,9 +149,7 @@ namespace RajFabAPI.Data
         public DbSet<NDTPersonnel> NDTPersonnels { get; set; }
         public DbSet<QualifiedWelder> QualifiedWelders { get; set; }
         public DbSet<TechnicalManpower> TechnicalManpowers { get; set; }
-
-
-
+        public DbSet<FeeResult> FeeResults { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -178,7 +176,7 @@ namespace RajFabAPI.Data
                 entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
                 entity.Property(e => e.Description).HasMaxLength(1000);
                 entity.Property(e => e.FieldsJson).HasColumnType("nvarchar(max)");
-                
+
                 entity.HasOne(e => e.Module)
                       .WithMany(m => m.Forms)
                       .HasForeignKey(e => e.ModuleId)
@@ -191,7 +189,7 @@ namespace RajFabAPI.Data
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
                 entity.Property(e => e.Description).HasMaxLength(500);
-                
+
                 entity.HasOne(e => e.Form)
                       .WithMany(f => f.Sections)
                       .HasForeignKey(e => e.FormId)
@@ -210,7 +208,7 @@ namespace RajFabAPI.Data
                 entity.Property(e => e.OnApprovalApiEndpoint).HasMaxLength(500);
                 entity.Property(e => e.OnApprovalNotificationEmail).HasMaxLength(200);
                 entity.Property(e => e.OnApprovalCustomActions).HasColumnType("nvarchar(max)");
-                
+
                 entity.HasOne(e => e.Form)
                       .WithOne(f => f.WorkflowConfig)
                       .HasForeignKey<WorkflowConfig>(e => e.FormId)
@@ -225,12 +223,12 @@ namespace RajFabAPI.Data
                 entity.Property(e => e.DataJson).HasColumnType("nvarchar(max)");
                 entity.Property(e => e.Status).HasMaxLength(20);
                 entity.Property(e => e.Comments).HasMaxLength(1000);
-                
+
                 entity.HasOne(e => e.Form)
                       .WithMany(f => f.Submissions)
                       .HasForeignKey(e => e.FormId)
                       .OnDelete(DeleteBehavior.Cascade);
-                      
+
                 entity.HasIndex(e => e.UserId);
                 entity.HasIndex(e => e.Status);
             });
@@ -251,7 +249,7 @@ namespace RajFabAPI.Data
                 entity.Property(e => e.District).IsRequired().HasMaxLength(100);
                 entity.Property(e => e.Pincode).IsRequired().HasMaxLength(10);
                 entity.Property(e => e.Designation).HasMaxLength(100);
-                
+
                 entity.HasIndex(e => e.Email).IsUnique();
                 entity.HasIndex(e => e.MobileNo);
             });
@@ -264,14 +262,6 @@ namespace RajFabAPI.Data
                 //entity.Property(e => e.MapApprovalFactoryDetail.FactoryName).IsRequired().HasMaxLength(200);
                 //entity.Property(e => e.MapApprovalFactoryDetail.AreaId).IsRequired().HasMaxLength(200);
                 entity.Property(e => e.Status).HasMaxLength(20);
-
-                entity.HasOne(f => f.MapApprovalFactoryDetails)
-                      .WithOne(d => d.FactoryMapApproval)
-                      .HasForeignKey<MapApprovalFactoryDetail>(d => d.FactoryMapApprovalId);
-
-                entity.HasOne(f => f.MapApprovalOccupierDetails)
-                      .WithOne(d => d.FactoryMapApproval)
-                      .HasForeignKey<MapApprovalOccupierDetail>(d => d.FactoryMapApprovalId);
             });
 
             // Configure FactoryMapDocument
@@ -282,17 +272,17 @@ namespace RajFabAPI.Data
                 entity.Property(e => e.FileName).IsRequired().HasMaxLength(500);
                 entity.Property(e => e.FilePath).IsRequired().HasMaxLength(500);
                 entity.Property(e => e.FileSize).HasMaxLength(100);
-                entity.Property(e => e.FileExtension).HasMaxLength(50);                
+                entity.Property(e => e.FileExtension).HasMaxLength(50);
             });
-            
+
             // Configure FactoryMapRawMaterial
             modelBuilder.Entity<FactoryMapRawMaterial>(entity =>
             {
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.MaterialName).IsRequired().HasMaxLength(200);
-                entity.Property(e => e.MaxStorageQuantity).HasMaxLength(100);                
+                entity.Property(e => e.MaxStorageQuantity).HasMaxLength(100);
             });
-            
+
             // Configure FactoryMapIntermediateProduct
             modelBuilder.Entity<FactoryMapIntermediateProduct>(entity =>
             {
@@ -301,11 +291,11 @@ namespace RajFabAPI.Data
                 entity.Property(e => e.MaxStorageQuantity).IsRequired().HasMaxLength(50);
             });
 
-             modelBuilder.Entity<City>()
-                .HasOne(c => c.District)
-                .WithMany(d => d.Cities)
-                .HasForeignKey(c => c.DistrictId)
-                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<City>()
+               .HasOne(c => c.District)
+               .WithMany(d => d.Cities)
+               .HasForeignKey(c => c.DistrictId)
+               .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<PoliceStation>()
                 .HasOne(p => p.District)
@@ -336,17 +326,17 @@ namespace RajFabAPI.Data
                 entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
                 entity.Property(e => e.Pincode).IsRequired().HasMaxLength(10);
                 entity.Property(e => e.Address).IsRequired().HasMaxLength(500);
-                
+
                 entity.HasOne(e => e.District)
                       .WithMany()
                       .HasForeignKey(e => e.DistrictId)
                       .OnDelete(DeleteBehavior.Restrict);
-                      
+
                 entity.HasOne(e => e.City)
                       .WithMany()
                       .HasForeignKey(e => e.CityId)
                       .OnDelete(DeleteBehavior.Restrict);
-                      
+
                 entity.HasIndex(e => new { e.Name, e.CityId });
             });
 
@@ -378,28 +368,28 @@ namespace RajFabAPI.Data
             // Configure BoilerDocumentType
             modelBuilder.Entity<BoilerDocumentType>(entity =>
             {
-                 entity.HasKey(e => e.Id);
-                 entity.Property(e => e.Id).HasMaxLength(36).IsUnicode(false).HasColumnType("varchar(36)");
-                 entity.Property(e => e.BoilerServiceType).IsRequired().HasMaxLength(50);
-                 entity.Property(e => e.ConditionalField).HasMaxLength(100);
-                 entity.Property(e => e.ConditionalValue).HasMaxLength(100);
-                  entity.Property(e => e.DocumentTypeId).HasMaxLength(36).IsUnicode(false).HasColumnType("varchar(36)");
-                 entity.HasOne(e => e.DocumentType)
-                       .WithMany()
-                       .HasForeignKey(e => e.DocumentTypeId)
-                       .OnDelete(DeleteBehavior.Cascade);
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasMaxLength(36).IsUnicode(false).HasColumnType("varchar(36)");
+                entity.Property(e => e.BoilerServiceType).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.ConditionalField).HasMaxLength(100);
+                entity.Property(e => e.ConditionalValue).HasMaxLength(100);
+                entity.Property(e => e.DocumentTypeId).HasMaxLength(36).IsUnicode(false).HasColumnType("varchar(36)");
+                entity.HasOne(e => e.DocumentType)
+                      .WithMany()
+                      .HasForeignKey(e => e.DocumentTypeId)
+                      .OnDelete(DeleteBehavior.Cascade);
                 entity.HasIndex(e => e.BoilerServiceType);
             });
 
             // Configure FactoryTypeDocument
             modelBuilder.Entity<FactoryTypeDocument>(entity =>
             {
-                 entity.HasKey(e => e.Id);
-                   entity.Property(e => e.DocumentTypeId).HasMaxLength(36).IsUnicode(false).HasColumnType("varchar(36)");
-                 entity.HasOne(e => e.DocumentType)
-                       .WithMany()
-                       .HasForeignKey(e => e.DocumentTypeId)
-                       .OnDelete(DeleteBehavior.Cascade);
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.DocumentTypeId).HasMaxLength(36).IsUnicode(false).HasColumnType("varchar(36)");
+                entity.HasOne(e => e.DocumentType)
+                      .WithMany()
+                      .HasForeignKey(e => e.DocumentTypeId)
+                      .OnDelete(DeleteBehavior.Cascade);
             });
 
             // Configure ManufacturingProcessType
@@ -417,21 +407,21 @@ namespace RajFabAPI.Data
             // Configure ProcessDocument
             modelBuilder.Entity<ProcessDocument>(entity =>
             {
-                 entity.HasKey(e => e.Id);
-                 entity.Property(e => e.ConditionalField).HasMaxLength(100);
-                 entity.Property(e => e.ConditionalValue).HasMaxLength(100);
-                 entity.Property(e => e.DocumentTypeId).HasMaxLength(36).IsUnicode(false).HasColumnType("varchar(36)");
-                 entity.Property(e => e.ManufacturingProcessTypeId).IsRequired();
-                 
-                 entity.HasOne<DocumentType>()
-                       .WithMany()
-                       .HasForeignKey(e => e.DocumentTypeId)
-                       .OnDelete(DeleteBehavior.Cascade);
-                 
-                 entity.HasOne<ManufacturingProcessType>()
-                       .WithMany(m => m.RequiredDocuments)
-                       .HasForeignKey(e => e.ManufacturingProcessTypeId)
-                       .OnDelete(DeleteBehavior.Cascade);
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.ConditionalField).HasMaxLength(100);
+                entity.Property(e => e.ConditionalValue).HasMaxLength(100);
+                entity.Property(e => e.DocumentTypeId).HasMaxLength(36).IsUnicode(false).HasColumnType("varchar(36)");
+                entity.Property(e => e.ManufacturingProcessTypeId).IsRequired();
+
+                entity.HasOne<DocumentType>()
+                      .WithMany()
+                      .HasForeignKey(e => e.DocumentTypeId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne<ManufacturingProcessType>()
+                      .WithMany(m => m.RequiredDocuments)
+                      .HasForeignKey(e => e.ManufacturingProcessTypeId)
+                      .OnDelete(DeleteBehavior.Cascade);
             });
 
             // Configure Division
@@ -470,103 +460,103 @@ namespace RajFabAPI.Data
             });
 
             // Configure Role
-           modelBuilder.Entity<Role>(entity =>
-{
-    entity.HasKey(e => e.Id);
+            modelBuilder.Entity<Role>(entity =>
+            {
+                entity.HasKey(e => e.Id);
 
-    entity.HasOne(e => e.Post)
-          .WithMany()
-          .HasForeignKey(e => e.PostId)
-          .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.Post)
+                    .WithMany()
+                    .HasForeignKey(e => e.PostId)
+                    .OnDelete(DeleteBehavior.Restrict);
 
-    entity.HasOne(e => e.Office)
-          .WithMany()
-          .HasForeignKey(e => e.OfficeId)
-          .OnDelete(DeleteBehavior.Restrict);
-});
-modelBuilder.Entity<Post>(entity =>
-{
-    entity.HasKey(e => e.Id);
+                entity.HasOne(e => e.Office)
+                    .WithMany()
+                    .HasForeignKey(e => e.OfficeId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+            modelBuilder.Entity<Post>(entity =>
+            {
+                entity.HasKey(e => e.Id);
 
-    entity.Property(e => e.Name)
-          .IsRequired()
-          .HasMaxLength(100);
+                entity.Property(e => e.Name)
+                      .IsRequired()
+                      .HasMaxLength(100);
 
-    entity.HasIndex(e => e.Name)
-          .IsUnique();
-});
+                entity.HasIndex(e => e.Name)
+                      .IsUnique();
+            });
 
 
             // Configure User
             modelBuilder.Entity<User>(entity =>
-{
-    entity.HasKey(e => e.Id);
+            {
+                entity.HasKey(e => e.Id);
 
-    entity.Property(e => e.Username)
-        .IsRequired()
-        .HasMaxLength(100);
+                entity.Property(e => e.Username)
+                    .IsRequired()
+                    .HasMaxLength(100);
 
-    entity.Property(e => e.FullName)
-        .IsRequired()
-        .HasMaxLength(200);
+                entity.Property(e => e.FullName)
+                    .IsRequired()
+                    .HasMaxLength(200);
 
-    entity.Property(e => e.Email)
-        .IsRequired()
-        .HasMaxLength(200);
+                entity.Property(e => e.Email)
+                    .IsRequired()
+                    .HasMaxLength(200);
 
-    entity.Property(e => e.Mobile)
-        .IsRequired()
-        .HasMaxLength(15);
+                entity.Property(e => e.Mobile)
+                    .IsRequired()
+                    .HasMaxLength(15);
 
-    entity.HasIndex(e => e.Username).IsUnique();
-    entity.HasIndex(e => e.Email).IsUnique();
-});
-modelBuilder.Entity<UserRole>(entity =>
-{
-    entity.HasKey(ur => ur.Id);
+                entity.HasIndex(e => e.Username).IsUnique();
+                entity.HasIndex(e => e.Email).IsUnique();
+            });
+            modelBuilder.Entity<UserRole>(entity =>
+            {
+                entity.HasKey(ur => ur.Id);
 
-    entity.HasOne(ur => ur.User)
-        .WithMany(u => u.UserRoles)
-        .HasForeignKey(ur => ur.UserId)
-        .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(ur => ur.User)
+                    .WithMany(u => u.UserRoles)
+                    .HasForeignKey(ur => ur.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
 
-    entity.HasOne(ur => ur.Role)
-        .WithMany()
-        .HasForeignKey(ur => ur.RoleId)
-        .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(ur => ur.Role)
+                    .WithMany()
+                    .HasForeignKey(ur => ur.RoleId)
+                    .OnDelete(DeleteBehavior.Restrict);
 
-    entity.HasIndex(ur => new { ur.UserId, ur.RoleId }).IsUnique();
-});
+                entity.HasIndex(ur => new { ur.UserId, ur.RoleId }).IsUnique();
+            });
 
 
             // Configure Privilege
-           modelBuilder.Entity<Privilege>(entity =>
-{
-    entity.HasKey(e => e.Id);
+            modelBuilder.Entity<Privilege>(entity =>
+            {
+                entity.HasKey(e => e.Id);
 
-    entity.Property(e => e.Action)
-          .IsRequired()
-          .HasMaxLength(50);
+                entity.Property(e => e.Action)
+                      .IsRequired()
+                      .HasMaxLength(50);
 
-    entity.HasOne(e => e.Module)
-          .WithMany()
-          .HasForeignKey(e => e.ModuleId)
-          .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.Module)
+                      .WithMany()
+                      .HasForeignKey(e => e.ModuleId)
+                      .OnDelete(DeleteBehavior.Cascade);
 
-    entity.HasIndex(e => new { e.ModuleId, e.Action })
-          .IsUnique();
-});
-modelBuilder.Entity<FormModule>(entity =>
-{
-    entity.HasKey(e => e.Id);
+                entity.HasIndex(e => new { e.ModuleId, e.Action })
+                      .IsUnique();
+            });
+            modelBuilder.Entity<FormModule>(entity =>
+            {
+                entity.HasKey(e => e.Id);
 
-    entity.Property(e => e.Name)
-          .IsRequired()
-          .HasMaxLength(100);
+                entity.Property(e => e.Name)
+                      .IsRequired()
+                      .HasMaxLength(100);
 
-    entity.HasIndex(e => e.Name)
-          .IsUnique();
-});
+                entity.HasIndex(e => e.Name)
+                      .IsUnique();
+            });
 
             // Configure RolePrivilege
             modelBuilder.Entity<RolePrivilege>(entity =>
@@ -637,7 +627,7 @@ modelBuilder.Entity<FormModule>(entity =>
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.TotalRatedHorsePower)
                       .HasColumnType("decimal(18,2)");
-                
+
                 entity.HasMany(e => e.Documents)
                       .WithOne(d => d.FactoryRegistration)
                       .HasForeignKey(d => d.FactoryRegistrationId)
@@ -680,7 +670,7 @@ modelBuilder.Entity<FormModule>(entity =>
                 entity.Property(e => e.FactoryFee).HasColumnType("decimal(18,2)");
                 entity.Property(e => e.ElectricityFee).HasColumnType("decimal(18,2)");
                 entity.Property(e => e.TotalFee).HasColumnType("decimal(18,2)");
-                
+
                 entity.HasOne(e => e.FactoryRegistration)
                       .WithMany()
                       .HasForeignKey(e => e.FactoryRegistrationId)
@@ -733,6 +723,194 @@ modelBuilder.Entity<FormModule>(entity =>
                       .OnDelete(DeleteBehavior.SetNull);
                 entity.HasIndex(e => new { e.UserId, e.AreaId, e.ModuleId }).IsUnique();
             });
+
+            // Conversion for Establishment and Application entities to handle uniqueidentifier columns as strings
+            // ------------------- EstablishmentRegistration -------------------
+            modelBuilder.Entity<EstablishmentRegistration>(entity =>
+            {
+                // Primary key
+                entity.HasKey(e => e.EstablishmentRegistrationId);
+
+                entity.Property(e => e.EstablishmentRegistrationId)
+                      .HasMaxLength(100)
+                      .IsRequired();
+
+                // Other optional GUIDs
+                entity.Property(e => e.EstablishmentDetailId)
+                      .HasColumnType("uniqueidentifier");
+
+                entity.Property(e => e.MainOwnerDetailId)
+                      .HasColumnType("uniqueidentifier");
+
+                entity.Property(e => e.ManagerOrAgentDetailId)
+                      .HasColumnType("uniqueidentifier");
+
+                entity.Property(e => e.ContractorDetailId)
+                      .HasColumnType("uniqueidentifier");
+
+                // nvarchar columns
+                entity.Property(e => e.Status)
+                      .HasMaxLength(50);
+
+                entity.Property(e => e.Place)
+                      .HasMaxLength(200);
+
+                entity.Property(e => e.RegistrationNumber)
+                      .HasMaxLength(100);
+
+                entity.Property(e => e.Type)
+                      .HasMaxLength(50)
+                      .IsRequired();
+
+                entity.Property(e => e.Signature)
+                      .HasMaxLength(200);
+
+                entity.Property(e => e.ApplicationPDFUrl)
+                      .HasMaxLength(500);
+
+                // datetime columns
+                entity.Property(e => e.CreatedDate)
+                      .HasColumnType("datetime2");
+
+                entity.Property(e => e.UpdatedDate)
+                      .HasColumnType("datetime2");
+
+                entity.Property(e => e.Date)
+                      .HasColumnType("datetime");
+
+                // decimal columns
+                entity.Property(e => e.Version)
+                      .HasColumnType("decimal(3,1)")
+                      .IsRequired();
+
+                entity.Property(e => e.Amount)
+                      .HasColumnType("decimal(18,2)");
+
+                // bit columns
+                entity.Property(e => e.IsPaymentCompleted)
+                      .HasColumnType("bit");
+
+                entity.Property(e => e.IsESignCompleted)
+                      .HasColumnType("bit");
+            });
+
+            // ------------------- EstablishmentRegistrationDocument -------------------
+            modelBuilder.Entity<EstablishmentRegistrationDocument>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id)
+                      .HasMaxLength(100)
+                      .IsRequired();
+
+                entity.Property(e => e.EstablishmentRegistrationId)
+                      .HasMaxLength(100)
+                      .IsRequired();
+
+                entity.Property(e => e.DocumentType)
+                      .HasMaxLength(200)
+                      .IsRequired();
+
+                entity.Property(e => e.FileName)
+                      .HasMaxLength(500)
+                      .IsRequired();
+
+                entity.Property(e => e.FilePath)
+                      .HasMaxLength(500)
+                      .IsRequired();
+
+                entity.Property(e => e.FileExtension)
+                      .HasMaxLength(50);
+
+                entity.HasOne(d => d.EstablishmentRegistration)
+                      .WithMany()
+                      .HasForeignKey(d => d.EstablishmentRegistrationId)
+                      .HasPrincipalKey(p => p.EstablishmentRegistrationId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // ------------------- EstablishmentEntityMapping -------------------
+            modelBuilder.Entity<EstablishmentEntityMapping>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id)
+                      .HasMaxLength(100)
+                      .IsRequired();
+
+                entity.Property(e => e.EstablishmentRegistrationId)
+                      .HasMaxLength(100)
+                      .IsRequired();
+
+                entity.HasOne<EstablishmentRegistration>()
+                      .WithMany()
+                      .HasForeignKey(e => e.EstablishmentRegistrationId)
+                      .HasPrincipalKey(r => r.EstablishmentRegistrationId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // ------------------- ApplicationRegistration -------------------
+            modelBuilder.Entity<ApplicationRegistration>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id)
+                      .HasMaxLength(100)
+                      .IsRequired();
+
+                entity.Property(e => e.ApplicationId)
+                      .HasMaxLength(100)
+                      .IsRequired();
+
+                entity.Property(e => e.ApplicationRegistrationNumber)
+                      .HasMaxLength(100)
+                      .IsRequired();
+
+                entity.Property(e => e.CreatedDate)
+                      .HasColumnType("datetime2");
+
+                entity.Property(e => e.UpdatedDate)
+                      .HasColumnType("datetime2");
+
+                entity.Property(e => e.ModuleId)
+                      .HasColumnType("uniqueidentifier");
+
+                entity.Property(e => e.UserId)
+                      .HasColumnType("uniqueidentifier");
+            });
+            modelBuilder.Entity<FactoryContractorMapping>(entity =>
+            {
+                  // Composite Primary Key
+                  entity.HasKey(e => new 
+                  { 
+                        e.EstablishmentRegistrationId, 
+                        e.ContractorDetailId 
+                  });
+
+                  entity.Property(e => e.EstablishmentRegistrationId)
+                        .HasMaxLength(100)
+                        .IsRequired();
+
+                  entity.Property(e => e.ContractorDetailId)
+                        .IsRequired();
+
+                  // Foreign Key to EstablishmentRegistration
+                  entity.HasOne<EstablishmentRegistration>()
+                        .WithMany()
+                        .HasForeignKey(e => e.EstablishmentRegistrationId)
+                        .HasPrincipalKey(r => r.EstablishmentRegistrationId)
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                  // Optional: Foreign Key to ContractorDetail (if exists)
+                  entity.HasOne<PersonDetail>() // replace with correct entity
+                        .WithMany()
+                        .HasForeignKey(e => e.ContractorDetailId)
+                        .OnDelete(DeleteBehavior.Cascade);
+            });
+
+
+            modelBuilder.Entity<FeeResult>().HasNoKey();
+            base.OnModelCreating(modelBuilder);
         }
 
         public override int SaveChanges()
@@ -750,8 +928,8 @@ modelBuilder.Entity<FormModule>(entity =>
         private void UpdateTimestamps()
         {
             var entries = ChangeTracker.Entries()
-                .Where(e => e.Entity is FormModule || e.Entity is DynamicForm || e.Entity is WorkflowConfig || 
-                           e.Entity is FactoryMapApproval || e.Entity is FactoryTypeOld || e.Entity is DocumentType || 
+                .Where(e => e.Entity is FormModule || e.Entity is DynamicForm || e.Entity is WorkflowConfig ||
+                           e.Entity is FactoryMapApproval || e.Entity is FactoryTypeOld || e.Entity is DocumentType ||
                            e.Entity is FactoryRegistration)
                 .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified);
 

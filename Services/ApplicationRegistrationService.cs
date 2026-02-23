@@ -1,15 +1,12 @@
-using Microsoft.AspNetCore.Http.HttpResults;
+using iText.Commons.Actions.Contexts;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using RajFabAPI.Data;
 using RajFabAPI.DTOs;
 using RajFabAPI.Models;
 using RajFabAPI.Services.Interface;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using System.Text.Json;
 using static RajFabAPI.Constants.AppConstants;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace RajFabAPI.Services
 {
@@ -18,12 +15,15 @@ namespace RajFabAPI.Services
         private readonly ApplicationDbContext _db;
         private readonly ILogger<ApplicationRegistrationService> _logger;
         private readonly IEstablishmentRegistrationService _establishmentService;
-
-        public ApplicationRegistrationService(ApplicationDbContext db, ILogger<ApplicationRegistrationService> logger, IEstablishmentRegistrationService establishmentService)
+        private readonly IApplicationWorkFlowService _applicationWorkFlowService;
+        private readonly IWebHostEnvironment _environment;
+        public ApplicationRegistrationService(IWebHostEnvironment environment, ApplicationDbContext db, ILogger<ApplicationRegistrationService> logger, IEstablishmentRegistrationService establishmentService, IApplicationWorkFlowService applicationWorkFlowService)
         {
             _db = db;
             _logger = logger;
             _establishmentService = establishmentService;
+            _applicationWorkFlowService = applicationWorkFlowService;
+            _environment = environment;
         }
 
         public async Task<List<ApplicationRegistrationDto>> GetAllAsync()
@@ -147,7 +147,9 @@ namespace RajFabAPI.Services
                                     {
                                         estRegistration.Status,
                                         estRegistration.CreatedDate,
-                                        establishmentDetail.EstablishmentName
+                                        establishmentDetail.EstablishmentName,
+                                        estRegistration.IsESignCompleted,
+                                        estRegistration.IsPaymentCompleted
                                     };
                     var estDetailSingle = await estDetail.FirstOrDefaultAsync();
 
@@ -159,12 +161,13 @@ namespace RajFabAPI.Services
                         CreatedDate = appRegistration.CreatedDate,
                         ApplicationId = Guid.Parse(appRegistration.ApplicationId),
                         ApplicationTitle = estDetailSingle != null ? estDetailSingle.EstablishmentName : "",
+                        IsPaymentCompleted = estDetailSingle.IsPaymentCompleted,
+                        IsESignCompleted = estDetailSingle.IsESignCompleted,
                     });
                 }
                 else if (appRegistration.ApplicationTypeName == ApplicationTypeNames.MapApproval)
                 {
-                    var mapApproval = _db.FactoryMapApprovals
-                            .Include(x => x.MapApprovalFactoryDetails).FirstOrDefault(x => x.Id == appRegistration.ApplicationId);
+                    var mapApproval = _db.FactoryMapApprovals.FirstOrDefault(x => x.Id == appRegistration.ApplicationId);
                     if (mapApproval != null)
                     {
                         applicationUserDashboardDtos.Add(new ApplicationUserDashboardDto
@@ -174,7 +177,8 @@ namespace RajFabAPI.Services
                             Status = mapApproval.Status,
                             CreatedDate = appRegistration.CreatedDate,
                             ApplicationId = Guid.Parse(appRegistration.ApplicationId),
-                            ApplicationTitle = mapApproval != null ? mapApproval.MapApprovalFactoryDetails?.FactoryName : "",
+                            ApplicationTitle = mapApproval != null ? "Map Approval" : "",
+                            IsESignCompleted = mapApproval.IsESignCompleted,
                         });
                     }
                 }
@@ -196,6 +200,7 @@ namespace RajFabAPI.Services
                             CreatedDate = appRegistration.CreatedDate,
                             ApplicationId = Guid.Parse(appRegistration.ApplicationId),
                             ApplicationTitle = estDetails != null ? estDetails.EstablishmentName : "",
+                            IsESignCompleted = commCess.IsESignCompleted,
                         });
                     }
                 }
@@ -252,7 +257,38 @@ namespace RajFabAPI.Services
                         Status = factoryLicense.Status,
                         CreatedDate = appRegistration.CreatedDate,
                         ApplicationId = Guid.Parse(factoryLicense.Id),
-                        ApplicationTitle = estDetails?.EstablishmentName ?? "Factory License"
+                        ApplicationTitle = estDetails?.EstablishmentName ?? "Factory License",
+                        IsPaymentCompleted = factoryLicense.IsPaymentCompleted,
+                        IsESignCompleted = factoryLicense.IsESignCompletedManager && factoryLicense.IsESignCompletedOccupier
+                    });
+                }
+                else if (
+                    appRegistration.ApplicationTypeName == ApplicationTypeNames.Appeal)
+                {
+                    var appeal = _db.Appeals
+                        .FirstOrDefault(x => x.Id == appRegistration.ApplicationId);
+
+                    if (appeal == null)
+                        continue;
+
+                    // Get establishment using FactoryRegistrationNumber
+                    var estReg = _db.EstablishmentRegistrations
+                        .FirstOrDefault(x => x.RegistrationNumber == appeal.FactoryRegistrationNumber);
+
+                    var estDetails = estReg != null
+                        ? _db.EstablishmentDetails
+                            .FirstOrDefault(x => x.Id == estReg.EstablishmentDetailId)
+                        : null;
+
+                    applicationUserDashboardDtos.Add(new ApplicationUserDashboardDto
+                    {
+                        ApplicationRegistrationId = appRegistration.Id,
+                        ApplicationType = appRegistration.ApplicationTypeName, // FactoryLicense / Amendment / Renewal
+                        Status = appeal.Status,
+                        CreatedDate = appRegistration.CreatedDate,
+                        ApplicationId = Guid.Parse(appeal.Id),
+                        ApplicationTitle = estDetails?.EstablishmentName ?? "Appeal",
+                        IsESignCompleted = appeal.IsESignCompleted
                     });
                 }
             }
@@ -266,6 +302,365 @@ namespace RajFabAPI.Services
             var details = await _establishmentService.GetRegistrationDetailsAsync(applicationData.ApplicationId);
             _logger.LogInformation("Retrieved establishment registration details for RegistrationId {RegistrationId}", registrationNumber);
             return details;
+        }
+        public async Task<bool> UpdatePaymentStatusAsync(
+            string applicationId)
+        {
+            using var dbTx = await _db.Database.BeginTransactionAsync();
+
+            try
+            {
+                var applicationData = await (
+                    from appReg in _db.Set<ApplicationRegistration>()
+                    join module in _db.Set<FormModule>()
+                        on appReg.ModuleId equals module.Id
+                    where appReg.ApplicationId == applicationId
+                    select new
+                    {
+                        Application = appReg,
+                        ModuleName = module.Name
+                    }
+                ).FirstOrDefaultAsync();
+
+                if (applicationData == null)
+                    return false;
+
+                if (applicationData.ModuleName == ApplicationTypeNames.NewEstablishment)
+                {
+
+                    var estReg = await _db.Set<EstablishmentRegistration>()
+                        .FirstOrDefaultAsync(x =>
+                            x.EstablishmentRegistrationId.ToString() ==
+                            applicationId);
+
+                    if (estReg != null)
+                    {
+                        estReg.IsPaymentCompleted = true;
+                        estReg.UpdatedDate = DateTime.Now;
+                    }
+
+                    await _db.SaveChangesAsync();
+                    await dbTx.CommitAsync();
+
+                    return true;
+                } else if (applicationData.ModuleName == ApplicationTypeNames.FactoryLicense)
+                {
+                    var factoryLicense = await _db.Set<FactoryLicense>()
+                        .FirstOrDefaultAsync(x =>
+                            x.Id.ToString() ==
+                            applicationId);
+
+                    if (factoryLicense != null)
+                    {
+                        factoryLicense.IsPaymentCompleted = true;
+                        factoryLicense.UpdatedAt = DateTime.Now;
+                    }
+
+                    await _db.SaveChangesAsync();
+                    await dbTx.CommitAsync();
+
+                    return true;
+                }
+
+                return false;
+            }
+            catch
+            {
+                await dbTx.RollbackAsync();
+                throw;
+            }
+        }
+
+        public async Task<bool> UpdateApplicationESignData(string prnNumber, string signedPDFBase64)
+        {
+            if (string.IsNullOrWhiteSpace(prnNumber) || string.IsNullOrWhiteSpace(signedPDFBase64))
+                return false;
+
+            var appReg = await _db.Set<ApplicationRegistration>()
+                .FirstOrDefaultAsync(r => r.ESignPrnNumber == prnNumber);
+
+            if (appReg == null || appReg.ModuleId == Guid.Empty)
+                return false;
+
+            var module = await _db.Set<FormModule>()
+                .FirstOrDefaultAsync(m => m.Id == appReg.ModuleId);
+
+            if (module == null)
+                return false;
+
+            if (signedPDFBase64.Contains(","))
+                signedPDFBase64 = signedPDFBase64.Split(',')[1];
+
+            byte[] pdfBytes = Convert.FromBase64String(signedPDFBase64);
+
+            int totalWorkers = 0;
+            Guid? factoryTypeId = null;
+            Guid? subDivisionId = null;
+            string applicationUrl = null;
+
+            using var transaction = await _db.Database.BeginTransactionAsync();
+
+            try
+            {
+                if (module.Name == ApplicationTypeNames.NewEstablishment)
+                {
+                    var estReg = await _db.Set<EstablishmentRegistration>()
+                        .FirstOrDefaultAsync(x => x.EstablishmentRegistrationId == appReg.ApplicationId);
+
+                    if (estReg == null)
+                        return false;
+
+                    var estDetails = await _db.Set<EstablishmentDetail>()
+                        .FirstOrDefaultAsync(ed => ed.Id == estReg.EstablishmentDetailId);
+
+                    if (estDetails == null)
+                        return false;
+                    if (!Guid.TryParse(estDetails.SubDivisionId, out Guid parsedSubDiv))
+                        return false;
+
+                    totalWorkers =
+                        (estDetails.TotalNumberOfEmployee ?? 0) +
+                        (estDetails.TotalNumberOfContractEmployee ?? 0) +
+                        (estDetails.TotalNumberOfInterstateWorker ?? 0);
+
+                    factoryTypeId = estDetails.FactoryTypeId ?? Guid.Empty;
+                    subDivisionId = parsedSubDiv;
+
+                    estReg.IsESignCompleted = true;
+                    estReg.UpdatedDate = DateTime.Now;
+
+                    applicationUrl = estReg.ApplicationPDFUrl;
+                }
+                else if (module.Name == ApplicationTypeNames.MapApproval)
+                {
+                    var mapReg = await _db.Set<FactoryMapApproval>()
+                        .FirstOrDefaultAsync(x => x.Id == appReg.ApplicationId);
+
+                    if (mapReg == null)
+                        return false;
+                    var options = new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    };
+
+                    var factoryDetails = JsonSerializer.Deserialize<FactoryDetailsModel>(
+                        mapReg.FactoryDetails,
+                        options
+                    );
+
+                    var factoryType = _db.FactoryTypes.FirstOrDefault(x => x.Name == "Not Applicable");
+
+                    if (!Guid.TryParse(factoryDetails.subDivisionId, out Guid parsedSubDiv))
+                        return false;
+
+                    totalWorkers =
+                        (mapReg?.MaxWorkerMale ?? 0) +
+                        (mapReg?.MaxWorkerFemale ?? 0);
+                    factoryTypeId = factoryType?.Id;
+                    subDivisionId = parsedSubDiv;
+                    mapReg.IsESignCompleted = true;
+                    mapReg.UpdatedAt = DateTime.Now;
+                    applicationUrl = mapReg.ApplicationPDFUrl;
+                }
+                else if (module.Name == ApplicationTypeNames.FactoryLicense)
+                {
+                    var factoryLicenseReg = await _db.Set<FactoryLicense>()
+                        .FirstOrDefaultAsync(x => x.Id == appReg.ApplicationId);
+
+                    if (factoryLicenseReg == null)
+                        return false;
+
+                    var EstablishmentDetailId = await _db.Set<EstablishmentRegistration>()
+                                   .Where(m => m.RegistrationNumber == factoryLicenseReg.FactoryRegistrationNumber)
+                                   .Select(m => m.EstablishmentDetailId)
+                                   .FirstOrDefaultAsync();
+
+                    var establishmentDetail = await _db.Set<EstablishmentDetail>()
+                        .FirstOrDefaultAsync(m => m.Id == EstablishmentDetailId);
+
+                    if (!Guid.TryParse(establishmentDetail.SubDivisionId, out Guid parsedSubDiv))
+                        return false;
+
+                    totalWorkers =
+                       (establishmentDetail?.TotalNumberOfEmployee ?? 0) +
+                       (establishmentDetail?.TotalNumberOfContractEmployee ?? 0) +
+                       (establishmentDetail?.TotalNumberOfInterstateWorker ?? 0);
+
+                    factoryTypeId = establishmentDetail.FactoryTypeId;
+                    subDivisionId = parsedSubDiv;
+                    factoryLicenseReg.IsESignCompletedOccupier = true;
+                    factoryLicenseReg.UpdatedAt = DateTime.Now;
+                    applicationUrl = factoryLicenseReg.ApplicationPDFUrl;
+                }
+                else if (module.Name == ApplicationTypeNames.FactoryCommencementCessation)
+                {
+                    var comReg = await _db.Set<CommencementCessationApplication>()
+                        .FirstOrDefaultAsync(x => x.ApplicationId == appReg.ApplicationId);
+
+                    if (comReg == null)
+                        return false;
+
+                    var EstablishmentDetailId = await _db.Set<EstablishmentRegistration>()
+                                   .Where(m => m.RegistrationNumber == comReg.FactoryRegistrationNumber)
+                                   .Select(m => m.EstablishmentDetailId)
+                                   .FirstOrDefaultAsync();
+
+                    var establishmentDetail = await _db.Set<EstablishmentDetail>()
+                        .FirstOrDefaultAsync(m => m.Id == EstablishmentDetailId);
+
+
+                    if (!Guid.TryParse(establishmentDetail.SubDivisionId, out Guid parsedSubDiv))
+                        return false;
+
+                    totalWorkers =
+                       (establishmentDetail?.TotalNumberOfEmployee ?? 0) +
+                       (establishmentDetail?.TotalNumberOfContractEmployee ?? 0) +
+                       (establishmentDetail?.TotalNumberOfInterstateWorker ?? 0);
+                    
+                    factoryTypeId = establishmentDetail.FactoryTypeId;
+                    subDivisionId = parsedSubDiv;
+                    comReg.IsESignCompleted = true;
+                    comReg.UpdatedDate = DateTime.Now;
+                    applicationUrl = comReg.ApplicationPDFUrl;
+                }
+                else if (module.Name == ApplicationTypeNames.Appeal)
+                {
+                    var appealReg = await _db.Set<Appeal>()
+                        .FirstOrDefaultAsync(x => x.AppealApplicationNumber == appReg.ApplicationId);
+
+                    if (appealReg == null)
+                        return false;
+
+                    var EstablishmentDetailId = await _db.Set<EstablishmentRegistration>()
+                                   .Where(m => m.RegistrationNumber == appealReg.FactoryRegistrationNumber)
+                                   .Select(m => m.EstablishmentDetailId)
+                                   .FirstOrDefaultAsync();
+
+                    var establishmentDetail = await _db.Set<EstablishmentDetail>()
+                        .FirstOrDefaultAsync(m => m.Id == EstablishmentDetailId);
+
+                    if (!Guid.TryParse(establishmentDetail.SubDivisionId, out Guid parsedSubDiv))
+                        return false;
+
+                    totalWorkers =
+                       (establishmentDetail?.TotalNumberOfEmployee ?? 0) +
+                       (establishmentDetail?.TotalNumberOfContractEmployee ?? 0) +
+                       (establishmentDetail?.TotalNumberOfInterstateWorker ?? 0);
+
+                    factoryTypeId = establishmentDetail.FactoryTypeId;
+                    subDivisionId = parsedSubDiv;
+                    appealReg.IsESignCompleted = true;
+                    appealReg.UpdatedAt = DateTime.Now;
+                    applicationUrl = appealReg.ApplicationPDFUrl;
+                }
+                var workerRange = await _db.Set<WorkerRange>()
+                    .FirstOrDefaultAsync(wr =>
+                        totalWorkers >= wr.MinWorkers &&
+                        totalWorkers <= wr.MaxWorkers);
+
+                Guid? factoryCategoryId = null;
+
+                if (workerRange != null)
+                {
+                    factoryCategoryId = await _db.Set<FactoryCategory>()
+                        .Where(fc =>
+                            fc.WorkerRangeId == workerRange.Id &&
+                            fc.FactoryTypeId == factoryTypeId)
+                        .Select(fc => (Guid?)fc.Id)
+                        .FirstOrDefaultAsync();
+                }
+
+                var officeId = await _db.Set<OfficeApplicationArea>()
+                    .Where(oaa => oaa.CityId == subDivisionId)
+                    .Select(oaa => (Guid?)oaa.OfficeId)
+                    .FirstOrDefaultAsync();
+
+                if (!officeId.HasValue)
+                    return false;
+
+                var workflow = await _db.Set<ApplicationWorkFlow>()
+                    .FirstOrDefaultAsync(wf =>
+                        wf.ModuleId == appReg.ModuleId &&
+                        wf.FactoryCategoryId == factoryCategoryId &&
+                        wf.OfficeId == officeId.Value);
+
+                if (workflow == null)
+                    return false;
+
+                var workflowLevel = await _db.Set<ApplicationWorkFlowLevel>()
+                    .Where(wfl => wfl.ApplicationWorkFlowId == workflow.Id)
+                    .OrderBy(wfl => wfl.LevelNumber)
+                    .FirstOrDefaultAsync();
+
+                if (workflowLevel == null)
+                    return false;
+
+                var approvalRequest = new ApplicationApprovalRequest
+                {
+                    ModuleId = appReg.ModuleId,
+                    ApplicationRegistrationId = appReg.Id,
+                    ApplicationWorkFlowLevelId = workflowLevel.Id,
+                    Status = "Pending",
+                    CreatedDate = DateTime.Now,
+                    UpdatedDate = DateTime.Now
+                };
+
+                _db.Set<ApplicationApprovalRequest>().Add(approvalRequest);
+
+                await _db.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                await OverwriteExistingPdfAsync(applicationUrl, pdfBytes);
+                return true;
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
+        public async Task OverwriteExistingPdfAsync(string fileUrl, byte[] newPdfBytes)
+        {
+            if (string.IsNullOrWhiteSpace(fileUrl))
+                throw new ArgumentException("File URL is required.", nameof(fileUrl));
+
+            if (newPdfBytes == null || newPdfBytes.Length == 0)
+                throw new ArgumentException("PDF content is empty.", nameof(newPdfBytes));
+
+            // Convert URL → Relative Path
+            string relativePath;
+
+            if (fileUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+            {
+                var uri = new Uri(fileUrl);
+                relativePath = uri.AbsolutePath.TrimStart('/');
+            }
+            else
+            {
+                // In case DB already stores relative path
+                relativePath = fileUrl.TrimStart('/');
+            }
+
+            // Convert Relative Path → Physical Path
+            var physicalPath = Path.Combine(_environment.WebRootPath, relativePath);
+
+            if (!File.Exists(physicalPath))
+                throw new FileNotFoundException("PDF file not found on server.", physicalPath);
+
+            // Overwrite file
+            await File.WriteAllBytesAsync(physicalPath, newPdfBytes);
+        }
+
+        public async Task<bool> SavePRNNumber(string registrationId, string prnNumber)
+        {
+            var appReg = await _db.Set<ApplicationRegistration>()
+                .FirstOrDefaultAsync(r => r.ApplicationId == registrationId);
+            if (appReg == null)
+                return false;
+            appReg.ESignPrnNumber = prnNumber;
+            appReg.UpdatedDate = DateTime.Now;
+            await _db.SaveChangesAsync();
+            return true;
         }
     }
 }

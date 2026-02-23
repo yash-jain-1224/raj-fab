@@ -4,6 +4,7 @@ using RajFabAPI.DTOs;
 using RajFabAPI.Models;
 using System.ComponentModel.DataAnnotations;
 using RajFabAPI.Services.Interface;
+using static RajFabAPI.Constants.AppConstants;
 
 namespace RajFabAPI.Services
 {
@@ -318,5 +319,105 @@ namespace RajFabAPI.Services
                 .SequenceEqual(Enumerable.Range(1, levelCount)))
                 throw new ValidationException("Levels must be sequential starting from 1.");
         }
+
+        public async Task<bool> AddApplicationToWorkFlow(string applicationId)
+        {
+            // Load the application registration and module together
+            var appReg = await _context.Set<ApplicationRegistration>()
+                .FirstOrDefaultAsync(ar => ar.ApplicationId == applicationId);
+
+            if (appReg == null || appReg.ModuleId == Guid.Empty)
+                return false; // Early exit if application or module not found
+
+            var module = await _context.Set<FormModule>()
+                .FirstOrDefaultAsync(m => m.Id == appReg.ModuleId);
+
+            int totalWorkers = 0;
+            Guid factoryTypeIdGuid = Guid.Empty;
+            Guid? subDivisionId = null;
+
+            if (module?.Name == ApplicationTypeNames.NewEstablishment)
+            {
+                // Load establishment and details together
+                var estReg = await _context.Set<EstablishmentRegistration>()
+                    .FirstOrDefaultAsync(er => er.EstablishmentRegistrationId == applicationId);
+
+                if (estReg != null)
+                {
+                    var estDetails = await _context.Set<EstablishmentDetail>()
+                        .FirstOrDefaultAsync(ed => ed.Id == estReg.EstablishmentDetailId);
+
+                    if (estDetails != null)
+                    {
+                        totalWorkers = (estDetails.TotalNumberOfEmployee
+                                        + estDetails.TotalNumberOfContractEmployee
+                                        + estDetails.TotalNumberOfInterstateWorker) ?? 0;
+                        factoryTypeIdGuid = estDetails.FactoryTypeId ?? Guid.Empty;
+
+                        if (Guid.TryParse(estDetails.SubDivisionId, out var parsedSubDivision))
+                            subDivisionId = parsedSubDivision;
+                    }
+                }
+            }
+
+            // Early exit if subdivision not found
+            if (!subDivisionId.HasValue)
+                return false;
+
+            // Get worker range in a single query
+            var workerRange = await _context.Set<WorkerRange>()
+                .FirstOrDefaultAsync(wr => totalWorkers >= wr.MinWorkers && totalWorkers <= wr.MaxWorkers);
+
+            Guid? factoryCategoryId = null;
+
+            if (workerRange != null)
+            {
+                factoryCategoryId = await _context.Set<FactoryCategory>()
+                    .Where(fc => fc.WorkerRangeId == workerRange.Id && fc.FactoryTypeId == factoryTypeIdGuid)
+                    .Select(fc => (Guid?)fc.Id)
+                    .FirstOrDefaultAsync();
+            }
+
+            var officeApplicationArea = await _context.Set<OfficeApplicationArea>()
+                .Where(oaa => oaa.CityId == subDivisionId.Value)
+                .Select(oaa => new { oaa.OfficeId })
+                .FirstOrDefaultAsync();
+
+            if (officeApplicationArea == null)
+                return false;
+
+            // Get workflow and workflow level in a single query
+            var workflow = await _context.Set<ApplicationWorkFlow>()
+                .Where(wf => wf.ModuleId == appReg.ModuleId
+                          && wf.FactoryCategoryId == factoryCategoryId
+                          && wf.OfficeId == officeApplicationArea.OfficeId)
+                .FirstOrDefaultAsync();
+
+            if (workflow == null)
+                return false;
+
+            var workflowLevel = await _context.Set<ApplicationWorkFlowLevel>()
+                .Where(wfl => wfl.ApplicationWorkFlowId == workflow.Id)
+                .OrderBy(wfl => wfl.LevelNumber)
+                .FirstOrDefaultAsync();
+
+            if (workflowLevel == null)
+                return false;
+
+            // Create approval request
+            var applicationApprovalRequest = new ApplicationApprovalRequest
+            {
+                ModuleId = appReg.ModuleId,
+                ApplicationRegistrationId = appReg.Id,
+                ApplicationWorkFlowLevelId = workflowLevel.Id,
+                Status = "Pending",
+                CreatedDate = DateTime.Now,
+                UpdatedDate = DateTime.Now
+            };
+
+            _context.Set<ApplicationApprovalRequest>().Add(applicationApprovalRequest);
+            return true;
+        }
+
     }
 }

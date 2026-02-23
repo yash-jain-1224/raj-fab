@@ -1,3 +1,4 @@
+using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -13,17 +14,29 @@ namespace RajFabAPI.Models
         public string PrnNumber { get; set; }
 
         [Required]
-        public string ModuleId { get; set; }
+        public Guid ModuleId { get; set; }
 
         [Required]
-        public string UserId { get; set; }
+        public Guid UserId { get; set; }
+
+        [Required]
+        [StringLength(50)]
+        public string MerchantCode { get; set; }
+
+        [Required]
+        [StringLength(50)]
+        public string ReqTimeStamp { get; set; }
+
+        [Required]
+        [StringLength(50)]
+        public string RPPTXNID { get; set; }
 
         [Required]
         public DateTime CreatedAt { get; set; } = DateTime.Now;
 
-        public DateTime? UpdatedAt { get; set; } = DateTime.Now;
+        public DateTime? UpdatedAt { get; set; }
 
-        public string PaymentReq { get; set; }  // Can store JSON/XML
+        public string? PaymentReq { get; set; }  // Can store JSON/XML
 
         public string? PaymentRes { get; set; }  // Can store JSON/XML
 
@@ -37,7 +50,14 @@ namespace RajFabAPI.Models
         [Column(TypeName = "decimal(18,2)")]
         public decimal? PaidAmount { get; set; }
 
+        [Required]
+        [StringLength(50)]
         public string ApplicationId { get; set; }
-        public string? Remarks { get; set; } = string.Empty;
+
+        [StringLength(500)]
+        public string? Remarks { get; set; }
+
+        [StringLength(500)]
+        public string? Message { get; set; }
     }
 }

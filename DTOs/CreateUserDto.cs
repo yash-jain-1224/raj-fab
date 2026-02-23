@@ -27,7 +27,7 @@ namespace RajFabAPI.DTOs
 
     public class UserWithOfficeDto
     {
-       public Guid Id { get; set; }
+        public Guid Id { get; set; }
         public string Username { get; set; } = "";
         public string FullName { get; set; } = "";
         public string Email { get; set; } = "";
@@ -42,6 +42,8 @@ namespace RajFabAPI.DTOs
         public string OfficeId { get; set; } = "";
         public string OfficeName { get; set; } = string.Empty;
         public string RoleId { get; set; } = "";
+
+        public string? token { get; set; } = "";
     }
 
     public class UserDetailsDto { 

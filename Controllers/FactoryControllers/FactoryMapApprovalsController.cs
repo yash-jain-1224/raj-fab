@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using RajFabAPI.DTOs;
 using RajFabAPI.Models;
 using RajFabAPI.Services.Interface;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace RajFabAPI.Controllers.FactoryControllers
 {
@@ -11,10 +12,12 @@ namespace RajFabAPI.Controllers.FactoryControllers
     public class FactoryMapApprovalsController : ControllerBase
     {
         private readonly IFactoryMapApprovalService _factoryMapApprovalService;
+        private readonly IESignService _eSignService;
 
-        public FactoryMapApprovalsController(IFactoryMapApprovalService factoryMapApprovalService)
+        public FactoryMapApprovalsController(IFactoryMapApprovalService factoryMapApprovalService, IESignService eSignService)
         {
             _factoryMapApprovalService = factoryMapApprovalService;
+            _eSignService = eSignService;
         }
 
         [HttpGet]
@@ -50,27 +53,34 @@ namespace RajFabAPI.Controllers.FactoryControllers
 
         [Authorize]
         [HttpPost]
-        public async Task<ActionResult<ApiResponseDto<FactoryMapApprovalDto>>> CreateApplication([FromBody] CreateFactoryMapApprovalRequest request)
+        public async Task<ActionResult<ApiResponseDto<string>>> CreateApplication([FromBody] CreateFactoryMapApprovalRequest request)
         {
-            if (!ModelState.IsValid)
+            try
             {
-                return BadRequest(ModelState);
-            }
-            var userId = User.FindFirst("userId")?.Value;
-            var userIdGuid = Guid.TryParse(userId, out var parsedGuid) ? parsedGuid : Guid.Empty;
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState);
+                }
+                var userId = User.FindFirst("userId")?.Value;
+                var userIdGuid = Guid.TryParse(userId, out var parsedGuid) ? parsedGuid : Guid.Empty;
 
-            var result = await _factoryMapApprovalService.CreateApplicationAsync(request, userIdGuid);
-            if (!result.Success)
+                var applicationId = await _factoryMapApprovalService.CreateApplicationAsync(request, userIdGuid);
+                if (applicationId == null)
+                    throw new Exception("Application not created");
+                var html = await _eSignService.GenerateESignHtmlAsync(applicationId);
+                return CreatedAtAction(null, new { html }, new { html });
+            }
+            catch (Exception ex)
             {
-                return BadRequest(result);
+                Console.WriteLine("GetFeeAmountAsync exception: " + ex);
+                // log exception if you have logging; return generic error to client
+                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while saving the registration.");
             }
-
-            return CreatedAtAction(nameof(GetApplicationById), new { id = result.Data!.Id }, result);
         }
 
         [HttpPost("{id}/status/update")]
         public async Task<ActionResult<ApiResponseDto<FactoryMapApprovalDto>>> UpdateApplicationStatus(
-            string id, 
+            string id,
             [FromBody] UpdateFactoryMapApprovalStatusRequest request,
             [FromQuery] string reviewedBy = "Admin")
         {
@@ -91,20 +101,26 @@ namespace RajFabAPI.Controllers.FactoryControllers
         [HttpPost("{id}/amend")]
         public async Task<ActionResult<ApiResponseDto<FactoryMapApprovalDto>>> AmendApplication(string id, [FromBody] CreateFactoryMapApprovalRequest request)
         {
-            if (!ModelState.IsValid)
+            try
             {
-                return BadRequest(ModelState);
-            }
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState);
+                }
 
-            var userId = User.FindFirst("userId")?.Value;
-            var userIdGuid = Guid.TryParse(userId, out var parsedGuid) ? parsedGuid : Guid.Empty;
-            var result = await _factoryMapApprovalService.CreateApplicationAsync(request, userIdGuid, false, id);
-            if (!result.Success)
+                var userId = User.FindFirst("userId")?.Value;
+                var userIdGuid = Guid.TryParse(userId, out var parsedGuid) ? parsedGuid : Guid.Empty;
+                var html = await _factoryMapApprovalService.CreateApplicationAsync(request, userIdGuid, false, id);
+
+                return CreatedAtAction(null, new { html }, new { html });
+
+            }
+            catch (Exception ex)
             {
-                return BadRequest(result);
+                Console.WriteLine("GetFeeAmountAsync exception: " + ex);
+                // log exception if you have logging; return generic error to client
+                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while saving the registration.");
             }
-
-            return Ok(result);
         }
 
         [HttpPost("{id}/delete")]

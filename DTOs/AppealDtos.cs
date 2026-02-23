@@ -1,3 +1,4 @@
+using RajFabAPI.DTOs;
 using System;
 using System.ComponentModel.DataAnnotations;
 
@@ -127,5 +128,17 @@ namespace RajFabAPI.Dtos
         public DateTime UpdatedAt { get; set; }
         public string Status { get; set; }
         public string ApplicationType { get; set; }
+        public string? ESignPrnNumberOccupier { get; set; }
+        public string? ESignPrnNumberManager { get; set; }
+        public bool IsESignCompletedOccupier { get; set; } = false;
+        public bool IsESignCompletedManager { get; set; } = false;
+        public string? ApplicationPDFUrl { get; set; }
+    }
+    public class AppealResDto
+    {
+        public AppealDetailDto? AppealData { get; set; } = null;
+
+        public EstablishmentRegistrationDetailsDto EstFullDetails { get; set; }
+
     }
 }

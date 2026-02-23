@@ -52,5 +52,21 @@ namespace RajFabAPI.Models
         [Required]
         [MaxLength(20)]
         public string Type { get; set; } = "New";
+        
+        public bool IsESignCompletedOccupier { get; set; } = false;
+        public bool IsESignCompletedManager { get; set; } = false;
+        [StringLength(100)]
+        public string? ESignPrnNumberManager { get; set; }
+        [StringLength(100)]
+        public string? ESignPrnNumberOccupier { get; set; }
+        public bool IsPaymentCompleted { get; set; } = false;
+        
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal Amount { get; set; }
+        public string? ApplicationPDFUrl { get; set; }
+
+        [StringLength(100)]
+        public string? ESignPrnNumber { get; set; }
+        public bool IsESignCompleted { get; set; } = false;
     }
 }

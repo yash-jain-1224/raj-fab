@@ -41,5 +41,12 @@ namespace RajFabAPI.DTOs
         public string OccupierSignature { get; set; }
         public decimal Version { get; set; }
         public bool IsActive { get; set; }
+        public bool IsESignCompleted { get; set; } = false;
+        public string? ApplicationPDFUrl { get; set; }
+    }
+    public class CommencementCessationResDto
+    {
+        public CommencementCessationDto CommencementCessationData { get; set; } = null;
+        public EstablishmentRegistrationDetailsDto EstFullDetails { get; set; }
     }
 }

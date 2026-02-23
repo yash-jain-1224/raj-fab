@@ -85,7 +85,8 @@ namespace RajFabAPI.DTOs
     }
     public class ESignRequest
     {
-        public IFormFile PdfFile { get; set; }
+        public IFormFile? PdfFile { get; set; }
+        public byte[]? PdfFileBytes { get; set; }
         public string ApplicationCode { get; set; }
         public string AspId { get; set; }
         public int Xcord { get; set; }

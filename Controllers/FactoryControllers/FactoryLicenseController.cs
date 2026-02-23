@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using RajFabAPI.DTOs;
 using RajFabAPI.Services;
+using System.ComponentModel;
 
 namespace RajFabAPI.Controllers
 {
@@ -22,20 +23,18 @@ namespace RajFabAPI.Controllers
             var userId = User.FindFirst("userId")?.Value;
             var userIdGuid = Guid.TryParse(userId, out var parsedGuid) ? parsedGuid : Guid.Empty;
             var licenses = await _factoryLicenseService.GetAllAsync(userIdGuid);
-            return Ok(licenses);
+            return Ok(new { success = true, data =  licenses });
         }
 
         // GET: api/factorylicense/{id}
         [HttpGet("{id}")]
-        public async Task<IActionResult> GetById(Guid id)
+        public async Task<IActionResult> GetById(string id)
         {
-            var userId = User.FindFirst("userId")?.Value;
-            var userIdGuid = Guid.TryParse(userId, out var parsedGuid) ? parsedGuid : Guid.Empty;
-            var license = await _factoryLicenseService.GetByIdAsync(id, userIdGuid);
+            var license = await _factoryLicenseService.GetByIdAsync(id);
             if (license == null)
                 return NotFound();
 
-            return Ok(license);
+            return Ok(new { success = true, data = license });
         }
 
         // POST: api/factorylicense
@@ -44,10 +43,8 @@ namespace RajFabAPI.Controllers
         {
             var userId = User.FindFirst("userId")?.Value;
             var userIdGuid = Guid.TryParse(userId, out var parsedGuid) ? parsedGuid : Guid.Empty;
-            var FactoryLicenseNumber = await _factoryLicenseService.CreateAsync(dto, userIdGuid);
-            if (FactoryLicenseNumber == null)
-                return NotFound();
-            return CreatedAtAction(null, new { FactoryLicenseNumber }, new { FactoryLicenseNumber });
+            var paymentHtml = await _factoryLicenseService.CreateAsync(dto, userIdGuid);
+            return Ok(new { success = true, data = new { paymentHtml } });
         }
 
         // POST: api/factorylicense/update/{id}

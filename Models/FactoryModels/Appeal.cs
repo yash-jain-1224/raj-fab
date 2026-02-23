@@ -70,5 +70,18 @@ namespace RajFabAPI.Models
 
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         public DateTime UpdatedAt { get; set; } = DateTime.Now;
+
+        [StringLength(100)]
+        public string? ESignPrnNumberOccupier { get; set; }
+
+        [StringLength(100)]
+        public string? ESignPrnNumberManager { get; set; }
+        public bool IsESignCompletedOccupier { get; set; } = false;
+        public bool IsESignCompletedManager { get; set; } = false;
+        public string? ApplicationPDFUrl { get; set; }
+
+        [StringLength(100)]
+        public string? ESignPrnNumber { get; set; }
+        public bool IsESignCompleted { get; set; } = false;
     }
 }

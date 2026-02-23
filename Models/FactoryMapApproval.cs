@@ -43,21 +43,22 @@ namespace RajFabAPI.Models
         public string? PremiseOwnerAddressPinCode { get; set; }
         public string? Place { get; set; }
         public DateTime? Date { get; set; }
+        public bool IsESignCompleted { get; set; } = false;
+        public string? ApplicationPDFUrl { get; set; } = string.Empty;
 
         [StringLength(20)]
         public string Status { get; set; } = "Pending"; // Pending, Approved, Rejected
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         public DateTime UpdatedAt { get; set; } = DateTime.Now;
 
-        // Navigation properties
-        public MapApprovalFactoryDetail MapApprovalFactoryDetails { get; set; }
-        public MapApprovalOccupierDetail MapApprovalOccupierDetails { get; set; }
         //public List<FactoryMapDocument> Documents { get; set; } = new List<FactoryMapDocument>();
         public List<FactoryMapRawMaterial> RawMaterials { get; set; } = new List<FactoryMapRawMaterial>();
         public List<FactoryMapIntermediateProduct> IntermediateProducts { get; set; } = new List<FactoryMapIntermediateProduct>();
         public List<FactoryMapFinishGood> FinishGoods { get; set; } = new List<FactoryMapFinishGood>();
         //public List<FactoryMapDangerousOperation> DangerousOperations { get; set; } = new List<FactoryMapDangerousOperation>();
         public List<FactoryMapApprovalChemical> Chemicals { get; set; } = new List<FactoryMapApprovalChemical>();
+        public string FactoryDetails { get; set; }
+        public string OccupierDetails { get; set; }
     }
 
     public class MapApprovalFactoryDetail

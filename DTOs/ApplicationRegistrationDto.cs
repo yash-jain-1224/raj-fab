@@ -41,6 +41,8 @@ namespace RajFabAPI.DTOs
         public string ApplicationType { get; set; }
         public string Status { get; set; }
         public DateTime CreatedDate { get; set; }
+        public bool? IsPaymentCompleted { get; set; }
+        public bool? IsESignCompleted{ get; set; }
     }
 
     public class RemarkDetailsDto

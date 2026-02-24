@@ -231,7 +231,11 @@ namespace RajFabAPI.Services
                 await getSigningPdf(signingRequest, esignTempData.authToken);
 
             if (signingResponse == null || signingResponse.status != "SUCCESS")
-                return $"{_config["FrontendUrl"]}/user/track";
+            {
+                var errorJson = JsonSerializer.Serialize(signingResponse);
+                var encodedError = Uri.EscapeDataString(errorJson);
+                return $"{_config["FrontendUrl"]}/error?details={encodedError}";
+            }
 
             var updateSuccess =
                 await _applicationRegistrationService

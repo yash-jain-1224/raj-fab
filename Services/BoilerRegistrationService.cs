@@ -28,12 +28,12 @@ namespace RajFabAPI.Services
             // ?? Decide Prefix Based on Type
             string prefix = type.ToLower() switch
             {
-                "new" => $"BR{year}/CIFB/",
-                "amend" => $"BAmend{year}/CIFB/",
-                "renew" => $"BREN{year}/CIFB/",               
-                "repair" => $"BRREP{year}/CIFB/",
-                "transfer" => $"BRTRF{year}/CIFB/",
-                "closure" => $"BRCLS{year}/CIFB/",
+                "new" => $"BR{year}-CIFB-",
+                "amend" => $"BAmend{year}-CIFB-",
+                "renew" => $"BREN{year}-CIFB-",               
+                "repair" => $"BRREP{year}-CIFB-",
+                "transfer" => $"BRTRF{year}-CIFB-",
+                "closure" => $"BRCLS{year}-CIFB-",
                 _ => throw new Exception("Invalid boiler application type")
             };
 

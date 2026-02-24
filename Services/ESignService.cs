@@ -168,7 +168,7 @@ namespace RajFabAPI.Services
 
             Token_Response? tokenResponse = await getAuthToken();
             if (tokenResponse == null || tokenResponse.status != "SUCCESS")
-                throw new Exception("Failed to get auth token");
+                throw new Exception(tokenResponse.message ?? "Failed to get auth token");
             else
             {
                 string authToken = tokenResponse.data.encryptedToken;

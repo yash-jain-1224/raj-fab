@@ -74,7 +74,7 @@ namespace RajFabAPI.Controllers.FactoryControllers
             {
                 Console.WriteLine("GetFeeAmountAsync exception: " + ex);
                 // log exception if you have logging; return generic error to client
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while saving the registration.");
+                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
             }
         }
 

@@ -94,9 +94,6 @@ namespace RajFabAPI.Controllers.BoilerControllers
             }
         }
 
-       
-
-
         [HttpGet("get")]
         public async Task<IActionResult> GetByApplicationId(string applicationId)
         {
@@ -108,6 +105,12 @@ namespace RajFabAPI.Controllers.BoilerControllers
             return Ok(result);
         }
 
+        [HttpGet("all")]
+        public async Task<IActionResult> GetAllWithDetails()
+        {
+            var result = await _boilerService.GetAllFullAsync();
+            return Ok(result);
+        }
 
         [HttpPost("update")]
         public async Task<IActionResult> UpdateByApplicationId(string applicationId, [FromBody] CreateBoilerRegistrationDto dto)

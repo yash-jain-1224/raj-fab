@@ -376,7 +376,74 @@ namespace RajFabAPI.Services
             }
         }
 
-       
+
+
+        //public async Task<GetBoilerResponseDto?> GetByApplicationIdAsync(string applicationId)
+        //{
+        //    var registration = await _dbcontext.BoilerRegistrations
+        //        .Include(x => x.BoilerDetail)
+        //        .Include(x => x.Persons)
+        //        .FirstOrDefaultAsync(x => x.ApplicationId == applicationId);
+
+        //    if (registration == null)
+        //        return null;
+
+        //    var owner = registration.Persons?.FirstOrDefault(x => x.Role == "MainOwner");
+        //    var maker = registration.Persons?.FirstOrDefault(x => x.Role == "BoilerMaker");
+
+        //    return new GetBoilerResponseDto
+        //    {
+        //        Id = registration.Id,
+        //        ApplicationId = registration.ApplicationId,
+        //        BoilerRegistrationNo = registration.BoilerRegistrationNo,
+        //        Status = registration.Status,
+        //        Type = registration.Type,
+        //        Version = registration.Version,
+
+        //        BoilerDetail = registration.BoilerDetail == null ? null : new BoilerTechnicalDto
+        //        {
+        //            AddressLine1 = registration.BoilerDetail.AddressLine1,
+        //            AddressLine2 = registration.BoilerDetail.AddressLine2,
+        //            DistrictId = registration.BoilerDetail.DistrictId,
+        //            SubDivisionId = registration.BoilerDetail.SubDivisionId,
+        //            TehsilId = registration.BoilerDetail.TehsilId,
+        //            Area = registration.BoilerDetail.Area,
+        //            PinCode = registration.BoilerDetail.PinCode,
+        //            Telephone = registration.BoilerDetail.Telephone,
+        //            Mobile = registration.BoilerDetail.Mobile,
+        //            Email = registration.BoilerDetail.Email,
+        //            MakerNumber = registration.BoilerDetail.MakerNumber,
+        //            YearOfMake = registration.BoilerDetail.YearOfMake,
+        //            HeatingSurfaceArea = registration.BoilerDetail.HeatingSurfaceArea
+        //        },
+
+        //        Owner = owner == null ? null : new PersonDetailDto
+        //        {
+        //            Name = owner.Name,
+        //            Designation = owner.Designation,
+        //            AddressLine1 = owner.AddressLine1,
+        //            AddressLine2 = owner.AddressLine2,
+        //            District = owner.District,
+        //            Tehsil = owner.Tehsil,
+        //            Area = owner.Area,
+        //            Mobile = owner.Mobile,
+        //            Email = owner.Email
+        //        },
+
+        //        Maker = maker == null ? null : new PersonDetailDto
+        //        {
+        //            Name = maker.Name,
+        //            Designation = maker.Designation,
+        //            AddressLine1 = maker.AddressLine1,
+        //            AddressLine2 = maker.AddressLine2,
+        //            District = maker.District,
+        //            Tehsil = maker.Tehsil,
+        //            Area = maker.Area,
+        //            Mobile = maker.Mobile,
+        //            Email = maker.Email
+        //        }
+        //    };
+        //}
 
         public async Task<GetBoilerResponseDto?> GetByApplicationIdAsync(string applicationId)
         {
@@ -388,8 +455,15 @@ namespace RajFabAPI.Services
             if (registration == null)
                 return null;
 
-            var owner = registration.Persons?.FirstOrDefault(x => x.Role == "MainOwner");
-            var maker = registration.Persons?.FirstOrDefault(x => x.Role == "BoilerMaker");
+            var owner = registration.Persons?
+                .FirstOrDefault(x =>
+                    x.Role != null &&
+                    x.Role.Equals("MainOwner", StringComparison.OrdinalIgnoreCase));
+
+            var maker = registration.Persons?
+                .FirstOrDefault(x =>
+                    x.Role != null &&
+                    x.Role.Equals("BoilerMaker", StringComparison.OrdinalIgnoreCase));
 
             return new GetBoilerResponseDto
             {
@@ -402,6 +476,7 @@ namespace RajFabAPI.Services
 
                 BoilerDetail = registration.BoilerDetail == null ? null : new BoilerTechnicalDto
                 {
+                    // ADDRESS
                     AddressLine1 = registration.BoilerDetail.AddressLine1,
                     AddressLine2 = registration.BoilerDetail.AddressLine2,
                     DistrictId = registration.BoilerDetail.DistrictId,
@@ -409,12 +484,31 @@ namespace RajFabAPI.Services
                     TehsilId = registration.BoilerDetail.TehsilId,
                     Area = registration.BoilerDetail.Area,
                     PinCode = registration.BoilerDetail.PinCode,
+
+                    // CONTACT
                     Telephone = registration.BoilerDetail.Telephone,
                     Mobile = registration.BoilerDetail.Mobile,
                     Email = registration.BoilerDetail.Email,
+
+                    // TECHNICAL
                     MakerNumber = registration.BoilerDetail.MakerNumber,
                     YearOfMake = registration.BoilerDetail.YearOfMake,
-                    HeatingSurfaceArea = registration.BoilerDetail.HeatingSurfaceArea
+                    HeatingSurfaceArea = registration.BoilerDetail.HeatingSurfaceArea,
+                    EvaporationCapacity = registration.BoilerDetail.EvaporationCapacity,
+                    EvaporationUnit = registration.BoilerDetail.EvaporationUnit,
+                    IntendedWorkingPressure = registration.BoilerDetail.IntendedWorkingPressure,
+                    PressureUnit = registration.BoilerDetail.PressureUnit,
+
+                    BoilerTypeID = registration.BoilerDetail.BoilerType,
+                    BoilerCategoryID = registration.BoilerDetail.BoilerCategory,
+                    FurnaceTypeID = registration.BoilerDetail.FurnaceType,
+
+                    // CERTIFICATES
+                    BoilerAttendantCertificatePath =
+                        registration.BoilerDetail.BoilerAttendantCertificatePath,
+
+                    BoilerOperationEngineerCertificatePath =
+                        registration.BoilerDetail.BoilerOperationEngineerCertificatePath
                 },
 
                 Owner = owner == null ? null : new PersonDetailDto
@@ -426,6 +520,8 @@ namespace RajFabAPI.Services
                     District = owner.District,
                     Tehsil = owner.Tehsil,
                     Area = owner.Area,
+                    Pincode = owner.Pincode,
+                    Telephone = owner.Telephone,
                     Mobile = owner.Mobile,
                     Email = owner.Email
                 },
@@ -439,13 +535,86 @@ namespace RajFabAPI.Services
                     District = maker.District,
                     Tehsil = maker.Tehsil,
                     Area = maker.Area,
+                    Pincode = maker.Pincode,
+                    Telephone = maker.Telephone,
                     Mobile = maker.Mobile,
                     Email = maker.Email
                 }
             };
         }
 
+        public async Task<List<GetBoilerResponseDto>> GetAllFullAsync()
+        {
+            var registrations = await _dbcontext.BoilerRegistrations
+                .Include(x => x.BoilerDetail)
+                .Include(x => x.Persons)
+                .OrderByDescending(x => x.CreatedAt)
+                .ToListAsync();
 
+            var result = registrations.Select(registration =>
+            {
+                var owner = registration.Persons?
+                    .FirstOrDefault(x => x.Role == "MainOwner");
+
+                var maker = registration.Persons?
+                    .FirstOrDefault(x => x.Role == "BoilerMaker");
+
+                return new GetBoilerResponseDto
+                {
+                    Id = registration.Id,
+                    ApplicationId = registration.ApplicationId,
+                    BoilerRegistrationNo = registration.BoilerRegistrationNo,
+                    Status = registration.Status,
+                    Type = registration.Type,
+                    Version = registration.Version,
+
+                    BoilerDetail = registration.BoilerDetail == null ? null : new BoilerTechnicalDto
+                    {
+                        AddressLine1 = registration.BoilerDetail.AddressLine1,
+                        AddressLine2 = registration.BoilerDetail.AddressLine2,
+                        DistrictId = registration.BoilerDetail.DistrictId,
+                        SubDivisionId = registration.BoilerDetail.SubDivisionId,
+                        TehsilId = registration.BoilerDetail.TehsilId,
+                        Area = registration.BoilerDetail.Area,
+                        PinCode = registration.BoilerDetail.PinCode,
+                        Telephone = registration.BoilerDetail.Telephone,
+                        Mobile = registration.BoilerDetail.Mobile,
+                        Email = registration.BoilerDetail.Email,
+                        MakerNumber = registration.BoilerDetail.MakerNumber,
+                        YearOfMake = registration.BoilerDetail.YearOfMake,
+                        HeatingSurfaceArea = registration.BoilerDetail.HeatingSurfaceArea
+                    },
+
+                    Owner = owner == null ? null : new PersonDetailDto
+                    {
+                        Name = owner.Name,
+                        Designation = owner.Designation,
+                        AddressLine1 = owner.AddressLine1,
+                        AddressLine2 = owner.AddressLine2,
+                        District = owner.District,
+                        Tehsil = owner.Tehsil,
+                        Area = owner.Area,
+                        Mobile = owner.Mobile,
+                        Email = owner.Email
+                    },
+
+                    Maker = maker == null ? null : new PersonDetailDto
+                    {
+                        Name = maker.Name,
+                        Designation = maker.Designation,
+                        AddressLine1 = maker.AddressLine1,
+                        AddressLine2 = maker.AddressLine2,
+                        District = maker.District,
+                        Tehsil = maker.Tehsil,
+                        Area = maker.Area,
+                        Mobile = maker.Mobile,
+                        Email = maker.Email
+                    }
+                };
+            }).ToList();
+
+            return result;
+        }
 
 
 

@@ -5,7 +5,7 @@ namespace RajFabAPI.DTOs
     public class BoilerManufactureCreateDto
     {
         public string? FactoryRegistrationNo { get; set; }
-        public string? ApplicationId { get; set; }
+        //public string? ApplicationId { get; set; }
         public string? BmClassification { get; set; }
         public string? CoveredArea { get; set; }
         public string? EstablishmentJson { get; set; }
@@ -21,7 +21,13 @@ namespace RajFabAPI.DTOs
         public List<TechnicalManpowerDto>? TechnicalManpowers { get; set; }
     }
 
- 
+    public class BoilerManufactureRenewalDto
+    {
+        public string ManufactureRegistrationNo { get; set; } = null!;
+       
+        public int RenewalYears { get; set; }
+    }
+
 
     public class DesignFacilityDto
     {
@@ -86,6 +92,56 @@ namespace RajFabAPI.DTOs
         public string? ExperienceInErectionDoc { get; set; }
         public string? ExperienceInCommissioningDoc { get; set; }
     }
+
+
+    public class BoilerManufactureClosureDto
+    {
+        
+        public string ManufactureRegistrationNo { get; set; } = null!;
+
+     
+        public string ClosureReason { get; set; } = null!;
+
+     
+        public DateTime ClosureDate { get; set; }
+
+     
+        public string? Remarks { get; set; }
+
+       
+        public string? DocumentPath { get; set; }
+    }
+
+    public class BoilerManufactureDetailsDto
+    {
+        public string? ApplicationId { get; set; }
+        public string? ManufactureRegistrationNo { get; set; }
+
+        public string? FactoryRegistrationNo { get; set; }
+        public string? BmClassification { get; set; }
+        public string? CoveredArea { get; set; }
+
+        public DateTime? ValidFrom { get; set; }
+        public DateTime? ValidUpto { get; set; }
+
+        public string? Status { get; set; }
+        public string? Type { get; set; }
+        public decimal Version { get; set; }
+
+        public string? EstablishmentJson { get; set; }
+        public string? ManufacturingFacilityjson { get; set; }
+        public string? DetailInternalQualityjson { get; set; }
+        public string? OtherReleventInformationjson { get; set; }
+
+        public DesignFacilityDto? DesignFacility { get; set; }
+        public TestingFacilityDto? TestingFacility { get; set; }
+        public RDFacilityDto? RDFacility { get; set; }
+
+        public List<NDTPersonnelDto>? NDTPersonnels { get; set; }
+        public List<QualifiedWelderDto>? QualifiedWelders { get; set; }
+        public List<TechnicalManpowerDto>? TechnicalManpowers { get; set; }
+    }
+
 
 
 }

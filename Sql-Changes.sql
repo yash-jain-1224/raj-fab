@@ -203,3 +203,156 @@ ADD ApplicationPDFUrl NVARCHAR(MAX) NULL DEFAULT '',
 ALTER TABLE CommencementCessationApplications
 ADD IsESignCompleted BIT NOT NULL CONSTRAINT DF_CommencementCessation_IsESignCompleted DEFAULT 0,
     ApplicationPDFUrl NVARCHAR(MAX) NULL;
+
+
+CREATE TABLE [dbo].[BoilerRegistrations](
+	[Id] [uniqueidentifier] NOT NULL,
+	[FactoryId] [uniqueidentifier] NULL,
+	[ApplicationId] [nvarchar](50) NULL,
+	[Status] [nvarchar](50) NULL,
+	[Type] [nvarchar](50) NULL,
+	[Version] [decimal](5, 2) NULL,
+	[IsActive] [bit] NULL,
+	[CreatedAt] [datetime] NULL,
+	[UpdatedAt] [datetime] NULL,
+	[BoilerRegistrationNo] [nvarchar](100) NULL,
+ CONSTRAINT [PK_BoilerRegistrations] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+
+
+------------------------------------
+
+CREATE TABLE [dbo].[BoilerRepairModifications](
+	[Id] [uniqueidentifier] NOT NULL,
+	[BoilerRegistrationId] [uniqueidentifier] NOT NULL,
+	[BoilerRegistrationNo] [nvarchar](50) NOT NULL,
+	[PersonDetailId] [uniqueidentifier] NOT NULL,
+	[ApplicationId] [nvarchar](50) NOT NULL,
+	[RenewalApplicationId] [nvarchar](50) NOT NULL,
+	[RepairType] [nvarchar](20) NOT NULL,
+	[AttendantCertificatePath] [nvarchar](500) NULL,
+	[OperationEngineerCertificatePath] [nvarchar](500) NULL,
+	[RepairDocumentPath] [nvarchar](500) NULL,
+	[Status] [nvarchar](20) NOT NULL,
+	[CreatedAt] [datetime] NOT NULL,
+	[UpdatedAt] [datetime] NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[BoilerRepairModifications] ADD  DEFAULT ('Pending') FOR [Status]
+GO
+
+ALTER TABLE [dbo].[BoilerRepairModifications]  WITH CHECK ADD  CONSTRAINT [FK_Repair_Boiler] FOREIGN KEY([BoilerRegistrationId])
+REFERENCES [dbo].[BoilerRegistrations] ([Id])
+GO
+
+ALTER TABLE [dbo].[BoilerRepairModifications] CHECK CONSTRAINT [FK_Repair_Boiler]
+GO
+
+ALTER TABLE [dbo].[BoilerRepairModifications]  WITH CHECK ADD  CONSTRAINT [FK_Repair_Person] FOREIGN KEY([PersonDetailId])
+REFERENCES [dbo].[PersonDetails] ([Id])
+GO
+
+ALTER TABLE [dbo].[BoilerRepairModifications] CHECK CONSTRAINT [FK_Repair_Person]
+GO
+
+-------------------------------------
+
+
+CREATE TABLE [dbo].[BoilerClosures](
+	[Id] [uniqueidentifier] NOT NULL,
+	[BoilerRegistrationId] [uniqueidentifier] NOT NULL,
+	[BoilerRegistrationNo] [nvarchar](50) NOT NULL,
+	[ApplicationId] [nvarchar](50) NOT NULL,
+	[ClosureType] [nvarchar](20) NOT NULL,
+	[ClosureDate] [date] NOT NULL,
+	[ToStateName] [nvarchar](100) NULL,
+	[Reasons] [nvarchar](max) NULL,
+	[Remarks] [nvarchar](max) NULL,
+	[ClosureReportPath] [nvarchar](500) NULL,
+	[Status] [nvarchar](20) NOT NULL,
+	[CreatedAt] [datetime] NOT NULL,
+	[UpdatedAt] [datetime] NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[BoilerClosures]  WITH CHECK ADD  CONSTRAINT [FK_BoilerClosures_BoilerRegistrations] FOREIGN KEY([BoilerRegistrationId])
+REFERENCES [dbo].[BoilerRegistrations] ([Id])
+GO
+
+ALTER TABLE [dbo].[BoilerClosures] CHECK CONSTRAINT [FK_BoilerClosures_BoilerRegistrations]
+GO
+
+
+CREATE TABLE [dbo].[BoilerDetails](
+	[Id] [uniqueidentifier] NOT NULL,
+	[AddressLine1] [nvarchar](300) NULL,
+	[AddressLine2] [nvarchar](300) NULL,
+	[Area] [int] NULL,
+	[PinCode] [int] NULL,
+	[Telephone] [nvarchar](20) NULL,
+	[Mobile] [nvarchar](20) NULL,
+	[Email] [nvarchar](200) NULL,
+	[ErectionTypeId] [int] NULL,
+	[MakerNumber] [nvarchar](100) NULL,
+	[YearOfMake] [int] NULL,
+	[HeatingSurfaceArea] [decimal](18, 2) NULL,
+	[EvaporationCapacity] [decimal](18, 2) NULL,
+	[EvaporationUnit] [nvarchar](50) NULL,
+	[IntendedWorkingPressure] [decimal](18, 2) NULL,
+	[PressureUnit] [nvarchar](50) NULL,
+	[BoilerType] [int] NULL,
+	[BoilerCategory] [int] NULL,
+	[Superheater] [bit] NULL,
+	[SuperheaterOutletTemp] [decimal](18, 2) NULL,
+	[Economiser] [bit] NULL,
+	[EconomiserOutletTemp] [decimal](18, 2) NULL,
+	[FurnaceType] [int] NULL,
+	[DrawingsPath] [nvarchar](500) NULL,
+	[SpecificationPath] [nvarchar](500) NULL,
+	[FormI_B_CPath] [nvarchar](500) NULL,
+	[FormI_DPath] [nvarchar](500) NULL,
+	[FormI_EPath] [nvarchar](500) NULL,
+	[FormIV_APath] [nvarchar](500) NULL,
+	[FormV_APath] [nvarchar](500) NULL,
+	[TestCertificatesPath] [nvarchar](500) NULL,
+	[WeldRepairChartsPath] [nvarchar](500) NULL,
+	[PipesCertificatesPath] [nvarchar](500) NULL,
+	[TubesCertificatesPath] [nvarchar](500) NULL,
+	[CastingCertificatePath] [nvarchar](500) NULL,
+	[ForgingCertificatePath] [nvarchar](500) NULL,
+	[HeadersCertificatePath] [nvarchar](500) NULL,
+	[DishedEndsInspectionPath] [nvarchar](500) NULL,
+	[BoilerAttendantCertificatePath] [nvarchar](500) NULL,
+	[BoilerOperationEngineerCertificatePath] [nvarchar](500) NULL,
+	[DistrictId] [uniqueidentifier] NULL,
+	[SubDivisionId] [uniqueidentifier] NULL,
+	[TehsilId] [uniqueidentifier] NULL,
+	[BoilerRegistrationId] [uniqueidentifier] NULL,
+	[RenewalYears] [int] NULL,
+	[ValidUpto] [datetime] NULL
+) ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[BoilerDetails]  WITH CHECK ADD  CONSTRAINT [FK_BoilerDetails_BoilerRegistrations] FOREIGN KEY([BoilerRegistrationId])
+REFERENCES [dbo].[BoilerRegistrations] ([Id])
+ON DELETE CASCADE
+GO
+
+ALTER TABLE [dbo].[BoilerDetails] CHECK CONSTRAINT [FK_BoilerDetails_BoilerRegistrations]
+GO
+
+ALTER TABLE PersonDetails
+ADD BoilerRegistrationId UNIQUEIDENTIFIER NULL;

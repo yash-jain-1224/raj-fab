@@ -109,54 +109,40 @@ namespace RajFabAPI.Services
             try
             {
                 // Directly query approvals where user has registration
-                var applicationDtos = await _context.FactoryMapApprovals
-                    .Where(f => _context.ApplicationRegistrations
-                        .Any(ar => ar.UserId == userId && ar.ApplicationId == f.Id))
-                    .OrderByDescending(f => f.CreatedAt)
-                    .Select(f => new FactoryMapApprovalDto
-                    {
-                        Id = f.Id,
-                        AcknowledgementNumber = f.AcknowledgementNumber,
-                        Date = f.Date,
-                        PlantParticulars = f.PlantParticulars,
-                        ProductName = f.ProductName,
-                        ManufacturingProcess = f.ManufacturingProcess,
-                        MaxWorkerMale = f.MaxWorkerMale,
-                        MaxWorkerFemale = f.MaxWorkerFemale,
-                        AreaFactoryPremise = f.AreaFactoryPremise,
-                        NoOfFactoriesIfCommonPremise = f.NoOfFactoriesIfCommonPremise,
-                        PremiseOwnerName = f.PremiseOwnerName,
-                        PremiseOwnerContactNo = f.PremiseOwnerContactNo,
-                        PremiseOwnerAddressPlotNo = f.PremiseOwnerAddressPlotNo,
-                        PremiseOwnerAddressStreet = f.PremiseOwnerAddressStreet,
-                        PremiseOwnerAddressCity = f.PremiseOwnerAddressCity,
-                        PremiseOwnerAddressDistrict = f.PremiseOwnerAddressDistrict,
-                        PremiseOwnerAddressState = f.PremiseOwnerAddressState,
-                        PremiseOwnerAddressPinCode = f.PremiseOwnerAddressPinCode,
-                        Place = f.Place,
-                        Status = f.Status,
-                        ApplicationPDFUrl = f.ApplicationPDFUrl,
-                        FactoryDetails = f.FactoryDetails,
-                        OccupierDetails = f.OccupierDetails,
-
-                        RawMaterials = f.RawMaterials
-                            .Select(r => new FactoryMapRawMaterialDto { Id = r.Id, MaterialName = r.MaterialName, MaxStorageQuantity = r.MaxStorageQuantity })
-                            .ToList(),
-
-                        IntermediateProducts = f.IntermediateProducts
-                            .Select(ip => new FactoryMapIntermediateProductDto { Id = ip.Id, ProductName = ip.ProductName, MaxStorageQuantity = ip.MaxStorageQuantity })
-                            .ToList(),
-
-                        FinishGoods = f.FinishGoods
-                            .Select(fg => new FactoryMapFinishGoodDto { Id = fg.Id, ProductName = fg.ProductName, MaxStorageCapacity = fg.MaxStorageCapacity })
-                            .ToList(),
-
-                        Chemicals = f.Chemicals
-                            .Select(c => new ChemicalDto { Id = c.Id, ChemicalName = c.ChemicalName, MaxStorageQuantity = c.MaxStorageQuantity })
-                            .ToList()
-                    })
-
-                    .ToListAsync();
+                var applicationDtos = await (
+                 from f in _context.FactoryMapApprovals
+                 join ar in _context.ApplicationRegistrations
+                     on f.Id equals ar.ApplicationId
+                 where ar.UserId == userId
+                 orderby f.CreatedAt descending
+                 select new FactoryMapApprovalDto
+                 {
+                     Id = f.Id,
+                     AcknowledgementNumber = f.AcknowledgementNumber,
+                     Date = f.Date,
+                     PlantParticulars = f.PlantParticulars,
+                     ProductName = f.ProductName,
+                     ManufacturingProcess = f.ManufacturingProcess,
+                     MaxWorkerMale = f.MaxWorkerMale,
+                     MaxWorkerFemale = f.MaxWorkerFemale,
+                     AreaFactoryPremise = f.AreaFactoryPremise,
+                     NoOfFactoriesIfCommonPremise = f.NoOfFactoriesIfCommonPremise,
+                     PremiseOwnerName = f.PremiseOwnerName,
+                     PremiseOwnerContactNo = f.PremiseOwnerContactNo,
+                     PremiseOwnerAddressPlotNo = f.PremiseOwnerAddressPlotNo,
+                     PremiseOwnerAddressStreet = f.PremiseOwnerAddressStreet,
+                     PremiseOwnerAddressCity = f.PremiseOwnerAddressCity,
+                     PremiseOwnerAddressDistrict = f.PremiseOwnerAddressDistrict,
+                     PremiseOwnerAddressState = f.PremiseOwnerAddressState,
+                     PremiseOwnerAddressPinCode = f.PremiseOwnerAddressPinCode,
+                     Place = f.Place,
+                     Status = f.Status,
+                     ApplicationPDFUrl = f.ApplicationPDFUrl,
+                     FactoryDetails = f.FactoryDetails,
+                     OccupierDetails = f.OccupierDetails,
+                 })
+                 .AsNoTracking()
+                 .ToListAsync();
 
                 return new ApiResponseDto<List<FactoryMapApprovalDto>>
                 {

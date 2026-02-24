@@ -96,7 +96,7 @@ namespace RajFabAPI.Services
             {
                 using var dbTx = await _db.Database.BeginTransactionAsync();
 
-                string RU = "http://localhost:5000/api/payment/return";
+                string RU = $"{_config["Payment:ReturnUrl"]}";
                 string MERCHANTCODE = "rppTestMerchant";
 
                 ApplicantName = ApplicantName.Replace("@rajasthan.gov.in", "");

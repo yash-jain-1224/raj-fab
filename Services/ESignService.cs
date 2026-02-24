@@ -178,6 +178,7 @@ namespace RajFabAPI.Services
                     personName = fullName,
                     personDesignation = "Developer",
                     personLocation = "Jaipur, Rajasthan",
+                    responseUrl = $"{_config["ESignSettings:ResponseUrl"]}",
                     prn = prnNumber
                 };
                 generateSignedXml_Response? generateSignedXml_Response = await generateSignedXml(Signrequest, authToken);
@@ -421,7 +422,7 @@ namespace RajFabAPI.Services
             public string personDesignation { get; set; }
             public string signatureSize { get; set; } = "M";
             public string personLocation { get; set; }
-            public string responseUrl { get; set; } = "http://localhost:5000/esign/response";
+            public string responseUrl { get; set; }
             // FILE
             public byte[] pdfFile { get; set; }
         }

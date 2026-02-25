@@ -211,6 +211,8 @@ namespace RajFabAPI.Services
                         Situation = dto.Factory.Situation,
                         SubDivisionId = dto.Factory.SubDivisionId,
                         TehsilId = dto.Factory.TehsilId,
+                        AddressLine1 = dto.Factory.AddressLine1,
+                        AddressLine2 = dto.Factory.AddressLine2,
                         Area = dto.Factory.Area,
                         Pincode = dto.Factory.Pincode.ToString(),
                         Email = dto.Factory.Email,
@@ -1231,7 +1233,7 @@ namespace RajFabAPI.Services
                 var estDetail = await (
                     from est in _db.Set<EstablishmentDetail>().AsNoTracking()
                     where est.Id == reg.EstablishmentDetailId
-                    join area in _db.Set<Area>().AsNoTracking() on est.SubDivisionId equals area.Id.ToString() into areaJoin
+                    join area in _db.Set<City>().AsNoTracking() on est.SubDivisionId equals area.Id.ToString() into areaJoin
                     from areaDetail in areaJoin.DefaultIfEmpty()
                     join district in _db.Set<District>().AsNoTracking() on areaDetail.DistrictId equals district.Id into districtJoin
                     from districtDetail in districtJoin.DefaultIfEmpty()
@@ -1244,7 +1246,8 @@ namespace RajFabAPI.Services
                         BrnNumber = est.BrnNumber,
                         Name = est.EstablishmentName,
                         SubDivisionId = est.SubDivisionId,
-                        AreaName = areaDetail.Name,
+                        TehsilId = est.TehsilId,
+                        Area = est.Area,
                         DistrictId = areaDetail.DistrictId.ToString(),
                         DistrictName = districtDetail.Name,
                         TotalNumberOfEmployee = est.TotalNumberOfEmployee ?? 0,
@@ -1288,7 +1291,8 @@ namespace RajFabAPI.Services
                         Area = mainOwner.Area,
                         Pincode = mainOwner.Pincode,
                         Email = mainOwner.Email,
-                        Mobile = mainOwner.Mobile
+                        Mobile = mainOwner.Mobile,
+                        Telephone = mainOwner.Telephone
                     };
                 }
             }
@@ -1311,7 +1315,8 @@ namespace RajFabAPI.Services
                         Area = manager.Area,
                         Pincode = manager.Pincode,
                         Email = manager.Email,
-                        Mobile = manager.Mobile
+                        Mobile = manager.Mobile,
+                        Telephone = manager.Telephone
                     };
                 }
             }
@@ -1373,6 +1378,7 @@ namespace RajFabAPI.Services
                                 Situation = f.Situation,
 
                                 SubDivisionId = f.SubDivisionId,
+                                TehsilId = f.TehsilId,
                                 Area = f.Area,
 
                                 DistrictId = areaDetail.DistrictId.ToString(),
@@ -1454,6 +1460,9 @@ namespace RajFabAPI.Services
                                         Role = manager.RoleType,
                                         Name = manager.Name,
                                         Designation = manager.Designation,
+                                        AddressLine1 = manager.AddressLine1,
+                                        AddressLine2 = manager.AddressLine2,
+                                        District = manager.District,
                                         Tehsil = manager.Tehsil,
                                         Area = manager.Area,
                                         Pincode = manager.Pincode,

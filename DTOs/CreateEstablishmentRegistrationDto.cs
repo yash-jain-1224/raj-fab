@@ -115,12 +115,13 @@ namespace RajFabAPI.DTOs
     {
         public string? ManuacturingDetail { get; set; }
         public string? FactorySituation { get; set; }
-        public string? SubDivisionId { get; set; }
         
         public Guid EmployerId { get; set; }
         public Guid ManagerId { get; set; }
         
         public string DistrictId { get; set; }
+        public string? SubDivisionId { get; set; }
+        public string TehsilId { get; set; }
         public string DistrictName { get; set; }
         public string Area { get; set; }
         public string? AddressLine1 { get; set; }

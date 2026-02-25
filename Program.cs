@@ -1,20 +1,47 @@
 using FluentValidation;
 using FluentValidation.AspNetCore;
-using RajFabAPI.DTOs;
-using RajFabAPI.Validators;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using RajFabAPI.Data;
+using RajFabAPI.DTOs;
+using RajFabAPI.Middlewares;
 using RajFabAPI.Services;
 using RajFabAPI.Services.Interface;
-using RajFabAPI.Middlewares;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.Extensions.FileProviders;
-using Microsoft.OpenApi.Models;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
+using RajFabAPI.Validators;
+using Serilog;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+
+var logFolder = Path.Combine(Directory.GetCurrentDirectory(), "Logs");
+
+if (!Directory.Exists(logFolder))
+{
+    Directory.CreateDirectory(logFolder);
+}
+
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .Enrich.FromLogContext()
+    .WriteTo.File(
+        Path.Combine(logFolder, "log-.txt"),
+        rollingInterval: RollingInterval.Day,
+        retainedFileCountLimit: 14,
+        shared: true,
+        outputTemplate:
+            "[{Timestamp:yyyy-MM-dd HH:mm:ss} {Level:u3}] " +
+            "{Message:lj} " +
+            "AppId={ApplicationId} PRN={PRN} Module={ModuleName} " +
+            "{NewLine}{Exception}"
+    )
+    .CreateLogger();
+
+builder.Host.UseSerilog();
+
 
 // Add services to the container.
 builder.Services.AddControllers()
@@ -835,6 +862,7 @@ if (string.IsNullOrWhiteSpace(webRootPath))
 
 var folders = new[]
 {
+    "Logs",
     "documents",
     "certificates",
     "factory-establishment-forms",
@@ -853,11 +881,13 @@ foreach (var folder in folders)
 }
 
 app.UseStaticFiles();
-
+app.UseSerilogRequestLogging();
 //app.UseHttpsRedirection();
 app.UseCors("AllowReactApp");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+app.MapGet("/", () => Results.Redirect("/swagger/index.html"));
 
 app.Run();

@@ -30,8 +30,9 @@ namespace RajFabAPI.Services
         private readonly IConfiguration _config;
         private readonly IPaymentService _payment;
         private readonly IFeeCalculationService _feeCalculationService;
+        private readonly ILogger<ApplicationRegistrationService> _logger;
 
-        public EstablishmentRegistrationService(ApplicationDbContext db, IWebHostEnvironment environment, IHttpContextAccessor httpContextAccessor, IConfiguration config, IPaymentService payment, IFeeCalculationService feeCalculationService)
+        public EstablishmentRegistrationService(ApplicationDbContext db, ILogger<ApplicationRegistrationService> logger, IWebHostEnvironment environment, IHttpContextAccessor httpContextAccessor, IConfiguration config, IPaymentService payment, IFeeCalculationService feeCalculationService)
         {
             _db = db ?? throw new ArgumentNullException(nameof(db));
             _environment = environment;
@@ -40,6 +41,7 @@ namespace RajFabAPI.Services
             _payment = payment;
             _payment = payment;
             _feeCalculationService = feeCalculationService;
+            _logger = logger;
         }
 
         // Create full registration and persist all sub-objects in a single transaction.
@@ -1661,15 +1663,21 @@ namespace RajFabAPI.Services
 
         public async Task<List<EstablishmentDetailsDto>> GetAllEstablishmentDetailsAsync(Guid userId)
         {
+            var userRegistrations =
+                from app in _db.Set<ApplicationRegistration>()
+                where app.UserId == userId
+                select app.ApplicationId;
+
             var regSummary =
-            from r in _db.Set<EstablishmentRegistration>().AsNoTracking()
-            group r by r.RegistrationNumber into g
-            select new
-            {
-                RegistrationNumber = g.Key,
-                MaxVersion = g.Max(x => x.Version),
-                HasPending = g.Any(x => x.Status == ApplicationStatus.Pending)
-            };
+                from r in _db.Set<EstablishmentRegistration>()
+                where userRegistrations.Contains(r.EstablishmentRegistrationId)
+                group r by r.RegistrationNumber into g
+                select new
+                {
+                    RegistrationNumber = g.Key,
+                    MaxVersion = g.Max(x => x.Version),
+                    HasPending = g.Any(x => x.Status == ApplicationStatus.Pending)
+                };
 
             var query =
                 from app in _db.Set<ApplicationRegistration>().AsNoTracking()
@@ -1683,10 +1691,10 @@ namespace RajFabAPI.Services
 
                 join est in _db.Set<EstablishmentDetail>().AsNoTracking()
                     on reg.EstablishmentDetailId equals est.Id
-                join area in _db.Set<Area>().AsNoTracking()
-                    on est.SubDivisionId equals area.Id.ToString()
+                join subDivision in _db.Set<City>().AsNoTracking()
+                    on est.SubDivisionId equals subDivision.Id.ToString()
                 join district in _db.Set<District>().AsNoTracking()
-                    on area.DistrictId equals district.Id
+                    on subDivision.DistrictId equals district.Id
                 //join division in _db.Set<Division>().AsNoTracking()
                 //    on district.DivisionId equals division.Id
                 select new EstablishmentDetailsDto
@@ -1698,7 +1706,7 @@ namespace RajFabAPI.Services
                     AddressLine1 = est.AddressLine1,
                     AddressLine2 = est.AddressLine2,
                     Area = est.Area,
-                    DistrictId = area.DistrictId.ToString(),
+                    DistrictId = subDivision.DistrictId.ToString(),
                     DistrictName = district.Name,
                     Pincode = est.Pincode,
                     Email = est.Email,

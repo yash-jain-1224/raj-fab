@@ -28,12 +28,12 @@ namespace RajFabAPI.Services
             // ?? Decide Prefix Based on Type
             string prefix = type.ToLower() switch
             {
-                "new" => $"BR{year}-CIFB-",
-                "amend" => $"BAmend{year}-CIFB-",
-                "renew" => $"BREN{year}-CIFB-",               
-                "repair" => $"BRREP{year}-CIFB-",
-                "transfer" => $"BRTRF{year}-CIFB-",
-                "closure" => $"BRCLS{year}-CIFB-",
+                "new" => $"BR{year}/CIFB/",
+                "amend" => $"BAmend{year}/CIFB/",
+                "renew" => $"BREN{year}/CIFB/",               
+                "repair" => $"BRREP{year}/CIFB/",
+                "transfer" => $"BRTRF{year}/CIFB/",
+                "closure" => $"BRCLS{year}/CIFB/",
                 _ => throw new Exception("Invalid boiler application type")
             };
 
@@ -880,6 +880,49 @@ namespace RajFabAPI.Services
             }
         }
 
+        public async Task<bool> UpdateClosureAsync(  string applicationId, UpdateBoilerClosureDto dto, Guid userId)
+        {
+            if (string.IsNullOrWhiteSpace(applicationId))
+                throw new ArgumentException("ApplicationId is required.");
+
+            await using var tx = await _dbcontext.Database.BeginTransactionAsync();
+
+            try
+            {
+                var closure = await _dbcontext.BoilerClosures
+                    .FirstOrDefaultAsync(x => x.ApplicationId == applicationId);
+
+                if (closure == null)
+                    throw new Exception("Closure application not found.");
+
+                if (closure.Status == "Approved")
+                    throw new Exception("Approved closure cannot be modified.");
+
+                if (closure.Status != "Pending")
+                    throw new Exception("Only pending closure can be updated.");
+
+                // Update only provided fields
+                closure.ClosureType = dto.ClosureType ?? closure.ClosureType;
+                closure.ClosureDate = dto.ClosureDate ?? closure.ClosureDate;
+                closure.ToStateName = dto.ToStateName ?? closure.ToStateName;
+                closure.Reasons = dto.Reasons ?? closure.Reasons;
+                closure.Remarks = dto.Remarks ?? closure.Remarks;
+                closure.ClosureReportPath = dto.ClosureReportPath ?? closure.ClosureReportPath;
+
+                closure.UpdatedAt = DateTime.Now;
+
+                await _dbcontext.SaveChangesAsync();
+                await tx.CommitAsync();
+
+                return true;
+            }
+            catch
+            {
+                await tx.RollbackAsync();
+                throw;
+            }
+        }
+
 
         public async Task<BoilerClosureResponseDto?> GetClosureByApplicationIdAsync(string applicationId)
         {
@@ -1032,8 +1075,145 @@ namespace RajFabAPI.Services
             }
         }
 
+        public async Task<GetBoilerRepairDto?> GetRepairByApplicationIdAsync(string applicationId)
+        {
+            var repair = await _dbcontext.BoilerRepairModifications
+                .Include(x => x.PersonDetail)
+                .FirstOrDefaultAsync(x => x.ApplicationId == applicationId);
 
-       
+            if (repair == null)
+                return null;
 
+            return new GetBoilerRepairDto
+            {
+                ApplicationId = repair.ApplicationId,
+                BoilerRegistrationNo = repair.BoilerRegistrationNo,
+                RenewalApplicationId = repair.RenewalApplicationId,
+                RepairType = repair.RepairType,
+                Status = repair.Status,
+
+                AttendantCertificatePath = repair.AttendantCertificatePath,
+                OperationEngineerCertificatePath = repair.OperationEngineerCertificatePath,
+                RepairDocumentPath = repair.RepairDocumentPath,
+
+                CreatedAt = repair.CreatedAt,
+
+                Repairer = repair.PersonDetail == null ? null : new PersonDetailDto
+                {
+                   
+                    Name = repair.PersonDetail.Name,
+                    Designation = repair.PersonDetail.Designation,
+                    AddressLine1 = repair.PersonDetail.AddressLine1,
+                    AddressLine2 = repair.PersonDetail.AddressLine2,
+                    District = repair.PersonDetail.District,
+                    Tehsil = repair.PersonDetail.Tehsil,
+                    Area = repair.PersonDetail.Area,
+                    Pincode = repair.PersonDetail.Pincode,
+                    Mobile = repair.PersonDetail.Mobile,
+                    Email = repair.PersonDetail.Email
+                }
+            };
+        }
+
+        public async Task<List<GetBoilerRepairDto>> GetAllRepairsAsync()
+        {
+            var repairs = await _dbcontext.BoilerRepairModifications
+                .Include(x => x.PersonDetail)
+                .OrderByDescending(x => x.CreatedAt)
+                .ToListAsync();
+
+            return repairs.Select(repair => new GetBoilerRepairDto
+            {
+                ApplicationId=repair.ApplicationId,
+                BoilerRegistrationNo = repair.BoilerRegistrationNo,
+                RenewalApplicationId = repair.RenewalApplicationId,
+                RepairType = repair.RepairType,
+                Status = repair.Status,
+
+                AttendantCertificatePath = repair.AttendantCertificatePath,
+                OperationEngineerCertificatePath = repair.OperationEngineerCertificatePath,
+                RepairDocumentPath = repair.RepairDocumentPath,
+
+                CreatedAt = repair.CreatedAt,
+
+                Repairer = repair.PersonDetail == null ? null : new PersonDetailDto
+                {
+                    Name = repair.PersonDetail.Name,
+                    Designation = repair.PersonDetail.Designation,
+                    AddressLine1 = repair.PersonDetail.AddressLine1,
+                    AddressLine2 = repair.PersonDetail.AddressLine2,
+                    District = repair.PersonDetail.District,
+                    Tehsil = repair.PersonDetail.Tehsil,
+                    Area = repair.PersonDetail.Area,
+                    Pincode = repair.PersonDetail.Pincode,
+                    Mobile = repair.PersonDetail.Mobile,
+                    Email = repair.PersonDetail.Email
+                }
+            }).ToList();
+        }
+
+        public async Task<bool> UpdateRepairAsync(     string applicationId,     UpdateBoilerRepairDto dto,     Guid userId)
+        {
+            if (string.IsNullOrWhiteSpace(applicationId))
+                throw new ArgumentException("ApplicationId is required.");
+
+            await using var tx = await _dbcontext.Database.BeginTransactionAsync();
+
+            try
+            {
+                var repair = await _dbcontext.BoilerRepairModifications
+                    .Include(x => x.PersonDetail)
+                    .FirstOrDefaultAsync(x => x.ApplicationId == applicationId);
+
+                if (repair == null)
+                    throw new Exception("Repair application not found.");
+
+                if (repair.Status != "Pending")
+                    throw new Exception("Only pending repair can be updated.");
+
+                // ?? Update Repair Type
+                if (!string.IsNullOrWhiteSpace(dto.RepairType))
+                    repair.RepairType = dto.RepairType;
+
+                // ?? Update Documents
+                repair.AttendantCertificatePath =
+                    dto.AttendantCertificatePath ?? repair.AttendantCertificatePath;
+
+                repair.OperationEngineerCertificatePath =
+                    dto.OperationEngineerCertificatePath ?? repair.OperationEngineerCertificatePath;
+
+                repair.RepairDocumentPath =
+                    dto.RepairDocumentPath ?? repair.RepairDocumentPath;
+
+                // ?? Update Repairer Details (Very Important)
+                if (dto.RepairerDetail != null && repair.PersonDetail != null)
+                {
+                    repair.PersonDetail.Name = dto.RepairerDetail.Name;
+                    repair.PersonDetail.Designation = dto.RepairerDetail.Designation;
+                    repair.PersonDetail.AddressLine1 = dto.RepairerDetail.AddressLine1;
+                    repair.PersonDetail.AddressLine2 = dto.RepairerDetail.AddressLine2;
+                    repair.PersonDetail.District = dto.RepairerDetail.District;
+                    repair.PersonDetail.Tehsil = dto.RepairerDetail.Tehsil;
+                    repair.PersonDetail.Area = dto.RepairerDetail.Area;
+                    repair.PersonDetail.Pincode = dto.RepairerDetail.Pincode;
+                    repair.PersonDetail.Email = dto.RepairerDetail.Email;
+                    repair.PersonDetail.Telephone = dto.RepairerDetail.Telephone;
+                    repair.PersonDetail.Mobile = dto.RepairerDetail.Mobile;
+                    repair.PersonDetail.UpdatedAt = DateTime.Now;
+                }
+
+                repair.UpdatedAt = DateTime.Now;
+
+                await _dbcontext.SaveChangesAsync();
+                await tx.CommitAsync();
+
+                return true;
+            }
+            catch
+            {
+                await tx.RollbackAsync();
+                throw;
+            }
+        }
     }
 }

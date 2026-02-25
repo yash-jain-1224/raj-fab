@@ -14,6 +14,7 @@ namespace RajFabAPI.Models.BoilerModels
         public string BoilerRegistrationNo { get; set; } = null!;
 
         public Guid PersonDetailId { get; set; }
+        public PersonDetail PersonDetail { get; set; } = null!;
 
         public string ApplicationId { get; set; } = null!;
         public string RenewalApplicationId { get; set; } = null!;

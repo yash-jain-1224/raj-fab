@@ -178,6 +178,7 @@ namespace RajFabAPI.Services
                     personName = fullName,
                     personDesignation = "Developer",
                     personLocation = "Jaipur, Rajasthan",
+                    responseUrl = $"{_config["ESignSettings:ResponseUrl"]}",
                     prn = prnNumber
                 };
                 generateSignedXml_Response? generateSignedXml_Response = await generateSignedXml(Signrequest, authToken);
@@ -231,7 +232,11 @@ namespace RajFabAPI.Services
                 await getSigningPdf(signingRequest, esignTempData.authToken);
 
             if (signingResponse == null || signingResponse.status != "SUCCESS")
-                return $"{_config["FrontendUrl"]}/user/track";
+            {
+                var errorJson = JsonSerializer.Serialize(signingResponse);
+                var encodedError = Uri.EscapeDataString(errorJson);
+                return $"{_config["FrontendUrl"]}/error?details={encodedError}";
+            }
 
             var updateSuccess =
                 await _applicationRegistrationService
@@ -417,7 +422,7 @@ namespace RajFabAPI.Services
             public string personDesignation { get; set; }
             public string signatureSize { get; set; } = "M";
             public string personLocation { get; set; }
-            public string responseUrl { get; set; } = "http://localhost:5000/esign/response";
+            public string responseUrl { get; set; }
             // FILE
             public byte[] pdfFile { get; set; }
         }

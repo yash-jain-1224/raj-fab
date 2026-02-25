@@ -55,9 +55,8 @@ namespace RajFabAPI.Controllers.BoilerControllers
             });
         }
 
-
         [HttpPost("amend")]
-        public async Task<IActionResult> AmendBoiler( [FromQuery] string boilerRegistrationNo,   [FromBody] CreateBoilerRegistrationDto dto) 
+        public async Task<IActionResult> AmendBoiler([FromQuery] string boilerRegistrationNo, [FromBody] CreateBoilerRegistrationDto dto)
         {
             try
             {
@@ -94,7 +93,7 @@ namespace RajFabAPI.Controllers.BoilerControllers
             }
         }
 
-        [HttpGet("get")]
+        [HttpGet("{applicationId}")]
         public async Task<IActionResult> GetByApplicationId(string applicationId)
         {
             var result = await _boilerService.GetByApplicationIdAsync(applicationId);
@@ -167,7 +166,6 @@ namespace RajFabAPI.Controllers.BoilerControllers
             return Ok(result);
         }
 
-
         [HttpPost("repair/modification")]
         public async Task<IActionResult> CreateRepair([FromBody] CreateBoilerRepairDto dto)
         {
@@ -177,9 +175,5 @@ namespace RajFabAPI.Controllers.BoilerControllers
 
             return Ok(new { ApplicationId = appId });
         }
-
-
-
-
     }
 }

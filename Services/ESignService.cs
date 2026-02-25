@@ -48,14 +48,16 @@ namespace RajFabAPI.Services
         private readonly ICommencementCessationService _commencementCessationService;
         private readonly IFactoryLicenseService _factoryLicenseService;
         private readonly IAppealService _appealService;
+        private readonly ILogger<ApplicationRegistrationService> _logger;
 
         public ESignService(
             IMemoryCache cache, IEstablishmentRegistrationService estRegService, ApplicationDbContext db, IConfiguration config,
             IApplicationWorkFlowService applicationWorkFlowService, IApplicationRegistrationService applicationRegistrationService,
             IHttpContextAccessor httpContextAccessor, IFactoryMapApprovalService factoryMapApprovalService,
-            ICommencementCessationService commencementCessationService, IFactoryLicenseService factoryLicenseService,
+            ICommencementCessationService commencementCessationService, IFactoryLicenseService factoryLicenseService, ILogger<ApplicationRegistrationService> logger,
             IAppealService appealService)
         {
+            _logger = logger;
             _cache = cache;
             _db = db;
             _config = config;
@@ -70,12 +72,22 @@ namespace RajFabAPI.Services
 
         public async Task<string> GenerateESignHtmlAsync(string applicationId)
         {
-            if (string.IsNullOrEmpty(applicationId))
-                throw new Exception("Application Id is required");
-            var user = _httpContextAccessor.HttpContext?.User;
+            _logger.LogInformation("GenerateESignHtmlAsync started. ApplicationId: {ApplicationId}", applicationId);
 
-            var fullName = user?.FindFirst("fullName")?.Value;
-            var applicationData = await (
+            try
+            {
+                if (string.IsNullOrEmpty(applicationId))
+                {
+                    _logger.LogWarning("ApplicationId is null or empty");
+                    throw new Exception("Application Id is required");
+                }
+
+                var user = _httpContextAccessor.HttpContext?.User;
+                var fullName = user?.FindFirst("fullName")?.Value;
+
+                _logger.LogInformation("Fetching application data for ApplicationId: {ApplicationId}", applicationId);
+
+                var applicationData = await (
                     from appReg in _db.Set<ApplicationRegistration>()
                     join module in _db.Set<FormModule>()
                         on appReg.ModuleId equals module.Id
@@ -87,91 +99,170 @@ namespace RajFabAPI.Services
                     }
                 ).FirstOrDefaultAsync();
 
-            if (applicationData == null)
-                throw new Exception("Application data not found");
-
-            var prnNumber = "RAJFAB" + string.Concat(Guid.NewGuid().ToString("N").Where(char.IsDigit));
-            var html = "";
-            byte[]? pdfBytes = null;
-
-            if (applicationData.ModuleName == ApplicationTypeNames.NewEstablishment)
-            {
-                var data = await _estRegService.GetAllEntitiesByRegistrationIdAsync(applicationId);
-                var filePath = await _estRegService.GenerateEstablishmentPdf(data);
-                if (!File.Exists(filePath))
-                    throw new Exception("Generated PDF not found");
-                pdfBytes = await File.ReadAllBytesAsync(filePath);
-            } else if (applicationData.ModuleName == ApplicationTypeNames.MapApproval)
-            {
-                var response = await _factoryMapApprovalService.GetApplicationByIdAsync(applicationId);
-
-                if (!response.Success || response.Data == null)
+                if (applicationData == null)
                 {
-                    throw new Exception(response.Message ?? "Unable to fetch application.");
-                }
-                var filePath = await _factoryMapApprovalService.GenerateFactoryMapApprovalPdf(response.Data);
-                if (!File.Exists(filePath))
-                    throw new Exception("Generated PDF not found");
-                pdfBytes = await File.ReadAllBytesAsync(filePath);
-            }
-            else if (applicationData.ModuleName == ApplicationTypeNames.FactoryCommencementCessation)
-            {
-                var response = await _commencementCessationService.GetByIdAsync(applicationId);
-
-                if (response == null || response.CommencementCessationData == null)
-                {
-                    throw new Exception("Unable to fetch application.");
+                    _logger.LogError("Application data not found. ApplicationId: {ApplicationId}", applicationId);
+                    throw new Exception("Application data not found");
                 }
 
-                var filePath = await _commencementCessationService.GenerateCommencementCessationPdf(response);
-                if (!File.Exists(filePath))
-                    throw new Exception("Generated PDF not found");
+                _logger.LogInformation("Module detected: {ModuleName}", applicationData.ModuleName);
 
-                pdfBytes = await File.ReadAllBytesAsync(filePath);
-            }
-            else if (applicationData.ModuleName == ApplicationTypeNames.FactoryLicense)
-            {
-                var response = await _factoryLicenseService.GetByIdAsync(applicationId);
+                var prnNumber = "RAJFAB" + string.Concat(Guid.NewGuid().ToString("N").Where(char.IsDigit));
+                _logger.LogInformation("Generated PRN: {PRN}", prnNumber);
 
-                if (response == null || response.FactoryLicense == null)
+                byte[]? pdfBytes = null;
+
+                // -------- MODULE SWITCH ----------
+                if (applicationData.ModuleName == ApplicationTypeNames.NewEstablishment)
                 {
-                    throw new Exception("Unable to fetch application.");
+                    _logger.LogInformation("Processing New Establishment PDF generation");
+
+                    var data = await _estRegService.GetAllEntitiesByRegistrationIdAsync(applicationId);
+                    var filePath = await _estRegService.GenerateEstablishmentPdf(data);
+
+                    _logger.LogInformation("Generated PDF Path: {FilePath}", filePath);
+
+                    if (!File.Exists(filePath))
+                    {
+                        _logger.LogError("PDF file not found at path: {FilePath}", filePath);
+                        throw new Exception("Generated PDF not found");
+                    }
+
+                    pdfBytes = await File.ReadAllBytesAsync(filePath);
+                }
+                else if (applicationData.ModuleName == ApplicationTypeNames.MapApproval)
+                {
+                    _logger.LogInformation("Processing Map Approval PDF generation");
+
+                    var response = await _factoryMapApprovalService.GetApplicationByIdAsync(applicationId);
+
+                    if (!response.Success || response.Data == null)
+                    {
+                        _logger.LogError(
+                            "Map Approval data fetch failed. ApplicationId: {ApplicationId}, Message: {Message}",
+                            applicationId,
+                            response.Message
+                        );
+                        throw new Exception(response.Message ?? "Unable to fetch application.");
+                    }
+
+                    var filePath = await _factoryMapApprovalService.GenerateFactoryMapApprovalPdf(response.Data);
+
+                    _logger.LogInformation("Generated PDF Path: {FilePath}", filePath);
+
+                    if (!File.Exists(filePath))
+                    {
+                        _logger.LogError("PDF file not found at path: {FilePath}", filePath);
+                        throw new Exception("Generated PDF not found");
+                    }
+
+                    pdfBytes = await File.ReadAllBytesAsync(filePath);
+                }
+                else if (applicationData.ModuleName == ApplicationTypeNames.FactoryCommencementCessation)
+                {
+                    _logger.LogInformation("Processing Factory Commencement/Cessation PDF generation");
+
+                    var response = await _commencementCessationService.GetByIdAsync(applicationId);
+
+                    if (response == null || response.CommencementCessationData == null)
+                    {
+                        _logger.LogError(
+                            "Commencement/Cessation data fetch failed. ApplicationId: {ApplicationId}",
+                            applicationId
+                        );
+                        throw new Exception("Unable to fetch application.");
+                    }
+
+                    var filePath = await _commencementCessationService.GenerateCommencementCessationPdf(response);
+
+                    _logger.LogInformation("Generated PDF Path: {FilePath}", filePath);
+
+                    if (!File.Exists(filePath))
+                    {
+                        _logger.LogError("PDF file not found at path: {FilePath}", filePath);
+                        throw new Exception("Generated PDF not found");
+                    }
+
+                    pdfBytes = await File.ReadAllBytesAsync(filePath);
+                }
+                else if (applicationData.ModuleName == ApplicationTypeNames.FactoryLicense)
+                {
+                    _logger.LogInformation("Processing Factory License PDF generation");
+
+                    var response = await _factoryLicenseService.GetByIdAsync(applicationId);
+
+                    if (response == null || response.FactoryLicense == null)
+                    {
+                        _logger.LogError(
+                            "Factory License data fetch failed. ApplicationId: {ApplicationId}",
+                            applicationId
+                        );
+                        throw new Exception("Unable to fetch application.");
+                    }
+
+                    var filePath = await _factoryLicenseService.GenerateFactoryLicensePdf(response);
+
+                    _logger.LogInformation("Generated PDF Path: {FilePath}", filePath);
+
+                    if (!File.Exists(filePath))
+                    {
+                        _logger.LogError("PDF file not found at path: {FilePath}", filePath);
+                        throw new Exception("Generated PDF not found");
+                    }
+
+                    pdfBytes = await File.ReadAllBytesAsync(filePath);
+                }
+                else if (applicationData.ModuleName == ApplicationTypeNames.Appeal)
+                {
+                    _logger.LogInformation("Processing Appeal PDF generation");
+
+                    var response = await _appealService.GetByIdAsync(applicationId);
+
+                    if (response == null || response.AppealData.FactoryRegistrationNumber == null)
+                    {
+                        _logger.LogError(
+                            "Appeal data fetch failed. ApplicationId: {ApplicationId}",
+                            applicationId
+                        );
+                        throw new Exception("Unable to fetch application.");
+                    }
+
+                    var filePath = await _appealService.GenerateAppealPdf(response);
+
+                    _logger.LogInformation("Generated PDF Path: {FilePath}", filePath);
+
+                    if (!File.Exists(filePath))
+                    {
+                        _logger.LogError("PDF file not found at path: {FilePath}", filePath);
+                        throw new Exception("Generated PDF not found");
+                    }
+
+                    pdfBytes = await File.ReadAllBytesAsync(filePath);
                 }
 
-                var filePath = await _factoryLicenseService.GenerateFactoryLicensePdf(response);
-                if (!File.Exists(filePath))
-                    throw new Exception("Generated PDF not found");
-
-                pdfBytes = await File.ReadAllBytesAsync(filePath);
-            }
-            else if (applicationData.ModuleName == ApplicationTypeNames.Appeal)
-            {
-                var response = await _appealService.GetByIdAsync(applicationId);
-
-                if (response == null || response.AppealData.FactoryRegistrationNumber == null)
+                if (pdfBytes == null || pdfBytes.Length == 0)
                 {
-                    throw new Exception("Unable to fetch application.");
+                    _logger.LogError("PDF bytes are empty. ApplicationId: {ApplicationId}", applicationId);
+                    throw new Exception("PDF not available");
                 }
 
-                var filePath = await _appealService.GenerateAppealPdf(response);
-                if (!File.Exists(filePath))
-                    throw new Exception("Generated PDF not found");
+                _logger.LogInformation("Saving PRN number in DB. PRN: {PRN}", prnNumber);
+                await _applicationRegistrationService.SavePRNNumber(applicationId, prnNumber);
 
-                pdfBytes = await File.ReadAllBytesAsync(filePath);
-            }
+                _logger.LogInformation("Requesting Auth Token from eSign provider");
 
-            // saving prn Number in application table
-            await _applicationRegistrationService.SavePRNNumber(applicationId, prnNumber);
+                Token_Response? tokenResponse = await getAuthToken();
 
-            if (pdfBytes == null || pdfBytes.Length == 0)
-                throw new Exception("PDF not available");
+                if (tokenResponse == null || tokenResponse.status != "SUCCESS")
+                {
+                    _logger.LogError("Failed to get auth token. Response: {@TokenResponse}", tokenResponse);
+                    throw new Exception(tokenResponse?.message ?? "Failed to get auth token");
+                }
 
-            Token_Response? tokenResponse = await getAuthToken();
-            if (tokenResponse == null || tokenResponse.status != "SUCCESS")
-                throw new Exception(tokenResponse.message ?? "Failed to get auth token");
-            else
-            {
                 string authToken = tokenResponse.data.encryptedToken;
+
+                _logger.LogInformation("Auth token received successfully");
+
                 generateSignedXml_Request Signrequest = new generateSignedXml_Request
                 {
                     pdfFile = pdfBytes,
@@ -181,73 +272,156 @@ namespace RajFabAPI.Services
                     responseUrl = $"{_config["ESignSettings:ResponseUrl"]}",
                     prn = prnNumber
                 };
-                generateSignedXml_Response? generateSignedXml_Response = await generateSignedXml(Signrequest, authToken);
+
+                _logger.LogInformation("Calling generateSignedXml API. PRN: {PRN}", prnNumber);
+
+                var generateSignedXml_Response =
+                    await generateSignedXml(Signrequest, authToken);
 
                 if (generateSignedXml_Response == null || generateSignedXml_Response.status != "SUCCESS")
-                    throw new Exception(generateSignedXml_Response?.data?.responseMsg ?? "Failed to generate signed XML");
-                else
                 {
-                    //Temporary keeping value of signedXMLData in caces for testing purpose, you can remove it later and keep it in db                
-                    EsignTempData esignTempData = new EsignTempData
-                    {
-                        prn = generateSignedXml_Response.data.prn,
-                        txnId = generateSignedXml_Response.data.txnId,
-                        authToken = authToken
-                    };
-                    _cache.Set(esignTempData.prn, esignTempData, TimeSpan.FromMinutes(5));
+                    _logger.LogError(
+                        "generateSignedXml failed. PRN: {PRN}, Response: {@Response}",
+                        prnNumber,
+                        generateSignedXml_Response
+                    );
 
-                    html = PostToPage(signdocURL, generateSignedXml_Response.data.signedXMLData);
-                    return html;
+                    throw new Exception(generateSignedXml_Response?.data?.responseMsg ??
+                                        "Failed to generate signed XML");
                 }
+
+                _logger.LogInformation("Signed XML generated successfully. PRN: {PRN}", prnNumber);
+
+                EsignTempData esignTempData = new EsignTempData
+                {
+                    prn = generateSignedXml_Response.data.prn,
+                    txnId = generateSignedXml_Response.data.txnId,
+                    authToken = authToken
+                };
+
+                _cache.Set(esignTempData.prn, esignTempData, TimeSpan.FromMinutes(5));
+
+                _logger.LogInformation("Cached EsignTempData. PRN: {PRN}, TxnId: {TxnId}",
+                    esignTempData.prn,
+                    esignTempData.txnId);
+
+                var html = PostToPage(signdocURL, generateSignedXml_Response.data.signedXMLData);
+
+                _logger.LogInformation("GenerateESignHtmlAsync completed successfully. PRN: {PRN}", prnNumber);
+
+                return html;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Unhandled exception in GenerateESignHtmlAsync. ApplicationId: {ApplicationId}",
+                    applicationId);
+
+                throw; // let global exception middleware handle it
             }
         }
 
         public async Task<string> ProcessEsignResponseAsync(string esignData)
         {
-            if (string.IsNullOrEmpty(esignData))
-                throw new Exception("Invalid eSign response data");
+            _logger.LogInformation("ProcessEsignResponseAsync started");
 
-            var doc = XDocument.Parse(esignData);
-            string? txn = doc.Root?.Attribute("txn")?.Value;
-
-            if (string.IsNullOrEmpty(txn))
-                throw new Exception("Transaction Id missing");
-
-            EsignTempData? esignTempData = _cache.Get<EsignTempData>(txn);
-
-            if (esignTempData == null)
-                throw new Exception("Invalid or expired transaction");
-
-            _cache.Remove(txn);
-
-            signingPdf_Request signingRequest = new signingPdf_Request
+            try
             {
-                prn = esignTempData.prn,
-                txnId = esignTempData.txnId,
-                esignResponse = Convert.ToBase64String(
-                    Encoding.UTF8.GetBytes(esignData))
-            };
+                if (string.IsNullOrEmpty(esignData))
+                {
+                    _logger.LogWarning("Received empty eSign response");
+                    throw new Exception("Invalid eSign response data");
+                }
 
-            signingPdf_Response? signingResponse =
-                await getSigningPdf(signingRequest, esignTempData.authToken);
+                _logger.LogInformation("Parsing eSign XML response");
 
-            if (signingResponse == null || signingResponse.status != "SUCCESS")
-            {
-                var errorJson = JsonSerializer.Serialize(signingResponse);
-                var encodedError = Uri.EscapeDataString(errorJson);
-                return $"{_config["FrontendUrl"]}/error?details={encodedError}";
-            }
+                var doc = XDocument.Parse(esignData);
+                string? txn = doc.Root?.Attribute("txn")?.Value;
 
-            var updateSuccess =
-                await _applicationRegistrationService
-                    .UpdateApplicationESignData(
-                        esignTempData.prn,
-                        signingResponse.data.signedPDFBase64);
+                if (string.IsNullOrEmpty(txn))
+                {
+                    _logger.LogError("Transaction Id missing in eSign response");
+                    throw new Exception("Transaction Id missing");
+                }
 
-            if (!updateSuccess)
+                _logger.LogInformation("Transaction Id received: {Txn}", txn);
+
+                EsignTempData? esignTempData = _cache.Get<EsignTempData>(txn);
+
+                if (esignTempData == null)
+                {
+                    _logger.LogError("Invalid or expired transaction. Txn: {Txn}", txn);
+                    throw new Exception("Invalid or expired transaction");
+                }
+
+                _logger.LogInformation(
+                    "Cache data found for Txn: {Txn}, PRN: {PRN}",
+                    txn,
+                    esignTempData.prn
+                );
+
+                _cache.Remove(txn);
+                _logger.LogInformation("Cache cleared for Txn: {Txn}", txn);
+
+                signingPdf_Request signingRequest = new signingPdf_Request
+                {
+                    prn = esignTempData.prn,
+                    txnId = esignTempData.txnId,
+                    esignResponse = Convert.ToBase64String(
+                        Encoding.UTF8.GetBytes(esignData))
+                };
+
+                _logger.LogInformation("Calling getSigningPdf API. PRN: {PRN}", esignTempData.prn);
+
+                signingPdf_Response? signingResponse =
+                    await getSigningPdf(signingRequest, esignTempData.authToken);
+
+                if (signingResponse == null)
+                {
+                    _logger.LogError("Signing API returned null response. PRN: {PRN}", esignTempData.prn);
+
+                    return BuildErrorRedirect("Signing API returned null response");
+                }
+
+                if (signingResponse.status != "SUCCESS")
+                {
+                    _logger.LogError(
+                        "Signing API failed. Status: {Status}, PRN: {PRN}",
+                        signingResponse.status,
+                        esignTempData.prn
+                    );
+
+                    return BuildErrorRedirect("Signing API failed");
+                }
+
+                _logger.LogInformation("Signing successful. Updating DB. PRN: {PRN}", esignTempData.prn);
+
+                var updateSuccess =
+                    await _applicationRegistrationService
+                        .UpdateApplicationESignData(
+                            esignTempData.prn,
+                            signingResponse.data.signedPDFBase64);
+
+                if (!updateSuccess)
+                {
+                    _logger.LogError(
+                        "DB update failed after signing. PRN: {PRN}",
+                        esignTempData.prn
+                    );
+
+                    return BuildErrorRedirect("Error updating application after signing");
+                }
+
+                _logger.LogInformation("ProcessEsignResponseAsync completed successfully. PRN: {PRN}", esignTempData.prn);
+
                 return $"{_config["FrontendUrl"]}/user/track";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unhandled exception in ProcessEsignResponseAsync");
 
-            return $"{_config["FrontendUrl"]}/user/track";
+                return BuildErrorRedirect("Unexpected server error");
+            }
         }
 
         private async Task<Token_Response?> getAuthToken()
@@ -477,6 +651,11 @@ namespace RajFabAPI.Services
             public string prn { get; set; }
             public string txnId { get; set; }
             public string authToken { get; set; }
+        }
+        private string BuildErrorRedirect(string message)
+        {
+            var encodedMessage = Uri.EscapeDataString(message);
+            return $"{_config["FrontendUrl"]}/error?details={encodedMessage}";
         }
     }
 }

@@ -109,6 +109,16 @@ namespace RajFabAPI.DTOs
         public string? ClosureReportPath { get; set; }
     }
 
+    public class UpdateBoilerClosureDto
+    {
+        public string? ClosureType { get; set; }
+        public DateTime? ClosureDate { get; set; }
+        public string? ToStateName { get; set; }
+        public string? Reasons { get; set; }
+        public string? Remarks { get; set; }
+        public string? ClosureReportPath { get; set; }
+    }
+    
     public class BoilerClosureResponseDto
     {
         public string ApplicationId { get; set; } = null!;
@@ -149,4 +159,32 @@ public class BoilerRepairResponseDto
     public PersonDetailDto Repairer { get; set; } = null!;
 }
 
+    public class GetBoilerRepairDto
+    {
+       
+        public string? ApplicationId { get; set; }
+        public string? BoilerRegistrationNo { get; set; }
+        public string? RenewalApplicationId { get; set; }
+        public string? RepairType { get; set; }
+        public string? Status { get; set; }
+
+        public string? AttendantCertificatePath { get; set; }
+        public string? OperationEngineerCertificatePath { get; set; }
+        public string? RepairDocumentPath { get; set; }
+
+        public DateTime CreatedAt { get; set; }
+
+        public PersonDetailDto? Repairer { get; set; }
+    }
+
+    public class UpdateBoilerRepairDto
+    {
+        public string? RepairType { get; set; }
+
+        public string? AttendantCertificatePath { get; set; }
+        public string? OperationEngineerCertificatePath { get; set; }
+        public string? RepairDocumentPath { get; set; }
+
+        public PersonDetailDto? RepairerDetail { get; set; }
+    }
 }

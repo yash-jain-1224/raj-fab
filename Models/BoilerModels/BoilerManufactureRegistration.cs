@@ -12,9 +12,11 @@ namespace RajFabAPI.Models.BoilerModels
           
         public string? FactoryRegistrationNo { get; set; }
         public string? ApplicationId { get; set; }
-
+        public string ManufactureRegistrationNo { get; set; } = null!;
         public string ?BmClassification { get; set; }
-
+        // 🔥 RENEWAL TRACKING
+        public DateTime? ValidFrom { get; set; }
+        public DateTime? ValidUpto { get; set; }
         public string? CoveredArea { get; set; }
         public string? EstablishmentJson { get; set; }
         public string? ManufacturingFacilityjson { get; set; }

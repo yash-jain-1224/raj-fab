@@ -149,6 +149,12 @@ namespace RajFabAPI.Data
         public DbSet<NDTPersonnel> NDTPersonnels { get; set; }
         public DbSet<QualifiedWelder> QualifiedWelders { get; set; }
         public DbSet<TechnicalManpower> TechnicalManpowers { get; set; }
+        public DbSet<BoilerManufactureClosure> BoilerManufactureClosures { get; set; }
+        public DbSet<BoilerRepairerRegistration> BoilerRepairerRegistrations { get; set; }
+        public DbSet<BoilerRepairerEngineer> BoilerRepairerEngineers { get; set; }
+        public DbSet<BoilerRepairerWelder> BoilerRepairerWelders { get; set; }
+        public DbSet<BoilerRepairerClosure> BoilerRepairerClosures { get; set; }
+
         public DbSet<FeeResult> FeeResults { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

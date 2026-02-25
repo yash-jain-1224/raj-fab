@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using RajFabAPI.Data;
 using RajFabAPI.DTOs;
 using RajFabAPI.Models;
+using RajFabAPI.Models.FactoryModels;
 using RajFabAPI.Services.Interface;
 using System.Text.Json;
 using static RajFabAPI.Constants.AppConstants;
@@ -413,9 +414,29 @@ namespace RajFabAPI.Services
                     var estDetails = await _db.Set<EstablishmentDetail>()
                         .FirstOrDefaultAsync(ed => ed.Id == estReg.EstablishmentDetailId);
 
-                    if (estDetails == null)
+                    // Fetch entity mapping
+                    var entityData = await _db.Set<EstablishmentEntityMapping>()
+                        .FirstOrDefaultAsync(ed => ed.EstablishmentRegistrationId == estReg.EstablishmentRegistrationId);
+
+                    // Check if entityData exists
+                    if (entityData == null)
                         return false;
-                    if (!Guid.TryParse(estDetails.SubDivisionId, out Guid parsedSubDiv))
+
+                    FactoryDetail? factorydata = null;
+
+                    // If entity type is Factory, fetch factory details
+                    if (entityData.EntityType == "Factory")
+                    {
+                        factorydata = await _db.Set<FactoryDetail>()
+                            .FirstOrDefaultAsync(f => f.Id == entityData.EntityId);
+                    }
+
+                    // Check if factory data exists
+                    if (factorydata == null)
+                        return false;
+
+                    // Validate SubDivisionId is a valid GUID
+                    if (!Guid.TryParse(factorydata.SubDivisionId, out Guid parsedSubDiv))
                         return false;
 
                     totalWorkers =

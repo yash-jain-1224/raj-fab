@@ -30,8 +30,9 @@ namespace RajFabAPI.Services
         private readonly IConfiguration _config;
         private readonly IPaymentService _payment;
         private readonly IFeeCalculationService _feeCalculationService;
+        private readonly ILogger<ApplicationRegistrationService> _logger;
 
-        public EstablishmentRegistrationService(ApplicationDbContext db, IWebHostEnvironment environment, IHttpContextAccessor httpContextAccessor, IConfiguration config, IPaymentService payment, IFeeCalculationService feeCalculationService)
+        public EstablishmentRegistrationService(ApplicationDbContext db, ILogger<ApplicationRegistrationService> logger, IWebHostEnvironment environment, IHttpContextAccessor httpContextAccessor, IConfiguration config, IPaymentService payment, IFeeCalculationService feeCalculationService)
         {
             _db = db ?? throw new ArgumentNullException(nameof(db));
             _environment = environment;
@@ -40,6 +41,7 @@ namespace RajFabAPI.Services
             _payment = payment;
             _payment = payment;
             _feeCalculationService = feeCalculationService;
+            _logger = logger;
         }
 
         // Create full registration and persist all sub-objects in a single transaction.
@@ -209,6 +211,8 @@ namespace RajFabAPI.Services
                         Situation = dto.Factory.Situation,
                         SubDivisionId = dto.Factory.SubDivisionId,
                         TehsilId = dto.Factory.TehsilId,
+                        AddressLine1 = dto.Factory.AddressLine1,
+                        AddressLine2 = dto.Factory.AddressLine2,
                         Area = dto.Factory.Area,
                         Pincode = dto.Factory.Pincode.ToString(),
                         Email = dto.Factory.Email,
@@ -1229,7 +1233,7 @@ namespace RajFabAPI.Services
                 var estDetail = await (
                     from est in _db.Set<EstablishmentDetail>().AsNoTracking()
                     where est.Id == reg.EstablishmentDetailId
-                    join area in _db.Set<Area>().AsNoTracking() on est.SubDivisionId equals area.Id.ToString() into areaJoin
+                    join area in _db.Set<City>().AsNoTracking() on est.SubDivisionId equals area.Id.ToString() into areaJoin
                     from areaDetail in areaJoin.DefaultIfEmpty()
                     join district in _db.Set<District>().AsNoTracking() on areaDetail.DistrictId equals district.Id into districtJoin
                     from districtDetail in districtJoin.DefaultIfEmpty()
@@ -1242,7 +1246,8 @@ namespace RajFabAPI.Services
                         BrnNumber = est.BrnNumber,
                         Name = est.EstablishmentName,
                         SubDivisionId = est.SubDivisionId,
-                        AreaName = areaDetail.Name,
+                        TehsilId = est.TehsilId,
+                        Area = est.Area,
                         DistrictId = areaDetail.DistrictId.ToString(),
                         DistrictName = districtDetail.Name,
                         TotalNumberOfEmployee = est.TotalNumberOfEmployee ?? 0,
@@ -1286,7 +1291,8 @@ namespace RajFabAPI.Services
                         Area = mainOwner.Area,
                         Pincode = mainOwner.Pincode,
                         Email = mainOwner.Email,
-                        Mobile = mainOwner.Mobile
+                        Mobile = mainOwner.Mobile,
+                        Telephone = mainOwner.Telephone
                     };
                 }
             }
@@ -1309,7 +1315,8 @@ namespace RajFabAPI.Services
                         Area = manager.Area,
                         Pincode = manager.Pincode,
                         Email = manager.Email,
-                        Mobile = manager.Mobile
+                        Mobile = manager.Mobile,
+                        Telephone = manager.Telephone
                     };
                 }
             }
@@ -1371,6 +1378,7 @@ namespace RajFabAPI.Services
                                 Situation = f.Situation,
 
                                 SubDivisionId = f.SubDivisionId,
+                                TehsilId = f.TehsilId,
                                 Area = f.Area,
 
                                 DistrictId = areaDetail.DistrictId.ToString(),
@@ -1452,6 +1460,9 @@ namespace RajFabAPI.Services
                                         Role = manager.RoleType,
                                         Name = manager.Name,
                                         Designation = manager.Designation,
+                                        AddressLine1 = manager.AddressLine1,
+                                        AddressLine2 = manager.AddressLine2,
+                                        District = manager.District,
                                         Tehsil = manager.Tehsil,
                                         Area = manager.Area,
                                         Pincode = manager.Pincode,
@@ -1661,15 +1672,21 @@ namespace RajFabAPI.Services
 
         public async Task<List<EstablishmentDetailsDto>> GetAllEstablishmentDetailsAsync(Guid userId)
         {
+            var userRegistrations =
+                from app in _db.Set<ApplicationRegistration>()
+                where app.UserId == userId
+                select app.ApplicationId;
+
             var regSummary =
-            from r in _db.Set<EstablishmentRegistration>().AsNoTracking()
-            group r by r.RegistrationNumber into g
-            select new
-            {
-                RegistrationNumber = g.Key,
-                MaxVersion = g.Max(x => x.Version),
-                HasPending = g.Any(x => x.Status == ApplicationStatus.Pending)
-            };
+                from r in _db.Set<EstablishmentRegistration>()
+                where userRegistrations.Contains(r.EstablishmentRegistrationId)
+                group r by r.RegistrationNumber into g
+                select new
+                {
+                    RegistrationNumber = g.Key,
+                    MaxVersion = g.Max(x => x.Version),
+                    HasPending = g.Any(x => x.Status == ApplicationStatus.Pending)
+                };
 
             var query =
                 from app in _db.Set<ApplicationRegistration>().AsNoTracking()
@@ -1683,10 +1700,10 @@ namespace RajFabAPI.Services
 
                 join est in _db.Set<EstablishmentDetail>().AsNoTracking()
                     on reg.EstablishmentDetailId equals est.Id
-                join area in _db.Set<Area>().AsNoTracking()
-                    on est.SubDivisionId equals area.Id.ToString()
+                join subDivision in _db.Set<City>().AsNoTracking()
+                    on est.SubDivisionId equals subDivision.Id.ToString()
                 join district in _db.Set<District>().AsNoTracking()
-                    on area.DistrictId equals district.Id
+                    on subDivision.DistrictId equals district.Id
                 //join division in _db.Set<Division>().AsNoTracking()
                 //    on district.DivisionId equals division.Id
                 select new EstablishmentDetailsDto
@@ -1698,7 +1715,7 @@ namespace RajFabAPI.Services
                     AddressLine1 = est.AddressLine1,
                     AddressLine2 = est.AddressLine2,
                     Area = est.Area,
-                    DistrictId = area.DistrictId.ToString(),
+                    DistrictId = subDivision.DistrictId.ToString(),
                     DistrictName = district.Name,
                     Pincode = est.Pincode,
                     Email = est.Email,

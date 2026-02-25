@@ -567,6 +567,8 @@ namespace RajFabAPI.Services
                     Status = registration.Status,
                     Type = registration.Type,
                     Version = registration.Version,
+                    CreatedAt = registration.CreatedAt,
+                    UpdatedAt = registration.UpdatedAt,
 
                     BoilerDetail = registration.BoilerDetail == null ? null : new BoilerTechnicalDto
                     {

@@ -6,5 +6,6 @@ namespace RajFabAPI.Services.Interface
     {
         Task<string> GenerateESignHtmlAsync(string applicationId);
         Task<string> ProcessEsignResponseAsync(string esignData);
+        Task<string> ManualESignVerifyAsync(string applicationId);
     }
 }

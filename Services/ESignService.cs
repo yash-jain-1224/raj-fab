@@ -314,7 +314,7 @@ namespace RajFabAPI.Services
                 }
             }
         }
-       
+
         public async Task<string> ProcessEsignResponseAsync(string esignData)
         {
             _logger.LogInformation("ProcessEsignResponseAsync started");
@@ -643,5 +643,87 @@ namespace RajFabAPI.Services
             var encodedMessage = Uri.EscapeDataString(message);
             return $"{_config["FrontendUrl"]}/error?details={encodedMessage}";
         }
+
+        public async Task<string> ManualESignVerifyAsync(string applicationId)
+        {
+            _logger.LogInformation("ProcessEsignResponseAsync started");
+
+            try
+            {
+                var prn = "RAJFAB" + string.Concat(Guid.NewGuid().ToString("N").Where(char.IsDigit));
+
+                var application = await _db.ApplicationRegistrations
+                    .FirstOrDefaultAsync(x => x.ApplicationId == applicationId);
+
+                if (application == null)
+                    return BuildErrorRedirect("Application not found");
+
+                application.ESignPrnNumber = prn;
+                application.UpdatedDate = DateTime.Now;
+
+                var Module = await _db.Modules
+                    .FirstOrDefaultAsync(x => x.Id == application.ModuleId);
+
+                if (Module.Name == ApplicationTypeNames.NewEstablishment || Module.Name == ApplicationTypeNames.FactoryAmendment || Module.Name == ApplicationTypeNames.FactoryRenewal)
+                {
+                    var data = await _estRegService.GetAllEntitiesByRegistrationIdAsync(applicationId);
+                    var filePath = await _estRegService.GenerateEstablishmentPdf(data);
+                }
+                else if (Module.Name == ApplicationTypeNames.MapApproval || Module.Name == ApplicationTypeNames.MapApprovalAmendment)
+                {
+                    var response = await _factoryMapApprovalService.GetApplicationByIdAsync(applicationId);
+
+                    if (!response.Success || response.Data == null)
+                    {
+                        _logger.LogError("Map Approval data fetch failed. Message: {Message}",
+                            response.Message);
+
+                        throw new Exception(response.Message ?? "Unable to fetch application.");
+                    }
+
+                    var filePath = await _factoryMapApprovalService
+                        .GenerateFactoryMapApprovalPdf(response.Data);
+                }
+                else if (Module.Name == ApplicationTypeNames.FactoryLicense || Module.Name == ApplicationTypeNames.FactoryLicenseRenewal || Module.Name == ApplicationTypeNames.FactoryLicenseAmendment)
+                {
+                    var response = await _factoryLicenseService.GetByIdAsync(applicationId);
+
+                    if (response?.FactoryLicense == null)
+                    {
+                        _logger.LogError("Factory License data fetch failed");
+                        throw new Exception("Unable to fetch application.");
+                    }
+
+                    var filePath = await _factoryLicenseService
+                        .GenerateFactoryLicensePdf(response);
+                }
+                await _db.SaveChangesAsync();
+
+                // Use LogContext to automatically enrich all logs with Txn and PRN
+                using (LogContext.PushProperty("PRN", prn))
+                {
+                    var updateSuccess = await _applicationRegistrationService
+                        .UpdateApplicationESignData(
+                            prn);
+
+                    if (!updateSuccess)
+                    {
+                        _logger.LogError("DB update failed after signing");
+                        throw new Exception("Error updating application after signing.");
+                    }
+
+                    _logger.LogInformation("ProcessEsignResponseAsync completed successfully");
+
+                    return $"{_config["FrontendUrl"]}/user/track";
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unhandled exception in ProcessEsignResponseAsync");
+                throw;
+                //return BuildErrorRedirect("Unexpected server error");
+            }
+        }
+
     }
 }

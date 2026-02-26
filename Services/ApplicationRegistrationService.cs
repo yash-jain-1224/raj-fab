@@ -326,7 +326,7 @@ namespace RajFabAPI.Services
                 if (applicationData == null)
                     return false;
 
-                if (applicationData.ModuleName == ApplicationTypeNames.NewEstablishment || applicationData.ModuleName == ApplicationTypeNames.FactoryAmendment || applicationData.ModuleName == ApplicationTypeNames.FactoryLicenseRenewal)
+                if (applicationData.ModuleName == ApplicationTypeNames.NewEstablishment || applicationData.ModuleName == ApplicationTypeNames.FactoryAmendment || applicationData.ModuleName == ApplicationTypeNames.FactoryRenewal)
                 {
 
                     var estReg = await _db.Set<EstablishmentRegistration>()
@@ -374,8 +374,8 @@ namespace RajFabAPI.Services
 
         public async Task<bool> UpdateApplicationESignData(string prnNumber, string signedPDFBase64)
         {
-            if (string.IsNullOrWhiteSpace(prnNumber) || string.IsNullOrWhiteSpace(signedPDFBase64))
-                return false;
+            //if (string.IsNullOrWhiteSpace(prnNumber) || string.IsNullOrWhiteSpace(signedPDFBase64))
+            //    return false;
 
             var appReg = await _db.Set<ApplicationRegistration>()
                 .FirstOrDefaultAsync(r => r.ESignPrnNumber == prnNumber);
@@ -389,10 +389,13 @@ namespace RajFabAPI.Services
             if (module == null)
                 return false;
 
-            if (signedPDFBase64.Contains(","))
-                signedPDFBase64 = signedPDFBase64.Split(',')[1];
+            byte[]? pdfBytes = null;
 
-            byte[] pdfBytes = Convert.FromBase64String(signedPDFBase64);
+            if (!string.IsNullOrWhiteSpace(signedPDFBase64) && signedPDFBase64.Contains(","))
+            {
+                signedPDFBase64 = signedPDFBase64.Split(',')[1];
+                pdfBytes = Convert.FromBase64String(signedPDFBase64);
+            }
 
             int totalWorkers = 0;
             Guid? factoryTypeId = null;
@@ -403,7 +406,7 @@ namespace RajFabAPI.Services
 
             try
             {
-                if (module.Name == ApplicationTypeNames.NewEstablishment)
+                if (module.Name == ApplicationTypeNames.NewEstablishment || module.Name == ApplicationTypeNames.FactoryAmendment || module.Name == ApplicationTypeNames.FactoryRenewal)
                 {
                     var estReg = await _db.Set<EstablishmentRegistration>()
                         .FirstOrDefaultAsync(x => x.EstablishmentRegistrationId == appReg.ApplicationId);
@@ -450,9 +453,9 @@ namespace RajFabAPI.Services
                     estReg.IsESignCompleted = true;
                     estReg.UpdatedDate = DateTime.Now;
 
-                    applicationUrl = estReg.ApplicationPDFUrl;
+                    applicationUrl = estReg.ApplicationPDFUrl ;
                 }
-                else if (module.Name == ApplicationTypeNames.MapApproval)
+                else if (module.Name == ApplicationTypeNames.MapApproval || module.Name == ApplicationTypeNames.MapApprovalAmendment)
                 {
                     var mapReg = await _db.Set<FactoryMapApproval>()
                         .FirstOrDefaultAsync(x => x.Id == appReg.ApplicationId);
@@ -483,7 +486,7 @@ namespace RajFabAPI.Services
                     mapReg.UpdatedAt = DateTime.Now;
                     applicationUrl = mapReg.ApplicationPDFUrl;
                 }
-                else if (module.Name == ApplicationTypeNames.FactoryLicense)
+                else if (module.Name == ApplicationTypeNames.FactoryLicense || module.Name == ApplicationTypeNames.FactoryLicenseRenewal || module.Name == ApplicationTypeNames.FactoryLicenseAmendment)
                 {
                     var factoryLicenseReg = await _db.Set<FactoryLicense>()
                         .FirstOrDefaultAsync(x => x.Id == appReg.ApplicationId);
@@ -631,7 +634,10 @@ namespace RajFabAPI.Services
                 await _db.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                await OverwriteExistingPdfAsync(applicationUrl, pdfBytes);
+                if (pdfBytes != null)
+                {
+                    await OverwriteExistingPdfAsync(applicationUrl, pdfBytes);
+                }
                 return true;
             }
             catch

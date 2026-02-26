@@ -13,7 +13,9 @@ using RajFabAPI.Models;
 using RajFabAPI.Models.FactoryModels;
 using RajFabAPI.Services.Interface;
 using System.Data;
+using System.Diagnostics.Contracts;
 using static RajFabAPI.Constants.AppConstants;
+using static RajFabAPI.Services.EstablishmentRegistrationService;
 using ImageDataFactory = iText.IO.Image.ImageDataFactory;
 using PdfCell = iText.Layout.Element.Cell;
 using PdfDoc = iText.Layout.Document;
@@ -53,7 +55,6 @@ namespace RajFabAPI.Services
                 throw new ArgumentException("EstablishmentDetails.EstablishmentName is required.", nameof(dto));
             var User = await _db.Users
                 .FirstOrDefaultAsync(u => u.Id == userId);
-
 
             decimal newVersion;
             string finalRegistrationNumber;
@@ -98,7 +99,6 @@ namespace RajFabAPI.Services
                 TotalPerson = totalWorkers,
                 Type = type
             };
-
 
             var feeResult = type == "new" ? await GetFeeAmountAsync(feeRequest) : 100;
             //var feeResult = new { TotalFee = 30 };
@@ -1728,6 +1728,7 @@ namespace RajFabAPI.Services
                     RegistrationNumber = reg.RegistrationNumber,
                     Status = reg.Status,
                     Type = reg.Type,
+                    Version = reg.Version,
                     CanAmend =
                         reg.Status == ApplicationStatus.Approved
                         && reg.Version == rs.MaxVersion
@@ -2725,6 +2726,8 @@ namespace RajFabAPI.Services
         {
             if (dto == null)
                 throw new ArgumentNullException(nameof(dto));
+            var User = await _db.Users
+                .FirstOrDefaultAsync(u => u.Id == userId);
 
             if (string.IsNullOrWhiteSpace(registrationId))
                 throw new ArgumentException("RegistrationId is required for renewal");
@@ -2761,6 +2764,7 @@ namespace RajFabAPI.Services
                     ManagerOrAgentDetailId = lastApproved.ManagerOrAgentDetailId,
                     Place = lastApproved.Place,
                 };
+
                 var estDetail = await _db.Set<EstablishmentDetail>()
                     .FirstOrDefaultAsync(ed => ed.Id == lastApproved.EstablishmentDetailId);
 
@@ -2768,7 +2772,40 @@ namespace RajFabAPI.Services
                     throw new Exception("Establishment details not found");
 
                 _ = _db.EstablishmentRegistrations.Add(renewedRegistration);
-                _ = await _db.SaveChangesAsync();
+
+                // Fetch entity mapping
+                var entityMappingList = await _db.Set<EstablishmentEntityMapping>()
+                    .Where(x => x.EstablishmentRegistrationId == lastApproved.EstablishmentRegistrationId)
+                    .ToListAsync();
+
+                if (entityMappingList != null && entityMappingList.Any())
+                {
+                    var newEntityMappings = entityMappingList.Select(mapping => new EstablishmentEntityMapping
+                    {
+                        EstablishmentRegistrationId = renewedRegistration.EstablishmentRegistrationId,
+                        EntityId = mapping.EntityId,
+                        EntityType = mapping.EntityType,
+                        CreatedAt = DateTime.Now,
+                        UpdatedAt = DateTime.Now
+                    }).ToList();
+
+                    await _db.Set<EstablishmentEntityMapping>().AddRangeAsync(newEntityMappings);
+                }
+
+                var factoryContractorMappingList = await _db.Set<FactoryContractorMapping>()
+                    .Where(x => x.EstablishmentRegistrationId == lastApproved.EstablishmentRegistrationId)
+                    .ToListAsync();
+
+                if (factoryContractorMappingList != null && factoryContractorMappingList.Any())
+                {
+                    var newMappings = factoryContractorMappingList.Select(mapping => new FactoryContractorMapping
+                    {
+                        ContractorDetailId = mapping.ContractorDetailId,
+                        EstablishmentRegistrationId = renewedRegistration.EstablishmentRegistrationId,
+                    }).ToList();
+
+                    await _db.Set<FactoryContractorMapping>().AddRangeAsync(newMappings);
+                }
 
                 // 4?? Get module
                 var module = await _db.Set<FormModule>()
@@ -2789,54 +2826,13 @@ namespace RajFabAPI.Services
                 };
 
                 _ = _db.ApplicationRegistrations.Add(appReg);
+                
                 _ = await _db.SaveChangesAsync();
-
-                int totalWorkers =
-                    (estDetail.TotalNumberOfEmployee ?? 0) +
-                    (estDetail.TotalNumberOfContractEmployee ?? 0) +
-                    (estDetail.TotalNumberOfInterstateWorker ?? 0);
-
-                var workerRange = await _db.Set<WorkerRange>()
-                    .FirstOrDefaultAsync(wr => totalWorkers >= wr.MinWorkers && totalWorkers <= wr.MaxWorkers);
-
-                var factoryType = _db.FactoryTypes.FirstOrDefault(x => x.Name == "Not Applicable");
-                var factoryTypeIdGuid = factoryType?.Id;
-                Guid? workerRangeId = workerRange?.Id;
-                var factoryCategory = await _db.Set<FactoryCategory>()
-                    .FirstOrDefaultAsync(fc => fc.WorkerRangeId == workerRangeId && fc.FactoryTypeId == factoryTypeIdGuid);
-                Guid? factoryCategoryId = factoryCategory?.Id;
-
-                var officeApplicationArea = await _db.Set<OfficeApplicationArea>()
-                    .FirstOrDefaultAsync(oaa => oaa.CityId == Guid.Parse(estDetail.SubDivisionId));
-                if (officeApplicationArea != null)
-                {
-                    var officeId = officeApplicationArea?.OfficeId;
-                    var workflow = await _db.Set<ApplicationWorkFlow>()
-                        .FirstOrDefaultAsync(wf => wf.ModuleId == module.Id && wf.FactoryCategoryId == factoryCategoryId && wf.OfficeId == officeId);
-                    var workflowLevel = await _db.Set<ApplicationWorkFlowLevel>()
-                        .Where(wfl => wfl.ApplicationWorkFlowId == (workflow != null ? workflow.Id : Guid.Empty))
-                        .OrderBy(wfl => wfl.LevelNumber)
-                        .FirstOrDefaultAsync();
-
-                    if (workflow != null)
-                    {
-                        var applicationApprovalRequest = new ApplicationApprovalRequest
-                        {
-                            ModuleId = module.Id,
-                            ApplicationRegistrationId = appReg.Id,
-                            ApplicationWorkFlowLevelId = workflowLevel.Id,
-                            Status = "Pending",
-                            CreatedDate = DateTime.Now,
-                            UpdatedDate = DateTime.Now
-                        };
-                        _ = _db.Set<ApplicationApprovalRequest>().Add(applicationApprovalRequest);
-                        _ = await _db.SaveChangesAsync();
-                    }
-                }
-
                 await tx.CommitAsync();
 
-                return renewedRegistration.EstablishmentRegistrationId;
+                var html = await _payment.ActionRequestPaymentRPP(100, User.FullName, User.Mobile, User.Email, User.Username, "4157FE34BBAE3A958D8F58CCBFAD7", "UWf6a7cDCP", renewedRegistration.EstablishmentRegistrationId, module.Id.ToString(), userId.ToString());
+                return html;
+
             }
             catch
             {

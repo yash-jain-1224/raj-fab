@@ -66,6 +66,7 @@ namespace RajFabAPI.DTOs
         public string? Status { get; set; }
         public string Type { get; set; } = "new";
         public bool CanAmend { get; set; }
+        public decimal Version { get; set; }
 
     }
 

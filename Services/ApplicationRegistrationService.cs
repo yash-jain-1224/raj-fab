@@ -326,7 +326,7 @@ namespace RajFabAPI.Services
                 if (applicationData == null)
                     return false;
 
-                if (applicationData.ModuleName == ApplicationTypeNames.NewEstablishment)
+                if (applicationData.ModuleName == ApplicationTypeNames.NewEstablishment || applicationData.ModuleName == ApplicationTypeNames.FactoryAmendment || applicationData.ModuleName == ApplicationTypeNames.FactoryLicenseRenewal)
                 {
 
                     var estReg = await _db.Set<EstablishmentRegistration>()

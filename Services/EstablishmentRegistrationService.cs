@@ -1259,11 +1259,13 @@ namespace RajFabAPI.Services
                         Email = est.Email,
                         Telephone = est.Telephone,
                         Mobile = est.Mobile,
-
                     }).FirstOrDefaultAsync();
                 dto.EstablishmentDetail = estDetail;
+                dto.StartDate = reg.CreatedDate;
+                dto.EndDate = reg.CreatedDate.AddYears(1);
                 dto.RegistrationDetail = new EstablishmentRegistrationDto
                 {
+                    EstablishmentRegistrationId = reg.EstablishmentRegistrationId,
                     Place = reg.Place,
                     Date = reg.Date,
                     Status = reg.Status,
@@ -2747,7 +2749,7 @@ namespace RajFabAPI.Services
                     throw new Exception("Approved establishment not found for renewal");
 
                 var newVersion = Math.Round(lastApproved.Version + 0.1m, 1);
-
+                var feeResult = 100;
                 var renewedRegistration = new EstablishmentRegistration
                 {
                     EstablishmentRegistrationId = Guid.NewGuid().ToString().ToUpper(),
@@ -2758,6 +2760,7 @@ namespace RajFabAPI.Services
                     Date = (lastApproved.Date ?? DateTime.Today).AddYears(dto.NoOfYears),
                     Version = newVersion,
                     Type = "renew",
+                    Amount = feeResult,
                     RegistrationNumber = lastApproved.RegistrationNumber,
                     ContractorDetailId = lastApproved.ContractorDetailId,
                     MainOwnerDetailId = lastApproved.MainOwnerDetailId,
@@ -2830,9 +2833,8 @@ namespace RajFabAPI.Services
                 _ = await _db.SaveChangesAsync();
                 await tx.CommitAsync();
 
-                var html = await _payment.ActionRequestPaymentRPP(100, User.FullName, User.Mobile, User.Email, User.Username, "4157FE34BBAE3A958D8F58CCBFAD7", "UWf6a7cDCP", renewedRegistration.EstablishmentRegistrationId, module.Id.ToString(), userId.ToString());
+                var html = await _payment.ActionRequestPaymentRPP(feeResult, User.FullName, User.Mobile, User.Email, User.Username, "4157FE34BBAE3A958D8F58CCBFAD7", "UWf6a7cDCP", renewedRegistration.EstablishmentRegistrationId, module.Id.ToString(), userId.ToString());
                 return html;
-
             }
             catch
             {
@@ -3386,7 +3388,7 @@ namespace RajFabAPI.Services
 
             var pdfBytes = await File.ReadAllBytesAsync(filePath);
 
-            var reg = await _db.EstablishmentRegistrations.FirstOrDefaultAsync(x => x.RegistrationNumber == dto.RegistrationDetail.ApplicationRegistrationNumber);
+            var reg = await _db.EstablishmentRegistrations.FirstOrDefaultAsync(x => x.EstablishmentRegistrationId == dto.RegistrationDetail.EstablishmentRegistrationId);
             if (reg != null)
             {
                 reg.ApplicationPDFUrl = fileUrl;

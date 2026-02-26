@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Org.BouncyCastle.Tls;
 using RajFabAPI.Services.Interface;
 
 namespace RajFabAPI.Controllers
@@ -36,6 +37,20 @@ namespace RajFabAPI.Controllers
             {
                 var redirectUrl = await _esignService.ProcessEsignResponseAsync(esignData);
                 return Redirect(redirectUrl);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpGet("/api/esign/verify/{applicationId}")]
+        public async Task<IActionResult> ManualESignVerify(string applicationId)
+        {
+            try
+            {
+                var result = await _esignService.ManualESignVerifyAsync(applicationId);
+                return CreatedAtAction(null, new { message = "Esign Completed" });
             }
             catch (Exception ex)
             {

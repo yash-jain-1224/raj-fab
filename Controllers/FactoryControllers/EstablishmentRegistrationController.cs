@@ -274,8 +274,8 @@ namespace RajFabAPI.Controllers.FactoryControllers
 
             try
             {
-                var registrationNumber = await _service.SaveEstablishmentAsync(dto, userIdGuid, "amendment", registrationId);
-                return CreatedAtAction(null, new { id = registrationNumber }, new { registrationNumber });
+                var html = await _service.SaveEstablishmentAsync(dto, userIdGuid, "amendment", registrationId);
+                return CreatedAtAction(null, new { html }, new { html });
             }
             catch (ArgumentException ex) { return BadRequest(ex.Message); }
             catch (KeyNotFoundException ex) { return NotFound(ex.Message); }
@@ -295,8 +295,8 @@ namespace RajFabAPI.Controllers.FactoryControllers
 
             try
             {
-                var registrationNumber = await _service.RenewEstablishmentAsync(dto, userIdGuid, registrationId);
-                return CreatedAtAction(null, new { id = registrationNumber }, new { registrationNumber });
+                var html = await _service.RenewEstablishmentAsync(dto, userIdGuid, registrationId);
+                return CreatedAtAction(null, new { html }, new { html });
             }
             catch (ArgumentException ex) { return BadRequest(ex.Message); }
             catch (KeyNotFoundException ex) { return NotFound(ex.Message); }

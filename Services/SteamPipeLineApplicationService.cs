@@ -10,247 +10,199 @@ namespace RajFabAPI.Services
 {
     public class SteamPipeLineApplicationService : ISteamPipeLineApplicationService
     {
-        private readonly ApplicationDbContext _context;
+        private readonly ApplicationDbContext _dbcontext;
         private readonly IWebHostEnvironment _environment;
 
         public SteamPipeLineApplicationService(ApplicationDbContext context)
         {
-            _context = context;
+            _dbcontext = context;
         }
 
-
-
-        private string GenerateStplApplicationNo()
+        private async Task<string> GenerateApplicationNumberAsync(string type)
         {
             var year = DateTime.Now.Year;
-            var random = Random.Shared.Next(10000, 99999);
-            return $"{year}/STPL/{random}";
-        }
 
-        private string GenerateStplBoilerApplicationNo()
-        {
-            var year = DateTime.Now.Year;
-            var random = Random.Shared.Next(10000, 99999);
-            return $"{year}/STPL/{random}";
-        }
-
-
-        // ======================================================
-        // CREATE / AMENDMENT 
-        // ======================================================
-        public async Task<Guid> SaveAsync(
-        CreateSteamPipeLineDto dto,
-        Guid userId,
-        string type,
-        Guid? applicationId = null)
-        {
-            SteamPipeLineApplication? approvedBase = null;
-            decimal newVersion;
-            string applicationNo;
-            string boilerApplicationNo;
-
-            // =========================
-            // ?? NEW APPLICATION
-            // =========================
-            if (type == "new")
+            string prefix = type.ToLower() switch
             {
-                newVersion = 1.0m;
-
-                applicationNo = GenerateStplApplicationNo();
-                boilerApplicationNo = GenerateStplBoilerApplicationNo();
-            }
-            // =========================
-            // ?? AMENDMENT
-            // =========================
-            else if (type == "amendment")
-            {
-                if (applicationId == null)
-                    throw new ArgumentException("applicationId is required.");
-
-                approvedBase = await _context.SteamPipeLineApplications
-                    .Where(x => x.Id == applicationId && x.Status == "Approved")
-                    .OrderByDescending(x => x.Version)
-                    .FirstOrDefaultAsync();
-
-                if (approvedBase == null)
-                    throw new InvalidOperationException("Approved application not found.");
-
-                // ? Prevent multiple pending for SAME application number
-                bool hasPending = await _context.SteamPipeLineApplications.AnyAsync(x =>
-                    x.ApplicationNo == approvedBase.ApplicationNo &&
-                    x.Status == "Pending");
-
-                if (hasPending)
-                    throw new InvalidOperationException("A pending application already exists.");
-
-                newVersion = Math.Round(approvedBase.Version + 0.1m, 1);
-                applicationNo = approvedBase.ApplicationNo;
-                boilerApplicationNo = approvedBase.BoilerApplicationNo;
-            }
-            else
-            {
-                throw new ArgumentException("Invalid application type.");
-            }
-
-            // =========================
-            // ?? INSERT NEW ROW
-            // =========================
-            var entity = new SteamPipeLineApplication
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-
-                ApplicationNo = applicationNo,
-                BoilerApplicationNo = boilerApplicationNo,
-
-                Type = type,
-                Status = "Pending",
-                Version = newVersion,
-
-                // =========================
-                // Boiler Info
-                // =========================
-                ProposedLayoutDescription = approvedBase?.ProposedLayoutDescription ?? dto.ProposedLayoutDescription,
-                ConsentLetterProvided = approvedBase?.ConsentLetterProvided ?? dto.ConsentLetterProvided,
-                SteamPipeLineDrawingNo = approvedBase?.SteamPipeLineDrawingNo ?? dto.SteamPipeLineDrawingNo,
-                BoilerMakerRegistrationNo = approvedBase?.BoilerMakerRegistrationNo ?? dto.BoilerMakerRegistrationNo,
-                ErectorName = approvedBase?.ErectorName ?? dto.ErectorName,
-
-                // =========================
-                // Factory Info
-                // =========================
-                FactoryName = approvedBase?.FactoryName ?? dto.FactoryName,
-                FactoryRegistrationNumber = approvedBase?.FactoryRegistrationNumber ?? dto.FactoryRegistrationNumber,
-                OwnerName = approvedBase?.OwnerName ?? dto.OwnerName,
-
-                // =========================
-                // Address
-                // =========================
-                PlotNo = approvedBase?.PlotNo ?? dto.PlotNo,
-                Street = approvedBase?.Street ?? dto.Street,
-                DivisionId = approvedBase?.DivisionId ?? dto.DivisionId,
-                DistrictId = approvedBase?.DistrictId ?? dto.DistrictId,
-                AreaId = approvedBase?.AreaId ?? dto.AreaId,
-                Pincode = approvedBase?.Pincode ?? dto.Pincode,
-                Mobile = approvedBase?.Mobile ?? dto.Mobile,
-
-                // =========================
-                // Pipeline Details
-                // =========================
-                PipeLengthUpTo100mm = approvedBase?.PipeLengthUpTo100mm ?? dto.PipeLengthUpTo100mm,
-                PipeLengthAbove100mm = approvedBase?.PipeLengthAbove100mm ?? dto.PipeLengthAbove100mm,
-
-                // =========================
-                // Fittings
-                // =========================
-                NoOfDeSuperHeaters = approvedBase?.NoOfDeSuperHeaters ?? dto.NoOfDeSuperHeaters,
-                NoOfSteamReceivers = approvedBase?.NoOfSteamReceivers ?? dto.NoOfSteamReceivers,
-                NoOfFeedHeaters = approvedBase?.NoOfFeedHeaters ?? dto.NoOfFeedHeaters,
-                NoOfSeparatelyFiredSuperHeaters =
-                    approvedBase?.NoOfSeparatelyFiredSuperHeaters ?? dto.NoOfSeparatelyFiredSuperHeaters,
-
-                // =========================
-                // Attachments
-                // =========================
-                FormIIPath = approvedBase?.FormIIPath ?? dto.FormIIPath,
-                FormIIIPath = approvedBase?.FormIIIPath ?? dto.FormIIIPath,
-                FormIIIAPath = approvedBase?.FormIIIAPath ?? dto.FormIIIAPath,
-                FormIIIBPath = approvedBase?.FormIIIBPath ?? dto.FormIIIBPath,
-                FormIVPath = approvedBase?.FormIVPath ?? dto.FormIVPath,
-                FormIVAPath = approvedBase?.FormIVAPath ?? dto.FormIVAPath,
-                DrawingPath = approvedBase?.DrawingPath ?? dto.DrawingPath,
-                SupportingDocumentsPath =
-                    approvedBase?.SupportingDocumentsPath ?? dto.SupportingDocumentsPath,
-
-                CreatedAt = DateTime.Now,
-                UpdatedAt = DateTime.Now
+                "new" => $"STPL{year}/CIFB/",
+                "amend" => $"STPLMAMD{year}/CIFB/",
+                "renew" => $"STPLREN{year}/CIFB/",
+                "close" => $"STPLCLOSE{year}/CIFB/",
+                _ => throw new Exception("Invalid STPL application type")
             };
 
-            _context.SteamPipeLineApplications.Add(entity);
-            await _context.SaveChangesAsync();
-
-            return entity.Id;
-        }
-
-        // ======================================================
-        // GET BY ID
-        // ======================================================
-        public async Task<SteamPipeLineResponseDto?> GetByIdAsync(Guid id)
-        {
-            return await _context.SteamPipeLineApplications
-                .AsNoTracking()
-                .Where(x => x.Id == id)
-                .Select(x => new SteamPipeLineResponseDto
-                {
-
-                    ApplicationNo = x.ApplicationNo,
-                    Status = x.Status,
-                    Version = x.Version,
-                    Type = x.Type,
-
-                    BoilerApplicationNo = x.BoilerApplicationNo,
-                    ProposedLayoutDescription = x.ProposedLayoutDescription,
-                    ConsentLetterProvided = x.ConsentLetterProvided,
-                    SteamPipeLineDrawingNo = x.SteamPipeLineDrawingNo,
-                    BoilerMakerRegistrationNo = x.BoilerMakerRegistrationNo,
-                    ErectorName = x.ErectorName,
-
-                    FactoryName = x.FactoryName,
-                    FactoryRegistrationNumber = x.FactoryRegistrationNumber,
-                    OwnerName = x.OwnerName,
-
-                    PlotNo = x.PlotNo,
-                    Street = x.Street,
-                    DivisionId = x.DivisionId,
-                    DistrictId = x.DistrictId,
-                    AreaId = x.AreaId,
-                    Pincode = x.Pincode,
-                    Mobile = x.Mobile,
-
-                    PipeLengthUpTo100mm = x.PipeLengthUpTo100mm,
-                    PipeLengthAbove100mm = x.PipeLengthAbove100mm,
-
-                    NoOfDeSuperHeaters = x.NoOfDeSuperHeaters,
-                    NoOfSteamReceivers = x.NoOfSteamReceivers,
-                    NoOfFeedHeaters = x.NoOfFeedHeaters,
-                    NoOfSeparatelyFiredSuperHeaters = x.NoOfSeparatelyFiredSuperHeaters,
-
-                    FormIIPath = x.FormIIPath,
-                    FormIIIPath = x.FormIIIPath,
-                    FormIIIAPath = x.FormIIIAPath,
-                    FormIIIBPath = x.FormIIIBPath,
-                    FormIVPath = x.FormIVPath,
-                    FormIVAPath = x.FormIVAPath,
-                    DrawingPath = x.DrawingPath,
-                    SupportingDocumentsPath = x.SupportingDocumentsPath,
-
-                    CreatedAt = x.CreatedAt,
-                    UpdatedAt = x.UpdatedAt
-                })
-                .FirstOrDefaultAsync();
-        }
-
-        // ======================================================
-        // GET BY USER
-        // ======================================================
-        public async Task<List<SteamPipeLineResponseDto>> GetByUserIdAsync(Guid userId)
-        {
-            return await _context.SteamPipeLineApplications
-                .AsNoTracking()
-                .Where(x => x.UserId == userId)
+            var lastApp = await _dbcontext.SteamPipeLineApplications
+                .Where(x => x.ApplicationId.StartsWith(prefix))
                 .OrderByDescending(x => x.CreatedAt)
-                .Select(x => new SteamPipeLineResponseDto
-                {
+                .Select(x => x.ApplicationId)
+                .FirstOrDefaultAsync();
 
-                    ApplicationNo = x.ApplicationNo,
-                    Status = x.Status,
-                    Version = x.Version,
-                    Type = x.Type,
-                    FactoryName = x.FactoryName,
-                    CreatedAt = x.CreatedAt
-                })
-                .ToListAsync();
+            int nextNumber = 1;
+
+            if (!string.IsNullOrEmpty(lastApp))
+            {
+                var lastPart = lastApp.Split('/').Last();
+                if (int.TryParse(lastPart, out int lastNo))
+                    nextNumber = lastNo + 1;
+            }
+
+            return $"{prefix}{nextNumber:D4}";
         }
+
+        private async Task<string> GenerateSteamPipeLineRegistrationNoAsync()
+        {
+            var last = await _dbcontext.SteamPipeLineApplications
+                .OrderByDescending(x => x.CreatedAt)
+                .Select(x => x.SteamPipeLineRegistrationNo)
+                .FirstOrDefaultAsync();
+
+            int next = 1;
+
+            if (!string.IsNullOrEmpty(last))
+            {
+                var number = last.Split('-').Last();
+                if (int.TryParse(number, out int n))
+                    next = n + 1;
+            }
+
+            return $"STPL-{next:D5}";
+        }
+
+        public async Task<string> SaveSteamPipeLineAsync(  CreateSteamPipeLineDto dto,    string? type,  string? steamPipeLineRegistrationNo)
+        {
+            if (dto == null)
+                throw new ArgumentNullException(nameof(dto));
+
+            type = type?.ToLower() ?? "new";
+
+            await using var tx = await _dbcontext.Database.BeginTransactionAsync();
+
+            try
+            {
+                SteamPipeLineApplication? baseRecord = null;
+
+                /* ==========================================================
+                   ?? AMENDMENT BASED ON REGISTRATION NO
+                ========================================================== */
+
+                if (type == "amend")
+                {
+                    if (string.IsNullOrWhiteSpace(steamPipeLineRegistrationNo))
+                        throw new Exception("SteamPipeLineRegistrationNo required for amendment.");
+
+                    baseRecord = await _dbcontext.SteamPipeLineApplications
+                        .Where(x =>
+                            x.SteamPipeLineRegistrationNo == steamPipeLineRegistrationNo &&
+                            x.Status == "Approved")
+                        .OrderByDescending(x => x.Version)
+                        .FirstOrDefaultAsync();
+
+                    if (baseRecord == null)
+                        throw new Exception("No approved record found for this registration.");
+
+                    // Block multiple pending amendment
+                    var pendingExists = await _dbcontext.SteamPipeLineApplications
+                        .AnyAsync(x =>
+                            x.SteamPipeLineRegistrationNo == steamPipeLineRegistrationNo &&
+                            x.Status == "Pending" &&
+                            x.Type == "amend");
+
+                    if (pendingExists)
+                        throw new Exception("Amendment already pending for this registration.");
+                }
+
+                /* ==========================================================
+                   ?? GENERATE REGISTRATION NO
+                ========================================================== */
+
+                string registrationNo;
+
+                if (type == "new")
+                {
+                    registrationNo = await GenerateSteamPipeLineRegistrationNoAsync();
+                }
+                else
+                {
+                    registrationNo = steamPipeLineRegistrationNo!;
+                }
+
+                /* ==========================================================
+                   ?? GENERATE APPLICATION ID
+                ========================================================== */
+
+                var newApplicationId = await GenerateApplicationNumberAsync(type);
+
+                /* ==========================================================
+                   ?? VERSION LOGIC
+                ========================================================== */
+
+                var version = type == "amend"
+                    ? baseRecord!.Version + 0.1m
+                    : 1.0m;
+
+                /* ==========================================================
+                   ?? INSERT
+                ========================================================== */
+
+                var entity = new SteamPipeLineApplication
+                {
+                    Id = Guid.NewGuid(),
+                   
+
+                    ApplicationId = newApplicationId,
+                    SteamPipeLineRegistrationNo = registrationNo,
+
+                    BoilerApplicationNo = dto.BoilerApplicationNo ?? baseRecord?.BoilerApplicationNo,
+                    ProposedLayoutDescription = dto.ProposedLayout ?? baseRecord?.ProposedLayoutDescription,
+                    ConsentLetterProvided = dto.ConsentLetterProvided ?? baseRecord?.ConsentLetterProvided,
+                    SteamPipeLineDrawingNo = dto.SteamPipeLineDrawingNo ?? baseRecord?.SteamPipeLineDrawingNo,
+                    BoilerMakerRegistrationNo = dto.BoilerMakerRegistrationNo ?? baseRecord?.BoilerMakerRegistrationNo,
+                    ErectorName = dto.ErectorName ?? baseRecord?.ErectorName,
+
+                    FactoryRegistrationNumber = dto.FactoryRegistrationNumber ?? baseRecord?.FactoryRegistrationNumber,
+                    Factorydetailjson = dto.Factorydetailjson ?? baseRecord?.Factorydetailjson,
+
+                    PipeLengthUpTo100mm = dto.PipeLengthUpTo100mm ?? baseRecord?.PipeLengthUpTo100mm,
+                    PipeLengthAbove100mm = dto.PipeLengthAbove100mm ?? baseRecord?.PipeLengthAbove100mm,
+
+                    NoOfDeSuperHeaters = dto.NoOfDeSuperHeaters ?? baseRecord?.NoOfDeSuperHeaters,
+                    NoOfSteamReceivers = dto.NoOfSteamReceivers ?? baseRecord?.NoOfSteamReceivers,
+                    NoOfFeedHeaters = dto.NoOfFeedHeaters ?? baseRecord?.NoOfFeedHeaters,
+                    NoOfSeparatelyFiredSuperHeaters =
+                        dto.NoOfSeparatelyFiredSuperHeaters ?? baseRecord?.NoOfSeparatelyFiredSuperHeaters,
+
+                    FormIIPath = dto.FormII ?? baseRecord?.FormIIPath,
+                    FormIIIPath = dto.FormIII ?? baseRecord?.FormIIIPath,
+                    FormIIIAPath = dto.FormIIIA ?? baseRecord?.FormIIIAPath,
+                    FormIIIBPath = dto.FormIIIB ?? baseRecord?.FormIIIBPath,
+                    FormIVPath = dto.FormIV ?? baseRecord?.FormIVPath,
+                    FormIVAPath = dto.FormIVA ?? baseRecord?.FormIVAPath,
+                    DrawingPath = dto.Drawing ?? baseRecord?.DrawingPath,
+                    SupportingDocumentsPath = dto.SupportingDocuments ?? baseRecord?.SupportingDocumentsPath,
+
+                    Type = type,
+                    Version = version,
+                    Status = "Pending",
+                    IsActive = true,
+                    CreatedAt = DateTime.Now,
+                    UpdatedAt = DateTime.Now
+                };
+
+                _dbcontext.SteamPipeLineApplications.Add(entity);
+                await _dbcontext.SaveChangesAsync();
+
+                await tx.CommitAsync();
+
+                return entity.ApplicationId;
+            }
+            catch
+            {
+                await tx.RollbackAsync();
+                throw;
+            }
+        }
+
+
 
     }
 }

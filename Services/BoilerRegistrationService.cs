@@ -199,23 +199,36 @@ namespace RajFabAPI.Services
 
                 /* =====================================================
                    ?? BOILER DETAIL
-                ===================================================== */
+                ===================================================== */              
 
                 var bd = dto.BoilerDetail ?? new BoilerTechnicalDto();
+                var renewalYears =   type == "new"  ? (bd.RenewalYears ?? 1)    : bd.RenewalYears ?? baseDetail?.RenewalYears; // amend case
+
+                var validUpto =
+                    type == "new"
+                        ? DateTime.Now.AddYears(renewalYears ?? 1)
+                        : baseDetail?.ValidUpto;
 
                 var detail = new BoilerDetail
                 {
                     Id = Guid.NewGuid(),
                     BoilerRegistrationId = registration.Id,
 
-                    // ?? Clone old values in amend, else take DTO
-                    AddressLine1 = type == "amend" ? baseDetail!.AddressLine1 : bd.AddressLine1,
-                    AddressLine2 = type == "amend" ? baseDetail!.AddressLine2 : bd.AddressLine2,
-                    DistrictId = type == "amend" ? baseDetail!.DistrictId : bd.DistrictId,
-                    SubDivisionId = type == "amend" ? baseDetail!.SubDivisionId : bd.SubDivisionId,
-                    TehsilId = type == "amend" ? baseDetail!.TehsilId : bd.TehsilId,
-                    Area = type == "amend" ? baseDetail!.Area : bd.Area,
-                    PinCode = type == "amend" ? baseDetail!.PinCode : bd.PinCode,
+                    /* ===== ADDRESS ===== */
+
+                    AddressLine1 = bd.AddressLine1 ?? baseDetail?.AddressLine1,
+                    AddressLine2 = bd.AddressLine2 ?? baseDetail?.AddressLine2,
+                    DistrictId = bd.DistrictId ?? baseDetail?.DistrictId,
+                    SubDivisionId = bd.SubDivisionId ?? baseDetail?.SubDivisionId,
+                    TehsilId = bd.TehsilId ?? baseDetail?.TehsilId,
+                    Area = bd.Area ?? baseDetail?.Area,
+                    PinCode = bd.PinCode ?? baseDetail?.PinCode,
+                    Telephone = bd.Telephone ?? baseDetail?.Telephone,
+                    Mobile = bd.Mobile ?? baseDetail?.Mobile,
+                    Email = bd.Email ?? baseDetail?.Email,
+                    ErectionTypeId = bd.ErectionTypeId ?? baseDetail?.ErectionTypeId,
+
+                    /* ===== BOILER ===== */
 
                     MakerNumber = bd.MakerNumber ?? baseDetail?.MakerNumber,
                     YearOfMake = bd.YearOfMake ?? baseDetail?.YearOfMake,
@@ -228,11 +241,37 @@ namespace RajFabAPI.Services
 
                     BoilerType = bd.BoilerTypeID ?? baseDetail?.BoilerType,
                     BoilerCategory = bd.BoilerCategoryID ?? baseDetail?.BoilerCategory,
+
+                    Superheater = bd.Superheater ?? baseDetail?.Superheater,
+                    SuperheaterOutletTemp = bd.SuperheaterOutletTemp ?? baseDetail?.SuperheaterOutletTemp,
+
+                    Economiser = bd.Economiser ?? baseDetail?.Economiser,
+                    EconomiserOutletTemp = bd.EconomiserOutletTemp ?? baseDetail?.EconomiserOutletTemp,
+
                     FurnaceType = bd.FurnaceTypeID ?? baseDetail?.FurnaceType,
 
+                    RenewalYears = renewalYears,
+                    ValidUpto = validUpto,
+
+                    /* ===== DOCUMENTS ===== */
+
+                    DrawingsPath = bd.DrawingsPath ?? baseDetail?.DrawingsPath,
+                    SpecificationPath = bd.SpecificationPath ?? baseDetail?.SpecificationPath,
+                    FormI_B_CPath = bd.FormI_B_CPath ?? baseDetail?.FormI_B_CPath,
+                    FormI_DPath = bd.FormI_DPath ?? baseDetail?.FormI_DPath,
+                    FormI_EPath = bd.FormI_EPath ?? baseDetail?.FormI_EPath,
+                    FormIV_APath = bd.FormIV_APath ?? baseDetail?.FormIV_APath,
+                    FormV_APath = bd.FormV_APath ?? baseDetail?.FormV_APath,
+                    TestCertificatesPath = bd.TestCertificatesPath ?? baseDetail?.TestCertificatesPath,
+                    WeldRepairChartsPath = bd.WeldRepairChartsPath ?? baseDetail?.WeldRepairChartsPath,
+                    PipesCertificatesPath = bd.PipesCertificatesPath ?? baseDetail?.PipesCertificatesPath,
+                    TubesCertificatesPath = bd.TubesCertificatesPath ?? baseDetail?.TubesCertificatesPath,
+                    CastingCertificatePath = bd.CastingCertificatePath ?? baseDetail?.CastingCertificatePath,
+                    ForgingCertificatePath = bd.ForgingCertificatePath ?? baseDetail?.ForgingCertificatePath,
+                    HeadersCertificatePath = bd.HeadersCertificatePath ?? baseDetail?.HeadersCertificatePath,
+                    DishedEndsInspectionPath = bd.DishedEndsInspectionPath ?? baseDetail?.DishedEndsInspectionPath,
                     BoilerAttendantCertificatePath =
                         bd.BoilerAttendantCertificatePath ?? baseDetail?.BoilerAttendantCertificatePath,
-
                     BoilerOperationEngineerCertificatePath =
                         bd.BoilerOperationEngineerCertificatePath ?? baseDetail?.BoilerOperationEngineerCertificatePath
                 };
@@ -298,7 +337,7 @@ namespace RajFabAPI.Services
             try
             {
                 /* =====================================================
-                   ?? RENEW VALIDATION (INLINE)
+                   ?? VALIDATION
                 ===================================================== */
 
                 var pendingExists = await _dbcontext.BoilerRegistrations
@@ -320,8 +359,12 @@ namespace RajFabAPI.Services
                 var lastDetail = await _dbcontext.BoilerDetails
                     .FirstAsync(x => x.BoilerRegistrationId == lastApproved.Id);
 
+                var lastPersons = await _dbcontext.PersonDetails
+                    .Where(x => x.BoilerRegistrationId == lastApproved.Id)
+                    .ToListAsync();
+
                 /* =====================================================
-                   ?? CREATE RENEW ENTRY
+                   ?? CREATE NEW REGISTRATION
                 ===================================================== */
 
                 var applicationNumber = await GenerateApplicationNumberAsync("renew");
@@ -333,14 +376,16 @@ namespace RajFabAPI.Services
                     BoilerRegistrationNo = lastApproved.BoilerRegistrationNo,
                     Type = "renew",
                     Status = "Pending",
-                    Version = Math.Round(lastApproved.Version + 0.1m, 1)
+                    Version = Math.Round(lastApproved.Version + 0.1m, 1),
+                    CreatedAt = DateTime.Now,
+                    UpdatedAt = DateTime.Now
                 };
 
                 _dbcontext.BoilerRegistrations.Add(renewed);
                 await _dbcontext.SaveChangesAsync();
 
                 /* =====================================================
-                   ?? EXTEND VALIDITY ONLY
+                   ?? CLONE BOILER DETAIL (FULL COPY)
                 ===================================================== */
 
                 var renewedDetail = new BoilerDetail
@@ -348,21 +393,97 @@ namespace RajFabAPI.Services
                     Id = Guid.NewGuid(),
                     BoilerRegistrationId = renewed.Id,
 
+                    // ?? ADDRESS
                     AddressLine1 = lastDetail.AddressLine1,
                     AddressLine2 = lastDetail.AddressLine2,
+                    DistrictId = lastDetail.DistrictId,
+                    SubDivisionId = lastDetail.SubDivisionId,
+                    TehsilId = lastDetail.TehsilId,
+                    Area = lastDetail.Area,
+                    PinCode = lastDetail.PinCode,
+                    Telephone = lastDetail.Telephone,
+                    Mobile = lastDetail.Mobile,
+                    Email = lastDetail.Email,
+                    ErectionTypeId = lastDetail.ErectionTypeId,
 
-                    RenewalYears = dto.RenewalYears,
-                    ValidUpto = (lastDetail.ValidUpto ?? DateTime.Now)
-                                .AddYears(dto.RenewalYears),
+                    // ?? TECHNICAL
+                    MakerNumber = lastDetail.MakerNumber,
+                    YearOfMake = lastDetail.YearOfMake,
+                    HeatingSurfaceArea = lastDetail.HeatingSurfaceArea,
+                    EvaporationCapacity = lastDetail.EvaporationCapacity,
+                    EvaporationUnit = lastDetail.EvaporationUnit,
+                    IntendedWorkingPressure = lastDetail.IntendedWorkingPressure,
+                    PressureUnit = lastDetail.PressureUnit,
+                    BoilerType = lastDetail.BoilerType,
+                    BoilerCategory = lastDetail.BoilerCategory,
+                    Superheater = lastDetail.Superheater,
+                    SuperheaterOutletTemp = lastDetail.SuperheaterOutletTemp,
+                    Economiser = lastDetail.Economiser,
+                    EconomiserOutletTemp = lastDetail.EconomiserOutletTemp,
+                    FurnaceType = lastDetail.FurnaceType,
+
+                    // ?? DOCUMENTS
+                    DrawingsPath = lastDetail.DrawingsPath,
+                    SpecificationPath = lastDetail.SpecificationPath,
+                    FormI_B_CPath = lastDetail.FormI_B_CPath,
+                    FormI_DPath = lastDetail.FormI_DPath,
+                    FormI_EPath = lastDetail.FormI_EPath,
+                    FormIV_APath = lastDetail.FormIV_APath,
+                    FormV_APath = lastDetail.FormV_APath,
+                    TestCertificatesPath = lastDetail.TestCertificatesPath,
+                    WeldRepairChartsPath = lastDetail.WeldRepairChartsPath,
+                    PipesCertificatesPath = lastDetail.PipesCertificatesPath,
+                    TubesCertificatesPath = lastDetail.TubesCertificatesPath,
+                    CastingCertificatePath = lastDetail.CastingCertificatePath,
+                    ForgingCertificatePath = lastDetail.ForgingCertificatePath,
+                    HeadersCertificatePath = lastDetail.HeadersCertificatePath,
+                    DishedEndsInspectionPath = lastDetail.DishedEndsInspectionPath,
 
                     BoilerAttendantCertificatePath =
                         dto.BoilerAttendantCertificatePath ?? lastDetail.BoilerAttendantCertificatePath,
 
                     BoilerOperationEngineerCertificatePath =
-                        dto.BoilerOperationEngineerCertificatePath ?? lastDetail.BoilerOperationEngineerCertificatePath
+                        dto.BoilerOperationEngineerCertificatePath ?? lastDetail.BoilerOperationEngineerCertificatePath,
+
+                    // ?? ONLY CHANGE
+                    RenewalYears = dto.RenewalYears,
+                    ValidUpto = (lastDetail.ValidUpto ?? DateTime.Now)
+                                .AddYears(dto.RenewalYears)
                 };
 
                 _dbcontext.BoilerDetails.Add(renewedDetail);
+
+                /* =====================================================
+                   ?? CLONE PERSON DETAILS
+                ===================================================== */
+
+                foreach (var person in lastPersons)
+                {
+                    _dbcontext.PersonDetails.Add(new PersonDetail
+                    {
+                        Id = Guid.NewGuid(),
+                        BoilerRegistrationId = renewed.Id,
+
+                        Role = person.Role,
+                        Name = person.Name,
+                        RelationType = person.RelationType,
+                        Designation = person.Designation,
+                       
+                        Email = person.Email,
+                        Mobile = person.Mobile,
+                        District = person.District,
+                        Pincode = person.Pincode,
+                        RelativeName = person.RelativeName,
+                        Telephone = person.Telephone,
+                        AddressLine1 = person.AddressLine1,
+                        AddressLine2 = person.AddressLine2,
+                        Tehsil = person.Tehsil,
+                        Area = person.Area,
+                        TypeOfEmployer = person.TypeOfEmployer,
+                        CreatedAt = DateTime.Now,
+                        UpdatedAt = DateTime.Now
+                    });
+                }
 
                 await _dbcontext.SaveChangesAsync();
                 await tx.CommitAsync();
@@ -376,74 +497,6 @@ namespace RajFabAPI.Services
             }
         }
 
-
-
-        //public async Task<GetBoilerResponseDto?> GetByApplicationIdAsync(string applicationId)
-        //{
-        //    var registration = await _dbcontext.BoilerRegistrations
-        //        .Include(x => x.BoilerDetail)
-        //        .Include(x => x.Persons)
-        //        .FirstOrDefaultAsync(x => x.ApplicationId == applicationId);
-
-        //    if (registration == null)
-        //        return null;
-
-        //    var owner = registration.Persons?.FirstOrDefault(x => x.Role == "MainOwner");
-        //    var maker = registration.Persons?.FirstOrDefault(x => x.Role == "BoilerMaker");
-
-        //    return new GetBoilerResponseDto
-        //    {
-        //        Id = registration.Id,
-        //        ApplicationId = registration.ApplicationId,
-        //        BoilerRegistrationNo = registration.BoilerRegistrationNo,
-        //        Status = registration.Status,
-        //        Type = registration.Type,
-        //        Version = registration.Version,
-
-        //        BoilerDetail = registration.BoilerDetail == null ? null : new BoilerTechnicalDto
-        //        {
-        //            AddressLine1 = registration.BoilerDetail.AddressLine1,
-        //            AddressLine2 = registration.BoilerDetail.AddressLine2,
-        //            DistrictId = registration.BoilerDetail.DistrictId,
-        //            SubDivisionId = registration.BoilerDetail.SubDivisionId,
-        //            TehsilId = registration.BoilerDetail.TehsilId,
-        //            Area = registration.BoilerDetail.Area,
-        //            PinCode = registration.BoilerDetail.PinCode,
-        //            Telephone = registration.BoilerDetail.Telephone,
-        //            Mobile = registration.BoilerDetail.Mobile,
-        //            Email = registration.BoilerDetail.Email,
-        //            MakerNumber = registration.BoilerDetail.MakerNumber,
-        //            YearOfMake = registration.BoilerDetail.YearOfMake,
-        //            HeatingSurfaceArea = registration.BoilerDetail.HeatingSurfaceArea
-        //        },
-
-        //        Owner = owner == null ? null : new PersonDetailDto
-        //        {
-        //            Name = owner.Name,
-        //            Designation = owner.Designation,
-        //            AddressLine1 = owner.AddressLine1,
-        //            AddressLine2 = owner.AddressLine2,
-        //            District = owner.District,
-        //            Tehsil = owner.Tehsil,
-        //            Area = owner.Area,
-        //            Mobile = owner.Mobile,
-        //            Email = owner.Email
-        //        },
-
-        //        Maker = maker == null ? null : new PersonDetailDto
-        //        {
-        //            Name = maker.Name,
-        //            Designation = maker.Designation,
-        //            AddressLine1 = maker.AddressLine1,
-        //            AddressLine2 = maker.AddressLine2,
-        //            District = maker.District,
-        //            Tehsil = maker.Tehsil,
-        //            Area = maker.Area,
-        //            Mobile = maker.Mobile,
-        //            Email = maker.Email
-        //        }
-        //    };
-        //}
 
         public async Task<GetBoilerResponseDto?> GetByApplicationIdAsync(string applicationId)
         {
@@ -476,7 +529,8 @@ namespace RajFabAPI.Services
 
                 BoilerDetail = registration.BoilerDetail == null ? null : new BoilerTechnicalDto
                 {
-                    // ADDRESS
+                    /* ===== ADDRESS ===== */
+
                     AddressLine1 = registration.BoilerDetail.AddressLine1,
                     AddressLine2 = registration.BoilerDetail.AddressLine2,
                     DistrictId = registration.BoilerDetail.DistrictId,
@@ -484,31 +538,56 @@ namespace RajFabAPI.Services
                     TehsilId = registration.BoilerDetail.TehsilId,
                     Area = registration.BoilerDetail.Area,
                     PinCode = registration.BoilerDetail.PinCode,
-
-                    // CONTACT
                     Telephone = registration.BoilerDetail.Telephone,
                     Mobile = registration.BoilerDetail.Mobile,
                     Email = registration.BoilerDetail.Email,
+                    ErectionTypeId = registration.BoilerDetail.ErectionTypeId,
+                    RenewalYears = registration.BoilerDetail.RenewalYears,
 
-                    // TECHNICAL
+                    /* ===== BOILER ===== */
+
                     MakerNumber = registration.BoilerDetail.MakerNumber,
                     YearOfMake = registration.BoilerDetail.YearOfMake,
                     HeatingSurfaceArea = registration.BoilerDetail.HeatingSurfaceArea,
+
                     EvaporationCapacity = registration.BoilerDetail.EvaporationCapacity,
                     EvaporationUnit = registration.BoilerDetail.EvaporationUnit,
+
                     IntendedWorkingPressure = registration.BoilerDetail.IntendedWorkingPressure,
                     PressureUnit = registration.BoilerDetail.PressureUnit,
 
                     BoilerTypeID = registration.BoilerDetail.BoilerType,
                     BoilerCategoryID = registration.BoilerDetail.BoilerCategory,
+
+                    Superheater = registration.BoilerDetail.Superheater,
+                    SuperheaterOutletTemp = registration.BoilerDetail.SuperheaterOutletTemp,
+
+                    Economiser = registration.BoilerDetail.Economiser,
+                    EconomiserOutletTemp = registration.BoilerDetail.EconomiserOutletTemp,
+
                     FurnaceTypeID = registration.BoilerDetail.FurnaceType,
 
-                    // CERTIFICATES
-                    BoilerAttendantCertificatePath =
-                        registration.BoilerDetail.BoilerAttendantCertificatePath,
+                    /* ===== DOCUMENTS ===== */
 
-                    BoilerOperationEngineerCertificatePath =
-                        registration.BoilerDetail.BoilerOperationEngineerCertificatePath
+                    DrawingsPath = registration.BoilerDetail.DrawingsPath,
+                    SpecificationPath = registration.BoilerDetail.SpecificationPath,
+                    FormI_B_CPath = registration.BoilerDetail.FormI_B_CPath,
+                    FormI_DPath = registration.BoilerDetail.FormI_DPath,
+                    FormI_EPath = registration.BoilerDetail.FormI_EPath,
+                    FormIV_APath = registration.BoilerDetail.FormIV_APath,
+                    FormV_APath = registration.BoilerDetail.FormV_APath,
+                    TestCertificatesPath = registration.BoilerDetail.TestCertificatesPath,
+                    WeldRepairChartsPath = registration.BoilerDetail.WeldRepairChartsPath,
+                    PipesCertificatesPath = registration.BoilerDetail.PipesCertificatesPath,
+                    TubesCertificatesPath = registration.BoilerDetail.TubesCertificatesPath,
+                    CastingCertificatePath = registration.BoilerDetail.CastingCertificatePath,
+                    ForgingCertificatePath = registration.BoilerDetail.ForgingCertificatePath,
+                    HeadersCertificatePath = registration.BoilerDetail.HeadersCertificatePath,
+                    DishedEndsInspectionPath = registration.BoilerDetail.DishedEndsInspectionPath,
+
+                    BoilerAttendantCertificatePath = registration.BoilerDetail.BoilerAttendantCertificatePath,
+
+                    BoilerOperationEngineerCertificatePath = registration.BoilerDetail.BoilerOperationEngineerCertificatePath
                 },
 
                 Owner = owner == null ? null : new PersonDetailDto

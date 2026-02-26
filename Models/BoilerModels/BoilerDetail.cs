@@ -21,7 +21,7 @@ namespace RajFabAPI.Models.BoilerModels
         public Guid? DistrictId { get; set; }
         public Guid? SubDivisionId { get; set; }
         public Guid? TehsilId { get; set; }
-        public int? Area { get; set; }
+        public String? Area { get; set; }
         public int? PinCode { get; set; }
         public int? RenewalYears { get; set; }
         public DateTime? ValidUpto { get; set; } // calculated expiry

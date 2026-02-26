@@ -18,69 +18,56 @@ namespace RajFabAPI.Controllers.SteamPipeLineApplicationControllers
             _service = service;
         }
 
-        // ======================================================
-        // CREATE (NEW REGISTRATION)
-        // ======================================================
         [HttpPost("create")]
-        public async Task<IActionResult> Create([FromBody] CreateSteamPipeLineDto dto)
+        public async Task<IActionResult> Create( [FromBody] CreateSteamPipeLineDto dto)
         {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            // ?? Get UserId from JWT
             var userId = User.FindFirst("userId")?.Value;
-            var userIdGuid = Guid.TryParse(userId, out var parsedGuid) ? parsedGuid : Guid.Empty;
+            var userIdGuid = Guid.TryParse(userId, out var parsedGuid)
+                ? parsedGuid
+                : Guid.Empty;
+
             if (userIdGuid == Guid.Empty)
-                return Unauthorized("Invalid user.");         
+                return Unauthorized("Invalid user.");
 
-            var id = await _service.SaveAsync(dto, userIdGuid, "new");
+            var applicationId = await _service.SaveSteamPipeLineAsync(  dto,  "new",  null);
 
-            return CreatedAtAction(
-                 nameof(GetById),
-                 new { id },
-                 new { SptlId = id });
+            return Ok(new
+            {
+                Message = "Steam Pipe Line application created successfully.",
+                ApplicationId = applicationId
+            });
         }
 
-        // ======================================================
-        // AMENDMENT
-        // ======================================================
-        [HttpPost("amendment/{applicationId:guid}")]
-        public async Task<IActionResult> Amendment( Guid applicationId, [FromBody] CreateSteamPipeLineDto dto)
+        /* ==========================================================
+           ? AMEND (BASED ON REGISTRATION NO)
+        ========================================================== */
+
+        [HttpPost("amend/{steamPipeLineRegistrationNo}")]
+        public async Task<IActionResult> Amend(  string steamPipeLineRegistrationNo,  [FromBody] CreateSteamPipeLineDto dto)
         {
+            if (string.IsNullOrWhiteSpace(steamPipeLineRegistrationNo))
+                return BadRequest("SteamPipeLineRegistrationNo is required.");
 
             var userId = User.FindFirst("userId")?.Value;
-            var userIdGuid = Guid.TryParse(userId, out var parsedGuid) ? parsedGuid : Guid.Empty;
+            var userIdGuid = Guid.TryParse(userId, out var parsedGuid)
+                ? parsedGuid
+                : Guid.Empty;
+
             if (userIdGuid == Guid.Empty)
-                return Unauthorized("Invalid user.");        
+                return Unauthorized("Invalid user.");
 
+            var newAppId = await _service.SaveSteamPipeLineAsync(  dto,  "amend",  steamPipeLineRegistrationNo);
 
-            var id = await _service.SaveAsync(dto, userIdGuid, "amendment", applicationId);
-
-            return CreatedAtAction(
-               nameof(GetById),
-               new { id },
-               new { SptlId = id });
+            return Ok(new
+            {
+                Message = "Amendment submitted successfully.",
+                ApplicationId = newAppId
+            });
         }
 
-        // ======================================================
-        // GET BY ID
-        // ======================================================
-        [HttpGet("{id:guid}")]
-        public async Task<IActionResult> GetById(Guid id)
-        {
-            var result = await _service.GetByIdAsync(id);
-            if (result == null)
-                return NotFound();
-
-            return Ok(result);
-        }
-
-        // ======================================================
-        // GET BY USER
-        // ======================================================
-        [HttpGet]
-        public async Task<IActionResult> GetMyApplications()
-        {
-            var userId = Guid.Parse(User.FindFirst("userId")!.Value);
-            var result = await _service.GetByUserIdAsync(userId);
-
-            return Ok(result);
-        }
     }
 }

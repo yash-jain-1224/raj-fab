@@ -5,16 +5,10 @@ namespace RajFabAPI.Services.Interface
 {
     public interface ISteamPipeLineApplicationService
     {
-        Task<Guid> SaveAsync(
-            CreateSteamPipeLineDto dto,
-            Guid userId,
-            string type,
-            Guid? applicationId = null
-        );
+        Task<string> SaveSteamPipeLineAsync(CreateSteamPipeLineDto dto, string? type, string? steamPipeLineRegistrationNo);
 
-        Task<SteamPipeLineResponseDto?> GetByIdAsync(Guid id);
 
-        Task<List<SteamPipeLineResponseDto>> GetByUserIdAsync(Guid userId);
+
     }
 
 

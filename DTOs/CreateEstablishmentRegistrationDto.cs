@@ -91,8 +91,11 @@ namespace RajFabAPI.DTOs
         public string? ManuacturingDetail { get; set; }
         public string? Situation { get; set; }
         public string DistrictId { get; set; }
+        public string? DistrictName { get; set; }
         public string SubDivisionId { get; set; }
+        public string? SubDivisionName { get; set; }
         public string TehsilId { get; set; }
+        public string? TehsilName { get; set; }
         public string? AddressLine1 { get; set; }
         public string? AddressLine2 { get; set; }
         public string? Area { get; set; }
@@ -100,7 +103,7 @@ namespace RajFabAPI.DTOs
         public string? Email { get; set; }
         public string? Telephone { get; set; }
         public string? Mobile { get; set; }
-        public string? DistrictName { get; set; }
+        public DateTime? CreatedAt { get; set; }
         public PersonShortDto? EmployerDetail { get; set; }
         public PersonShortDto? ManagerDetail { get; set; }
         public int? NumberOfWorker { get; set; }
@@ -121,9 +124,11 @@ namespace RajFabAPI.DTOs
         public Guid ManagerId { get; set; }
         
         public string DistrictId { get; set; }
-        public string? SubDivisionId { get; set; }
-        public string TehsilId { get; set; }
         public string DistrictName { get; set; }
+        public string? SubDivisionId { get; set; }
+        public string SubDivisionName { get; set; }
+        public string TehsilId { get; set; }
+        public string TehsilName { get; set; }
         public string Area { get; set; }
         public string? AddressLine1 { get; set; }
         public string? AddressLine2 { get; set; }
@@ -137,6 +142,7 @@ namespace RajFabAPI.DTOs
         public int? NumberOfWorker { get; set; }
         public decimal? SanctionedLoad { get; set; }
         public string? SanctionedLoadUnit { get; set; }
+        public DateTime? CreatedAt { get; set; }
 
         public string? OwnershipTypeSector { get; set; }
         public string? ActivityAsPerNIC { get; set; }

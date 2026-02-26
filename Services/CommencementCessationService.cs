@@ -55,7 +55,7 @@ namespace RajFabAPI.Services
                 return null;
 
             var entity = await _context.CommencementCessationApplication
-                .FirstOrDefaultAsync(x => x.ApplicationId == id);
+                .FirstOrDefaultAsync(x => x.Id.ToString() == id);
 
             if (entity == null)
                 return null;
@@ -70,9 +70,10 @@ namespace RajFabAPI.Services
                 FactoryRegistrationNumber = entity.FactoryRegistrationNumber,
                 Type = entity.Type,
                 ApproxDurationOfWork = entity.ApproxDurationOfWork,
-                CessationIntimationDate = entity.CessationIntimationDate,
-                CessationIntimationEffectiveDate = entity.CessationIntimationEffectiveDate,
-                OccupierSignature = entity.OccupierSignature,
+                OnDate = entity.OnDate,
+                FromDate = entity.FromDate,
+                Reason = entity.Reason,
+                DateOfCessation = entity.DateOfCessation,
                 Status = entity.Status,
                 CreatedAt = entity.CreatedDate,
                 UpdatedDate = entity.UpdatedDate,
@@ -123,10 +124,11 @@ namespace RajFabAPI.Services
                     ApplicationId = Guid.NewGuid().ToString().ToUpper(),
                     Type = request.Type,
                     FactoryRegistrationNumber = request.FactoryRegistrationNumber,
-                    CessationIntimationDate = request.CessationIntimationDate,
-                    CessationIntimationEffectiveDate = request.CessationIntimationEffectiveDate,
-                    ApproxDurationOfWork = request.ApproxDurationOfWork,
-                    OccupierSignature = request.OccupierSignature,
+                    Reason = request.Reason,
+                    OnDate = request.OnDate,
+                    FromDate = request.FromDate,
+                    ApproxDurationOfWork = request?.ApproxDurationOfWork,
+                    DateOfCessation = request?.DateOfCessation,
                     Status = "Pending",
                     Version = 1.0m,
                     IsActive = true,
@@ -223,10 +225,11 @@ namespace RajFabAPI.Services
             // Update fields
             entity.Type = request.Type;
             entity.FactoryRegistrationNumber = request.FactoryRegistrationNumber;
-            entity.CessationIntimationDate = request.CessationIntimationDate;
-            entity.CessationIntimationEffectiveDate = request.CessationIntimationEffectiveDate;
+            entity.FromDate = request.FromDate;
+            entity.OnDate = request.OnDate;
+            entity.Reason = request.Reason;
             entity.ApproxDurationOfWork = request.ApproxDurationOfWork;
-            entity.OccupierSignature = request.OccupierSignature;
+            entity.DateOfCessation = request.DateOfCessation;
             entity.UpdatedDate = DateTime.Now;
 
             // Optional: Update version if needed
@@ -250,10 +253,11 @@ namespace RajFabAPI.Services
                 Id = entity.Id,
                 Type = entity.Type,
                 FactoryRegistrationNumber = entity.FactoryRegistrationNumber,
-                CessationIntimationDate = entity.CessationIntimationDate,
-                CessationIntimationEffectiveDate = entity.CessationIntimationEffectiveDate,
+                OnDate = entity.OnDate,
+                FromDate = entity.FromDate,
                 ApproxDurationOfWork = entity.ApproxDurationOfWork,
-                OccupierSignature = entity.OccupierSignature,
+                Reason = entity.Reason,
+                DateOfCessation = entity.DateOfCessation,
                 Status = entity.Status,
                 Version = entity.Version,
                 IsActive = entity.IsActive,
@@ -335,8 +339,9 @@ namespace RajFabAPI.Services
             var appTable = CreateTable();
             AddRow(appTable, "Application Type", appData?.Type, boldFont, regularFont);
             AddRow(appTable, "Approx. Duration of Work", appData?.ApproxDurationOfWork, boldFont, regularFont);
-            AddRow(appTable, "Cessation Intimation Date", appData?.CessationIntimationDate?.ToString("dd/MM/yyyy"), boldFont, regularFont);
-            AddRow(appTable, "Cessation Effective Date", appData?.CessationIntimationEffectiveDate?.ToString("dd/MM/yyyy"), boldFont, regularFont);
+            AddRow(appTable, "Reason", appData?.Reason, boldFont, regularFont);
+            AddRow(appTable, "Cessation Intimation Date", appData?.FromDate?.ToString("dd/MM/yyyy"), boldFont, regularFont);
+            AddRow(appTable, "Cessation Effective Date", appData?.OnDate?.ToString("dd/MM/yyyy"), boldFont, regularFont);
             AddRow(appTable, "Status", appData?.Status, boldFont, regularFont);
 
             document.Add(appTable);

@@ -934,17 +934,17 @@ namespace RajFabAPI.Services
                                 from f in _db.Set<FactoryDetail>().AsNoTracking()
                                 where f.Id == map.EntityId
 
-                                join area in _db.Set<Area>().AsNoTracking()
-                                    on f.SubDivisionId equals area.Id.ToString() into areaJoin
-                                from areaDetail in areaJoin.DefaultIfEmpty()
+                                join subDiv in _db.Set<City>().AsNoTracking()
+                                    on f.SubDivisionId equals subDiv.Id.ToString() into subDivJoin
+                                from subDivisionDetail in subDivJoin.DefaultIfEmpty()
+
+                                join tehsil in _db.Set<Tehsil>().AsNoTracking()
+                                    on f.TehsilId equals tehsil.Id.ToString() into tehsilJoin
+                                from tehsilDetail in tehsilJoin.DefaultIfEmpty()
 
                                 join district in _db.Set<District>().AsNoTracking()
-                                    on areaDetail.DistrictId equals district.Id into districtJoin
+                                    on subDivisionDetail.DistrictId equals district.Id into districtJoin
                                 from districtDetail in districtJoin.DefaultIfEmpty()
-
-                                join division in _db.Set<Division>().AsNoTracking()
-                                    on districtDetail.DivisionId equals division.Id into divisionJoin
-                                from divisionDetail in divisionJoin.DefaultIfEmpty()
 
                                 select new FactoryDetailsDto
                                 {
@@ -952,11 +952,15 @@ namespace RajFabAPI.Services
                                     Situation = f.Situation,
 
                                     SubDivisionId = f.SubDivisionId,
-                                    Area = f.Area,
+                                    SubDivisionName = subDivisionDetail.Name,
 
-                                    DistrictId = areaDetail.DistrictId.ToString(),
+                                    TehsilId = f.TehsilId,
+                                    TehsilName = tehsilDetail.Name,
+
+                                    DistrictId = districtDetail.Id.ToString(),
                                     DistrictName = districtDetail.Name,
 
+                                    Area = f.Area,
                                     AddressLine1 = f.AddressLine1,
                                     AddressLine2 = f.AddressLine2,
                                     Pincode = f.Pincode ?? "",
@@ -970,6 +974,7 @@ namespace RajFabAPI.Services
                                     NumberOfWorker = f.NumberOfWorker ?? 0,
                                     SanctionedLoad = f.SanctionedLoad ?? 0,
                                     SanctionedLoadUnit = f.SanctionedLoadUnit,
+                                    CreatedAt = f.CreatedAt,
 
                                     OwnershipTypeSector = f.OwnershipTypeSector,
                                     ActivityAsPerNIC = f.ActivityAsPerNIC,
@@ -983,12 +988,15 @@ namespace RajFabAPI.Services
                                 result.Factory = new FactoryDto
                                 {
                                     ManuacturingDetail = factory.ManuacturingDetail,
+                                    DistrictId = factory.DistrictId,
+                                    DistrictName = factory.DistrictName,
                                     SubDivisionId = factory.SubDivisionId,
+                                    SubDivisionName = factory.SubDivisionName,
+                                    TehsilId = factory.TehsilId,
+                                    TehsilName = factory.TehsilName,
                                     AddressLine1 = factory.AddressLine1,
                                     AddressLine2 = factory.AddressLine2,
                                     Area = factory.Area,
-                                    DistrictId = factory.DistrictId,
-                                    DistrictName = factory.DistrictName,
                                     Pincode = factory.Pincode ?? "",
                                     Email = factory.Email ?? "",
                                     Telephone = factory.Telephone ?? "",
@@ -999,7 +1007,8 @@ namespace RajFabAPI.Services
                                     OwnershipTypeSector = factory.OwnershipTypeSector,
                                     ActivityAsPerNIC = factory.ActivityAsPerNIC,
                                     NICCodeDetail = factory.NICCodeDetail,
-                                    IdentificationOfEstablishment = factory.IdentificationOfEstablishment
+                                    IdentificationOfEstablishment = factory.IdentificationOfEstablishment,
+                                    CreatedAt = factory.CreatedAt,
                                 };
                                 if (factory.EmployerId != null)
                                 {
@@ -2829,7 +2838,7 @@ namespace RajFabAPI.Services
                 };
 
                 _ = _db.ApplicationRegistrations.Add(appReg);
-                
+
                 _ = await _db.SaveChangesAsync();
                 await tx.CommitAsync();
 

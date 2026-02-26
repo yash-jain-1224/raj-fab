@@ -14,13 +14,16 @@ namespace RajFabAPI.DTOs
         public string FactoryRegistrationNumber { get; set; }
 
         [Required]
-        public string OccupierSignature { get; set; }
+        [StringLength(500)]
+        public string Reason { get; set; }
 
         [Required]
-        public DateTime CessationIntimationDate { get; set; }
+        public DateTime OnDate { get; set; }
 
         [Required]
-        public DateTime CessationIntimationEffectiveDate { get; set; }
+        public DateTime FromDate { get; set; }
+
+        public DateTime? DateOfCessation { get; set; }
 
         [StringLength(50)]
         public string? ApproxDurationOfWork { get; set; }
@@ -32,8 +35,10 @@ namespace RajFabAPI.DTOs
         public string ApplicationId { get; set; }
         public string Type { get; set; }
         public string FactoryRegistrationNumber { get; set; }
-        public DateTime? CessationIntimationDate { get; set; }
-        public DateTime? CessationIntimationEffectiveDate { get; set; }
+        public string Reason { get; set; }
+        public DateTime? FromDate { get; set; }
+        public DateTime? OnDate { get; set; }
+        public DateTime? DateOfCessation { get; set; }
         public string? ApproxDurationOfWork { get; set; }
         public string Status { get; set; }
         public DateTime CreatedAt { get; set; }

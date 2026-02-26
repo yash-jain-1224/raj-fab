@@ -22,15 +22,19 @@ namespace RajFabAPI.Models
         public string FactoryRegistrationNumber { get; set; }
 
         [Required]
-        public DateTime CessationIntimationDate { get; set; }
+        [StringLength(500)]
+        public string Reason { get; set; }
+
         [Required]
-        public DateTime CessationIntimationEffectiveDate { get; set; }
+        public DateTime OnDate { get; set; }
+        [Required]
+        public DateTime FromDate { get; set; }
+
+        public DateTime? DateOfCessation { get; set; }
 
         [StringLength(50)]
         public string? ApproxDurationOfWork { get; set; }
 
-        [Required]
-        public string OccupierSignature { get; set; }
         public bool IsESignCompleted { get; set; } = false;
         public string? ApplicationPDFUrl { get; set; }
 

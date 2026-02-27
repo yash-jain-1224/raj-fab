@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using RajFabAPI.DTOs;
 using RajFabAPI.Services;
 using RajFabAPI.Services.Interface;
+using System.Net;
 
 namespace RajFabAPI.Controllers.SteamPipeLineApplicationControllers
 {
@@ -69,5 +70,66 @@ namespace RajFabAPI.Controllers.SteamPipeLineApplicationControllers
             });
         }
 
+        [HttpPost("renew")]
+        public async Task<IActionResult> Renew( [FromBody] RenewSteamPipeLineDto dto)
+        {
+            var appId = await _service.RenewSteamPipeLineAsync(dto);
+
+            return Ok(new
+            {
+                Message = "Steam Pipe Line renewed successfully.",
+                ApplicationId = appId
+            });
+        }
+
+        [HttpGet("by-application/{applicationId}")]
+        public async Task<IActionResult> GetByApplicationId(string applicationId)
+        {
+            if (string.IsNullOrWhiteSpace(applicationId))
+                return BadRequest("ApplicationId is required.");
+
+            var result = await _service
+                .GetSteamPipeLineByApplicationIdAsync(WebUtility.UrlDecode(applicationId));
+
+            if (result == null)
+                return NotFound("Application not found.");
+
+            return Ok(result);
+        }
+
+        /* ============================================
+           GET BY REGISTRATION NO (ALL VERSIONS)
+        ============================================ */
+
+        [HttpGet("by-registration/{registrationNo}")]
+        public async Task<IActionResult> GetByRegistrationNo(string registrationNo)
+        {
+            if (string.IsNullOrWhiteSpace(registrationNo))
+                return BadRequest("RegistrationNo is required.");
+
+            var result = await _service
+                .GetSteamPipeLineByRegistrationNoAsync(registrationNo);
+
+            if (result == null || !result.Any())
+                return NotFound("No records found.");
+
+            return Ok(result);
+        }
+
+        [HttpPost("update/{applicationId}")]
+        public async Task<IActionResult> Update(  string applicationId,   [FromBody] CreateSteamPipeLineDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var result = await _service
+                .UpdateSteamPipeLineAsync(WebUtility.UrlDecode(applicationId), dto);
+
+            return Ok(new
+            {
+                Message = "Application updated successfully.",
+                ApplicationId = result
+            });
+        }
     }
 }

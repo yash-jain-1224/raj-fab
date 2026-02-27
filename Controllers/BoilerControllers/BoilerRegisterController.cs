@@ -112,6 +112,20 @@ namespace RajFabAPI.Controllers.BoilerControllers
             return Ok(result);
         }
 
+        [HttpGet("reg/{registrationNo}")]
+        public async Task<IActionResult> GetLatestApproved(string registrationNo)
+        {
+            if (string.IsNullOrWhiteSpace(WebUtility.UrlDecode(registrationNo)))
+                return BadRequest("BoilerRegistrationNo is required.");
+
+            var result = await _boilerService.GetLatestApprovedByRegistrationNoAsync(registrationNo);
+
+            if (result == null)
+                return NotFound("No approved record found.");
+
+            return Ok(result);
+        }
+
         [HttpPost("update")]
         public async Task<IActionResult> UpdateByApplicationId(string applicationId, [FromBody] CreateBoilerRegistrationDto dto)
         {

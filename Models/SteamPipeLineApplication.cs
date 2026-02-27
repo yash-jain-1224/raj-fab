@@ -23,6 +23,9 @@ namespace RajFabAPI.Models
         public int? NoOfSteamReceivers { get; set; }
         public int? NoOfFeedHeaters { get; set; }
         public int? NoOfSeparatelyFiredSuperHeaters { get; set; }
+        public int? RenewalYears { get; set; }
+        public DateTime? ValidFrom { get; set; }
+        public DateTime? ValidUpto { get; set; }
         public string? FormIIPath { get; set; }
         public string? FormIIIPath { get; set; }
         public string? FormIIIAPath { get; set; }

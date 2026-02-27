@@ -698,7 +698,129 @@ namespace RajFabAPI.Services
         }
 
 
+        public async Task<GetBoilerResponseDto?>
+     GetLatestApprovedByRegistrationNoAsync(string registrationNo)
+        {
+            if (string.IsNullOrWhiteSpace(registrationNo))
+                throw new ArgumentException("BoilerRegistrationNo is required.");
 
+            // ?? Get absolute latest version (ignore status)
+            var latest = await _dbcontext.BoilerRegistrations
+                .Include(x => x.BoilerDetail)
+                .Include(x => x.Persons)
+                .Where(x => x.BoilerRegistrationNo == registrationNo)
+                .OrderByDescending(x => x.Version)
+                .FirstOrDefaultAsync();
+
+            if (latest == null)
+                return null;
+
+            // ?? Only return if latest is Approved
+            if (!latest.Status.Equals("Approved", StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            var owner = latest.Persons?
+                .FirstOrDefault(x =>
+                    x.Role != null &&
+                    x.Role.Equals("MainOwner", StringComparison.OrdinalIgnoreCase));
+
+            var maker = latest.Persons?
+                .FirstOrDefault(x =>
+                    x.Role != null &&
+                    x.Role.Equals("BoilerMaker", StringComparison.OrdinalIgnoreCase));
+
+            return new GetBoilerResponseDto
+            {
+                Id = latest.Id,
+                ApplicationId = latest.ApplicationId,
+                BoilerRegistrationNo = latest.BoilerRegistrationNo,
+                Status = latest.Status,
+                Type = latest.Type,
+                Version = latest.Version,
+                CreatedAt = latest.CreatedAt,
+                UpdatedAt = latest.UpdatedAt,
+
+                BoilerDetail = latest.BoilerDetail == null ? null : new BoilerTechnicalDto
+                {
+                    AddressLine1 = latest.BoilerDetail.AddressLine1,
+                    AddressLine2 = latest.BoilerDetail.AddressLine2,
+                    DistrictId = latest.BoilerDetail.DistrictId,
+                    SubDivisionId = latest.BoilerDetail.SubDivisionId,
+                    TehsilId = latest.BoilerDetail.TehsilId,
+                    Area = latest.BoilerDetail.Area,
+                    PinCode = latest.BoilerDetail.PinCode,
+                    Telephone = latest.BoilerDetail.Telephone,
+                    Mobile = latest.BoilerDetail.Mobile,
+                    Email = latest.BoilerDetail.Email,
+                    RenewalYears = latest.BoilerDetail.RenewalYears,
+
+                    MakerNumber = latest.BoilerDetail.MakerNumber,
+                    YearOfMake = latest.BoilerDetail.YearOfMake,
+                    HeatingSurfaceArea = latest.BoilerDetail.HeatingSurfaceArea,
+                    EvaporationCapacity = latest.BoilerDetail.EvaporationCapacity,
+                    EvaporationUnit = latest.BoilerDetail.EvaporationUnit,
+                    IntendedWorkingPressure = latest.BoilerDetail.IntendedWorkingPressure,
+                    PressureUnit = latest.BoilerDetail.PressureUnit,
+                    BoilerTypeID = latest.BoilerDetail.BoilerType,
+                    BoilerCategoryID = latest.BoilerDetail.BoilerCategory,
+                    Superheater = latest.BoilerDetail.Superheater,
+                    SuperheaterOutletTemp = latest.BoilerDetail.SuperheaterOutletTemp,
+                    Economiser = latest.BoilerDetail.Economiser,
+                    EconomiserOutletTemp = latest.BoilerDetail.EconomiserOutletTemp,
+                    FurnaceTypeID = latest.BoilerDetail.FurnaceType,
+
+                    DrawingsPath = latest.BoilerDetail.DrawingsPath,
+                    SpecificationPath = latest.BoilerDetail.SpecificationPath,
+                    FormI_B_CPath = latest.BoilerDetail.FormI_B_CPath,
+                    FormI_DPath = latest.BoilerDetail.FormI_DPath,
+                    FormI_EPath = latest.BoilerDetail.FormI_EPath,
+                    FormIV_APath = latest.BoilerDetail.FormIV_APath,
+                    FormV_APath = latest.BoilerDetail.FormV_APath,
+                    TestCertificatesPath = latest.BoilerDetail.TestCertificatesPath,
+                    WeldRepairChartsPath = latest.BoilerDetail.WeldRepairChartsPath,
+                    PipesCertificatesPath = latest.BoilerDetail.PipesCertificatesPath,
+                    TubesCertificatesPath = latest.BoilerDetail.TubesCertificatesPath,
+                    CastingCertificatePath = latest.BoilerDetail.CastingCertificatePath,
+                    ForgingCertificatePath = latest.BoilerDetail.ForgingCertificatePath,
+                    HeadersCertificatePath = latest.BoilerDetail.HeadersCertificatePath,
+                    DishedEndsInspectionPath = latest.BoilerDetail.DishedEndsInspectionPath,
+                    BoilerAttendantCertificatePath =
+                        latest.BoilerDetail.BoilerAttendantCertificatePath,
+                    BoilerOperationEngineerCertificatePath =
+                        latest.BoilerDetail.BoilerOperationEngineerCertificatePath
+                },
+
+                Owner = owner == null ? null : new PersonDetailDto
+                {
+                    Name = owner.Name,
+                    Designation = owner.Designation,
+                    AddressLine1 = owner.AddressLine1,
+                    AddressLine2 = owner.AddressLine2,
+                    District = owner.District,
+                    Tehsil = owner.Tehsil,
+                    Area = owner.Area,
+                    Pincode = owner.Pincode,
+                    Telephone = owner.Telephone,
+                    Mobile = owner.Mobile,
+                    Email = owner.Email
+                },
+
+                Maker = maker == null ? null : new PersonDetailDto
+                {
+                    Name = maker.Name,
+                    Designation = maker.Designation,
+                    AddressLine1 = maker.AddressLine1,
+                    AddressLine2 = maker.AddressLine2,
+                    District = maker.District,
+                    Tehsil = maker.Tehsil,
+                    Area = maker.Area,
+                    Pincode = maker.Pincode,
+                    Telephone = maker.Telephone,
+                    Mobile = maker.Mobile,
+                    Email = maker.Email
+                }
+            };
+        }
         public async Task<bool> UpdateBoilerAsync(string applicationId, CreateBoilerRegistrationDto dto)
         {
             if (string.IsNullOrWhiteSpace(applicationId))

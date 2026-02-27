@@ -10,6 +10,7 @@ namespace RajFabAPI.Services.Interface
 
         Task<GetBoilerResponseDto?> GetByApplicationIdAsync(string applicationId);
         Task<List<GetBoilerResponseDto>> GetAllFullAsync();
+        Task<GetBoilerResponseDto?> GetLatestApprovedByRegistrationNoAsync(string registrationNo);
         Task<bool> UpdateBoilerAsync(string applicationId, CreateBoilerRegistrationDto dto);
 
         Task<string> CreateClosureAsync(CreateBoilerClosureDto dto, Guid userId);

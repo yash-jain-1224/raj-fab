@@ -1,3 +1,4 @@
+using iText.Commons.Actions.Contexts;
 using iText.Kernel.Colors;
 using iText.Kernel.Font;
 using iText.Kernel.Pdf;
@@ -16,6 +17,7 @@ using System.Data;
 using System.Diagnostics.Contracts;
 using static RajFabAPI.Constants.AppConstants;
 using static RajFabAPI.Services.EstablishmentRegistrationService;
+using static System.Net.Mime.MediaTypeNames;
 using ImageDataFactory = iText.IO.Image.ImageDataFactory;
 using PdfCell = iText.Layout.Element.Cell;
 using PdfDoc = iText.Layout.Document;
@@ -818,7 +820,20 @@ namespace RajFabAPI.Services
                     UpdatedDate = DateTime.Now
                 };
                 _ = _db.Set<ApplicationRegistration>().Add(appReg);
-                _ = await _db.SaveChangesAsync();
+
+                var history = new Models.ApplicationHistory
+                {
+                    ApplicationId = appReg.ApplicationId,
+                    ApplicationType = module.Name,
+                    Action = "Application Submitted",
+                    PreviousStatus = null,
+                    NewStatus = "Pending",
+                    Comments = "Application Submitted and sent for payment",
+                    ActionBy = "Applicant",
+                    ActionDate = DateTime.Now
+                };
+                _db.ApplicationHistories.Add(history);
+                await _db.SaveChangesAsync();
 
                 await tx.CommitAsync();
                 var html = await _payment.ActionRequestPaymentRPP(feeResult ?? 0, User.FullName, User.Mobile, User.Email, User.Username, "4157FE34BBAE3A958D8F58CCBFAD7", "UWf6a7cDCP", registration.EstablishmentRegistrationId, module.Id.ToString(), userId.ToString());
@@ -1221,7 +1236,7 @@ namespace RajFabAPI.Services
             }
         }
 
-        public async Task<EstablishmentRegistrationEntitiesDto?> GetAllEntitiesByRegistrationIdAsync(string registrationId)
+        public async Task<EstablishmentApplicationDto?> GetAllEntitiesByRegistrationIdAsync(string registrationId)
         {
             var reg = await _db.Set<EstablishmentRegistration>()
                 .AsNoTracking()
@@ -1295,6 +1310,7 @@ namespace RajFabAPI.Services
                         AddressLine2 = mainOwner.AddressLine2,
                         Designation = mainOwner.Designation,
                         Role = mainOwner.Role,
+                        TypeOfEmployer = mainOwner.TypeOfEmployer,
                         RelationType = mainOwner.RelationType,
                         RelativeName = mainOwner.RelativeName,
                         District = mainOwner.District,
@@ -1319,6 +1335,7 @@ namespace RajFabAPI.Services
                         AddressLine2 = manager.AddressLine2,
                         Designation = manager.Designation,
                         Role = manager.Role,
+                        TypeOfEmployer = manager.TypeOfEmployer,
                         RelationType = manager.RelationType,
                         RelativeName = manager.RelativeName,
                         District = manager.District,
@@ -1624,9 +1641,25 @@ namespace RajFabAPI.Services
                 dto.BuildingAndConstructionWork == null && dto.NewsPaperEstablishment == null &&
                 dto.AudioVisualWork == null && dto.Plantation == null)
                 return null;
-            // add EstablishmentTypes based on entities mapped. entity name only
 
-            return dto;
+            var applicationHistory = await _db.Set<ApplicationHistory>()
+                .AsNoTracking()
+                .Where(x => x.ApplicationId == reg.EstablishmentRegistrationId)
+                .OrderByDescending(x => x.ActionDate)
+                .ToListAsync();
+
+            var transactionHistory = await _db.Set<Transaction>()
+                .AsNoTracking()
+                .Where(x => x.ApplicationId == reg.EstablishmentRegistrationId)
+                .OrderByDescending(x => x.CreatedAt)
+                .ToListAsync();
+
+            return new EstablishmentApplicationDto
+             {
+                ApplicationDetails = dto,
+                ApplicationHistory = applicationHistory,
+                TransactionHistory = transactionHistory
+            };
         }
 
         public async Task<string?> GetFactoryRegistrationNumber(Guid userId)
@@ -2869,7 +2902,8 @@ namespace RajFabAPI.Services
             if (estReg == null)
                 throw new KeyNotFoundException("Establishment registration not found");
 
-            var dtoDetails = await GetAllEntitiesByRegistrationIdAsync(registrationId);
+            var allDetails = await GetAllEntitiesByRegistrationIdAsync(registrationId);
+            var dtoDetails = allDetails.ApplicationDetails;
 
             var dtoPaylod = new EstablishmentCertificatePdfRequestDto
             {

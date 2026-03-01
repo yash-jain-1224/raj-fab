@@ -26,4 +26,10 @@ namespace RajFabAPI.DTOs
         public string? SignatureBase64 { get; set; }
         public string? DeclarationPlace { get; set; }
     }
+    public class EstablishmentApplicationDto 
+    {
+        public EstablishmentRegistrationEntitiesDto ApplicationDetails { get; set; }
+        public List<ApplicationHistory> ApplicationHistory { get; set; }
+        public List<Transaction> TransactionHistory { get; set; }
+    }
 }

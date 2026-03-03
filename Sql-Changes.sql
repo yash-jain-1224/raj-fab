@@ -449,3 +449,172 @@ GO
 
 ALTER TABLE [dbo].[SteamPipeLineApplications] ADD  DEFAULT ('') FOR [SteamPipeLineRegistrationNo]
 GO
+
+
+
+CREATE TABLE BoilerManufactureRegistrations (
+    Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+    FactoryRegistrationNo NVARCHAR(100) NULL,
+    ApplicationId NVARCHAR(100) NULL,
+    ManufactureRegistrationNo NVARCHAR(100) NOT NULL,
+    BmClassification NVARCHAR(255) NULL,
+    
+    -- Renewal & Validity
+    ValidFrom DATETIME2 NULL,
+    ValidUpto DATETIME2 NULL,
+    CoveredArea NVARCHAR(500) NULL,
+    
+    -- JSON blobs for unstructured data
+    EstablishmentJson NVARCHAR(MAX) NULL,
+    ManufacturingFacilityjson NVARCHAR(MAX) NULL,
+    DetailInternalQualityjson NVARCHAR(MAX) NULL,
+    OtherReleventInformationjson NVARCHAR(MAX) NULL,
+
+    -- Metadata
+    [Status] NVARCHAR(50) NOT NULL DEFAULT 'Pending',
+    [Type] NVARCHAR(50) NULL DEFAULT 'new',
+    [Version] DECIMAL(18, 2) NOT NULL DEFAULT 1.0,
+    IsActive BIT NOT NULL DEFAULT 1,
+    CreatedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
+    UpdatedAt DATETIME2 NOT NULL DEFAULT GETDATE()
+);
+
+
+
+-- Design Facility Table
+CREATE TABLE DesignFacilities (
+    Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+    BoilerManufactureRegistrationId UNIQUEIDENTIFIER UNIQUE NOT NULL,
+    [Description] NVARCHAR(MAX) NULL,
+    AddressLine1 NVARCHAR(255) NULL,
+    AddressLine2 NVARCHAR(255) NULL,
+    DistrictId UNIQUEIDENTIFIER NULL,
+    SubDivisionId UNIQUEIDENTIFIER NULL,
+    TehsilId UNIQUEIDENTIFIER NULL,
+    Area INT NULL,
+    PinCode INT NULL,
+    [Document] NVARCHAR(MAX) NULL,
+    IsActive BIT NOT NULL DEFAULT 1,
+    CreatedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
+    UpdatedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
+    CONSTRAINT FK_DesignFacility_Main FOREIGN KEY (BoilerManufactureRegistrationId) 
+        REFERENCES BoilerManufactureRegistrations(Id) ON DELETE CASCADE
+);
+
+-- Testing Facility Table
+CREATE TABLE TestingFacilities (
+    Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+    BoilerManufactureRegistrationId UNIQUEIDENTIFIER UNIQUE NOT NULL,
+    [Description] NVARCHAR(MAX) NULL,
+    AddressLine1 NVARCHAR(255) NULL,
+    AddressLine2 NVARCHAR(255) NULL,
+    DistrictId UNIQUEIDENTIFIER NULL,
+    SubDivisionId UNIQUEIDENTIFIER NULL,
+    TehsilId UNIQUEIDENTIFIER NULL,
+    Area INT NULL,
+    PinCode INT NULL,
+    TestingFacilityJson NVARCHAR(MAX) NULL,
+    IsActive BIT NOT NULL DEFAULT 1,
+    CreatedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
+    UpdatedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
+    CONSTRAINT FK_TestingFacility_Main FOREIGN KEY (BoilerManufactureRegistrationId) 
+        REFERENCES BoilerManufactureRegistrations(Id) ON DELETE CASCADE
+);
+
+-- R&D Facility Table
+CREATE TABLE RDFacilities (
+    Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+    BoilerManufactureRegistrationId UNIQUEIDENTIFIER UNIQUE NOT NULL,
+    [Description] NVARCHAR(MAX) NULL,
+    AddressLine1 NVARCHAR(255) NULL,
+    AddressLine2 NVARCHAR(255) NULL,
+    DistrictId UNIQUEIDENTIFIER NULL,
+    SubDivisionId UNIQUEIDENTIFIER NULL,
+    TehsilId UNIQUEIDENTIFIER NULL,
+    Area INT NULL,
+    PinCode INT NULL,
+    RDFacilityJson NVARCHAR(MAX) NULL,
+    IsActive BIT NOT NULL DEFAULT 1,
+    CreatedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
+    UpdatedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
+    CONSTRAINT FK_RDFacility_Main FOREIGN KEY (BoilerManufactureRegistrationId) 
+        REFERENCES BoilerManufactureRegistrations(Id) ON DELETE CASCADE
+);
+
+
+
+
+
+-- 1. Drop the existing table if it exists
+IF OBJECT_ID('dbo.NDTPersonnels', 'U') IS NOT NULL
+    DROP TABLE dbo.NDTPersonnels;
+GO
+
+-- 2. Create the table as NDTPersonnels
+CREATE TABLE NDTPersonnels (
+    Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+    BoilerManufactureRegistrationId UNIQUEIDENTIFIER NOT NULL,
+    
+    [Name] NVARCHAR(255) NULL,
+    Qualification NVARCHAR(255) NULL,
+    Certificate NVARCHAR(MAX) NULL, -- Stores document path or link
+
+    -- Logic & Metadata
+    IsActive BIT NOT NULL DEFAULT 1,
+    CreatedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
+    UpdatedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
+
+    -- Relationship
+    CONSTRAINT FK_NDTPersonnels_BoilerMain FOREIGN KEY (BoilerManufactureRegistrationId) 
+        REFERENCES BoilerManufactureRegistrations(Id) ON DELETE CASCADE
+);
+GO
+
+IF OBJECT_ID('dbo.QualifiedWelders', 'U') IS NOT NULL
+    DROP TABLE dbo.QualifiedWelders;
+GO
+-- Qualified Welders Table
+CREATE TABLE QualifiedWelders (
+    Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+    BoilerManufactureRegistrationId UNIQUEIDENTIFIER NOT NULL,
+    [Name] NVARCHAR(255) NULL,
+    Qualification NVARCHAR(255) NULL,
+    Certificate NVARCHAR(MAX) NULL,
+    IsActive BIT NOT NULL DEFAULT 1,
+    CreatedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
+    UpdatedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
+    CONSTRAINT FK_Welders_Main FOREIGN KEY (BoilerManufactureRegistrationId) 
+        REFERENCES BoilerManufactureRegistrations(Id) ON DELETE CASCADE
+);
+
+
+
+-- 1. Drop the existing table if it exists
+IF OBJECT_ID('dbo.TechnicalManpowers', 'U') IS NOT NULL
+    DROP TABLE dbo.TechnicalManpowers;
+GO
+
+-- 2. Create the table as TechnicalManpowers
+CREATE TABLE TechnicalManpowers (
+    Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+    BoilerManufactureRegistrationId UNIQUEIDENTIFIER NOT NULL,
+
+    [Name] NVARCHAR(255) NULL,
+    FatherName NVARCHAR(255) NULL,
+    Qualification NVARCHAR(255) NULL,
+
+    -- Documents / File Paths
+    MinimumFiveYearsExperienceDoc NVARCHAR(MAX) NULL,
+    ExperienceInErectionDoc NVARCHAR(MAX) NULL,
+    ExperienceInCommissioningDoc NVARCHAR(MAX) NULL,
+
+    -- Logic & Metadata
+    IsActive BIT NOT NULL DEFAULT 1,
+    CreatedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
+    UpdatedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
+
+    -- Relationship
+    CONSTRAINT FK_TechnicalManpowers_BoilerMain FOREIGN KEY (BoilerManufactureRegistrationId) 
+        REFERENCES BoilerManufactureRegistrations(Id) ON DELETE CASCADE
+);
+GO

@@ -109,7 +109,7 @@ namespace RajFabAPI.Controllers.BoilerControllers
         [HttpGet("applicationId")]
         public async Task<IActionResult> GetByApplication([FromQuery] string applicationId)
         {
-            var data = await _manufactureService.GetByApplicationIdAsync(applicationId);
+            var data = await _manufactureService.GetByApplicationIdAsync(WebUtility.UrlDecode(applicationId));
 
             if (data == null)
                 return NotFound("Application not found");

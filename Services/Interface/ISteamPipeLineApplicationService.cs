@@ -10,7 +10,7 @@ namespace RajFabAPI.Services.Interface
         Task<List<SteamPipeLineFullResponseDto>> GetSteamPipeLineByRegistrationNoAsync(string registrationNo);
         Task<SteamPipeLineFullResponseDto?> GetSteamPipeLineByApplicationIdAsync(string applicationId);
         Task<string> UpdateSteamPipeLineAsync(string applicationId, CreateSteamPipeLineDto dto);
-
+        Task<string> CloseSteamPipeLineAsync(CreateSteamPipeLineCloseDto dto);
     }
 
 

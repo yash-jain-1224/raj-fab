@@ -131,5 +131,21 @@ namespace RajFabAPI.Controllers.SteamPipeLineApplicationControllers
                 ApplicationId = result
             });
         }
+
+        [HttpPost("close")]
+        public async Task<IActionResult> Close(  [FromBody] CreateSteamPipeLineCloseDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var applicationId =
+                await _service.CloseSteamPipeLineAsync(dto);
+
+            return Ok(new
+            {
+                Message = "Steam Pipe Line closure request submitted successfully.",
+                ApplicationId = applicationId
+            });
+        }
     }
 }

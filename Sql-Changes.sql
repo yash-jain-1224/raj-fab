@@ -359,3 +359,93 @@ ADD BoilerRegistrationId UNIQUEIDENTIFIER NULL;
 
 ALTER TABLE BoilerDetails
 ALTER COLUMN Area NVARCHAR(100) NULL;
+
+
+CREATE TABLE SteamPipeLineClosures
+(
+    Id UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+
+    ApplicationId NVARCHAR(100) NOT NULL,
+
+    SteamPipeLineRegistrationNo NVARCHAR(100) NOT NULL,
+
+    ReasonForClosure NVARCHAR(MAX) NULL,
+
+    SupportingDocumentPath NVARCHAR(500) NULL,
+
+    Type NVARCHAR(20) NOT NULL DEFAULT 'close',
+
+    Version DECIMAL(5,2) NOT NULL DEFAULT 1.0,
+
+    Status NVARCHAR(50) NOT NULL DEFAULT 'Pending',
+
+    IsActive BIT NOT NULL DEFAULT 1,
+
+    CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+
+    UpdatedAt DATETIME NOT NULL DEFAULT GETDATE()
+);
+
+
+CREATE TABLE [dbo].[SteamPipeLineApplications](
+	[Id] [uniqueidentifier] NOT NULL,
+	[ApplicationId] [nvarchar](50) NOT NULL,
+	[BoilerApplicationNo] [nvarchar](100) NULL,
+	[ProposedLayoutDescription] [nvarchar](500) NULL,
+	[ConsentLetterProvided] [nvarchar](500) NULL,
+	[SteamPipeLineDrawingNo] [nvarchar](100) NULL,
+	[BoilerMakerRegistrationNo] [nvarchar](100) NULL,
+	[ErectorName] [nvarchar](200) NULL,
+	[FactoryRegistrationNumber] [nvarchar](100) NULL,
+	[Factorydetailjson] [nvarchar](max) NULL,
+	[PipeLengthUpTo100mm] [decimal](18, 2) NULL,
+	[PipeLengthAbove100mm] [decimal](18, 2) NULL,
+	[NoOfDeSuperHeaters] [int] NULL,
+	[NoOfSteamReceivers] [int] NULL,
+	[NoOfFeedHeaters] [int] NULL,
+	[NoOfSeparatelyFiredSuperHeaters] [int] NULL,
+	[FormIIPath] [nvarchar](500) NULL,
+	[FormIIIPath] [nvarchar](500) NULL,
+	[FormIIIAPath] [nvarchar](500) NULL,
+	[FormIIIBPath] [nvarchar](500) NULL,
+	[FormIVPath] [nvarchar](500) NULL,
+	[FormIVAPath] [nvarchar](500) NULL,
+	[DrawingPath] [nvarchar](500) NULL,
+	[SupportingDocumentsPath] [nvarchar](500) NULL,
+	[Status] [nvarchar](50) NOT NULL,
+	[Version] [decimal](5, 2) NOT NULL,
+	[IsActive] [bit] NOT NULL,
+	[Type] [nvarchar](20) NOT NULL,
+	[CreatedAt] [datetime] NOT NULL,
+	[UpdatedAt] [datetime] NOT NULL,
+	[SteamPipeLineRegistrationNo] [nvarchar](20) NOT NULL,
+	[RenewalYears] [int] NULL,
+	[ValidFrom] [datetime] NULL,
+	[ValidUpto] [datetime] NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[SteamPipeLineApplications] ADD  DEFAULT (newid()) FOR [Id]
+GO
+
+ALTER TABLE [dbo].[SteamPipeLineApplications] ADD  DEFAULT ('Pending') FOR [Status]
+GO
+
+ALTER TABLE [dbo].[SteamPipeLineApplications] ADD  DEFAULT ((1.0)) FOR [Version]
+GO
+
+ALTER TABLE [dbo].[SteamPipeLineApplications] ADD  DEFAULT ((1)) FOR [IsActive]
+GO
+
+ALTER TABLE [dbo].[SteamPipeLineApplications] ADD  DEFAULT (getdate()) FOR [CreatedAt]
+GO
+
+ALTER TABLE [dbo].[SteamPipeLineApplications] ADD  DEFAULT (getdate()) FOR [UpdatedAt]
+GO
+
+ALTER TABLE [dbo].[SteamPipeLineApplications] ADD  DEFAULT ('') FOR [SteamPipeLineRegistrationNo]
+GO

@@ -450,6 +450,176 @@ namespace RajFabAPI.Services
             }
         }
 
+        public async Task<BoilerRepairerResponseDto?> GetByApplicationIdAsync(string applicationId)
+        {
+            var entity = await _dbcontext.BoilerRepairerRegistrations
+                .Include(x => x.BoilerRepairerEngineers)
+                .Include(x => x.BoilerRepairerWelders)
+                .FirstOrDefaultAsync(x => x.ApplicationId == applicationId);
+
+            if (entity == null)
+                return null;
+
+            return new BoilerRepairerResponseDto
+            {
+             
+                ApplicationId = entity.ApplicationId,
+                RepairerRegistrationNo = entity.RepairerRegistrationNo,
+                FactoryRegistrationNo = entity.FactoryRegistrationNo,
+                BrClassification = entity.BrClassification,
+                EstablishmentJson = entity.EstablishmentJson,
+                JobsExecutedJson = entity.JobsExecutedJson,
+                DocumentEvidence = entity.DocumentEvidence,               
+                ToolsAvailable = entity.ToolsAvailable,
+                SimultaneousSites = entity.SimultaneousSites,
+                AcceptsRegulations = entity.AcceptsRegulations,
+                ApprovalHistoryJson = entity.ApprovalHistoryJson?.ToString(),
+                RejectedHistoryJson = entity.RejectedHistoryJson?.ToString(),
+                AcceptsResponsibility = entity.AcceptsResponsibility,
+                CanSupplyMaterial = entity.CanSupplyMaterial,
+                QualityControlType = entity.QualityControlType,
+                QualityControlDetailsjson = entity.QualityControlDetailsjson,
+                ValidFrom = entity.ValidFrom,
+                ValidUpto = entity.ValidUpto,
+                Status = entity.Status,
+                Type = entity.Type,
+                Version = entity.Version,
+
+                Engineers = entity.BoilerRepairerEngineers.Select(e => new BoilerRepairerEngineerDto
+                {
+                    Name = e.Name,
+                    Designation = e.Designation,
+                    Qualification = e.Qualification,
+                    ExperienceYears = e.ExperienceYears,
+                    DocumentPath = e.DocumentPath
+                }).ToList(),
+
+                Welders = entity.BoilerRepairerWelders.Select(w => new BoilerRepairerWelderDto
+                {
+                    Name = w.Name,
+                    Designation = w.Designation,
+                    ExperienceYears = w.ExperienceYears,
+                    CertificatePath = w.CertificatePath
+                }).ToList()
+            };
+        }
+        public async Task<BoilerRepairerResponseDto?> GetLatestApprovedByRegistrationNoAsync(string registrationNo)
+        {
+            if (string.IsNullOrWhiteSpace(registrationNo))
+                throw new ArgumentException("RepairerRegistrationNo required.");
+
+            var latest = await _dbcontext.BoilerRepairerRegistrations
+                .Include(x => x.BoilerRepairerEngineers)
+                .Include(x => x.BoilerRepairerWelders)
+                .Where(x => x.RepairerRegistrationNo == registrationNo)
+                .OrderByDescending(x => x.Version)
+                .FirstOrDefaultAsync();
+
+            if (latest == null)
+                return null;
+
+            // Only return if absolute latest is Approved
+            if (!latest.Status.Equals("Approved", StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            return new BoilerRepairerResponseDto
+            {
+              
+                ApplicationId = latest.ApplicationId,
+                RepairerRegistrationNo = latest.RepairerRegistrationNo,
+                FactoryRegistrationNo = latest.FactoryRegistrationNo,
+                BrClassification = latest.BrClassification,
+                EstablishmentJson = latest.EstablishmentJson,
+                JobsExecutedJson = latest.JobsExecutedJson,
+                DocumentEvidence = latest.DocumentEvidence,
+                ApprovalHistoryJson = latest.ApprovalHistoryJson,
+                RejectedHistoryJson = latest.RejectedHistoryJson,
+                ToolsAvailable = latest.ToolsAvailable,
+                SimultaneousSites = latest.SimultaneousSites,
+                AcceptsRegulations = latest.AcceptsRegulations,
+                AcceptsResponsibility = latest.AcceptsResponsibility,
+                CanSupplyMaterial = latest.CanSupplyMaterial,
+                QualityControlType = latest.QualityControlType,
+                QualityControlDetailsjson = latest.QualityControlDetailsjson,
+                ValidFrom = latest.ValidFrom,
+                ValidUpto = latest.ValidUpto,
+                Status = latest.Status,
+                Type = latest.Type,
+                Version = latest.Version,
+               
+
+                Engineers = latest.BoilerRepairerEngineers.Select(e => new BoilerRepairerEngineerDto
+                {
+                    Name = e.Name,
+                    Designation = e.Designation,
+                    Qualification = e.Qualification,
+                    ExperienceYears = e.ExperienceYears,
+                    DocumentPath = e.DocumentPath
+                }).ToList(),
+
+                Welders = latest.BoilerRepairerWelders.Select(w => new BoilerRepairerWelderDto
+                {
+                    Name = w.Name,
+                    Designation = w.Designation,
+                    ExperienceYears = w.ExperienceYears,
+                    CertificatePath = w.CertificatePath
+                }).ToList()
+            };
+        }
+
+        public async Task<List<BoilerRepairerResponseDto>> GetAllAsync()
+        {
+            var list = await _dbcontext.BoilerRepairerRegistrations
+                .Include(x => x.BoilerRepairerEngineers)
+                .Include(x => x.BoilerRepairerWelders)
+                .OrderByDescending(x => x.CreatedAt)
+                .ToListAsync();
+
+            return list.Select(entity => new BoilerRepairerResponseDto
+            {
+                
+                ApplicationId = entity.ApplicationId,
+                RepairerRegistrationNo = entity.RepairerRegistrationNo,
+                FactoryRegistrationNo = entity.FactoryRegistrationNo,
+                BrClassification = entity.BrClassification,
+                EstablishmentJson = entity.EstablishmentJson,
+                JobsExecutedJson = entity.JobsExecutedJson,
+                DocumentEvidence = entity.DocumentEvidence,
+                ApprovalHistoryJson = entity.ApprovalHistoryJson,
+                RejectedHistoryJson = entity.RejectedHistoryJson,
+                ToolsAvailable = entity.ToolsAvailable,
+                SimultaneousSites = entity.SimultaneousSites,
+                AcceptsRegulations = entity.AcceptsRegulations,
+                AcceptsResponsibility = entity.AcceptsResponsibility,
+                CanSupplyMaterial = entity.CanSupplyMaterial,
+                QualityControlType = entity.QualityControlType,
+                QualityControlDetailsjson = entity.QualityControlDetailsjson,
+                ValidFrom = entity.ValidFrom,
+                ValidUpto = entity.ValidUpto,
+                Status = entity.Status,
+                Type = entity.Type,
+                Version = entity.Version,
+               
+
+                Engineers = entity.BoilerRepairerEngineers.Select(e => new BoilerRepairerEngineerDto
+                {
+                    Name = e.Name,
+                    Designation = e.Designation,
+                    Qualification = e.Qualification,
+                    ExperienceYears = e.ExperienceYears,
+                    DocumentPath = e.DocumentPath
+                }).ToList(),
+
+                Welders = entity.BoilerRepairerWelders.Select(w => new BoilerRepairerWelderDto
+                {
+                    Name = w.Name,
+                    Designation = w.Designation,
+                    ExperienceYears = w.ExperienceYears,
+                    CertificatePath = w.CertificatePath
+                }).ToList()
+            }).ToList();
+        }
+
         public async Task<string> CloseRepairerAsync(BoilerRepairerClosureDto dto, Guid userId)
         {
             if (dto == null)
@@ -462,9 +632,7 @@ namespace RajFabAPI.Services
 
             try
             {
-                /* =====================================================
-                   ?? Get Latest APPROVED Registration
-                ===================================================== */
+                
 
                 var lastApproved = await _dbcontext.BoilerRepairerRegistrations
                     .Where(x =>
@@ -474,11 +642,7 @@ namespace RajFabAPI.Services
                     .FirstOrDefaultAsync();
 
                 if (lastApproved == null)
-                    throw new Exception("Approved record not found. Closure not allowed.");
-
-                /* =====================================================
-                   ?? Block if Any Pending Transaction Exists
-                ===================================================== */
+                    throw new Exception("Approved record not found. Closure not allowed.");               
 
                 var pendingProcess = await _dbcontext.BoilerRepairerRegistrations
                     .AnyAsync(x =>
@@ -486,11 +650,7 @@ namespace RajFabAPI.Services
                         x.Status == "Pending");
 
                 if (pendingProcess)
-                    throw new Exception("One application already pending. Cannot close.");
-
-                /* =====================================================
-                   ?? Check Already Closed
-                ===================================================== */
+                    throw new Exception("One application already pending. Cannot close.");              
 
                 var alreadyClosed = await _dbcontext.BoilerRepairerClosures
                     .AnyAsync(x =>
@@ -500,10 +660,6 @@ namespace RajFabAPI.Services
                 if (alreadyClosed)
                     throw new Exception("Repairer already closed.");
 
-                /* =====================================================
-                   ?? Prevent Multiple Pending Closure Requests
-                ===================================================== */
-
                 var pendingClosure = await _dbcontext.BoilerRepairerClosures
                     .AnyAsync(x =>
                         x.RepairerRegistrationNo == dto.RepairerRegistrationNo &&
@@ -512,15 +668,7 @@ namespace RajFabAPI.Services
                 if (pendingClosure)
                     throw new Exception("Closure already submitted and pending.");
 
-                /* =====================================================
-                   ?? Generate Application Number
-                ===================================================== */
-
                 var applicationId = await GenerateApplicationNumberAsync("close");
-
-                /* =====================================================
-                   ?? Insert Closure Record
-                ===================================================== */
 
                 var closure = new BoilerRepairerClosure
                 {

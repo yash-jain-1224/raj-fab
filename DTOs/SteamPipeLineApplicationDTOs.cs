@@ -95,6 +95,14 @@ namespace RajFabAPI.DTOs
 
     
     }
+    public class CreateSteamPipeLineCloseDto
+    {
+        public string SteamPipeLineRegistrationNo { get; set; } = string.Empty;
+
+        public string? ReasonForClosure { get; set; }
+
+        public string? SupportingDocument { get; set; }
+    }
 
 
 

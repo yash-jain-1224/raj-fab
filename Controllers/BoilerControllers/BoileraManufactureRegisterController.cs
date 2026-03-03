@@ -121,7 +121,7 @@ namespace RajFabAPI.Controllers.BoilerControllers
         [HttpGet("manufactureRegistrationNo")]
         public async Task<IActionResult> GetByRegistration([FromQuery]  string manufactureRegistrationNo)
         {
-            var data = await _manufactureService.GetAllByRegistrationNoAsync(manufactureRegistrationNo);
+            var data = await _manufactureService.GetLatestApprovedByRegistrationNoAsync(manufactureRegistrationNo);
 
             if (data == null)
                 return NotFound("Registration not found");
@@ -129,7 +129,16 @@ namespace RajFabAPI.Controllers.BoilerControllers
             return Ok(data);
         }
 
+        [HttpGet("all")]
+        public async Task<IActionResult> GetAll()
+        {
+            var result = await _manufactureService.GetAllAsync();
 
+            if (!result.Any())
+                return NotFound("No records found.");
+
+            return Ok(result);
+        }
 
     }
 }

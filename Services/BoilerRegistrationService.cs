@@ -698,8 +698,7 @@ namespace RajFabAPI.Services
         }
 
 
-        public async Task<GetBoilerResponseDto?>
-     GetLatestApprovedByRegistrationNoAsync(string registrationNo)
+        public async Task<GetBoilerResponseDto?> GetLatestApprovedByRegistrationNoAsync(string registrationNo)
         {
             if (string.IsNullOrWhiteSpace(registrationNo))
                 throw new ArgumentException("BoilerRegistrationNo is required.");
@@ -1224,17 +1223,17 @@ namespace RajFabAPI.Services
                     throw new Exception("Approved boiler not found.");
 
                 /* STEP-2 : Get Latest Renewal (Ignore Status) */
-                var latestRenewal = await _dbcontext.BoilerRegistrations
-                    .Where(x => x.BoilerRegistrationNo == dto.BoilerRegistrationNo && x.Type == "renew")
-                    .OrderByDescending(x => x.Version)
-                    .FirstOrDefaultAsync();
+                //var latestRenewal = await _dbcontext.BoilerRegistrations
+                //    .Where(x => x.BoilerRegistrationNo == dto.BoilerRegistrationNo && x.Type == "renew")
+                //    .OrderByDescending(x => x.Version)
+                //    .FirstOrDefaultAsync();
 
-                if (latestRenewal == null)
-                    throw new Exception("No renewal found for this boiler.");
+                //if (latestRenewal == null)
+                //    throw new Exception("No renewal found for this boiler.");
 
                 /* STEP-3 : Ensure Latest Renewal Used */
-                if (latestRenewal.ApplicationId != dto.RenewalApplicationId)
-                    throw new Exception("Repair allowed only on latest renewal version.");
+                //if (latestRenewal.ApplicationId != dto.RenewalApplicationId)
+                //    throw new Exception("Repair allowed only on latest renewal version.");
 
                 /* STEP-4 : Block Parallel Repair */
                 var activeRepairExists = await _dbcontext.BoilerRepairModifications
@@ -1256,7 +1255,7 @@ namespace RajFabAPI.Services
                     BoilerRegistrationNo = boiler.BoilerRegistrationNo!,
                     PersonDetailId = personId,
                     ApplicationId = applicationNo,
-                    RenewalApplicationId = latestRenewal.ApplicationId,
+                    //RenewalApplicationId = latestRenewal.ApplicationId,
                     RepairType = dto.RepairType,
                     AttendantCertificatePath = dto.AttendantCertificatePath,
                     OperationEngineerCertificatePath = dto.OperationEngineerCertificatePath,

@@ -10,14 +10,14 @@ namespace RajFabAPI.Models.BoilerModels
     {
         public Guid Id { get; set; }
 
-        public Guid BoilerRegistrationId { get; set; }
+        public Guid? BoilerRegistrationId { get; set; } = null;
         public string BoilerRegistrationNo { get; set; } = null!;
-
+       
         public Guid PersonDetailId { get; set; }
         public PersonDetail PersonDetail { get; set; } = null!;
 
         public string ApplicationId { get; set; } = null!;
-        public string RenewalApplicationId { get; set; } = null!;
+        public string ?RenewalApplicationId { get; set; } = null;
 
         public string RepairType { get; set; } = null!;
 

@@ -25,8 +25,8 @@ namespace RajFabAPI.Models.BoilerModels
         public string? JobsExecutedJson { get; set; }
         public string? DocumentEvidence { get; set; }
 
-        public int? ApprovalHistoryJson { get; set; }
-        public int? RejectedHistoryJson { get; set; }
+        public string? ApprovalHistoryJson { get; set; }
+        public string? RejectedHistoryJson { get; set; }
 
         public bool? ToolsAvailable { get; set; }
 

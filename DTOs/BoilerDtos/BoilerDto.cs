@@ -140,7 +140,7 @@ namespace RajFabAPI.DTOs
     public class CreateBoilerRepairDto
 {
     public string BoilerRegistrationNo { get; set; } = null!;
-    public string RenewalApplicationId { get; set; } = null!;
+    public string? RenewalApplicationId { get; set; } = null;
     public string RepairType { get; set; } = null!; // Repair / Modification / Both
 
     public PersonDetailDto ?RepairerDetail { get; set; } = null!;

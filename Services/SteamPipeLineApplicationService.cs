@@ -499,7 +499,79 @@ namespace RajFabAPI.Services
                 throw;
             }
         }
+        public async Task<string> CloseSteamPipeLineAsync( CreateSteamPipeLineCloseDto dto)
+        {
+            if (dto == null)
+                throw new ArgumentNullException(nameof(dto));
 
+            await using var tx = await _dbcontext.Database.BeginTransactionAsync();
+
+            try
+            {
+                if (string.IsNullOrWhiteSpace(dto.SteamPipeLineRegistrationNo))
+                    throw new Exception("SteamPipeLineRegistrationNo is required.");
+
+                // ?? Get latest version of STPL
+                var latest = await _dbcontext.SteamPipeLineApplications
+                    .Where(x => x.SteamPipeLineRegistrationNo ==
+                                dto.SteamPipeLineRegistrationNo)
+                    .OrderByDescending(x => x.Version)
+                    .FirstOrDefaultAsync();
+
+                if (latest == null)
+                    throw new Exception("STPL registration not found.");
+
+                if (!latest.Status.Equals("Approved",
+                    StringComparison.OrdinalIgnoreCase))
+                    throw new Exception("Only approved STPL can be closed.");
+
+                // ?? Block multiple pending close
+                var pendingClose = await _dbcontext.SteamPipeLineClosures
+                    .AnyAsync(x =>
+                        x.SteamPipeLineRegistrationNo ==
+                        dto.SteamPipeLineRegistrationNo &&
+                        x.Status == "Pending");
+
+                if (pendingClose)
+                    throw new Exception("Close request already pending.");
+
+                // ?? Generate Close ApplicationId
+                var applicationId =
+                    await GenerateApplicationNumberAsync("close");
+
+                // ?? Version (separate close versioning)
+                var version = 1.0m;
+
+                var close = new SteamPipeLineClosure
+                {
+                    Id = Guid.NewGuid(),
+                    ApplicationId = applicationId,
+                    SteamPipeLineRegistrationNo =
+                        dto.SteamPipeLineRegistrationNo,
+
+                    ReasonForClosure = dto.ReasonForClosure,
+                    SupportingDocumentPath = dto.SupportingDocument,
+
+                    Type = "close",
+                    Version = version,
+                    Status = "Pending",
+                    CreatedAt = DateTime.Now,
+                    UpdatedAt = DateTime.Now
+                };
+
+                _dbcontext.SteamPipeLineClosures.Add(close);
+                await _dbcontext.SaveChangesAsync();
+
+                await tx.CommitAsync();
+
+                return close.ApplicationId;
+            }
+            catch
+            {
+                await tx.RollbackAsync();
+                throw;
+            }
+        }
 
 
     }

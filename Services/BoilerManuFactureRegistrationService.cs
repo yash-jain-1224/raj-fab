@@ -786,11 +786,43 @@ namespace RajFabAPI.Services
 
             return MapToDto(record);
         }
-        public async Task<List<BoilerManufactureDetailsDto>> GetAllByRegistrationNoAsync(string manufactureRegistrationNo)
+
+
+
+        public async Task<BoilerManufactureDetailsDto?>  GetLatestApprovedByRegistrationNoAsync(string manufactureRegistrationNo)
+        {
+            if (string.IsNullOrWhiteSpace(manufactureRegistrationNo))
+                throw new ArgumentException("ManufactureRegistrationNo is required.");
+
+            // ?? Get absolute latest version
+            var latest = await _dbcontext.BoilerManufactureRegistrations
+                .Where(x => x.ManufactureRegistrationNo == manufactureRegistrationNo)
+                .OrderByDescending(x => x.Version)
+                .Include(x => x.DesignFacility)
+                .Include(x => x.TestingFacility)
+                .Include(x => x.RDFacility)
+                .Include(x => x.NDTPersonnels)
+                .Include(x => x.QualifiedWelders)
+                .Include(x => x.TechnicalManpowers)
+                .FirstOrDefaultAsync();
+
+            if (latest == null)
+                return null;
+
+            // ?? Only return if absolute latest is Approved
+            if (!latest.Status.Equals("Approved", StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            return MapToDto(latest);
+        }
+
+
+
+
+        public async Task<List<BoilerManufactureDetailsDto>> GetAllAsync()
         {
             var records = await _dbcontext.BoilerManufactureRegistrations
-                .Where(x => x.ManufactureRegistrationNo == manufactureRegistrationNo)
-                .OrderByDescending(x => x.Version)   // ?? Important
+                .OrderByDescending(x => x.CreatedAt)   // latest created first
                 .Include(x => x.DesignFacility)
                 .Include(x => x.TestingFacility)
                 .Include(x => x.RDFacility)
@@ -801,9 +833,6 @@ namespace RajFabAPI.Services
 
             return records.Select(MapToDto).ToList();
         }
-
-
-
 
 
 

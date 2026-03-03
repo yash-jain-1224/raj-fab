@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using RajFabAPI.DTOs;
 using RajFabAPI.Services;
 using RajFabAPI.Services.Interface;
+using System.Net;
 using static RajFabAPI.Constants.AppConstants;
 
 namespace RajFabAPI.Controllers.BoilerControllers
@@ -101,6 +102,50 @@ namespace RajFabAPI.Controllers.BoilerControllers
                 message = "Boiler Repairer closure submitted successfully",
                 applicationId = applicationId
             });
+        }
+
+        [HttpGet("application/{applicationId}")]
+        public async Task<IActionResult> GetByApplicationId(string applicationId)
+        {
+            if (string.IsNullOrWhiteSpace(applicationId))
+                return BadRequest("ApplicationId is required.");
+
+            var result = await _repairerService.GetByApplicationIdAsync(WebUtility.UrlDecode(applicationId));
+
+            if (result == null)
+                return NotFound("Record not found.");
+
+            return Ok(result);
+        }
+
+        /* ==========================================================
+           ? GET BY REGISTRATION NO (Latest + Approved Only)
+        ========================================================== */
+
+        [HttpGet("registration/{registrationNo}")]
+        public async Task<IActionResult> GetByRegistrationNo(string registrationNo)
+        {
+            if (string.IsNullOrWhiteSpace(registrationNo))
+                return BadRequest("RepairerRegistrationNo is required.");
+
+            var result = await _repairerService
+                .GetLatestApprovedByRegistrationNoAsync(WebUtility.UrlDecode(registrationNo));
+
+            if (result == null)
+                return NotFound("Latest approved record not found.");
+
+            return Ok(result);
+        }
+
+        /* ==========================================================
+           ? GET ALL
+        ========================================================== */
+
+        [HttpGet("all")]
+        public async Task<IActionResult> GetAll()
+        {
+            var result = await _repairerService.GetAllAsync();
+            return Ok(result);
         }
 
     }

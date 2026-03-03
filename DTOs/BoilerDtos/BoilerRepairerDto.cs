@@ -17,8 +17,8 @@ namespace RajFabAPI.DTOs
         public string? JobsExecutedJson { get; set; }
         public string? DocumentEvidence { get; set; }
 
-        public int? ApprovalHistoryJson { get; set; }
-        public int? RejectedHistoryJson { get; set; }
+        public string? ApprovalHistoryJson { get; set; }
+        public string? RejectedHistoryJson { get; set; }
 
         public bool? ToolsAvailable { get; set; }
         public int? SimultaneousSites { get; set; }
@@ -85,6 +85,44 @@ namespace RajFabAPI.DTOs
 
         public string? Status { get; set; }
         public string? Type { get; set; }
+        public decimal Version { get; set; }
+
+        public List<BoilerRepairerEngineerDto>? Engineers { get; set; }
+        public List<BoilerRepairerWelderDto>? Welders { get; set; }
+    }
+
+    public class BoilerRepairerResponseDto
+    {
+  
+
+        public string ApplicationId { get; set; } = string.Empty;
+        public string RepairerRegistrationNo { get; set; } = string.Empty;
+
+        public string? FactoryRegistrationNo { get; set; }
+        public string? BrClassification { get; set; }
+
+        public string? EstablishmentJson { get; set; }
+        public string? JobsExecutedJson { get; set; }
+        public string? DocumentEvidence { get; set; }
+
+        public string? ApprovalHistoryJson { get; set; }
+        public string? RejectedHistoryJson { get; set; }
+
+        public bool? ToolsAvailable { get; set; }
+        public int? SimultaneousSites { get; set; }
+
+        public bool? AcceptsRegulations { get; set; }
+        public bool? AcceptsResponsibility { get; set; }
+        public bool? CanSupplyMaterial { get; set; }
+
+        public string? QualityControlType { get; set; }
+        public string? QualityControlDetailsjson { get; set; }
+
+        public DateTime? ValidFrom { get; set; }
+        public DateTime? ValidUpto { get; set; }
+
+        public string Status { get; set; } = string.Empty;
+        public string Type { get; set; } = string.Empty;
         public decimal Version { get; set; }
 
         public List<BoilerRepairerEngineerDto>? Engineers { get; set; }

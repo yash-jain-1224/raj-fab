@@ -10,7 +10,8 @@ namespace RajFabAPI.Services.Interface
         Task<string> RenewManufactureAsync(    BoilerManufactureRenewalDto dto,   Guid userId);
         Task<string> CloseManufactureAsync(BoilerManufactureClosureDto dto, Guid userId);
         Task<BoilerManufactureDetailsDto?> GetByApplicationIdAsync(string applicationId);
-        Task<List<BoilerManufactureDetailsDto>> GetAllByRegistrationNoAsync(string manufactureRegistrationNo);
+        Task<BoilerManufactureDetailsDto?> GetLatestApprovedByRegistrationNoAsync(string manufactureRegistrationNo);
+        Task<List<BoilerManufactureDetailsDto>> GetAllAsync();
 
 
     }

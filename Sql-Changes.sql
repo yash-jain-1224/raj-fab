@@ -618,3 +618,179 @@ CREATE TABLE TechnicalManpowers (
         REFERENCES BoilerManufactureRegistrations(Id) ON DELETE CASCADE
 );
 GO
+
+
+--  Boiler Repairer Registrations table sql 
+CREATE TABLE BoilerRepairerRegistrations (
+    Id UNIQUEIDENTIFIER NOT NULL PRIMARY KEY DEFAULT NEWID(),
+
+    FactoryRegistrationNo NVARCHAR(100) NULL,
+    ApplicationId NVARCHAR(100) NULL,
+    RepairerRegistrationNo NVARCHAR(100) NOT NULL,
+    BrClassification NVARCHAR(100) NULL,
+
+    EstablishmentJson NVARCHAR(MAX) NULL,
+
+    -- 🔥 RENEWAL TRACKING
+    ValidFrom DATETIME2 NULL,
+    ValidUpto DATETIME2 NULL,
+
+    JobsExecutedJson NVARCHAR(MAX) NULL,
+    DocumentEvidence NVARCHAR(MAX) NULL,
+
+    ApprovalHistoryJson NVARCHAR(MAX) NULL,
+    RejectedHistoryJson NVARCHAR(MAX) NULL,
+
+    ToolsAvailable BIT NULL,
+    SimultaneousSites INT NULL,
+
+    AcceptsRegulations BIT NULL,
+    AcceptsResponsibility BIT NULL,
+    CanSupplyMaterial BIT NULL,
+
+    QualityControlType NVARCHAR(200) NULL,
+    QualityControlDetailsjson NVARCHAR(MAX) NULL,
+
+    Status NVARCHAR(50) NOT NULL DEFAULT 'Pending',
+    Type NVARCHAR(50) NULL DEFAULT 'new',
+
+    Version DECIMAL(5,2) NOT NULL DEFAULT 1.00,
+    IsActive BIT NOT NULL DEFAULT 1,
+
+    CreatedAt DATETIME2 NOT NULL DEFAULT SYSDATETIME(),
+    UpdatedAt DATETIME2 NOT NULL DEFAULT SYSDATETIME()
+);
+CREATE TABLE BoilerRepairerEngineers (
+    Id UNIQUEIDENTIFIER NOT NULL PRIMARY KEY DEFAULT NEWID(),
+
+    BoilerRepairerRegistrationId UNIQUEIDENTIFIER NOT NULL,
+
+    Name NVARCHAR(200) NOT NULL,
+    Designation NVARCHAR(200) NOT NULL,
+    Qualification NVARCHAR(300) NOT NULL,
+    ExperienceYears INT NOT NULL,
+
+    DocumentPath NVARCHAR(500) NULL,
+
+    IsActive BIT NOT NULL DEFAULT 1,
+
+    CreatedAt DATETIME2 NOT NULL DEFAULT SYSDATETIME(),
+    UpdatedAt DATETIME2 NOT NULL DEFAULT SYSDATETIME(),
+
+    CONSTRAINT FK_BoilerRepairerEngineer_Registration
+        FOREIGN KEY (BoilerRepairerRegistrationId)
+        REFERENCES BoilerRepairerRegistrations(Id)
+        ON DELETE CASCADE
+);
+CREATE INDEX IX_BoilerRepairerEngineers_RegistrationId
+ON BoilerRepairerEngineers(BoilerRepairerRegistrationId);
+
+CREATE TABLE BoilerRepairerWelders (
+    Id UNIQUEIDENTIFIER NOT NULL PRIMARY KEY DEFAULT NEWID(),
+
+    BoilerRepairerRegistrationId UNIQUEIDENTIFIER NOT NULL,
+
+    Name NVARCHAR(200) NOT NULL,
+    Designation NVARCHAR(200) NOT NULL,
+    ExperienceYears INT NOT NULL,
+
+    CertificatePath NVARCHAR(500) NULL,
+
+    IsActive BIT NOT NULL DEFAULT 1,
+
+    CreatedAt DATETIME2 NOT NULL DEFAULT SYSDATETIME(),
+    UpdatedAt DATETIME2 NOT NULL DEFAULT SYSDATETIME(),
+
+    CONSTRAINT FK_BoilerRepairerWelder_Registration
+        FOREIGN KEY (BoilerRepairerRegistrationId)
+        REFERENCES BoilerRepairerRegistrations(Id)
+        ON DELETE CASCADE
+);
+CREATE INDEX IX_BoilerRepairerWelders_RegistrationId
+ON BoilerRepairerWelders(BoilerRepairerRegistrationId);
+ALTER TABLE BoilerRepairerWelders
+ADD CONSTRAINT CK_Welder_ExperienceYears
+CHECK (ExperienceYears >= 0);
+
+-- steam pipe line table squery
+CREATE TABLE SteamPipeLineApplications (
+    Id UNIQUEIDENTIFIER NOT NULL PRIMARY KEY DEFAULT NEWID(),
+
+    ApplicationId NVARCHAR(100) NOT NULL, -- e.g. 2026/47/STPL/41628
+    BoilerApplicationNo NVARCHAR(100) NULL,
+    SteamPipeLineRegistrationNo NVARCHAR(100) NOT NULL,
+
+    ProposedLayoutDescription NVARCHAR(MAX) NULL,
+    ConsentLetterProvided NVARCHAR(500) NULL,
+    SteamPipeLineDrawingNo NVARCHAR(200) NULL,
+    BoilerMakerRegistrationNo NVARCHAR(100) NULL,
+    ErectorName NVARCHAR(200) NULL,
+    FactoryRegistrationNumber NVARCHAR(100) NULL,
+
+    Factorydetailjson NVARCHAR(MAX) NULL,
+
+    PipeLengthUpTo100mm DECIMAL(18,2) NULL,
+    PipeLengthAbove100mm DECIMAL(18,2) NULL,
+
+    NoOfDeSuperHeaters INT NULL,
+    NoOfSteamReceivers INT NULL,
+    NoOfFeedHeaters INT NULL,
+    NoOfSeparatelyFiredSuperHeaters INT NULL,
+
+    RenewalYears INT NULL,
+    ValidFrom DATETIME2 NULL,
+    ValidUpto DATETIME2 NULL,
+
+    FormIIPath NVARCHAR(500) NULL,
+    FormIIIPath NVARCHAR(500) NULL,
+    FormIIIAPath NVARCHAR(500) NULL,
+    FormIIIBPath NVARCHAR(500) NULL,
+    FormIVPath NVARCHAR(500) NULL,
+    FormIVAPath NVARCHAR(500) NULL,
+    DrawingPath NVARCHAR(500) NULL,
+    SupportingDocumentsPath NVARCHAR(500) NULL,
+
+    Status NVARCHAR(50) NOT NULL DEFAULT 'Pending',
+
+    Version DECIMAL(5,2) NOT NULL DEFAULT 1.00,
+    IsActive BIT NOT NULL DEFAULT 1,
+
+    Type NVARCHAR(50) NOT NULL, -- new / amendment / renew
+
+    CreatedAt DATETIME2 NOT NULL DEFAULT SYSDATETIME(),
+    UpdatedAt DATETIME2 NOT NULL DEFAULT SYSDATETIME()
+);
+
+ALTER TABLE SteamPipeLineApplications
+ADD CONSTRAINT UQ_SteamPipeLineApplications_ApplicationId
+UNIQUE (ApplicationId);
+
+ALTER TABLE SteamPipeLineApplications
+ADD CONSTRAINT CK_SteamPipeLine_PipeLength
+CHECK (
+    (PipeLengthUpTo100mm IS NULL OR PipeLengthUpTo100mm >= 0) AND
+    (PipeLengthAbove100mm IS NULL OR PipeLengthAbove100mm >= 0)
+);
+
+ALTER TABLE SteamPipeLineApplications
+ADD CONSTRAINT CK_SteamPipeLine_EquipmentCounts
+CHECK (
+    (NoOfDeSuperHeaters IS NULL OR NoOfDeSuperHeaters >= 0) AND
+    (NoOfSteamReceivers IS NULL OR NoOfSteamReceivers >= 0) AND
+    (NoOfFeedHeaters IS NULL OR NoOfFeedHeaters >= 0) AND
+    (NoOfSeparatelyFiredSuperHeaters IS NULL OR NoOfSeparatelyFiredSuperHeaters >= 0)
+);
+
+ALTER TABLE SteamPipeLineApplications
+ADD CONSTRAINT CK_SteamPipeLine_ValidDates
+CHECK (
+    ValidFrom IS NULL OR
+    ValidUpto IS NULL OR
+    ValidUpto >= ValidFrom
+);
+
+CREATE INDEX IX_SteamPipeLineApplications_Status
+ON SteamPipeLineApplications(Status);
+
+CREATE INDEX IX_SteamPipeLineApplications_IsActive
+ON SteamPipeLineApplications(IsActive);

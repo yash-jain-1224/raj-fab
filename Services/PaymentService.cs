@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using RajFabAPI.Data;
 using RajFabAPI.DTOs;
 using RajFabAPI.Models;
@@ -6,6 +7,9 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using static RajFabAPI.Constants.AppConstants;
+using System.Security.Claims;
+using System.Reflection;
 
 namespace RajFabAPI.Services
 {
@@ -13,12 +17,70 @@ namespace RajFabAPI.Services
     {
         private readonly ApplicationDbContext _db;
         private readonly IConfiguration _config;
-
-        public PaymentService(ApplicationDbContext db, IConfiguration config)
+        private readonly IHttpContextAccessor _httpContextAccessor;
+        public PaymentService(ApplicationDbContext db, IConfiguration config, IHttpContextAccessor httpContextAccessor)
         {
             _db = db;
             _config = config;
+            _httpContextAccessor = httpContextAccessor;
+        }
 
+        public async Task<string?> PaymentByApplicationIdAsync(string applicationId)
+        {
+            var userIdString = _httpContextAccessor.HttpContext?
+                .User?
+                .FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (!Guid.TryParse(userIdString, out var userId))
+                throw new UnauthorizedAccessException("User is not authenticated.");
+
+            var user = await _db.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == userId)
+                ?? throw new Exception("User not found.");
+
+            var application = await _db.Set<ApplicationRegistration>()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(a => a.ApplicationId == applicationId)
+                ?? throw new Exception("Application not found.");
+
+            var module = await _db.Set<FormModule>()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(m => m.Id == application.ModuleId)
+                ?? throw new Exception("Module not found.");
+
+            var isAlreadyPaid = await _db.Set<Transaction>()
+                .AsNoTracking()
+                .AnyAsync(m =>
+                    m.ApplicationId == applicationId &&
+                    m.Status == "SUCCESS");
+
+            if (isAlreadyPaid)
+            {
+                throw new Exception("Payment is already completed for this application.");
+            }
+            if (module.Name == ApplicationTypeNames.NewEstablishment)
+            {
+                var registration = await _db.Set<EstablishmentRegistration>()
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(r => r.EstablishmentRegistrationId == applicationId)
+                    ?? throw new Exception("Establishment registration not found.");
+
+                return await ActionRequestPaymentRPP(
+                    registration.Amount,
+                    user.FullName,
+                    user.Mobile,
+                    user.Email,
+                    user.Username,
+                    "4157FE34BBAE3A958D8F58CCBFAD7",
+                    "UWf6a7cDCP",
+                    registration.EstablishmentRegistrationId,
+                    module.Id.ToString(),
+                    userId.ToString()
+                );
+            }
+
+            throw new Exception("Unsupported module type.");
         }
 
         public string BuildPaymentRedirectForm(decimal amount, int serviceId, string factoryName, int sServiceType, string regNo, string? userEmail = null, string? userMobile = null, string? userName = null)

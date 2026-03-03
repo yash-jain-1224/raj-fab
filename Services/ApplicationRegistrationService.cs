@@ -5,6 +5,7 @@ using RajFabAPI.DTOs;
 using RajFabAPI.Models;
 using RajFabAPI.Models.FactoryModels;
 using RajFabAPI.Services.Interface;
+using System.Reflection;
 using System.Text.Json;
 using static RajFabAPI.Constants.AppConstants;
 using static System.Net.Mime.MediaTypeNames;
@@ -153,6 +154,11 @@ namespace RajFabAPI.Services
                                         estRegistration.IsPaymentCompleted
                                     };
                     var estDetailSingle = await estDetail.FirstOrDefaultAsync();
+                    var latestStatus = await _db.Transactions
+                        .Where(x => x.ApplicationId == appRegistration.ApplicationId)
+                        .OrderByDescending(x => x.Id)
+                        .Select(x => x.Status)
+                        .FirstOrDefaultAsync();
 
                     applicationUserDashboardDtos.Add(new ApplicationUserDashboardDto
                     {
@@ -164,6 +170,7 @@ namespace RajFabAPI.Services
                         ApplicationTitle = estDetailSingle != null ? estDetailSingle.EstablishmentName : "",
                         IsPaymentCompleted = estDetailSingle.IsPaymentCompleted,
                         IsESignCompleted = estDetailSingle.IsESignCompleted,
+                        IsPaymentPending = latestStatus == "PENDING"
                     });
                 }
                 else if (appRegistration.ApplicationTypeName == ApplicationTypeNames.MapApproval)
@@ -328,7 +335,6 @@ namespace RajFabAPI.Services
 
                 if (applicationData.ModuleName == ApplicationTypeNames.NewEstablishment || applicationData.ModuleName == ApplicationTypeNames.FactoryAmendment || applicationData.ModuleName == ApplicationTypeNames.FactoryRenewal)
                 {
-
                     var estReg = await _db.Set<EstablishmentRegistration>()
                         .FirstOrDefaultAsync(x =>
                             x.EstablishmentRegistrationId.ToString() ==
@@ -344,7 +350,8 @@ namespace RajFabAPI.Services
                     await dbTx.CommitAsync();
 
                     return true;
-                } else if (applicationData.ModuleName == ApplicationTypeNames.FactoryLicense)
+                }
+                else if (applicationData.ModuleName == ApplicationTypeNames.FactoryLicense)
                 {
                     var factoryLicense = await _db.Set<FactoryLicense>()
                         .FirstOrDefaultAsync(x =>
@@ -453,7 +460,7 @@ namespace RajFabAPI.Services
                     estReg.IsESignCompleted = true;
                     estReg.UpdatedDate = DateTime.Now;
 
-                    applicationUrl = estReg.ApplicationPDFUrl ;
+                    applicationUrl = estReg.ApplicationPDFUrl;
                 }
                 else if (module.Name == ApplicationTypeNames.MapApproval || module.Name == ApplicationTypeNames.MapApprovalAmendment)
                 {
@@ -540,7 +547,6 @@ namespace RajFabAPI.Services
                        (establishmentDetail?.TotalNumberOfEmployee ?? 0) +
                        (establishmentDetail?.TotalNumberOfContractEmployee ?? 0) +
                        (establishmentDetail?.TotalNumberOfInterstateWorker ?? 0);
-                    
                     factoryTypeId = establishmentDetail.FactoryTypeId;
                     subDivisionId = parsedSubDiv;
                     comReg.IsESignCompleted = true;
@@ -577,6 +583,7 @@ namespace RajFabAPI.Services
                     appealReg.UpdatedAt = DateTime.Now;
                     applicationUrl = appealReg.ApplicationPDFUrl;
                 }
+
                 var workerRange = await _db.Set<WorkerRange>()
                     .FirstOrDefaultAsync(wr =>
                         totalWorkers >= wr.MinWorkers &&
@@ -619,6 +626,14 @@ namespace RajFabAPI.Services
                 if (workflowLevel == null)
                     return false;
 
+                var roleInfo = await _db.Set<Role>()
+                    .Where(r => r.Id == workflowLevel.RoleId)
+                    .Select(r => new
+                    {
+                        Name = r.Post.Name + ", " + r.Office.City.Name
+                    })
+                    .FirstOrDefaultAsync();
+
                 var approvalRequest = new ApplicationApprovalRequest
                 {
                     ModuleId = appReg.ModuleId,
@@ -628,6 +643,19 @@ namespace RajFabAPI.Services
                     CreatedDate = DateTime.Now,
                     UpdatedDate = DateTime.Now
                 };
+
+                var history = new ApplicationHistory
+                {
+                    ApplicationId = appReg.ApplicationId,
+                    ApplicationType = module.Name,
+                    Action = "E-Sign Successful",
+                    PreviousStatus = null,
+                    NewStatus = "",
+                    Comments = "Application E-Signed and sent to " + roleInfo.Name + " for Verification",
+                    ActionBy = "Applicant",
+                    ActionDate = DateTime.Now
+                };
+                _db.ApplicationHistories.Add(history);
 
                 _db.Set<ApplicationApprovalRequest>().Add(approvalRequest);
 

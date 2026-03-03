@@ -42,6 +42,7 @@ namespace RajFabAPI.DTOs
         public string Status { get; set; }
         public DateTime CreatedDate { get; set; }
         public bool? IsPaymentCompleted { get; set; }
+        public bool? IsPaymentPending { get; set; }
         public bool? IsESignCompleted{ get; set; }
     }
 

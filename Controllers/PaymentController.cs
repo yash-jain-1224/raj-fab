@@ -1,8 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using RajFabAPI.Data;
 using RajFabAPI.DTOs;
+using RajFabAPI.Models;
+using RajFabAPI.Services.Interface;
 using System.Text;
 using System.Text.Json;
-using RajFabAPI.Services.Interface;
 
 namespace RajFabAPI.Controllers
 {
@@ -15,15 +18,44 @@ namespace RajFabAPI.Controllers
         private readonly ITransactionService _transactionService;
         private readonly IPaymentService _paymentService;
         private readonly IApplicationRegistrationService _applicationRegistrationService;
+        private readonly ApplicationDbContext _db;
 
-        public PaymentController(IPaymentService service, IConfiguration config, ITransactionService transactionService, IPaymentService paymentService, IApplicationRegistrationService applicationRegistrationService)
+        public PaymentController(ApplicationDbContext db, IPaymentService service, IConfiguration config, ITransactionService transactionService, IPaymentService paymentService, IApplicationRegistrationService applicationRegistrationService)
         {
+            _db = db ?? throw new ArgumentNullException(nameof(db));
+
             _service = service;
             _config = config;
             _transactionService = transactionService;
             _paymentService = paymentService;
             _applicationRegistrationService = applicationRegistrationService;
         }
+
+        [HttpGet("{applicationId}")]
+        public async Task<IActionResult> PaymentByApplicationId(string applicationId)
+        {
+            try
+            {
+                var html = await _service.PaymentByApplicationIdAsync(applicationId);
+                return CreatedAtAction(null, new { html }, new { html });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (Exception)
+            {
+                return StatusCode(
+                    StatusCodes.Status500InternalServerError,
+                    "An error occurred while payment."
+                );
+            }
+        }
+
         [HttpGet]
         public async Task<IActionResult> PaymentNew()
         {
@@ -90,31 +122,46 @@ namespace RajFabAPI.Controllers
 
                     await _transactionService.UpdateAsync(transaction.Id, updateDto);
                 }
+                var Comments = "";
                 switch (data.STATUS)
                 {
                     case "SUCCESS":
+                        Comments = "Payment Completed and awaiting E-Sign";
                         if (transaction != null)
                         {
                             await _applicationRegistrationService.UpdatePaymentStatusAsync(transaction?.ApplicationId);
                         }
-                        paymentHTML.AppendLine("<h1>Success</h1>");
-                        paymentHTML.AppendLine("<h1>Return JSON : " + json + "</h1>");
                         break;
                     case "FAILED":
-                        paymentHTML.AppendLine("<h1>Failed</h1>");
-                        paymentHTML.AppendLine("<h1>Return JSON : " + json + "</h1>");
+                        Comments = "Payment Failed. Try Again";
                         break;
                     case "PENDING":
-                        paymentHTML.AppendLine("<h1>Pending</h1>");
-                        paymentHTML.AppendLine("<h1>Return JSON : " + json + "</h1>");
+                        Comments = "Payment Pending and wait for approval";
                         break;
                     default:
                         break;
                 }
+                var module = await _db.Set<FormModule>()
+                   .AsNoTracking()
+                   .FirstOrDefaultAsync(m => m.Id == transaction.ModuleId);
+                
+                var history = new ApplicationHistory
+                {
+                    ApplicationId = transaction.ApplicationId,
+                    ApplicationType = module.Name,
+                    Action = "Payment " + char.ToUpper(data.STATUS[0]) + data.STATUS.Substring(1).ToLower(),
+                    PreviousStatus = null,
+                    NewStatus = "",
+                    Comments = Comments,
+                    ActionBy = "Applicant",
+                    ActionDate = DateTime.Now
+                };
+                _db.ApplicationHistories.Add(history);
+                await _db.SaveChangesAsync();
+
                 var redirectUrl = $"{_config["FrontendUrl"]}/" + "user/track";
                 return Redirect(redirectUrl);
 
-                //return Content(paymentHTML.ToString(), "text/html");
             }
             catch (Exception)
             {

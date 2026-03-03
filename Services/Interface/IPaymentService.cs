@@ -8,5 +8,6 @@ namespace RajFabAPI.Services.Interface
         Task<string> ActionRequestPaymentRPP(decimal AMOUNT, string ApplicantName, string ApplicantMobile, string ApplicantEmail, string SSOID, string EnDnKEY, string CHECKSUMKEY, string ApplicationId, string ModuleId, string UserId);
         bool VerifyChecksum(EmitraPaymentResponse response, string checksumKey);
         string AESDecrypt(string textToDecrypt, string AESENCKEY);
+        Task<string?> PaymentByApplicationIdAsync(string applicationId);
     }
 }

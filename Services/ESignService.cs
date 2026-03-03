@@ -5,6 +5,7 @@ using iText.Layout;
 using iText.Layout.Borders;
 using iText.Layout.Element;
 using iText.Layout.Properties;
+using iText.StyledXmlParser.Jsoup.Nodes;
 using iTextSharp.text.log;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Data.SqlClient;
@@ -21,6 +22,7 @@ using System.Text;
 using System.Text.Json;
 using System.Xml.Linq;
 using static RajFabAPI.Constants.AppConstants;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 using ImageDataFactory = iText.IO.Image.ImageDataFactory;
 using PdfCell = iText.Layout.Element.Cell;
 using PdfDoc = iText.Layout.Document;
@@ -126,7 +128,7 @@ namespace RajFabAPI.Services
                                 _logger.LogInformation("Processing New Establishment PDF generation");
 
                                 var data = await _estRegService.GetAllEntitiesByRegistrationIdAsync(applicationId);
-                                var filePath = await _estRegService.GenerateEstablishmentPdf(data);
+                                var filePath = await _estRegService.GenerateEstablishmentPdf(data.ApplicationDetails);
 
                                 if (!File.Exists(filePath))
                                 {
@@ -302,7 +304,18 @@ namespace RajFabAPI.Services
                             var html = PostToPage(signdocURL, generateSignedXml_Response.data.signedXMLData);
 
                             _logger.LogInformation("GenerateESignHtmlAsync completed successfully");
-
+                            var history = new ApplicationHistory
+                            {
+                                ApplicationId = applicationId,
+                                ApplicationType = applicationData.ModuleName,
+                                Action = "Esign Initiated",
+                                PreviousStatus = null,
+                                NewStatus = "Pending",
+                                Comments = "Esign Initiated",
+                                ActionBy = "Applicant",
+                                ActionDate = DateTime.Now
+                            };
+                            _db.ApplicationHistories.Add(history);
                             return html;
                         }
                     }
@@ -384,7 +397,7 @@ namespace RajFabAPI.Services
                         _logger.LogError("Signing API failed. Status: {Status}", signingResponse.status);
                         return BuildErrorRedirect("Signing API failed");
                     }
-
+                    
                     _logger.LogInformation("Signing successful. Updating DB");
 
                     var updateSuccess = await _applicationRegistrationService
@@ -667,7 +680,7 @@ namespace RajFabAPI.Services
                 if (Module.Name == ApplicationTypeNames.NewEstablishment || Module.Name == ApplicationTypeNames.FactoryAmendment || Module.Name == ApplicationTypeNames.FactoryRenewal)
                 {
                     var data = await _estRegService.GetAllEntitiesByRegistrationIdAsync(applicationId);
-                    var filePath = await _estRegService.GenerateEstablishmentPdf(data);
+                    var filePath = await _estRegService.GenerateEstablishmentPdf(data.ApplicationDetails);
                 }
                 else if (Module.Name == ApplicationTypeNames.MapApproval || Module.Name == ApplicationTypeNames.MapApprovalAmendment)
                 {
@@ -697,14 +710,12 @@ namespace RajFabAPI.Services
                     var filePath = await _factoryLicenseService
                         .GenerateFactoryLicensePdf(response);
                 }
-                await _db.SaveChangesAsync();
 
                 // Use LogContext to automatically enrich all logs with Txn and PRN
                 using (LogContext.PushProperty("PRN", prn))
                 {
                     var updateSuccess = await _applicationRegistrationService
-                        .UpdateApplicationESignData(
-                            prn);
+                        .UpdateApplicationESignData(prn);
 
                     if (!updateSuccess)
                     {

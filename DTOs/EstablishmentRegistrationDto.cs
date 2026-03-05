@@ -17,6 +17,7 @@ namespace RajFabAPI.DTOs
         public string? Status { get; set; } 
 
         public string? Place { get; set; }
+        public decimal Amount { get; set; }
         public string? Signature { get; set; }
         public DateTime? Date { get; set; }
         public string ApplicationRegistrationNumber { get; set; }

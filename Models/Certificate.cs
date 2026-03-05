@@ -8,7 +8,7 @@ namespace RajFabAPI.Models
     {
         public Guid Id { get; set; } = Guid.NewGuid();
         public string RegistrationNumber { get; set; }
-        
+       
         [Column(TypeName = "decimal(3,1)")]
         public decimal CertificateVersion { get; set; } = 1.0m;
         public DateTime StartDate { get; set; }
@@ -21,5 +21,10 @@ namespace RajFabAPI.Models
         public string Status { get; set; }
         public Guid ModuleId { get; set; }
         public string Remarks { get; set; }
+        public string ApplicationId { get; set; }
+        public bool IsESignCompleted { get; set; } = false;
+
+        [StringLength(100)]
+        public string? ESignPrnNumber { get; set; }
     }
 }

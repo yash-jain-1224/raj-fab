@@ -794,3 +794,14 @@ ON SteamPipeLineApplications(Status);
 
 CREATE INDEX IX_SteamPipeLineApplications_IsActive
 ON SteamPipeLineApplications(IsActive);
+
+
+-- for ApplicationHistories table
+ALTER TABLE ApplicationHistories
+ADD ApplicationId NVARCHAR(255) NOT NULL,
+    IsESignCompleted BIT NOT NULL DEFAULT 0,
+    ESignPrnNumber NVARCHAR(100) NULL;
+
+CREATE UNIQUE NONCLUSTERED INDEX IX_Certificates_ApplicationId
+ON Certificates (ApplicationId);
+

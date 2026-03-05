@@ -2707,11 +2707,23 @@ namespace RajFabAPI.Services
                 existingReg.UpdatedDate = DateTime.Now;
                 _db.Entry(existingReg).State = EntityState.Modified;
 
+                var module = await _db.Set<FormModule>().FirstOrDefaultAsync(m => m.Name == ApplicationTypeNames.NewEstablishment);
+                var appReg = await _db.ApplicationRegistrations.OrderByDescending(x => x.CreatedDate).FirstOrDefaultAsync(x => x.ApplicationId == existingReg.EstablishmentRegistrationId);
+
+                var history = new ApplicationHistory
+                {
+                    ApplicationId = appReg.ApplicationId,
+                    ApplicationType = module.Name,
+                    Action = "Application data updated",
+                    Comments = "Application data updated by citizen",
+                    ActionBy = "Applicaint",
+                    ActionDate = DateTime.Now
+                };
+
+                _db.ApplicationHistories.Add(history);
                 _ = await _db.SaveChangesAsync();
                 await tx.CommitAsync();
 
-                var module = await _db.Set<FormModule>().FirstOrDefaultAsync(m => m.Name == ApplicationTypeNames.NewEstablishment);
-                var appReg = await _db.ApplicationRegistrations.OrderByDescending(x => x.CreatedDate).FirstOrDefaultAsync(x => x.ApplicationId == existingReg.EstablishmentRegistrationId);
                 // Calculate total workers
                 int totalWorkers = estDetail.TotalNumberOfEmployee ?? 0 + estDetail.TotalNumberOfContractEmployee ?? 0 + estDetail.TotalNumberOfInterstateWorker ?? 0;
 

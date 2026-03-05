@@ -15,8 +15,8 @@ namespace RajFabAPI.Services
         private readonly ICommencementCessationService _commencementCessationService;
         private readonly IFactoryMapApprovalService _factoryMapApprovalService;
 
-        public ApplicationApprovalRequestService(ApplicationDbContext db, ILogger<ApplicationApprovalRequestService> logger, 
-            IEstablishmentRegistrationService establishmentRegistrationService, 
+        public ApplicationApprovalRequestService(ApplicationDbContext db, ILogger<ApplicationApprovalRequestService> logger,
+            IEstablishmentRegistrationService establishmentRegistrationService,
             ICommencementCessationService commencementCessationService,
             IFactoryMapApprovalService factoryMapApprovalService
             )
@@ -106,7 +106,101 @@ namespace RajFabAPI.Services
                 }
                 entity.Status = dto.Status;
                 entity.Remarks = dto.Remarks;
+
+                var appReg = await _db.Set<ApplicationRegistration>()
+                .FirstOrDefaultAsync(r => r.Id == entity.ApplicationRegistrationId);
+
+                if (appReg == null || appReg.ModuleId == Guid.Empty)
+                    return null;
+
+                var module = await _db.Set<FormModule>()
+                    .FirstOrDefaultAsync(m => m.Id == appReg.ModuleId);
+
+                if (module == null)
+                    return null;
+
+                var workflowLevel = await _db.Set<ApplicationWorkFlowLevel>()
+                    .Where(wfl => wfl.Id == entity.ApplicationWorkFlowLevelId)
+                    .OrderBy(wfl => wfl.LevelNumber)
+                    .FirstOrDefaultAsync();
+
+                if (workflowLevel == null)
+                    return null;
+
+                var roleInfo = await _db.Set<Role>()
+                    .Where(r => r.Id == workflowLevel.RoleId)
+                    .Select(r => new
+                    {
+                        Name = r.Post.Name + ", " + r.Office.City.Name
+                    })
+                    .FirstOrDefaultAsync();
+                string actionText = "";
+                string commentText = "";
+
+                switch (entity.Status)
+                {
+                    case ApplicationStatus.Forwarded:
+                        var nextLevel = await _db.Set<ApplicationWorkFlowLevel>()
+                            .Where(wfl =>
+                                wfl.ApplicationWorkFlowId == workflowLevel.ApplicationWorkFlowId &&
+                                wfl.LevelNumber > workflowLevel.LevelNumber)
+                            .OrderBy(wfl => wfl.LevelNumber)
+                            .FirstOrDefaultAsync();
+
+                        string nextRoleName = "Next Level";
+
+                        if (nextLevel != null)
+                        {
+                            var nextRoleInfo = await _db.Set<Role>()
+                                .Where(r => r.Id == nextLevel.RoleId)
+                                .Select(r => new
+                                {
+                                    Name = r.Post.Name + ", " + r.Office.City.Name
+                                })
+                                .FirstOrDefaultAsync();
+
+                            nextRoleName = nextRoleInfo?.Name ?? "Next Level";
+                        }
+
+                        actionText = $"Application Forwarded to {nextRoleName}";
+                        commentText = entity.Remarks ?? $"Application forwarded to {nextRoleName}.";
+                        break;
+
+                    case ApplicationStatus.Approved:
+                        actionText = "Application Approved";
+                        commentText = entity.Remarks ?? "Application approved successfully.";
+                        break;
+
+                    case ApplicationStatus.Rejected:
+                        actionText = "Application Rejected";
+                        commentText = entity.Remarks ?? "Application rejected.";
+                        break;
+
+                    case ApplicationStatus.ReturnedToApplicant:
+                        actionText = "Application Returned to Applicant";
+                        commentText = entity.Remarks ?? "Application returned to applicant for correction.";
+                        break;
+
+                    default:
+                        actionText = "Status Updated";
+                        commentText = entity.Remarks ?? "";
+                        break;
+                }
+
                 entity.UpdatedDate = DateTime.Now;
+
+                var history = new ApplicationHistory
+                {
+                    ApplicationId = appReg.ApplicationId,
+                    ApplicationType = module.Name,
+                    Action = actionText,
+                    Comments = commentText,
+                    ActionBy = roleInfo?.Name,
+                    ActionDate = DateTime.Now
+                };
+
+                _db.ApplicationHistories.Add(history);
+
                 await _db.SaveChangesAsync();
                 _logger.LogInformation("Application approval request with Id {Id} updated successfully", id);
 
@@ -158,7 +252,7 @@ namespace RajFabAPI.Services
                     UpdatedDate = entity.UpdatedDate
                 };
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating application approval request with Id {Id}", id);
                 throw;
@@ -384,11 +478,11 @@ namespace RajFabAPI.Services
                 await _establishmentRegistrationService.UpdateStatusAndRemark(regId, status);
             }
             else if (module.Name == ApplicationTypeNames.MapApproval || (module.Name == ApplicationTypeNames.MapApprovalAmendment))
-            { 
+            {
                 await _factoryMapApprovalService.UpdateStatusAndRemark(regId, status);
             }
-            else if (module.Name == ApplicationTypeNames.FactoryCommencementCessation) 
-            { 
+            else if (module.Name == ApplicationTypeNames.FactoryCommencementCessation)
+            {
                 await _commencementCessationService.UpdateStatusAndRemark(regId, status);
             }
         }

@@ -1238,428 +1238,435 @@ namespace RajFabAPI.Services
 
         public async Task<EstablishmentApplicationDto?> GetAllEntitiesByRegistrationIdAsync(string registrationId)
         {
-            var reg = await _db.Set<EstablishmentRegistration>()
-                .AsNoTracking()
-                .FirstOrDefaultAsync(x => x.EstablishmentRegistrationId == registrationId.ToUpperInvariant());
-            //var approvalStatus = _db.ApplicationApprovalRequests.FirstOrDefault(x => x.ApplicationRegistrationId == registrationId);
-            if (reg == null) return null;
-
-            var mappings = await _db.Set<EstablishmentEntityMapping>()
-                .AsNoTracking()
-                .Where(x => x.EstablishmentRegistrationId == registrationId)
-                .ToListAsync();
-
-            var dto = new EstablishmentRegistrationEntitiesDto();
-
-            // Map core registration details
-            if (reg.EstablishmentDetailId != null)
+            try
             {
-                var estDetail = await (
-                    from est in _db.Set<EstablishmentDetail>().AsNoTracking()
-                    where est.Id == reg.EstablishmentDetailId
-                    join area in _db.Set<City>().AsNoTracking() on est.SubDivisionId equals area.Id.ToString() into areaJoin
-                    from areaDetail in areaJoin.DefaultIfEmpty()
-                    join district in _db.Set<District>().AsNoTracking() on areaDetail.DistrictId equals district.Id into districtJoin
-                    from districtDetail in districtJoin.DefaultIfEmpty()
-                    join division in _db.Set<Division>().AsNoTracking() on districtDetail.DivisionId equals division.Id into divisionJoin
-                    from divisionDetail in divisionJoin.DefaultIfEmpty()
-                    select new EstablishmentDetailsDto
-                    {
-                        Id = reg.EstablishmentRegistrationId,
-                        LinNumber = est.LinNumber,
-                        BrnNumber = est.BrnNumber,
-                        Name = est.EstablishmentName,
-                        SubDivisionId = est.SubDivisionId,
-                        TehsilId = est.TehsilId,
-                        Area = est.Area,
-                        DistrictId = areaDetail.DistrictId.ToString(),
-                        DistrictName = districtDetail.Name,
-                        TotalNumberOfEmployee = est.TotalNumberOfEmployee ?? 0,
-                        TotalNumberOfContractEmployee = est.TotalNumberOfContractEmployee ?? 0,
-                        TotalNumberOfInterstateWorker = est.TotalNumberOfInterstateWorker ?? 0,
-                        AddressLine1 = est.AddressLine1,
-                        AddressLine2 = est.AddressLine2,
-                        Pincode = est.Pincode,
-                        Email = est.Email,
-                        Telephone = est.Telephone,
-                        Mobile = est.Mobile,
-                    }).FirstOrDefaultAsync();
-                dto.EstablishmentDetail = estDetail;
-                dto.StartDate = reg.CreatedDate;
-                dto.EndDate = reg.CreatedDate.AddYears(1);
-                dto.RegistrationDetail = new EstablishmentRegistrationDto
+                var reg = await _db.Set<EstablishmentRegistration>()
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(x => x.EstablishmentRegistrationId == registrationId.ToUpperInvariant());
+                //var approvalStatus = _db.ApplicationApprovalRequests.FirstOrDefault(x => x.ApplicationRegistrationId == registrationId);
+                if (reg == null) return null;
+
+                var mappings = await _db.Set<EstablishmentEntityMapping>()
+                    .AsNoTracking()
+                    .Where(x => x.EstablishmentRegistrationId == registrationId)
+                    .ToListAsync();
+
+                var dto = new EstablishmentRegistrationEntitiesDto();
+
+                // Map core registration details
+                if (reg.EstablishmentDetailId != null)
                 {
-                    EstablishmentRegistrationId = reg.EstablishmentRegistrationId,
-                    Place = reg.Place,
-                    Date = reg.Date,
-                    Status = reg.Status,
-                    Signature = reg.Signature,
-                    ApplicationPDFUrl = reg.ApplicationPDFUrl,
-                    ApplicationRegistrationNumber = reg.RegistrationNumber
+                    var estDetail = await (
+                        from est in _db.Set<EstablishmentDetail>().AsNoTracking()
+                        where est.Id == reg.EstablishmentDetailId
+                        join area in _db.Set<City>().AsNoTracking() on est.SubDivisionId equals area.Id.ToString() into areaJoin
+                        from areaDetail in areaJoin.DefaultIfEmpty()
+                        join district in _db.Set<District>().AsNoTracking() on areaDetail.DistrictId equals district.Id into districtJoin
+                        from districtDetail in districtJoin.DefaultIfEmpty()
+                        join division in _db.Set<Division>().AsNoTracking() on districtDetail.DivisionId equals division.Id into divisionJoin
+                        from divisionDetail in divisionJoin.DefaultIfEmpty()
+                        select new EstablishmentDetailsDto
+                        {
+                            Id = reg.EstablishmentRegistrationId,
+                            LinNumber = est.LinNumber,
+                            BrnNumber = est.BrnNumber,
+                            Name = est.EstablishmentName,
+                            SubDivisionId = est.SubDivisionId,
+                            TehsilId = est.TehsilId,
+                            Area = est.Area,
+                            DistrictId = areaDetail.DistrictId.ToString(),
+                            DistrictName = districtDetail.Name,
+                            TotalNumberOfEmployee = est.TotalNumberOfEmployee ?? 0,
+                            TotalNumberOfContractEmployee = est.TotalNumberOfContractEmployee ?? 0,
+                            TotalNumberOfInterstateWorker = est.TotalNumberOfInterstateWorker ?? 0,
+                            AddressLine1 = est.AddressLine1,
+                            AddressLine2 = est.AddressLine2,
+                            Pincode = est.Pincode,
+                            Email = est.Email,
+                            Telephone = est.Telephone,
+                            Mobile = est.Mobile,
+                        }).FirstOrDefaultAsync();
+                    dto.EstablishmentDetail = estDetail;
+                    dto.StartDate = reg.CreatedDate;
+                    dto.EndDate = reg.CreatedDate.AddYears(1);
+                    dto.RegistrationDetail = new EstablishmentRegistrationDto
+                    {
+                        EstablishmentRegistrationId = reg.EstablishmentRegistrationId,
+                        Place = reg.Place,
+                        Date = reg.Date,
+                        Status = reg.Status,
+                        Signature = reg.Signature,
+                        ApplicationPDFUrl = reg.ApplicationPDFUrl,
+                        ApplicationRegistrationNumber = reg.RegistrationNumber
+                    };
+                }
+                if (reg.MainOwnerDetailId != null)
+                {
+                    var mainOwner = await _db.Set<PersonDetail>().AsNoTracking().FirstOrDefaultAsync(x => x.Id == reg.MainOwnerDetailId);
+                    if (mainOwner != null)
+                    {
+                        dto.MainOwnerDetail = new PersonDetailDto
+                        {
+                            Name = mainOwner.Name,
+                            AddressLine1 = mainOwner.AddressLine1,
+                            AddressLine2 = mainOwner.AddressLine2,
+                            Designation = mainOwner.Designation,
+                            Role = mainOwner.Role,
+                            TypeOfEmployer = mainOwner.TypeOfEmployer,
+                            RelationType = mainOwner.RelationType,
+                            RelativeName = mainOwner.RelativeName,
+                            District = mainOwner.District,
+                            Tehsil = mainOwner.Tehsil,
+                            Area = mainOwner.Area,
+                            Pincode = mainOwner.Pincode,
+                            Email = mainOwner.Email,
+                            Mobile = mainOwner.Mobile,
+                            Telephone = mainOwner.Telephone
+                        };
+                    }
+                }
+                if (reg.ManagerOrAgentDetailId != null)
+                {
+                    var manager = await _db.Set<PersonDetail>().AsNoTracking().FirstOrDefaultAsync(x => x.Id == reg.ManagerOrAgentDetailId);
+                    if (manager != null)
+                    {
+                        dto.ManagerOrAgentDetail = new PersonDetailDto
+                        {
+                            Name = manager.Name,
+                            AddressLine1 = manager.AddressLine1,
+                            AddressLine2 = manager.AddressLine2,
+                            Designation = manager.Designation,
+                            Role = manager.Role,
+                            TypeOfEmployer = manager.TypeOfEmployer,
+                            RelationType = manager.RelationType,
+                            RelativeName = manager.RelativeName,
+                            District = manager.District,
+                            Tehsil = manager.Tehsil,
+                            Area = manager.Area,
+                            Pincode = manager.Pincode,
+                            Email = manager.Email,
+                            Mobile = manager.Mobile,
+                            Telephone = manager.Telephone
+                        };
+                    }
+                }
+                var contractors = await (
+                        from fcm in _db.Set<FactoryContractorMapping>().AsNoTracking()
+                        join cd in _db.Set<ContractorDetail>().AsNoTracking()
+                            on fcm.ContractorDetailId equals cd.Id
+                        join pd in _db.Set<PersonDetail>().AsNoTracking()
+                            on cd.ContractorPersonalDetailId equals pd.Id
+                        where fcm.EstablishmentRegistrationId == reg.EstablishmentRegistrationId
+                        select new ContractorDetailDto
+                        {
+                            Name = pd.Name,
+                            AddressLine1 = pd.AddressLine1,
+                            AddressLine2 = pd.AddressLine2,
+                            District = pd.District,
+                            Tehsil = pd.Tehsil,
+                            Area = pd.Area,
+                            Pincode = pd.Pincode,
+                            Email = pd.Email,
+                            Mobile = pd.Mobile,
+                            Telephone = pd.Telephone,
+                            NameOfWork = cd.NameOfWork,
+                            MaxContractWorkerCountMale = cd.MaxContractWorkerCountMale,
+                            MaxContractWorkerCountFemale = cd.MaxContractWorkerCountFemale,
+                            DateOfCommencement = cd.DateOfCommencement,
+                            DateOfCompletion = cd.DateOfCompletion
+                        }
+                    ).ToListAsync();
+
+                dto.ContractorDetail = contractors ?? new List<ContractorDetailDto>();
+
+
+                // Map all entity types to DTOs
+                foreach (var map in mappings)
+                {
+                    switch (map.EntityType)
+                    {
+                        case "Factory":
+                            var factory = await (
+                                from f in _db.Set<FactoryDetail>().AsNoTracking()
+                                where f.Id == map.EntityId
+
+                                join area in _db.Set<Area>().AsNoTracking()
+                                    on f.SubDivisionId equals area.Id.ToString() into areaJoin
+                                from areaDetail in areaJoin.DefaultIfEmpty()
+
+                                join district in _db.Set<District>().AsNoTracking()
+                                    on areaDetail.DistrictId equals district.Id into districtJoin
+                                from districtDetail in districtJoin.DefaultIfEmpty()
+
+                                join division in _db.Set<Division>().AsNoTracking()
+                                    on districtDetail.DivisionId equals division.Id into divisionJoin
+                                from divisionDetail in divisionJoin.DefaultIfEmpty()
+
+                                select new FactoryDetailsDto
+                                {
+                                    ManuacturingDetail = f.ManufacturingDetail,
+                                    Situation = f.Situation,
+
+                                    SubDivisionId = f.SubDivisionId,
+                                    TehsilId = f.TehsilId,
+                                    Area = f.Area,
+
+                                    DistrictId = areaDetail.DistrictId.ToString(),
+                                    DistrictName = districtDetail.Name,
+
+                                    AddressLine1 = f.AddressLine1,
+                                    AddressLine2 = f.AddressLine2,
+                                    Pincode = f.Pincode ?? "",
+                                    Email = f.Email ?? "",
+                                    Mobile = f.Mobile ?? "",
+                                    Telephone = f.Telephone ?? "",
+
+                                    EmployerId = f.EmployerId,
+                                    ManagerId = f.ManagerId,
+
+                                    NumberOfWorker = f.NumberOfWorker ?? 0,
+                                    SanctionedLoad = f.SanctionedLoad ?? 0,
+                                    SanctionedLoadUnit = f.SanctionedLoadUnit,
+
+                                    OwnershipTypeSector = f.OwnershipTypeSector,
+                                    ActivityAsPerNIC = f.ActivityAsPerNIC,
+                                    NICCodeDetail = f.NICCodeDetail,
+                                    IdentificationOfEstablishment = f.IdentificationOfEstablishment
+                                }
+                            ).FirstOrDefaultAsync();
+
+                            if (factory != null)
+                            {
+                                dto.Factory = new FactoryDto
+                                {
+                                    ManuacturingDetail = factory.ManuacturingDetail,
+                                    SubDivisionId = factory.SubDivisionId,
+                                    AddressLine1 = factory.AddressLine1,
+                                    AddressLine2 = factory.AddressLine2,
+                                    Area = factory.Area,
+                                    DistrictId = factory.DistrictId,
+                                    DistrictName = factory.DistrictName,
+                                    Pincode = factory.Pincode ?? "",
+                                    Email = factory.Email ?? "",
+                                    Telephone = factory.Telephone ?? "",
+                                    Mobile = factory.Mobile ?? "",
+                                    NumberOfWorker = factory.NumberOfWorker,
+                                    SanctionedLoad = factory.SanctionedLoad,
+                                    Situation = factory.Situation,
+                                    OwnershipTypeSector = factory.OwnershipTypeSector ?? "",
+                                    ActivityAsPerNIC = factory.ActivityAsPerNIC ?? "",
+                                    NICCodeDetail = factory.NICCodeDetail ?? "",
+                                    IdentificationOfEstablishment = factory.IdentificationOfEstablishment ?? ""
+                                };
+                                if (factory.EmployerId != null)
+                                {
+                                    var employer = await _db.Set<EstablishmentUserDetail>().FindAsync(factory.EmployerId);
+                                    if (employer != null)
+                                    {
+                                        dto.Factory.EmployerDetail = new PersonShortDto
+                                        {
+                                            Role = employer.RoleType,
+                                            Name = employer.Name,
+                                            Designation = employer?.Designation ?? "",
+                                            AddressLine1 = employer.AddressLine1,
+                                            AddressLine2 = employer.AddressLine2,
+                                            District = employer.District,
+                                            Tehsil = employer.Tehsil,
+                                            Area = employer.Area,
+                                            Pincode = employer.Pincode,
+                                            Email = employer.Email,
+                                            Telephone = employer.Telephone,
+                                            Mobile = employer.Mobile
+                                        };
+                                    }
+                                }
+                                if (factory.ManagerId != null)
+                                {
+                                    var manager = await _db.Set<EstablishmentUserDetail>().FindAsync(factory.ManagerId);
+                                    if (manager != null)
+                                    {
+                                        dto.Factory.ManagerDetail = new PersonShortDto
+                                        {
+                                            Role = manager.RoleType,
+                                            Name = manager.Name,
+                                            Designation = manager?.Designation ?? "",
+                                            AddressLine1 = manager.AddressLine1,
+                                            AddressLine2 = manager.AddressLine2,
+                                            District = manager.District,
+                                            Tehsil = manager.Tehsil,
+                                            Area = manager.Area,
+                                            Pincode = manager.Pincode,
+                                            Email = manager.Email,
+                                            Telephone = manager.Telephone,
+                                            Mobile = manager.Mobile
+                                        };
+                                    }
+                                }
+                                dto.EstablishmentTypes.Add("Factory");
+                            }
+                            break;
+
+                        #region Other types
+                        case "BeediCigarWork":
+                            var beedi = await _db.Set<BeediCigarWork>().FindAsync(map.EntityId);
+                            if (beedi != null)
+                            {
+                                dto.BeediCigarWork = new BeediCigarWorksDto
+                                {
+                                    ManuacturingDetail = beedi.ManufacturingDetail,
+                                    Situation = beedi.Situation,
+                                    AddressLine1 = beedi.AddressLine1,
+                                    AddressLine2 = beedi.AddressLine2,
+                                    SubDivisionId = beedi.SubDivisionId,
+                                    TehsilId = beedi.TehsilId,
+                                    Area = beedi.Area,
+                                    Pincode = beedi.Pincode,
+                                    Email = beedi.Email,
+                                    Telephone = beedi.Telephone,
+                                    Mobile = beedi.Mobile,
+                                    MaxNumberOfWorkerAnyDay = beedi.MaxNumberOfWorkerAnyDay,
+                                    NumberOfHomeWorker = beedi.NumberOfHomeWorker
+                                };
+                                dto.EstablishmentTypes.Add("BeediCigarWork");
+                            }
+                            break;
+                        case "MotorTransportService":
+                            var mtrs = await _db.Set<MotorTransportService>().FindAsync(map.EntityId);
+                            if (mtrs != null)
+                            {
+                                dto.MotorTransportService = new MotorTransportServiceDto
+                                {
+                                    NatureOfService = mtrs.NatureOfService,
+                                    Situation = mtrs.Situation,
+                                    AddressLine1 = mtrs.AddressLine1,
+                                    AddressLine2 = mtrs.AddressLine2,
+                                    SubDivisionId = mtrs.SubDivisionId,
+                                    TehsilId = mtrs.TehsilId,
+                                    Area = mtrs.Area,
+                                    Pincode = mtrs.Pincode,
+                                    Email = mtrs.Email,
+                                    Telephone = mtrs.Telephone,
+                                    Mobile = mtrs.Mobile,
+                                    MaxNumberOfWorkerDuringRegistation = mtrs.MaxNumberOfWorkerDuringRegistration,
+                                    TotalNumberOfVehicles = mtrs.TotalNumberOfVehicles
+                                };
+                                dto.EstablishmentTypes.Add("MotorTransportService");
+                            }
+                            break;
+                        case "BuildingAndConstructionWork":
+                            var bcw = await _db.Set<BuildingAndConstructionWork>().FindAsync(map.EntityId);
+                            if (bcw != null)
+                            {
+                                dto.BuildingAndConstructionWork = new BuildingAndConstructionWorkDto
+                                {
+                                    WorkType = bcw.WorkType,
+                                    ProbablePeriodOfCommencementOfWork = bcw.ProbablePeriodOfCommencementOfWork,
+                                    ExpectedPeriodOfCommencementOfWork = bcw.ExpectedPeriodOfCommencementOfWork,
+                                    LocalAuthorityApprovalDetail = bcw.LocalAuthorityApprovalDetail,
+                                    DateOfCompletion = bcw.DateOfCompletion?.ToString("yyyy-MM-dd")
+                                };
+                                dto.EstablishmentTypes.Add("BuildingAndConstructionWork");
+                            }
+                            break;
+                        case "NewsPaperEstablishment":
+                            var news = await _db.Set<NewsPaperEstablishment>().FindAsync(map.EntityId);
+                            if (news != null)
+                            {
+                                dto.NewsPaperEstablishment = new NewsPaperEstablishmentDto
+                                {
+                                    Name = news.Name,
+                                    AddressLine1 = news.AddressLine1,
+                                    AddressLine2 = news.AddressLine2,
+                                    SubDivisionId = news.SubDivisionId,
+                                    TehsilId = news.TehsilId,
+                                    Area = news.Area,
+                                    Pincode = news.Pincode,
+                                    Email = news.Email,
+                                    Telephone = news.Telephone,
+                                    Mobile = news.Mobile,
+                                    MaxNumberOfWorkerAnyDay = news.MaxNumberOfWorkerAnyDay,
+                                    DateOfCompletion = news.DateOfCompletion?.ToString("yyyy-MM-dd")
+                                };
+                                dto.EstablishmentTypes.Add("NewsPaperEstablishment");
+                            }
+                            break;
+                        case "AudioVisualWork":
+                            var av = await _db.Set<AudioVisualWork>().FindAsync(map.EntityId);
+                            if (av != null)
+                            {
+                                dto.AudioVisualWork = new AudioVisualWorkDto
+                                {
+                                    Name = av.Name,
+                                    AddressLine1 = av.AddressLine1,
+                                    AddressLine2 = av.AddressLine2,
+                                    SubDivisionId = av.SubDivisionId,
+                                    TehsilId = av.TehsilId,
+                                    Area = av.Area,
+                                    Pincode = av.Pincode,
+                                    Email = av.Email,
+                                    Telephone = av.Telephone,
+                                    Mobile = av.Mobile,
+                                    MaxNumberOfWorkerAnyDay = av.MaxNumberOfWorkerAnyDay,
+                                    DateOfCompletion = av.DateOfCompletion?.ToString("yyyy-MM-dd")
+                                };
+                                dto.EstablishmentTypes.Add("AudioVisualWork");
+                            }
+                            break;
+                        case "Plantation":
+                            var plantation = await _db.Set<Plantation>().FindAsync(map.EntityId);
+                            if (plantation != null)
+                            {
+                                dto.Plantation = new PlantationDto
+                                {
+                                    Name = plantation.Name,
+                                    AddressLine1 = plantation.AddressLine1,
+                                    AddressLine2 = plantation.AddressLine2,
+                                    SubDivisionId = plantation.SubDivisionId,
+                                    TehsilId = plantation.TehsilId,
+                                    Area = plantation.Area,
+                                    Pincode = plantation.Pincode,
+                                    Email = plantation.Email,
+                                    Telephone = plantation.Telephone,
+                                    Mobile = plantation.Mobile,
+                                    MaxNumberOfWorkerAnyDay = plantation.MaxNumberOfWorkerAnyDay,
+                                    DateOfCompletion = plantation.DateOfCompletion?.ToString("yyyy-MM-dd")
+                                };
+                                dto.EstablishmentTypes.Add("Plantation");
+                            }
+                            break;
+                        #endregion
+                    }
+                }
+                // If all are null, return null
+                if (dto.EstablishmentDetail == null && dto.MainOwnerDetail == null && dto.ManagerOrAgentDetail == null && dto.ContractorDetail == null &&
+                    dto.Factory == null && dto.BeediCigarWork == null && dto.MotorTransportService == null &&
+                    dto.BuildingAndConstructionWork == null && dto.NewsPaperEstablishment == null &&
+                    dto.AudioVisualWork == null && dto.Plantation == null)
+                    return null;
+
+                var applicationHistory = await _db.Set<ApplicationHistory>()
+                    .AsNoTracking()
+                    .Where(x => x.ApplicationId == reg.EstablishmentRegistrationId)
+                    .OrderByDescending(x => x.ActionDate)
+                    .ToListAsync();
+
+                var transactionHistory = await _db.Set<Transaction>()
+                    .AsNoTracking()
+                    .Where(x => x.ApplicationId == reg.EstablishmentRegistrationId)
+                    .OrderByDescending(x => x.CreatedAt)
+                    .ToListAsync();
+
+                return new EstablishmentApplicationDto
+                {
+                    ApplicationDetails = dto,
+                    ApplicationHistory = applicationHistory,
+                    TransactionHistory = transactionHistory
                 };
             }
-            if (reg.MainOwnerDetailId != null)
+            catch
             {
-                var mainOwner = await _db.Set<PersonDetail>().AsNoTracking().FirstOrDefaultAsync(x => x.Id == reg.MainOwnerDetailId);
-                if (mainOwner != null)
-                {
-                    dto.MainOwnerDetail = new PersonDetailDto
-                    {
-                        Name = mainOwner.Name,
-                        AddressLine1 = mainOwner.AddressLine1,
-                        AddressLine2 = mainOwner.AddressLine2,
-                        Designation = mainOwner.Designation,
-                        Role = mainOwner.Role,
-                        TypeOfEmployer = mainOwner.TypeOfEmployer,
-                        RelationType = mainOwner.RelationType,
-                        RelativeName = mainOwner.RelativeName,
-                        District = mainOwner.District,
-                        Tehsil = mainOwner.Tehsil,
-                        Area = mainOwner.Area,
-                        Pincode = mainOwner.Pincode,
-                        Email = mainOwner.Email,
-                        Mobile = mainOwner.Mobile,
-                        Telephone = mainOwner.Telephone
-                    };
-                }
+                throw;
             }
-            if (reg.ManagerOrAgentDetailId != null)
-            {
-                var manager = await _db.Set<PersonDetail>().AsNoTracking().FirstOrDefaultAsync(x => x.Id == reg.ManagerOrAgentDetailId);
-                if (manager != null)
-                {
-                    dto.ManagerOrAgentDetail = new PersonDetailDto
-                    {
-                        Name = manager.Name,
-                        AddressLine1 = manager.AddressLine1,
-                        AddressLine2 = manager.AddressLine2,
-                        Designation = manager.Designation,
-                        Role = manager.Role,
-                        TypeOfEmployer = manager.TypeOfEmployer,
-                        RelationType = manager.RelationType,
-                        RelativeName = manager.RelativeName,
-                        District = manager.District,
-                        Tehsil = manager.Tehsil,
-                        Area = manager.Area,
-                        Pincode = manager.Pincode,
-                        Email = manager.Email,
-                        Mobile = manager.Mobile,
-                        Telephone = manager.Telephone
-                    };
-                }
-            }
-            var contractors = await (
-                    from fcm in _db.Set<FactoryContractorMapping>().AsNoTracking()
-                    join cd in _db.Set<ContractorDetail>().AsNoTracking()
-                        on fcm.ContractorDetailId equals cd.Id
-                    join pd in _db.Set<PersonDetail>().AsNoTracking()
-                        on cd.ContractorPersonalDetailId equals pd.Id
-                    where fcm.EstablishmentRegistrationId == reg.EstablishmentRegistrationId
-                    select new ContractorDetailDto
-                    {
-                        Name = pd.Name,
-                        AddressLine1 = pd.AddressLine1,
-                        AddressLine2 = pd.AddressLine2,
-                        District = pd.District,
-                        Tehsil = pd.Tehsil,
-                        Area = pd.Area,
-                        Pincode = pd.Pincode,
-                        Email = pd.Email,
-                        Mobile = pd.Mobile,
-                        Telephone = pd.Telephone,
-                        NameOfWork = cd.NameOfWork,
-                        MaxContractWorkerCountMale = cd.MaxContractWorkerCountMale,
-                        MaxContractWorkerCountFemale = cd.MaxContractWorkerCountFemale,
-                        DateOfCommencement = cd.DateOfCommencement,
-                        DateOfCompletion = cd.DateOfCompletion
-                    }
-                ).ToListAsync();
-
-            dto.ContractorDetail = contractors ?? new List<ContractorDetailDto>();
-
-
-            // Map all entity types to DTOs
-            foreach (var map in mappings)
-            {
-                switch (map.EntityType)
-                {
-                    case "Factory":
-                        var factory = await (
-                            from f in _db.Set<FactoryDetail>().AsNoTracking()
-                            where f.Id == map.EntityId
-
-                            join area in _db.Set<Area>().AsNoTracking()
-                                on f.SubDivisionId equals area.Id.ToString() into areaJoin
-                            from areaDetail in areaJoin.DefaultIfEmpty()
-
-                            join district in _db.Set<District>().AsNoTracking()
-                                on areaDetail.DistrictId equals district.Id into districtJoin
-                            from districtDetail in districtJoin.DefaultIfEmpty()
-
-                            join division in _db.Set<Division>().AsNoTracking()
-                                on districtDetail.DivisionId equals division.Id into divisionJoin
-                            from divisionDetail in divisionJoin.DefaultIfEmpty()
-
-                            select new FactoryDetailsDto
-                            {
-                                ManuacturingDetail = f.ManufacturingDetail,
-                                Situation = f.Situation,
-
-                                SubDivisionId = f.SubDivisionId,
-                                TehsilId = f.TehsilId,
-                                Area = f.Area,
-
-                                DistrictId = areaDetail.DistrictId.ToString(),
-                                DistrictName = districtDetail.Name,
-
-                                AddressLine1 = f.AddressLine1,
-                                AddressLine2 = f.AddressLine2,
-                                Pincode = f.Pincode ?? "",
-                                Email = f.Email ?? "",
-                                Mobile = f.Mobile ?? "",
-                                Telephone = f.Telephone ?? "",
-
-                                EmployerId = f.EmployerId,
-                                ManagerId = f.ManagerId,
-
-                                NumberOfWorker = f.NumberOfWorker ?? 0,
-                                SanctionedLoad = f.SanctionedLoad ?? 0,
-                                SanctionedLoadUnit = f.SanctionedLoadUnit,
-
-                                OwnershipTypeSector = f.OwnershipTypeSector,
-                                ActivityAsPerNIC = f.ActivityAsPerNIC,
-                                NICCodeDetail = f.NICCodeDetail,
-                                IdentificationOfEstablishment = f.IdentificationOfEstablishment
-                            }
-                        ).FirstOrDefaultAsync();
-
-                        if (factory != null)
-                        {
-                            dto.Factory = new FactoryDto
-                            {
-                                ManuacturingDetail = factory.ManuacturingDetail,
-                                SubDivisionId = factory.SubDivisionId,
-                                AddressLine1 = factory.AddressLine1,
-                                AddressLine2 = factory.AddressLine2,
-                                Area = factory.Area,
-                                DistrictId = factory.DistrictId,
-                                DistrictName = factory.DistrictName,
-                                Pincode = factory.Pincode ?? "",
-                                Email = factory.Email ?? "",
-                                Telephone = factory.Telephone ?? "",
-                                Mobile = factory.Mobile ?? "",
-                                NumberOfWorker = factory.NumberOfWorker,
-                                SanctionedLoad = factory.SanctionedLoad,
-                                Situation = factory.Situation,
-                                OwnershipTypeSector = factory.OwnershipTypeSector,
-                                ActivityAsPerNIC = factory.ActivityAsPerNIC,
-                                NICCodeDetail = factory.NICCodeDetail,
-                                IdentificationOfEstablishment = factory.IdentificationOfEstablishment
-                            };
-                            if (factory.EmployerId != null)
-                            {
-                                var employer = await _db.Set<EstablishmentUserDetail>().FindAsync(factory.EmployerId);
-                                if (employer != null)
-                                {
-                                    dto.Factory.EmployerDetail = new PersonShortDto
-                                    {
-                                        Role = employer.RoleType,
-                                        Name = employer.Name,
-                                        Designation = employer.Designation,
-                                        AddressLine1 = employer.AddressLine1,
-                                        AddressLine2 = employer.AddressLine2,
-                                        District = employer.District,
-                                        Tehsil = employer.Tehsil,
-                                        Area = employer.Area,
-                                        Pincode = employer.Pincode,
-                                        Email = employer.Email,
-                                        Telephone = employer.Telephone,
-                                        Mobile = employer.Mobile
-                                    };
-                                }
-                            }
-                            if (factory.ManagerId != null)
-                            {
-                                var manager = await _db.Set<EstablishmentUserDetail>().FindAsync(factory.ManagerId);
-                                if (manager != null)
-                                {
-                                    dto.Factory.ManagerDetail = new PersonShortDto
-                                    {
-                                        Role = manager.RoleType,
-                                        Name = manager.Name,
-                                        Designation = manager.Designation,
-                                        AddressLine1 = manager.AddressLine1,
-                                        AddressLine2 = manager.AddressLine2,
-                                        District = manager.District,
-                                        Tehsil = manager.Tehsil,
-                                        Area = manager.Area,
-                                        Pincode = manager.Pincode,
-                                        Email = manager.Email,
-                                        Telephone = manager.Telephone,
-                                        Mobile = manager.Mobile
-                                    };
-                                }
-                            }
-                            dto.EstablishmentTypes.Add("Factory");
-                        }
-                        break;
-
-                    #region Other types
-                    case "BeediCigarWork":
-                        var beedi = await _db.Set<BeediCigarWork>().FindAsync(map.EntityId);
-                        if (beedi != null)
-                        {
-                            dto.BeediCigarWork = new BeediCigarWorksDto
-                            {
-                                ManuacturingDetail = beedi.ManufacturingDetail,
-                                Situation = beedi.Situation,
-                                AddressLine1 = beedi.AddressLine1,
-                                AddressLine2 = beedi.AddressLine2,
-                                SubDivisionId = beedi.SubDivisionId,
-                                TehsilId = beedi.TehsilId,
-                                Area = beedi.Area,
-                                Pincode = beedi.Pincode,
-                                Email = beedi.Email,
-                                Telephone = beedi.Telephone,
-                                Mobile = beedi.Mobile,
-                                MaxNumberOfWorkerAnyDay = beedi.MaxNumberOfWorkerAnyDay,
-                                NumberOfHomeWorker = beedi.NumberOfHomeWorker
-                            };
-                            dto.EstablishmentTypes.Add("BeediCigarWork");
-                        }
-                        break;
-                    case "MotorTransportService":
-                        var mtrs = await _db.Set<MotorTransportService>().FindAsync(map.EntityId);
-                        if (mtrs != null)
-                        {
-                            dto.MotorTransportService = new MotorTransportServiceDto
-                            {
-                                NatureOfService = mtrs.NatureOfService,
-                                Situation = mtrs.Situation,
-                                AddressLine1 = mtrs.AddressLine1,
-                                AddressLine2 = mtrs.AddressLine2,
-                                SubDivisionId = mtrs.SubDivisionId,
-                                TehsilId = mtrs.TehsilId,
-                                Area = mtrs.Area,
-                                Pincode = mtrs.Pincode,
-                                Email = mtrs.Email,
-                                Telephone = mtrs.Telephone,
-                                Mobile = mtrs.Mobile,
-                                MaxNumberOfWorkerDuringRegistation = mtrs.MaxNumberOfWorkerDuringRegistration,
-                                TotalNumberOfVehicles = mtrs.TotalNumberOfVehicles
-                            };
-                            dto.EstablishmentTypes.Add("MotorTransportService");
-                        }
-                        break;
-                    case "BuildingAndConstructionWork":
-                        var bcw = await _db.Set<BuildingAndConstructionWork>().FindAsync(map.EntityId);
-                        if (bcw != null)
-                        {
-                            dto.BuildingAndConstructionWork = new BuildingAndConstructionWorkDto
-                            {
-                                WorkType = bcw.WorkType,
-                                ProbablePeriodOfCommencementOfWork = bcw.ProbablePeriodOfCommencementOfWork,
-                                ExpectedPeriodOfCommencementOfWork = bcw.ExpectedPeriodOfCommencementOfWork,
-                                LocalAuthorityApprovalDetail = bcw.LocalAuthorityApprovalDetail,
-                                DateOfCompletion = bcw.DateOfCompletion?.ToString("yyyy-MM-dd")
-                            };
-                            dto.EstablishmentTypes.Add("BuildingAndConstructionWork");
-                        }
-                        break;
-                    case "NewsPaperEstablishment":
-                        var news = await _db.Set<NewsPaperEstablishment>().FindAsync(map.EntityId);
-                        if (news != null)
-                        {
-                            dto.NewsPaperEstablishment = new NewsPaperEstablishmentDto
-                            {
-                                Name = news.Name,
-                                AddressLine1 = news.AddressLine1,
-                                AddressLine2 = news.AddressLine2,
-                                SubDivisionId = news.SubDivisionId,
-                                TehsilId = news.TehsilId,
-                                Area = news.Area,
-                                Pincode = news.Pincode,
-                                Email = news.Email,
-                                Telephone = news.Telephone,
-                                Mobile = news.Mobile,
-                                MaxNumberOfWorkerAnyDay = news.MaxNumberOfWorkerAnyDay,
-                                DateOfCompletion = news.DateOfCompletion?.ToString("yyyy-MM-dd")
-                            };
-                            dto.EstablishmentTypes.Add("NewsPaperEstablishment");
-                        }
-                        break;
-                    case "AudioVisualWork":
-                        var av = await _db.Set<AudioVisualWork>().FindAsync(map.EntityId);
-                        if (av != null)
-                        {
-                            dto.AudioVisualWork = new AudioVisualWorkDto
-                            {
-                                Name = av.Name,
-                                AddressLine1 = av.AddressLine1,
-                                AddressLine2 = av.AddressLine2,
-                                SubDivisionId = av.SubDivisionId,
-                                TehsilId = av.TehsilId,
-                                Area = av.Area,
-                                Pincode = av.Pincode,
-                                Email = av.Email,
-                                Telephone = av.Telephone,
-                                Mobile = av.Mobile,
-                                MaxNumberOfWorkerAnyDay = av.MaxNumberOfWorkerAnyDay,
-                                DateOfCompletion = av.DateOfCompletion?.ToString("yyyy-MM-dd")
-                            };
-                            dto.EstablishmentTypes.Add("AudioVisualWork");
-                        }
-                        break;
-                    case "Plantation":
-                        var plantation = await _db.Set<Plantation>().FindAsync(map.EntityId);
-                        if (plantation != null)
-                        {
-                            dto.Plantation = new PlantationDto
-                            {
-                                Name = plantation.Name,
-                                AddressLine1 = plantation.AddressLine1,
-                                AddressLine2 = plantation.AddressLine2,
-                                SubDivisionId = plantation.SubDivisionId,
-                                TehsilId = plantation.TehsilId,
-                                Area = plantation.Area,
-                                Pincode = plantation.Pincode,
-                                Email = plantation.Email,
-                                Telephone = plantation.Telephone,
-                                Mobile = plantation.Mobile,
-                                MaxNumberOfWorkerAnyDay = plantation.MaxNumberOfWorkerAnyDay,
-                                DateOfCompletion = plantation.DateOfCompletion?.ToString("yyyy-MM-dd")
-                            };
-                            dto.EstablishmentTypes.Add("Plantation");
-                        }
-                        break;
-                        #endregion
-                }
-            }
-            // If all are null, return null
-            if (dto.EstablishmentDetail == null && dto.MainOwnerDetail == null && dto.ManagerOrAgentDetail == null && dto.ContractorDetail == null &&
-                dto.Factory == null && dto.BeediCigarWork == null && dto.MotorTransportService == null &&
-                dto.BuildingAndConstructionWork == null && dto.NewsPaperEstablishment == null &&
-                dto.AudioVisualWork == null && dto.Plantation == null)
-                return null;
-
-            var applicationHistory = await _db.Set<ApplicationHistory>()
-                .AsNoTracking()
-                .Where(x => x.ApplicationId == reg.EstablishmentRegistrationId)
-                .OrderByDescending(x => x.ActionDate)
-                .ToListAsync();
-
-            var transactionHistory = await _db.Set<Transaction>()
-                .AsNoTracking()
-                .Where(x => x.ApplicationId == reg.EstablishmentRegistrationId)
-                .OrderByDescending(x => x.CreatedAt)
-                .ToListAsync();
-
-            return new EstablishmentApplicationDto
-             {
-                ApplicationDetails = dto,
-                ApplicationHistory = applicationHistory,
-                TransactionHistory = transactionHistory
-            };
         }
 
         public async Task<string?> GetFactoryRegistrationNumber(Guid userId)
@@ -2080,6 +2087,7 @@ namespace RajFabAPI.Services
                         Id = Guid.NewGuid(),
                         RoleType = "Employer",
                         Name = dto.Factory.EmployerDetail?.Name,
+                        Designation = dto.Factory.EmployerDetail?.Designation,
                         AddressLine1 = dto.Factory.EmployerDetail?.AddressLine1,
                         AddressLine2 = dto.Factory.EmployerDetail?.AddressLine2,
                         District = dto.Factory.EmployerDetail?.District,
@@ -2099,6 +2107,7 @@ namespace RajFabAPI.Services
                         Id = Guid.NewGuid(),
                         RoleType = "Manager",
                         Name = dto.Factory.ManagerDetail?.Name,
+                        Designation = dto.Factory.ManagerDetail?.Designation,
                         AddressLine1 = dto.Factory.ManagerDetail?.AddressLine1,
                         AddressLine2 = dto.Factory.ManagerDetail?.AddressLine2,
                         District = dto.Factory.ManagerDetail?.District,
@@ -2132,7 +2141,12 @@ namespace RajFabAPI.Services
                         NumberOfWorker = dto.Factory.NumberOfWorker,
                         SanctionedLoad = dto.Factory.SanctionedLoad,
                         CreatedAt = DateTime.Now,
-                        UpdatedAt = DateTime.Now
+                        UpdatedAt = DateTime.Now,
+                        SanctionedLoadUnit = dto.Factory.SanctionedLoadUnit,
+                        OwnershipTypeSector = dto.Factory.OwnershipTypeSector,
+                        ActivityAsPerNIC = dto.Factory.ActivityAsPerNIC,
+                        NICCodeDetail = dto.Factory.NICCodeDetail,
+                        IdentificationOfEstablishment = dto.Factory.IdentificationOfEstablishment,
                     };
                     _ = _db.Set<FactoryDetail>().Add(factory);
 
@@ -2619,6 +2633,7 @@ namespace RajFabAPI.Services
                         Role = "MainOwner",
                         Name = dto.MainOwnerDetail.Name,
                         Designation = dto.MainOwnerDetail.Designation,
+                        TypeOfEmployer = dto.MainOwnerDetail.TypeOfEmployer,
                         RelationType = dto.MainOwnerDetail.RelationType,
                         RelativeName = dto.MainOwnerDetail.RelativeName,
                         AddressLine1 = dto.MainOwnerDetail.AddressLine1,
@@ -2643,6 +2658,7 @@ namespace RajFabAPI.Services
                         Id = managerAgentId.Value,
                         Role = "ManagerOrAgent",
                         Name = dto.ManagerOrAgentDetail.Name,
+                        TypeOfEmployer = dto.ManagerOrAgentDetail.TypeOfEmployer,
                         Designation = dto.ManagerOrAgentDetail.Designation,
                         RelationType = dto.ManagerOrAgentDetail.RelationType,
                         RelativeName = dto.ManagerOrAgentDetail.RelativeName,
@@ -2716,7 +2732,7 @@ namespace RajFabAPI.Services
                     ApplicationType = module.Name,
                     Action = "Application data updated",
                     Comments = "Application data updated by citizen",
-                    ActionBy = "Applicaint",
+                    ActionBy = "Applicant",
                     ActionDate = DateTime.Now
                 };
 
@@ -3225,10 +3241,13 @@ namespace RajFabAPI.Services
             return fileUrl;
         }
 
-        public async Task<string> GenerateEstablishmentPdf(EstablishmentRegistrationEntitiesDto dto)
+        public async Task<string> GenerateEstablishmentPdf(EstablishmentApplicationDto item)
         {
-            if (dto == null) throw new ArgumentNullException(nameof(dto));
 
+            if (item == null) throw new ArgumentNullException(nameof(item));
+
+            var trasactiondata = item.TransactionHistory;
+            var dto = item.ApplicationDetails;
             // File name and paths
             var fileName = $"establishment_{dto.RegistrationDetail.ApplicationRegistrationNumber}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
             var webRootPath = _environment.WebRootPath;
@@ -3416,6 +3435,41 @@ namespace RajFabAPI.Services
                     _ = document.Add(contractorTable);
                     _ = document.Add(new Paragraph("\n"));
                 }
+            }
+
+            // ================= G. Payment Details =================
+            var transactionData = item.TransactionHistory?
+                                    .Where(t => t.Status != null && t.Status.ToUpper() == "SUCCESS")
+                                    .ToList();
+
+            if (transactionData != null && transactionData.Any())
+            {
+                document.Add(new Paragraph("Payment Details").SetFont(boldFont).SetFontSize(12));
+                document.Add(new Paragraph("\n"));
+
+                var paymentTable = new PdfTable(2).UseAllAvailableWidth();
+
+                foreach (var payment in transactionData)
+                {
+                    _ = paymentTable.AddCell(new PdfCell().Add(new Paragraph("Transaction ID").SetFont(boldFont)));
+                    _ = paymentTable.AddCell(new PdfCell().Add(new Paragraph(payment.RPPTXNID ?? "-")));
+
+                    _ = paymentTable.AddCell(new PdfCell().Add(new Paragraph("Amount").SetFont(boldFont)));
+                    _ = paymentTable.AddCell(new PdfCell().Add(new Paragraph(payment.Amount.ToString("0.00"))));
+
+                    _ = paymentTable.AddCell(new PdfCell().Add(new Paragraph("Paid Amount").SetFont(boldFont)));
+                    _ = paymentTable.AddCell(new PdfCell().Add(new Paragraph(payment.PaidAmount?.ToString("0.00") ?? "-")));
+
+                    _ = paymentTable.AddCell(new PdfCell().Add(new Paragraph("Status").SetFont(boldFont)));
+                    _ = paymentTable.AddCell(new PdfCell().Add(new Paragraph(payment.Status ?? "-")));
+
+                    _ = paymentTable.AddCell(new PdfCell().Add(new Paragraph("Transaction Date").SetFont(boldFont)));
+                    _ = paymentTable.AddCell(new PdfCell().Add(new Paragraph(payment.CreatedAt.ToString("dd/MM/yyyy HH:mm"))));
+
+                    _ = paymentTable.AddCell(new PdfCell(1, 2).Add(new Paragraph("\n"))); // spacing
+                }
+
+                _ = document.Add(paymentTable);
             }
 
             // ================= G. Declaration =================

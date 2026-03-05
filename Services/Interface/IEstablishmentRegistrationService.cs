@@ -16,7 +16,7 @@ namespace RajFabAPI.Services.Interface
         Task<string> RenewEstablishmentAsync( RenewEstablishmentDto dto, Guid userId,  string registrationId);
         Task<string> GenerateCertificateAsync(EstablishmentCertificateRequestDto  dto, Guid userId, string registrationId);
         Task<string?> GetFactoryRegistrationNumber(Guid userId);
-        Task<string> GenerateEstablishmentPdf(EstablishmentRegistrationEntitiesDto dto);
+        Task<string> GenerateEstablishmentPdf(EstablishmentApplicationDto dto);
         Task<string?> getFilePathByPrn(string prnNumber);
     }
 }

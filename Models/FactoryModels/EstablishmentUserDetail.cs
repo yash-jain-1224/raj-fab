@@ -15,7 +15,7 @@ namespace RajFabAPI.Models
         [MaxLength(200)]
         public string Name { get; set; }
         [MaxLength(200)]
-        public string Designation { get; set; }
+        public string? Designation { get; set; }
 
         [MaxLength(500)]
         public string AddressLine1 { get; set; }

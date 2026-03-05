@@ -128,7 +128,7 @@ namespace RajFabAPI.Services
                                 _logger.LogInformation("Processing New Establishment PDF generation");
 
                                 var data = await _estRegService.GetAllEntitiesByRegistrationIdAsync(applicationId);
-                                var filePath = await _estRegService.GenerateEstablishmentPdf(data.ApplicationDetails);
+                                var filePath = await _estRegService.GenerateEstablishmentPdf(data);
 
                                 if (!File.Exists(filePath))
                                 {
@@ -680,7 +680,7 @@ namespace RajFabAPI.Services
                 if (Module.Name == ApplicationTypeNames.NewEstablishment || Module.Name == ApplicationTypeNames.FactoryAmendment || Module.Name == ApplicationTypeNames.FactoryRenewal)
                 {
                     var data = await _estRegService.GetAllEntitiesByRegistrationIdAsync(applicationId);
-                    var filePath = await _estRegService.GenerateEstablishmentPdf(data.ApplicationDetails);
+                    var filePath = await _estRegService.GenerateEstablishmentPdf(data);
                 }
                 else if (Module.Name == ApplicationTypeNames.MapApproval || Module.Name == ApplicationTypeNames.MapApprovalAmendment)
                 {

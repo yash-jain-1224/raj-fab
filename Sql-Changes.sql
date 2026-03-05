@@ -300,7 +300,7 @@ CREATE TABLE [dbo].[BoilerDetails](
 	[Id] [uniqueidentifier] NOT NULL,
 	[AddressLine1] [nvarchar](300) NULL,
 	[AddressLine2] [nvarchar](300) NULL,
-	[Area] [NVARCHAR(100)] NULL,
+	[Area] [NVARCHAR](100) NULL,
 	[PinCode] [int] NULL,
 	[Telephone] [nvarchar](20) NULL,
 	[Mobile] [nvarchar](20) NULL,

@@ -22,6 +22,7 @@ namespace RajFabAPI.DTOs
         public DateTime? Date { get; set; }
         public string ApplicationRegistrationNumber { get; set; }
         public string ApplicationPDFUrl { get; set; }
+        public string? CertificatePDFUrl { get; set; }
 
         // Audit
         public DateTime? CreatedDate { get; set; }

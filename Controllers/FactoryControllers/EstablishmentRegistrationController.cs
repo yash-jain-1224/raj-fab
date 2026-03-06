@@ -14,15 +14,18 @@ namespace RajFabAPI.Controllers.FactoryControllers
         private readonly IEstablishmentRegistrationService _service;
         private readonly IValidator<CreateEstablishmentRegistrationDto> _validator;
         private readonly ILogger<ApplicationRegistrationController> _logger;
+        private readonly IESignService _eSignService;
 
         public EstablishmentRegistrationController(
             IEstablishmentRegistrationService service,
             IValidator<CreateEstablishmentRegistrationDto> validator,
-            ILogger<ApplicationRegistrationController> logger)
+            ILogger<ApplicationRegistrationController> logger,
+            IESignService eSignService)
         {
             _service = service;
             _validator = validator;
             _logger = logger;
+            _eSignService = eSignService;
         }
 
         // POST: api/factoryobject/complete
@@ -316,14 +319,15 @@ namespace RajFabAPI.Controllers.FactoryControllers
 
             try
             {
-                var certificateUrl = await _service.GenerateCertificateAsync(dto, userIdGuid, registrationId);
-                return CreatedAtAction(null, new { id = certificateUrl }, new { certificateUrl });
+                var certificateId = await _service.GenerateCertificateAsync(dto, userIdGuid, registrationId);
+                var html = await _eSignService.GenerateCertificateESignHtmlAsync(certificateId);
+                return Ok(new { html });
             }
             catch (ArgumentException ex) { return BadRequest(ex.Message); }
             catch (KeyNotFoundException ex) { return NotFound(ex.Message); }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while saving the registration.");
+                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while generating the certificate.");
             }
         }
     }

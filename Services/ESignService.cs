@@ -51,6 +51,7 @@ namespace RajFabAPI.Services
         private readonly IFactoryLicenseService _factoryLicenseService;
         private readonly IAppealService _appealService;
         private readonly ILogger<ESignService> _logger;
+        private readonly IWebHostEnvironment _environment;
 
         public ESignService(
             IMemoryCache cache, IEstablishmentRegistrationService estRegService, ApplicationDbContext db, IConfiguration config,
@@ -58,7 +59,8 @@ namespace RajFabAPI.Services
             IHttpContextAccessor httpContextAccessor, IFactoryMapApprovalService factoryMapApprovalService,
             ICommencementCessationService commencementCessationService, IFactoryLicenseService factoryLicenseService,
             ILogger<ESignService> logger,
-            IAppealService appealService)
+            IAppealService appealService,
+            IWebHostEnvironment environment)
         {
             _logger = logger;
             _cache = cache;
@@ -71,6 +73,7 @@ namespace RajFabAPI.Services
             _commencementCessationService = commencementCessationService;
             _factoryLicenseService = factoryLicenseService;
             _appealService = appealService;
+            _environment = environment;
         }
 
         public async Task<string> GenerateESignHtmlAsync(string applicationId)
@@ -407,8 +410,35 @@ namespace RajFabAPI.Services
 
                     if (!updateSuccess)
                     {
-                        _logger.LogError("DB update failed after signing");
-                        return BuildErrorRedirect("Error updating application after signing");
+                        // Check if this PRN belongs to a certificate instead
+                        var certificate = await _db.Certificates
+                            .FirstOrDefaultAsync(c => c.ESignPrnNumber == esignTempData.prn);
+
+                        if (certificate != null)
+                        {
+                            _logger.LogInformation("PRN matched a certificate, updating certificate eSign status");
+
+                            if (!string.IsNullOrWhiteSpace(signingResponse.data.signedPDFBase64))
+                            {
+                                var signedPdfBase64 = signingResponse.data.signedPDFBase64;
+                                if (signedPdfBase64.Contains(","))
+                                    signedPdfBase64 = signedPdfBase64.Split(',')[1];
+
+                                var signedPdfBytes = Convert.FromBase64String(signedPdfBase64);
+                                var fileName = Path.GetFileName(new Uri(certificate.CertificateUrl).AbsolutePath);
+                                var physicalPath = Path.Combine(_environment.WebRootPath, "certificates", fileName);
+                                await File.WriteAllBytesAsync(physicalPath, signedPdfBytes);
+                            }
+
+                            certificate.IsESignCompleted = true;
+                            certificate.Status = "Active";
+                            await _db.SaveChangesAsync();
+                        }
+                        else
+                        {
+                            _logger.LogError("DB update failed after signing");
+                            return BuildErrorRedirect("Error updating application after signing");
+                        }
                     }
 
                     _logger.LogInformation("ProcessEsignResponseAsync completed successfully");
@@ -655,6 +685,84 @@ namespace RajFabAPI.Services
         {
             var encodedMessage = Uri.EscapeDataString(message);
             return $"{_config["FrontendUrl"]}/error?details={encodedMessage}";
+        }
+
+        public async Task<string> GenerateCertificateESignHtmlAsync(string certificateId)
+        {
+            _logger.LogInformation("GenerateCertificateESignHtmlAsync started for CertificateId: {CertificateId}", certificateId);
+
+            if (string.IsNullOrEmpty(certificateId))
+                throw new ArgumentException("Certificate ID is required");
+
+            if (!Guid.TryParse(certificateId, out var certGuid))
+                throw new ArgumentException("Invalid Certificate ID format");
+
+            var certificate = await _db.Certificates
+                .FirstOrDefaultAsync(c => c.Id == certGuid);
+
+            if (certificate == null)
+                throw new Exception("Certificate not found");
+
+            var fileName = Path.GetFileName(new Uri(certificate.CertificateUrl).AbsolutePath);
+            var physicalPath = Path.Combine(_environment.WebRootPath, "certificates", fileName);
+
+            if (!File.Exists(physicalPath))
+                throw new Exception("Certificate PDF not found on disk");
+
+            var pdfBytes = await File.ReadAllBytesAsync(physicalPath);
+
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == certificate.IssuedByUserId);
+            if (user == null)
+                throw new Exception("Issuing user not found");
+
+            var prnNumber = "RAJFAB" + string.Concat(Guid.NewGuid().ToString("N").Where(char.IsDigit));
+
+            certificate.ESignPrnNumber = prnNumber;
+            certificate.Status = "PendingESign";
+            await _db.SaveChangesAsync();
+
+            _logger.LogInformation("Requesting Auth Token from eSign provider for certificate");
+
+            var tokenResponse = await getAuthToken();
+            if (tokenResponse == null || tokenResponse.status != "SUCCESS")
+            {
+                _logger.LogError("Failed to get auth token for certificate eSign {@TokenResponse}", tokenResponse);
+                throw new Exception(tokenResponse?.message ?? "Failed to get auth token");
+            }
+
+            var authToken = tokenResponse.data.encryptedToken;
+
+            var signRequest = new generateSignedXml_Request
+            {
+                pdfFile = pdfBytes,
+                personName = user.FullName,
+                personDesignation = "Approval Authority",
+                personLocation = "Jaipur, Rajasthan",
+                responseUrl = $"{_config["ESignSettings:ResponseUrl"]}",
+                prn = prnNumber
+            };
+
+            _logger.LogInformation("Calling generateSignedXml API for certificate");
+
+            var signedXmlResponse = await generateSignedXml(signRequest, authToken);
+            if (signedXmlResponse == null || signedXmlResponse.status != "SUCCESS")
+            {
+                _logger.LogError("generateSignedXml failed for certificate {@Response}", signedXmlResponse);
+                throw new Exception("Failed to generate signed XML for certificate");
+            }
+
+            var esignTempData = new EsignTempData
+            {
+                prn = signedXmlResponse.data.prn,
+                txnId = signedXmlResponse.data.txnId,
+                authToken = authToken
+            };
+
+            _cache.Set(esignTempData.prn, esignTempData, TimeSpan.FromMinutes(5));
+
+            _logger.LogInformation("Certificate eSign initiated successfully. PRN: {PRN}", prnNumber);
+
+            return PostToPage(signdocURL, signedXmlResponse.data.signedXMLData);
         }
 
         public async Task<string> ManualESignVerifyAsync(string applicationId)

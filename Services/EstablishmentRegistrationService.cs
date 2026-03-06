@@ -1289,6 +1289,18 @@ namespace RajFabAPI.Services
                     dto.EstablishmentDetail = estDetail;
                     dto.StartDate = reg.CreatedDate;
                     dto.EndDate = reg.CreatedDate.AddYears(1);
+                    // var activeCertificate = await _db.Set<Certificate>()
+                    //     .AsNoTracking()
+                    //     .Where(c => c.RegistrationNumber == reg.RegistrationNumber && c.IsESignCompleted)
+                    //     .OrderByDescending(c => c.CertificateVersion)
+                    //     .FirstOrDefaultAsync();
+
+                    var activeCertificate = await _db.Set<Certificate>()
+                        .AsNoTracking()
+                        .Where(c => c.ApplicationId == reg.EstablishmentRegistrationId)
+                        .OrderByDescending(c => c.CertificateVersion)
+                        .FirstOrDefaultAsync();
+
                     dto.RegistrationDetail = new EstablishmentRegistrationDto
                     {
                         EstablishmentRegistrationId = reg.EstablishmentRegistrationId,
@@ -1298,7 +1310,8 @@ namespace RajFabAPI.Services
                         Signature = reg.Signature,
                         Amount = reg.Amount,
                         ApplicationPDFUrl = reg.ApplicationPDFUrl,
-                        ApplicationRegistrationNumber = reg.RegistrationNumber
+                        ApplicationRegistrationNumber = reg.RegistrationNumber,
+                        CertificatePDFUrl = activeCertificate?.CertificateUrl
                     };
                 }
                 if (reg.MainOwnerDetailId != null)
@@ -3037,7 +3050,7 @@ namespace RajFabAPI.Services
                 CertificateUrl = pdfUrl,
                 IssuedAt = DateTime.Now,
                 IssuedByUserId = userId,
-                Status = "Active",
+                Status = "PendingESign",
                 ModuleId = module.Id,
                 StartDate = dto.StartDate,
                 EndDate = dto.EndDate,
@@ -3047,6 +3060,11 @@ namespace RajFabAPI.Services
             };
 
             _ = _db.Certificates.Add(certificate);
+
+            // Get user details (Approval Authority - the signer)
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+            if (user == null)
+                throw new KeyNotFoundException("User not found");
 
             var officePost = await (
                 from ur in _db.UserRoles
@@ -3085,7 +3103,7 @@ namespace RajFabAPI.Services
 
             _ = await _db.SaveChangesAsync();
 
-            return certificate.CertificateUrl;
+            return certificate.Id.ToString();
         }
 
         private static async Task<byte[]?> DownloadImageAsync(string? imageUrl)

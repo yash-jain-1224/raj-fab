@@ -102,17 +102,21 @@ namespace RajFabAPI.Controllers.SteamPipeLineApplicationControllers
         ============================================ */
 
         [HttpGet("by-registration/{registrationNo}")]
-        public async Task<IActionResult> GetByRegistrationNo(string registrationNo)
+        
+        public async Task<IActionResult> GetLatestApproved(string registrationNo)
         {
-            if (string.IsNullOrWhiteSpace(registrationNo))
-                return BadRequest("RegistrationNo is required.");
+            var result = await _service.GetLatestApprovedByRegistrationNoAsync(WebUtility.UrlDecode(registrationNo));
 
-            var result = await _service
-                .GetSteamPipeLineByRegistrationNoAsync(registrationNo);
+            if (result == null)
+                return NotFound("Latest version is not approved.");
 
-            if (result == null || !result.Any())
-                return NotFound("No records found.");
+            return Ok(result);
+        }
 
+        [HttpGet("all")]
+        public async Task<IActionResult> GetAll()
+        {
+            var result = await _service.GetAllSteamPipeLinesAsync();
             return Ok(result);
         }
 

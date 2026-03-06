@@ -7,7 +7,8 @@ namespace RajFabAPI.Services.Interface
     {
         Task<string> SaveSteamPipeLineAsync(CreateSteamPipeLineDto dto, string? type, string? steamPipeLineRegistrationNo);
         Task<string> RenewSteamPipeLineAsync(RenewSteamPipeLineDto dto);
-        Task<List<SteamPipeLineFullResponseDto>> GetSteamPipeLineByRegistrationNoAsync(string registrationNo);
+        Task<SteamPipeLineFullResponseDto?> GetLatestApprovedByRegistrationNoAsync(string registrationNo);
+        Task<List<SteamPipeLineFullResponseDto>> GetAllSteamPipeLinesAsync();
         Task<SteamPipeLineFullResponseDto?> GetSteamPipeLineByApplicationIdAsync(string applicationId);
         Task<string> UpdateSteamPipeLineAsync(string applicationId, CreateSteamPipeLineDto dto);
         Task<string> CloseSteamPipeLineAsync(CreateSteamPipeLineCloseDto dto);

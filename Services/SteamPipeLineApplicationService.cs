@@ -375,61 +375,168 @@ namespace RajFabAPI.Services
                 IsActive = x.IsActive
             };
         }
-        public async Task<List<SteamPipeLineFullResponseDto>>GetSteamPipeLineByRegistrationNoAsync(string registrationNo)
+        //public async Task<List<SteamPipeLineFullResponseDto>>GetSteamPipeLineByRegistrationNoAsync(string registrationNo)
+        //{
+        //    var list = await _dbcontext.SteamPipeLineApplications
+        //        .Where(x => x.SteamPipeLineRegistrationNo == registrationNo)
+        //        .OrderByDescending(x => x.Version)
+        //        .ToListAsync();
+
+        //    var result = new List<SteamPipeLineFullResponseDto>();
+
+        //    foreach (var x in list)
+        //    {
+        //        result.Add(new SteamPipeLineFullResponseDto
+        //        {
+        //            ApplicationId = x.ApplicationId,
+        //            SteamPipeLineRegistrationNo = x.SteamPipeLineRegistrationNo,
+
+        //            BoilerApplicationNo = x.BoilerApplicationNo,
+        //            ProposedLayoutDescription = x.ProposedLayoutDescription,
+        //            ConsentLetterProvided = x.ConsentLetterProvided,
+        //            SteamPipeLineDrawingNo = x.SteamPipeLineDrawingNo,
+        //            BoilerMakerRegistrationNo = x.BoilerMakerRegistrationNo,
+        //            ErectorName = x.ErectorName,
+
+        //            FactoryRegistrationNumber = x.FactoryRegistrationNumber,
+        //            Factorydetailjson = x.Factorydetailjson,
+
+        //            PipeLengthUpTo100mm = x.PipeLengthUpTo100mm,
+        //            PipeLengthAbove100mm = x.PipeLengthAbove100mm,
+
+        //            NoOfDeSuperHeaters = x.NoOfDeSuperHeaters,
+        //            NoOfSteamReceivers = x.NoOfSteamReceivers,
+        //            NoOfFeedHeaters = x.NoOfFeedHeaters,
+        //            NoOfSeparatelyFiredSuperHeaters = x.NoOfSeparatelyFiredSuperHeaters,
+
+        //            FormIIPath = x.FormIIPath,
+        //            FormIIIPath = x.FormIIIPath,
+        //            FormIIIAPath = x.FormIIIAPath,
+        //            FormIIIBPath = x.FormIIIBPath,
+        //            FormIVPath = x.FormIVPath,
+        //            FormIVAPath = x.FormIVAPath,
+        //            DrawingPath = x.DrawingPath,
+        //            SupportingDocumentsPath = x.SupportingDocumentsPath,
+
+        //            RenewalYears = x.RenewalYears,
+        //            ValidFrom = x.ValidFrom,
+        //            ValidUpto = x.ValidUpto,
+
+        //            Type = x.Type,
+        //            Version = x.Version,
+        //            Status = x.Status,
+        //            IsActive = x.IsActive
+        //        });
+        //    }
+
+        //    return result;
+        //}
+
+
+        public async Task<List<SteamPipeLineFullResponseDto>> GetAllSteamPipeLinesAsync()
         {
             var list = await _dbcontext.SteamPipeLineApplications
-                .Where(x => x.SteamPipeLineRegistrationNo == registrationNo)
                 .OrderByDescending(x => x.Version)
                 .ToListAsync();
 
-            var result = new List<SteamPipeLineFullResponseDto>();
-
-            foreach (var x in list)
+            return list.Select(x => new SteamPipeLineFullResponseDto
             {
-                result.Add(new SteamPipeLineFullResponseDto
-                {
-                    ApplicationId = x.ApplicationId,
-                    SteamPipeLineRegistrationNo = x.SteamPipeLineRegistrationNo,
+                ApplicationId = x.ApplicationId,
+                SteamPipeLineRegistrationNo = x.SteamPipeLineRegistrationNo,
 
-                    BoilerApplicationNo = x.BoilerApplicationNo,
-                    ProposedLayoutDescription = x.ProposedLayoutDescription,
-                    ConsentLetterProvided = x.ConsentLetterProvided,
-                    SteamPipeLineDrawingNo = x.SteamPipeLineDrawingNo,
-                    BoilerMakerRegistrationNo = x.BoilerMakerRegistrationNo,
-                    ErectorName = x.ErectorName,
+                BoilerApplicationNo = x.BoilerApplicationNo,
+                ProposedLayoutDescription = x.ProposedLayoutDescription,
+                ConsentLetterProvided = x.ConsentLetterProvided,
+                SteamPipeLineDrawingNo = x.SteamPipeLineDrawingNo,
+                BoilerMakerRegistrationNo = x.BoilerMakerRegistrationNo,
+                ErectorName = x.ErectorName,
 
-                    FactoryRegistrationNumber = x.FactoryRegistrationNumber,
-                    Factorydetailjson = x.Factorydetailjson,
+                FactoryRegistrationNumber = x.FactoryRegistrationNumber,
+                Factorydetailjson = x.Factorydetailjson,
 
-                    PipeLengthUpTo100mm = x.PipeLengthUpTo100mm,
-                    PipeLengthAbove100mm = x.PipeLengthAbove100mm,
+                PipeLengthUpTo100mm = x.PipeLengthUpTo100mm,
+                PipeLengthAbove100mm = x.PipeLengthAbove100mm,
 
-                    NoOfDeSuperHeaters = x.NoOfDeSuperHeaters,
-                    NoOfSteamReceivers = x.NoOfSteamReceivers,
-                    NoOfFeedHeaters = x.NoOfFeedHeaters,
-                    NoOfSeparatelyFiredSuperHeaters = x.NoOfSeparatelyFiredSuperHeaters,
+                NoOfDeSuperHeaters = x.NoOfDeSuperHeaters,
+                NoOfSteamReceivers = x.NoOfSteamReceivers,
+                NoOfFeedHeaters = x.NoOfFeedHeaters,
+                NoOfSeparatelyFiredSuperHeaters = x.NoOfSeparatelyFiredSuperHeaters,
 
-                    FormIIPath = x.FormIIPath,
-                    FormIIIPath = x.FormIIIPath,
-                    FormIIIAPath = x.FormIIIAPath,
-                    FormIIIBPath = x.FormIIIBPath,
-                    FormIVPath = x.FormIVPath,
-                    FormIVAPath = x.FormIVAPath,
-                    DrawingPath = x.DrawingPath,
-                    SupportingDocumentsPath = x.SupportingDocumentsPath,
+                FormIIPath = x.FormIIPath,
+                FormIIIPath = x.FormIIIPath,
+                FormIIIAPath = x.FormIIIAPath,
+                FormIIIBPath = x.FormIIIBPath,
+                FormIVPath = x.FormIVPath,
+                FormIVAPath = x.FormIVAPath,
+                DrawingPath = x.DrawingPath,
+                SupportingDocumentsPath = x.SupportingDocumentsPath,
 
-                    RenewalYears = x.RenewalYears,
-                    ValidFrom = x.ValidFrom,
-                    ValidUpto = x.ValidUpto,
+                RenewalYears = x.RenewalYears,
+                ValidFrom = x.ValidFrom,
+                ValidUpto = x.ValidUpto,
 
-                    Type = x.Type,
-                    Version = x.Version,
-                    Status = x.Status,
-                    IsActive = x.IsActive
-                });
-            }
+                Type = x.Type,
+                Version = x.Version,
+                Status = x.Status,
+                IsActive = x.IsActive
+            }).ToList();
+        }
 
-            return result;
+        public async Task<SteamPipeLineFullResponseDto?> GetLatestApprovedByRegistrationNoAsync(string registrationNo)
+        {
+            var latest = await _dbcontext.SteamPipeLineApplications
+                .Where(x => x.SteamPipeLineRegistrationNo == registrationNo)
+                .OrderByDescending(x => x.Version)
+                .FirstOrDefaultAsync();
+
+            if (latest == null)
+                return null;
+
+            // Only return if latest version is Approved
+            if (!latest.Status.Equals("Approved", StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            return new SteamPipeLineFullResponseDto
+            {
+                ApplicationId = latest.ApplicationId,
+                SteamPipeLineRegistrationNo = latest.SteamPipeLineRegistrationNo,
+
+                BoilerApplicationNo = latest.BoilerApplicationNo,
+                ProposedLayoutDescription = latest.ProposedLayoutDescription,
+                ConsentLetterProvided = latest.ConsentLetterProvided,
+                SteamPipeLineDrawingNo = latest.SteamPipeLineDrawingNo,
+                BoilerMakerRegistrationNo = latest.BoilerMakerRegistrationNo,
+                ErectorName = latest.ErectorName,
+
+                FactoryRegistrationNumber = latest.FactoryRegistrationNumber,
+                Factorydetailjson = latest.Factorydetailjson,
+
+                PipeLengthUpTo100mm = latest.PipeLengthUpTo100mm,
+                PipeLengthAbove100mm = latest.PipeLengthAbove100mm,
+
+                NoOfDeSuperHeaters = latest.NoOfDeSuperHeaters,
+                NoOfSteamReceivers = latest.NoOfSteamReceivers,
+                NoOfFeedHeaters = latest.NoOfFeedHeaters,
+                NoOfSeparatelyFiredSuperHeaters = latest.NoOfSeparatelyFiredSuperHeaters,
+
+                FormIIPath = latest.FormIIPath,
+                FormIIIPath = latest.FormIIIPath,
+                FormIIIAPath = latest.FormIIIAPath,
+                FormIIIBPath = latest.FormIIIBPath,
+                FormIVPath = latest.FormIVPath,
+                FormIVAPath = latest.FormIVAPath,
+                DrawingPath = latest.DrawingPath,
+                SupportingDocumentsPath = latest.SupportingDocumentsPath,
+
+                RenewalYears = latest.RenewalYears,
+                ValidFrom = latest.ValidFrom,
+                ValidUpto = latest.ValidUpto,
+
+                Type = latest.Type,
+                Version = latest.Version,
+                Status = latest.Status,
+                IsActive = latest.IsActive
+            };
         }
 
         public async Task<string> UpdateSteamPipeLineAsync(  string applicationId,   CreateSteamPipeLineDto dto)

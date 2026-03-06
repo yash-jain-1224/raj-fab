@@ -175,6 +175,7 @@ builder.Services.AddScoped<IBoilerNewService, BoilerNewService>();
 builder.Services.AddScoped<ISteamPipeLineApplicationService, SteamPipeLineApplicationService>();
 builder.Services.AddScoped<IBoilerManufactureService, BoilerManufactureService>();
 builder.Services.AddScoped<IBoilerRepairerService, BoilerRepairerService>();
+builder.Services.AddScoped<IEconomiserService, EconomiserService>();
 
 
 builder.Services.AddScoped<IDynamicPDFGenerationFormService, DynamicPDFGenerationFormService>();

@@ -155,7 +155,8 @@ namespace RajFabAPI.Data
         public DbSet<BoilerRepairerWelder> BoilerRepairerWelders { get; set; }
         public DbSet<BoilerRepairerClosure> BoilerRepairerClosures { get; set; }
         public DbSet<SteamPipeLineClosure> SteamPipeLineClosures { get; set; }
-
+        public DbSet<EconomiserRegistration> EconomiserRegistrations { get; set; }
+        public DbSet<EconomiserClosure> EconomiserClosures { get; set; }
 
         public DbSet<FeeResult> FeeResults { get; set; }
 

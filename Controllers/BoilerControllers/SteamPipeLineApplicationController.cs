@@ -43,9 +43,7 @@ namespace RajFabAPI.Controllers.SteamPipeLineApplicationControllers
             });
         }
 
-        /* ==========================================================
-           ? AMEND (BASED ON REGISTRATION NO)
-        ========================================================== */
+      
 
         [HttpPost("amend/{steamPipeLineRegistrationNo}")]
         public async Task<IActionResult> Amend(  string steamPipeLineRegistrationNo,  [FromBody] CreateSteamPipeLineDto dto)
@@ -97,9 +95,7 @@ namespace RajFabAPI.Controllers.SteamPipeLineApplicationControllers
             return Ok(result);
         }
 
-        /* ============================================
-           GET BY REGISTRATION NO (ALL VERSIONS)
-        ============================================ */
+      
 
         [HttpGet("by-registration/{registrationNo}")]
         

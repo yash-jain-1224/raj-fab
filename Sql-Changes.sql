@@ -805,3 +805,102 @@ ADD ApplicationId NVARCHAR(255) NOT NULL,
 CREATE UNIQUE NONCLUSTERED INDEX IX_Certificates_ApplicationId
 ON Certificates (ApplicationId);
 
+
+
+
+date -06-03-2026 ---------------------------------------------------------------------
+
+CREATE TABLE [dbo].[EconomiserRegistrations](
+	[Id] [uniqueidentifier] NOT NULL,
+	[ApplicationId] [nvarchar](50) NOT NULL,
+	[Economiserregistrationno] [nvarchar](100) NULL,
+	[FactoryRegistrationNumber] [nvarchar](100) NULL,
+	[FactoryDetailjson] [nvarchar](max) NULL,
+	[MakersNumber] [nvarchar](100) NULL,
+	[MakersName] [nvarchar](200) NULL,
+	[MakersAddress] [nvarchar](300) NULL,
+	[YearOfMake] [nvarchar](10) NULL,
+	[PressureFrom] [nvarchar](50) NULL,
+	[PressureTo] [nvarchar](50) NULL,
+	[ErectionType] [nvarchar](100) NULL,
+	[OutletTemperature] [nvarchar](50) NULL,
+	[TotalHeatingSurfaceArea] [nvarchar](100) NULL,
+	[NumberOfTubes] [int] NULL,
+	[NumberOfHeaders] [int] NULL,
+	[FormIB] [nvarchar](500) NULL,
+	[FormIC] [nvarchar](500) NULL,
+	[FormIVA] [nvarchar](500) NULL,
+	[FormIVB] [nvarchar](500) NULL,
+	[FormIVC] [nvarchar](500) NULL,
+	[FormIVD] [nvarchar](500) NULL,
+	[FormVA] [nvarchar](500) NULL,
+	[FormXV] [nvarchar](500) NULL,
+	[FormXVI] [nvarchar](500) NULL,
+	[AttendantCertificate] [nvarchar](500) NULL,
+	[EngineerCertificate] [nvarchar](500) NULL,
+	[Drawings] [nvarchar](500) NULL,
+	[CreatedDate] [datetime] NULL,
+	[UpdatedDate] [datetime] NULL,
+	[Type] [nvarchar](20) NOT NULL,
+	[Version] [decimal](5, 2) NOT NULL,
+	[Status] [nvarchar](50) NOT NULL,
+	[IsActive] [bit] NOT NULL,
+	[ValidFrom] [datetime] NULL,
+	[ValidUpto] [datetime] NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[EconomiserRegistrations] ADD  DEFAULT (newid()) FOR [Id]
+GO
+
+ALTER TABLE [dbo].[EconomiserRegistrations] ADD  DEFAULT (getdate()) FOR [CreatedDate]
+GO
+
+ALTER TABLE [dbo].[EconomiserRegistrations] ADD  DEFAULT (getdate()) FOR [UpdatedDate]
+GO
+
+ALTER TABLE [dbo].[EconomiserRegistrations] ADD  DEFAULT ((1.0)) FOR [Version]
+GO
+
+ALTER TABLE [dbo].[EconomiserRegistrations] ADD  DEFAULT ('Pending') FOR [Status]
+GO
+
+ALTER TABLE [dbo].[EconomiserRegistrations] ADD  DEFAULT ((1)) FOR [IsActive]
+GO
+-------------------------------------------------------------------------
+
+CREATE TABLE [dbo].[EconomiserClosures](
+	[Id] [uniqueidentifier] NOT NULL,
+	[ApplicationId] [nvarchar](50) NULL,
+	[EconomiserRegistrationNo] [nvarchar](100) NULL,
+	[ClosureReason] [nvarchar](max) NULL,
+	[ClosureDate] [datetime] NULL,
+	[Remarks] [nvarchar](max) NULL,
+	[DocumentPath] [nvarchar](500) NULL,
+	[Type] [nvarchar](20) NULL,
+	[Status] [nvarchar](20) NULL,
+	[IsActive] [bit] NULL,
+	[CreatedDate] [datetime] NULL,
+	[UpdatedDate] [datetime] NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[EconomiserClosures] ADD  DEFAULT (newid()) FOR [Id]
+GO
+
+ALTER TABLE [dbo].[EconomiserClosures] ADD  DEFAULT ((1)) FOR [IsActive]
+GO
+
+ALTER TABLE [dbo].[EconomiserClosures] ADD  DEFAULT (getdate()) FOR [CreatedDate]
+GO
+
+ALTER TABLE [dbo].[EconomiserClosures] ADD  DEFAULT (getdate()) FOR [UpdatedDate]
+GO

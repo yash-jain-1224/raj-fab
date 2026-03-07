@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using RajFabAPI.Models;
 
 namespace RajFabAPI.DTOs
 {
@@ -8,6 +9,8 @@ namespace RajFabAPI.DTOs
         public string AcknowledgementNumber { get; set; } = string.Empty;
         public string FactoryDetails { get; set; }
         public string OccupierDetails { get; set; }
+        public string? CertificatePDFUrl { get; set; }
+        public List<ApplicationHistory> ApplicationHistory { get; set; } = new List<ApplicationHistory>();
 
         [Required]
         [StringLength(200)]
@@ -308,6 +311,16 @@ namespace RajFabAPI.DTOs
         public string? mobile { get; set; }
         public string? telephone { get; set; }
         public string? website { get; set; }
+    }
+
+    public class MapApprovalCertificateRequestDto
+    {
+        public string? Remarks { get; set; }
+        public string StartDate { get; set; }
+        public string EndDate { get; set; }
+        public string? Place { get; set; }
+        public string? Signature { get; set; }
+        public string? IssuedAt { get; set; }
     }
 
 }

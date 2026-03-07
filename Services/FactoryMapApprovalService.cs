@@ -182,11 +182,31 @@ namespace RajFabAPI.Services
                     };
                 }
 
+                var dto = MapToDto(application);
+
+                dto.ApplicationHistory = await _context.Set<ApplicationHistory>()
+                    .AsNoTracking()
+                    .Where(x => x.ApplicationId == application.Id)
+                    .OrderByDescending(x => x.ActionDate)
+                    .ToListAsync();
+
+                // dto.ApplicationHistory = await _context.ApplicationHistories
+                //     .Where(h => h.ApplicationId == id)
+                //     .OrderBy(h => h.ActionDate)
+                //     .ToListAsync();
+
+                var activeCertificate = await _context.Certificates
+                    .AsNoTracking()
+                    .Where(c => c.RegistrationNumber == application.AcknowledgementNumber && c.IsESignCompleted)
+                    .OrderByDescending(c => c.CertificateVersion)
+                    .FirstOrDefaultAsync();
+                dto.CertificatePDFUrl = activeCertificate?.CertificateUrl;
+
                 return new ApiResponseDto<FactoryMapApprovalDto>
                 {
                     Success = true,
                     Message = "Application retrieved successfully",
-                    Data = MapToDto(application)
+                    Data = dto
                 };
             }
             catch (Exception ex)
@@ -422,8 +442,26 @@ namespace RajFabAPI.Services
                     };
                 }
 
+                var previousStatus = application.Status;
                 application.Status = request.Status;
                 application.UpdatedAt = DateTime.Now;
+
+                var action = request.Status == "Approved" ? "Approved"
+                    : request.Status == "Returned to applicant" ? "Returned to Applicant"
+                    : "Forwarded";
+
+                var history = new Models.ApplicationHistory
+                {
+                    ApplicationId = id,
+                    ApplicationType = "FactoryMapApproval",
+                    Action = action,
+                    PreviousStatus = previousStatus,
+                    NewStatus = request.Status,
+                    Comments = request.Comments,
+                    ActionBy = reviewedBy,
+                    ActionDate = DateTime.Now
+                };
+                _context.ApplicationHistories.Add(history);
 
                 await _context.SaveChangesAsync();
 
@@ -798,6 +836,158 @@ namespace RajFabAPI.Services
             var year = DateTime.Now.Year;
             var sequence = DateTime.Now.Ticks.ToString().Substring(8, 6);
             return $"FMA{year}{sequence}";
+        }
+
+        public async Task<string> GenerateCertificateAsync(MapApprovalCertificateRequestDto dto, Guid userId, string applicationId)
+        {
+            var application = await _context.FactoryMapApprovals
+                .Include(f => f.RawMaterials)
+                .Include(f => f.IntermediateProducts)
+                .Include(f => f.FinishGoods)
+                .Include(f => f.Chemicals)
+                .FirstOrDefaultAsync(f => f.Id == applicationId);
+
+            if (application == null)
+                throw new KeyNotFoundException("Application not found.");
+
+            var certificateUrl = await GenerateMapApprovalCertificatePdf(application, dto);
+
+            var module = await _context.Set<FormModule>().FirstOrDefaultAsync(m => m.Name == ApplicationTypeNames.MapApproval);
+            if (module == null)
+                throw new InvalidOperationException("MapApproval module not found.");
+
+            var certificate = new Certificate
+            {
+                RegistrationNumber = application.AcknowledgementNumber,
+                CertificateVersion = 1.0m,
+                StartDate = DateTime.TryParse(dto.StartDate, out var start) ? start : DateTime.Now,
+                EndDate = DateTime.TryParse(dto.EndDate, out var end) ? end : DateTime.Now.AddYears(1),
+                CertificateUrl = certificateUrl,
+                IssuedByUserId = userId,
+                IssuedAt = DateTime.TryParse(dto.IssuedAt, out var issuedAt) ? issuedAt : DateTime.Now,
+                Place = dto.Place,
+                Signature = dto.Signature,
+                Status = "PendingESign",
+                ModuleId = module.Id,
+                Remarks = dto.Remarks,
+                ApplicationId = applicationId,
+                IsESignCompleted = false
+            };
+            _context.Set<Certificate>().Add(certificate);
+
+            var history = new Models.ApplicationHistory
+            {
+                ApplicationId = applicationId,
+                ApplicationType = "FactoryMapApproval",
+                Action = "Certificate Generated",
+                PreviousStatus = application.Status,
+                NewStatus = application.Status,
+                Comments = "Certificate generated and sent for e-sign",
+                ActionBy = userId.ToString(),
+                ActionDate = DateTime.Now
+            };
+            _context.ApplicationHistories.Add(history);
+
+            await _context.SaveChangesAsync();
+
+            return certificate.Id.ToString();
+        }
+
+        private async Task<string> GenerateMapApprovalCertificatePdf(FactoryMapApproval application, MapApprovalCertificateRequestDto dto)
+        {
+            var fileName = $"map_approval_certificate_{application.AcknowledgementNumber}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+
+            var webRootPath = _environment.WebRootPath;
+            if (string.IsNullOrWhiteSpace(webRootPath))
+                throw new InvalidOperationException("wwwroot is not configured.");
+
+            var uploadPath = Path.Combine(webRootPath, "certificates");
+            Directory.CreateDirectory(uploadPath);
+            var filePath = Path.Combine(uploadPath, fileName);
+
+            var httpContext = _httpContextAccessor.HttpContext
+                ?? throw new InvalidOperationException("HTTP context unavailable");
+            var request = httpContext.Request;
+            var baseUrl = _config["BaseUrl"] ?? $"{request.Scheme}://{request.Host}";
+            var fileUrl = $"{baseUrl}/certificates/{fileName}";
+
+            using var writer = new PdfWriter(filePath);
+            using var pdf = new PdfDocument(writer);
+            using var document = new Document(pdf);
+
+            var boldFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA_BOLD);
+            var regularFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA);
+
+            var occupier = string.IsNullOrWhiteSpace(application.OccupierDetails)
+                ? null
+                : JsonSerializer.Deserialize<OccupierDetailsModel>(application.OccupierDetails);
+
+            var factory = string.IsNullOrWhiteSpace(application.FactoryDetails)
+                ? null
+                : JsonSerializer.Deserialize<FactoryDetailsModel>(application.FactoryDetails);
+
+            // Header
+            var headerTable = new Table(UnitValue.CreatePercentArray(new float[] { 1, 4 })).UseAllAvailableWidth();
+            headerTable.AddCell(new Cell().Add(new PdfImage(ImageDataFactory.Create("wwwroot/Emblem_of_India.png")).ScaleToFit(40, 40)).SetBorder(Border.NO_BORDER));
+            headerTable.AddCell(new Cell()
+                .Add(new Paragraph("FACTORY MAP APPROVAL CERTIFICATE").SetFont(boldFont).SetFontSize(16))
+                .Add(new Paragraph("Under the Factories Act, 1948").SetFont(regularFont).SetFontSize(12))
+                .Add(new Paragraph("Government of Rajasthan").SetFontColor(ColorConstants.BLUE).SetFontSize(12))
+                .SetBorder(Border.NO_BORDER));
+            document.Add(headerTable);
+            document.Add(new Paragraph().SetMarginBottom(10));
+
+            document.Add(new Paragraph($"Certificate No: {application.AcknowledgementNumber}").SetFont(boldFont));
+            document.Add(new Paragraph($"Date: {DateTime.Now:dd/MM/yyyy}").SetMarginBottom(10));
+
+            var detailTable = new Table(UnitValue.CreatePercentArray(new float[] { 1, 2 })).UseAllAvailableWidth().SetMarginBottom(10);
+
+            if (factory != null)
+            {
+                detailTable.AddCell(new Cell().Add(new Paragraph("Factory Name").SetFont(boldFont)));
+                detailTable.AddCell(new Cell().Add(new Paragraph(factory.name ?? "-")));
+
+                detailTable.AddCell(new Cell().Add(new Paragraph("Factory Address").SetFont(boldFont)));
+                detailTable.AddCell(new Cell().Add(new Paragraph($"{factory.addressLine1}, {factory.addressLine2}, {factory.area} - {factory.pincode}")));
+            }
+
+            if (occupier != null)
+            {
+                detailTable.AddCell(new Cell().Add(new Paragraph("Occupier Name").SetFont(boldFont)));
+                detailTable.AddCell(new Cell().Add(new Paragraph(occupier.name ?? "-")));
+            }
+
+            detailTable.AddCell(new Cell().Add(new Paragraph("Acknowledgement No.").SetFont(boldFont)));
+            detailTable.AddCell(new Cell().Add(new Paragraph(application.AcknowledgementNumber)));
+
+            detailTable.AddCell(new Cell().Add(new Paragraph("Product Name").SetFont(boldFont)));
+            detailTable.AddCell(new Cell().Add(new Paragraph(application.ProductName ?? "-")));
+
+            detailTable.AddCell(new Cell().Add(new Paragraph("Max Workers (Male / Female)").SetFont(boldFont)));
+            detailTable.AddCell(new Cell().Add(new Paragraph($"{application.MaxWorkerMale} / {application.MaxWorkerFemale}")));
+
+            detailTable.AddCell(new Cell().Add(new Paragraph("Valid From").SetFont(boldFont)));
+            detailTable.AddCell(new Cell().Add(new Paragraph(dto.StartDate ?? "-")));
+
+            detailTable.AddCell(new Cell().Add(new Paragraph("Valid To").SetFont(boldFont)));
+            detailTable.AddCell(new Cell().Add(new Paragraph(dto.EndDate ?? "-")));
+
+            document.Add(detailTable);
+
+            document.Add(new Paragraph("This certificate is issued certifying that the factory map plan has been approved under the Factories Act, 1948.")
+                .SetFont(regularFont).SetMarginTop(10));
+
+            if (!string.IsNullOrWhiteSpace(dto.Remarks))
+                document.Add(new Paragraph($"Remarks: {dto.Remarks}").SetFont(regularFont));
+
+            document.Add(new Paragraph().SetMarginTop(20));
+            document.Add(new Paragraph($"Place: {dto.Place ?? "-"}").SetFont(regularFont));
+            document.Add(new Paragraph($"Date: {DateTime.Now:dd/MM/yyyy}").SetFont(regularFont));
+            document.Add(new Paragraph("This is a system generated document.").SetFontSize(8).SetFontColor(ColorConstants.GRAY));
+
+            document.Close();
+
+            return fileUrl;
         }
 
         public async Task<string> GenerateFactoryMapApprovalPdf(FactoryMapApprovalDto dto)

@@ -2752,7 +2752,6 @@ namespace RajFabAPI.Services
 
                 _db.ApplicationHistories.Add(history);
                 _ = await _db.SaveChangesAsync();
-                await tx.CommitAsync();
 
                 // Calculate total workers
                 int totalWorkers = estDetail.TotalNumberOfEmployee ?? 0 + estDetail.TotalNumberOfContractEmployee ?? 0 + estDetail.TotalNumberOfInterstateWorker ?? 0;
@@ -2795,7 +2794,8 @@ namespace RajFabAPI.Services
                         _ = await _db.SaveChangesAsync();
                     }
                 }
-
+                
+                await tx.CommitAsync();
                 return appReg.ApplicationRegistrationNumber;
             }
             catch

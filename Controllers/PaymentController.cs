@@ -145,19 +145,26 @@ namespace RajFabAPI.Controllers
                    .AsNoTracking()
                    .FirstOrDefaultAsync(m => m.Id == transaction.ModuleId);
                 
-                var history = new ApplicationHistory
+                var actionLabel = "Payment " + char.ToUpper(data.STATUS[0]) + data.STATUS.Substring(1).ToLower();
+                var alreadyRecorded = await _db.ApplicationHistories
+                    .AnyAsync(h => h.ApplicationId == transaction.ApplicationId && h.Action == actionLabel);
+
+                if (!alreadyRecorded)
                 {
-                    ApplicationId = transaction.ApplicationId,
-                    ApplicationType = module.Name,
-                    Action = "Payment " + char.ToUpper(data.STATUS[0]) + data.STATUS.Substring(1).ToLower(),
-                    PreviousStatus = null,
-                    NewStatus = "",
-                    Comments = Comments,
-                    ActionBy = "Applicant",
-                    ActionDate = DateTime.Now
-                };
-                _db.ApplicationHistories.Add(history);
-                await _db.SaveChangesAsync();
+                    var history = new ApplicationHistory
+                    {
+                        ApplicationId = transaction.ApplicationId,
+                        ApplicationType = module.Name,
+                        Action = actionLabel,
+                        PreviousStatus = null,
+                        NewStatus = "",
+                        Comments = Comments,
+                        ActionBy = "Applicant",
+                        ActionDate = DateTime.Now
+                    };
+                    _db.ApplicationHistories.Add(history);
+                    await _db.SaveChangesAsync();
+                }
 
                 var redirectUrl = $"{_config["FrontendUrl"]}/" + "user/track";
                 return Redirect(redirectUrl);

@@ -197,5 +197,22 @@ namespace RajFabAPI.Controllers.FactoryControllers
             var acknowledgementNumber = _factoryMapApprovalService.GenerateAcknowledgementNumber();
             return Ok(acknowledgementNumber);
         }
+
+        [Authorize]
+        [HttpPost("{id}/generateCertificate")]
+        public async Task<IActionResult> GenerateCertificate(
+            [FromBody] MapApprovalCertificateRequestDto dto, string id)
+        {
+            var userId = User.FindFirst("userId")?.Value;
+            var userIdGuid = Guid.TryParse(userId, out var parsedGuid) ? parsedGuid : Guid.Empty;
+            try
+            {
+                var certificateId = await _factoryMapApprovalService.GenerateCertificateAsync(dto, userIdGuid, id);
+                var html = await _eSignService.GenerateCertificateESignHtmlAsync(certificateId);
+                return Ok(new { html });
+            }
+            catch (KeyNotFoundException ex) { return NotFound(ex.Message); }
+            catch (Exception) { return StatusCode(500, "An error occurred while generating the certificate."); }
+        }
     }
 }

@@ -270,12 +270,13 @@ namespace RajFabAPI.Services
                 return result;
             foreach (var workflowLevel in workflowLevels)
             {
-                var appApprovalRequests = await _db.Set<ApplicationApprovalRequest>()
+                var rawRequests = await _db.Set<ApplicationApprovalRequest>()
                     .Where(x => x.ApplicationWorkFlowLevelId == workflowLevel.Id)
-                    .GroupBy(x => x.ApplicationRegistrationId)
-                    .Select(g => g.OrderByDescending(x => x.CreatedDate).FirstOrDefault())
                     .ToListAsync();
-
+                var appApprovalRequests = rawRequests
+                    .GroupBy(x => x.ApplicationRegistrationId)
+                    .Select(g => g.OrderByDescending(x => x.CreatedDate).First())
+                    .ToList();
                 foreach (var item in appApprovalRequests)
                 {
                     var appRegistrationQuery = from appReg in _db.ApplicationRegistrations
@@ -429,7 +430,11 @@ namespace RajFabAPI.Services
                     }
                 }
             }
-            return result.OrderByDescending(x => x.CreatedDate).ToList();
+            return result
+                .GroupBy(x => x.ApplicationId)
+                .Select(g => g.OrderByDescending(x => x.CreatedDate).First())
+                .OrderByDescending(x => x.CreatedDate)
+                .ToList();
         }
 
         public async Task<bool> IsLastWorkflowLevelAsync(int applicationApprovalRequestId)

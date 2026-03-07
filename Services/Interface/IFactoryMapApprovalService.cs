@@ -16,5 +16,6 @@ namespace RajFabAPI.Services.Interface
         string GenerateAcknowledgementNumber();
         Task<bool> UpdateStatusAndRemark(string registrationId, string status);
         Task<string> GenerateFactoryMapApprovalPdf(FactoryMapApprovalDto dto);
+        Task<string> GenerateCertificateAsync(MapApprovalCertificateRequestDto dto, Guid userId, string applicationId);
     }
 }

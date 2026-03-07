@@ -904,3 +904,143 @@ GO
 
 ALTER TABLE [dbo].[EconomiserClosures] ADD  DEFAULT (getdate()) FOR [UpdatedDate]
 GO
+
+
+
+---------------------------------------------
+CREATE TABLE [dbo].[WelderApplications](
+	[Id] [uniqueidentifier] NOT NULL,
+	[ApplicationId] [nvarchar](50) NULL,
+	[WelderRegistrationNo] [nvarchar](100) NULL,
+	[Type] [nvarchar](20) NULL,
+	[Version] [decimal](5, 2) NULL,
+	[Status] [nvarchar](50) NULL,
+	[ValidFrom] [datetime] NULL,
+	[ValidUpto] [datetime] NULL,
+	[CreatedDate] [datetime] NULL,
+	[UpdatedDate] [datetime] NULL,
+	[IsActive] [bit] NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[WelderApplications] ADD  DEFAULT (newid()) FOR [Id]
+GO
+
+ALTER TABLE [dbo].[WelderApplications] ADD  DEFAULT ((1.0)) FOR [Version]
+GO
+
+ALTER TABLE [dbo].[WelderApplications] ADD  DEFAULT ('Pending') FOR [Status]
+GO
+
+ALTER TABLE [dbo].[WelderApplications] ADD  DEFAULT (getdate()) FOR [CreatedDate]
+GO
+
+ALTER TABLE [dbo].[WelderApplications] ADD  DEFAULT (getdate()) FOR [UpdatedDate]
+GO
+
+ALTER TABLE [dbo].[WelderApplications] ADD  DEFAULT ((1)) FOR [IsActive]
+GO
+
+
+
+
+
+
+
+
+
+
+
+CREATE TABLE [dbo].[WelderDetails](
+	[Id] [uniqueidentifier] NOT NULL,
+	[WelderApplicationId] [uniqueidentifier] NOT NULL,
+	[Name] [nvarchar](200) NULL,
+	[FatherName] [nvarchar](200) NULL,
+	[DOB] [date] NULL,
+	[IdentificationMark] [nvarchar](200) NULL,
+	[Weight] [nvarchar](20) NULL,
+	[Height] [nvarchar](20) NULL,
+	[AddressLine1] [nvarchar](200) NULL,
+	[AddressLine2] [nvarchar](200) NULL,
+	[District] [nvarchar](100) NULL,
+	[Tehsil] [nvarchar](100) NULL,
+	[Area] [nvarchar](100) NULL,
+	[Pincode] [nvarchar](20) NULL,
+	[Telephone] [nvarchar](20) NULL,
+	[Mobile] [nvarchar](20) NULL,
+	[Email] [nvarchar](50) NULL,
+	[ExperienceYears] [nvarchar](20) NULL,
+	[ExperienceDetails] [nvarchar](max) NULL,
+	[ExperienceCertificate] [nvarchar](500) NULL,
+	[TestType] [nvarchar](100) NULL,
+	[Radiography] [nvarchar](100) NULL,
+	[Materials] [nvarchar](max) NULL,
+	[DateOfTest] [date] NULL,
+	[TypePosition] [nvarchar](100) NULL,
+	[MaterialType] [nvarchar](100) NULL,
+	[MaterialGrouping] [nvarchar](100) NULL,
+	[ProcessOfWelding] [nvarchar](100) NULL,
+	[WeldWithBacking] [nvarchar](100) NULL,
+	[ElectrodeGrouping] [nvarchar](100) NULL,
+	[TestPieceXrayed] [nvarchar](100) NULL,
+	[Photo] [nvarchar](500) NULL,
+	[Thumb] [nvarchar](500) NULL,
+	[WelderSign] [nvarchar](500) NULL,
+	[EmployerSign] [nvarchar](500) NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[WelderDetails] ADD  DEFAULT (newid()) FOR [Id]
+GO
+
+ALTER TABLE [dbo].[WelderDetails]  WITH CHECK ADD  CONSTRAINT [FK_WelderDetails_Application] FOREIGN KEY([WelderApplicationId])
+REFERENCES [dbo].[WelderApplications] ([Id])
+ON DELETE CASCADE
+GO
+
+ALTER TABLE [dbo].[WelderDetails] CHECK CONSTRAINT [FK_WelderDetails_Application]
+GO
+
+
+CREATE TABLE [dbo].[WelderEmployers](
+	[Id] [uniqueidentifier] NOT NULL,
+	[WelderApplicationId] [uniqueidentifier] NOT NULL,
+	[EmployerType] [nvarchar](100) NULL,
+	[EmployerName] [nvarchar](200) NULL,
+	[FirmName] [nvarchar](200) NULL,
+	[AddressLine1] [nvarchar](200) NULL,
+	[AddressLine2] [nvarchar](200) NULL,
+	[District] [nvarchar](100) NULL,
+	[Tehsil] [nvarchar](100) NULL,
+	[Area] [nvarchar](100) NULL,
+	[Pincode] [nvarchar](20) NULL,
+	[Telephone] [nvarchar](20) NULL,
+	[Mobile] [nvarchar](20) NULL,
+	[Email] [nvarchar](50) NULL,
+	[EmployedFrom] [date] NULL,
+	[EmployedTo] [date] NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[WelderEmployers] ADD  DEFAULT (newid()) FOR [Id]
+GO
+
+ALTER TABLE [dbo].[WelderEmployers]  WITH CHECK ADD  CONSTRAINT [FK_WelderEmployers_Application] FOREIGN KEY([WelderApplicationId])
+REFERENCES [dbo].[WelderApplications] ([Id])
+ON DELETE CASCADE
+GO
+
+ALTER TABLE [dbo].[WelderEmployers] CHECK CONSTRAINT [FK_WelderEmployers_Application]
+GO

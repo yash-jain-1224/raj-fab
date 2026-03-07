@@ -137,6 +137,7 @@ namespace RajFabAPI.Services
                      PremiseOwnerAddressPinCode = f.PremiseOwnerAddressPinCode,
                      Place = f.Place,
                      Status = f.Status,
+                     IsNew = f.IsNew,
                      ApplicationPDFUrl = f.ApplicationPDFUrl,
                      FactoryDetails = f.FactoryDetails,
                      OccupierDetails = f.OccupierDetails,

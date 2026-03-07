@@ -157,6 +157,11 @@ namespace RajFabAPI.Data
         public DbSet<SteamPipeLineClosure> SteamPipeLineClosures { get; set; }
         public DbSet<EconomiserRegistration> EconomiserRegistrations { get; set; }
         public DbSet<EconomiserClosure> EconomiserClosures { get; set; }
+        public DbSet<WelderApplication> WelderApplications { get; set; }
+
+        public DbSet<WelderDetail> WelderDetails { get; set; }
+
+        public DbSet<WelderEmployer> WelderEmployers { get; set; }
 
         public DbSet<FeeResult> FeeResults { get; set; }
 

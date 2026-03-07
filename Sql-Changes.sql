@@ -1044,3 +1044,31 @@ GO
 
 ALTER TABLE [dbo].[WelderEmployers] CHECK CONSTRAINT [FK_WelderEmployers_Application]
 GO
+
+-------------------------------------
+CREATE TABLE WelderClosures
+(
+    Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+
+    ApplicationId NVARCHAR(50),
+
+    WelderRegistrationNo NVARCHAR(100),
+
+    ClosureReason NVARCHAR(MAX),
+
+    ClosureDate DATE,
+
+    Remarks NVARCHAR(MAX),
+
+    DocumentPath NVARCHAR(500),
+
+    Type NVARCHAR(20) DEFAULT 'close',
+
+    Status NVARCHAR(50) DEFAULT 'Pending',
+
+    CreatedDate DATETIME DEFAULT GETDATE(),
+
+    UpdatedDate DATETIME DEFAULT GETDATE(),
+
+    IsActive BIT DEFAULT 1
+)

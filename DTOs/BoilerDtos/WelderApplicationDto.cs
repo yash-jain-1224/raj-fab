@@ -146,6 +146,18 @@ namespace RajFabAPI.DTOs
         public WelderEmployerDto? EmployerDetail { get; set; }
     }
 
+    public class WelderClosureDto
+    {
+        public string WelderRegistrationNo { get; set; } = null!;
+
+        public string? ClosureReason { get; set; }
+
+        public DateTime? ClosureDate { get; set; }
+
+        public string? Remarks { get; set; }
+
+        public string? DocumentPath { get; set; }
+    }
 
 
 }

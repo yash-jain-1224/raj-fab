@@ -338,6 +338,77 @@ namespace RajFabAPI.Services
             }
         }
 
+        public async Task<bool> UpdateEconomiserAsync(string applicationId, EconomiserCreateDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(applicationId))
+                return false;
+
+            await using var tx = await _dbcontext.Database.BeginTransactionAsync();
+
+            try
+            {
+                var registration = await _dbcontext.EconomiserRegistrations
+                    .FirstOrDefaultAsync(x => x.ApplicationId == applicationId);
+
+                if (registration == null)
+                    return false;
+
+                //if (!registration.Status!.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+                //    throw new Exception("Only pending applications can be updated.");
+
+                /* ================= GENERAL INFO ================= */
+
+                registration.FactoryRegistrationNumber = dto.FactoryRegistrationNumber;
+                registration.FactoryDetailJson = dto.FactoryDetailJson;
+
+                /* ================= ECONOMISER DETAILS ================= */
+
+                registration.MakersNumber = dto.MakersNumber;
+                registration.MakersName = dto.MakersName;
+                registration.MakersAddress = dto.MakersAddress;
+                registration.YearOfMake = dto.YearOfMake;
+
+                registration.PressureFrom = dto.PressureFrom;
+                registration.PressureTo = dto.PressureTo;
+                registration.ErectionType = dto.ErectionType;
+                registration.OutletTemperature = dto.OutletTemperature;
+
+                registration.TotalHeatingSurfaceArea = dto.TotalHeatingSurfaceArea;
+                registration.NumberOfTubes = dto.NumberOfTubes;
+                registration.NumberOfHeaders = dto.NumberOfHeaders;
+
+                /* ================= DOCUMENTS ================= */
+
+                registration.FormIB = dto.FormIB;
+                registration.FormIC = dto.FormIC;
+                registration.FormIVA = dto.FormIVA;
+                registration.FormIVB = dto.FormIVB;
+                registration.FormIVC = dto.FormIVC;
+                registration.FormIVD = dto.FormIVD;
+                registration.FormVA = dto.FormVA;
+                registration.FormXV = dto.FormXV;
+                registration.FormXVI = dto.FormXVI;
+
+                registration.AttendantCertificate = dto.AttendantCertificate;
+                registration.EngineerCertificate = dto.EngineerCertificate;
+                registration.Drawings = dto.Drawings;
+
+                /* ================= MASTER UPDATE ================= */
+
+                registration.UpdatedDate = DateTime.Now;
+
+                await _dbcontext.SaveChangesAsync();
+                await tx.CommitAsync();
+
+                return true;
+            }
+            catch
+            {
+                await tx.RollbackAsync();
+                throw;
+            }
+        }
+
         public async Task<EconomiserDetailsDto?> GetByApplicationIdAsync(string applicationId)
         {
             var record = await _dbcontext.EconomiserRegistrations

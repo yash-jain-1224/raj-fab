@@ -10,7 +10,10 @@ namespace RajFabAPI.Services.Interface
         Task<string> RenewWelderAsync(WelderRenewalDto dto, Guid userId);
         Task<GetWelderResponseDto?> GetByApplicationIdAsync(string applicationId);
         Task<GetWelderResponseDto?> GetLatestApprovedByRegistrationNoAsync(string registrationNo);
+        Task<bool> UpdateWelderAsync(string applicationId, CreateWelderRegistrationDto dto);
         Task<List<GetWelderResponseDto>> GetAllAsync();
+
+        Task<string> CloseWelderAsync(WelderClosureDto dto, Guid userId);
     }
 
 

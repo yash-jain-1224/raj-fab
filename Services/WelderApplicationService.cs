@@ -30,7 +30,7 @@ namespace RajFabAPI.Services
                 "amend" => $"WRAMD{year}/CIFB/",
                 "renew" => $"WRREN{year}/CIFB/",
                 "duplicate" => $"WRDUP{year}/CIFB/",
-                "closure" => $"WRCLS{year}/CIFB/",
+                "close" => $"WRCLS{year}/CIFB/",
                 _ => throw new Exception("Invalid welder application type")
             };
 
@@ -516,6 +516,137 @@ namespace RajFabAPI.Services
             };
         }
 
+
+        public async Task<bool> UpdateWelderAsync(string applicationId, CreateWelderRegistrationDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(applicationId))
+                return false;
+
+            await using var tx = await _dbcontext.Database.BeginTransactionAsync();
+
+            try
+            {
+                var registration = await _dbcontext.WelderApplications
+                    .FirstOrDefaultAsync(x => x.ApplicationId == applicationId);
+
+                if (registration == null)
+                    return false;
+
+                /* ================= WELDER DETAIL (UPSERT) ================= */
+
+                var detail = await _dbcontext.WelderDetails
+                    .FirstOrDefaultAsync(x => x.WelderApplicationId == registration.Id);
+
+                if (detail == null)
+                {
+                    detail = new WelderDetail
+                    {
+                        Id = Guid.NewGuid(),
+                        WelderApplicationId = registration.Id
+                    };
+
+                    _dbcontext.WelderDetails.Add(detail);
+                }
+
+                if (dto.WelderDetail != null)
+                {
+                    var wd = dto.WelderDetail;
+
+                    detail.Name = wd.Name;
+                    detail.FatherName = wd.FatherName;
+                    detail.DOB = wd.DOB;
+                    detail.IdentificationMark = wd.IdentificationMark;
+
+                    detail.Weight = wd.Weight;
+                    detail.Height = wd.Height;
+
+                    detail.AddressLine1 = wd.AddressLine1;
+                    detail.AddressLine2 = wd.AddressLine2;
+                    detail.District = wd.District;
+                    detail.Tehsil = wd.Tehsil;
+                    detail.Area = wd.Area;
+                    detail.Pincode = wd.Pincode;
+                    detail.Telephone = wd.Telephone;
+                    detail.Mobile = wd.Mobile;
+                    detail.Email = wd.Email;
+
+                    detail.ExperienceYears = wd.ExperienceYears;
+                    detail.ExperienceDetails = wd.ExperienceDetails;
+                    detail.ExperienceCertificate = wd.ExperienceCertificate;
+
+                    detail.TestType = wd.TestType;
+                    detail.Radiography = wd.Radiography;
+                    detail.Materials = wd.Materials;
+
+                    detail.DateOfTest = wd.DateOfTest;
+                    detail.TypePosition = wd.TypePosition;
+                    detail.MaterialType = wd.MaterialType;
+                    detail.MaterialGrouping = wd.MaterialGrouping;
+                    detail.ProcessOfWelding = wd.ProcessOfWelding;
+                    detail.WeldWithBacking = wd.WeldWithBacking;
+                    detail.ElectrodeGrouping = wd.ElectrodeGrouping;
+                    detail.TestPieceXrayed = wd.TestPieceXrayed;
+
+                    detail.Photo = wd.Photo;
+                    detail.Thumb = wd.Thumb;
+                    detail.WelderSign = wd.WelderSign;
+                    detail.EmployerSign = wd.EmployerSign;
+                }
+
+                /* ================= EMPLOYER DETAIL (UPSERT) ================= */
+
+                var employer = await _dbcontext.WelderEmployers
+                    .FirstOrDefaultAsync(x => x.WelderApplicationId == registration.Id);
+
+                if (employer == null)
+                {
+                    employer = new WelderEmployer
+                    {
+                        Id = Guid.NewGuid(),
+                        WelderApplicationId = registration.Id
+                    };
+
+                    _dbcontext.WelderEmployers.Add(employer);
+                }
+
+                if (dto.EmployerDetail != null)
+                {
+                    var emp = dto.EmployerDetail;
+
+                    employer.EmployerType = emp.EmployerType;
+                    employer.EmployerName = emp.EmployerName;
+                    employer.FirmName = emp.FirmName;
+
+                    employer.AddressLine1 = emp.AddressLine1;
+                    employer.AddressLine2 = emp.AddressLine2;
+                    employer.District = emp.District;
+                    employer.Tehsil = emp.Tehsil;
+                    employer.Area = emp.Area;
+                    employer.Pincode = emp.Pincode;
+                    employer.Telephone = emp.Telephone;
+                    employer.Mobile = emp.Mobile;
+                    employer.Email = emp.Email;
+
+                    employer.EmployedFrom = emp.EmployedFrom;
+                    employer.EmployedTo = emp.EmployedTo;
+                }
+
+                /* ================= MASTER UPDATE ================= */
+
+                registration.UpdatedDate = DateTime.Now;
+
+                await _dbcontext.SaveChangesAsync();
+                await tx.CommitAsync();
+
+                return true;
+            }
+            catch
+            {
+                await tx.RollbackAsync();
+                throw;
+            }
+        }
+
         public async Task<GetWelderResponseDto?> GetLatestApprovedByRegistrationNoAsync(string registrationNo)
         {
             var registration = await _dbcontext.WelderApplications
@@ -696,6 +827,112 @@ namespace RajFabAPI.Services
             }
 
             return result;
+        }
+
+
+        public async Task<string> CloseWelderAsync(WelderClosureDto dto, Guid userId)
+        {
+            if (dto == null)
+                throw new ArgumentNullException(nameof(dto));
+
+            if (string.IsNullOrWhiteSpace(dto.WelderRegistrationNo))
+                throw new ArgumentException("WelderRegistrationNo is required");
+
+            await using var tx = await _dbcontext.Database.BeginTransactionAsync();
+
+            try
+            {
+                
+
+                var history = await _dbcontext.WelderApplications
+                    .Where(x => x.WelderRegistrationNo == dto.WelderRegistrationNo)
+                    .OrderByDescending(x => x.Version)
+                    .ToListAsync();
+
+                if (!history.Any())
+                    throw new Exception("Welder registration not found.");
+
+                
+
+                var pending = history.FirstOrDefault(x => x.Status == "Pending");
+
+                if (pending != null)
+                    throw new Exception(
+                        $"Cannot close. A {pending.Type?.ToUpper()} request (Version {pending.Version}) is already pending."
+                    );
+
+              
+
+                var latest = history.First();
+
+                if (latest.Status != "Approved")
+                    throw new Exception("Only the latest APPROVED version can be closed.");
+
+               
+
+                var alreadyClosed = await _dbcontext.WelderClosures
+                    .AnyAsync(x =>
+                        x.WelderRegistrationNo == dto.WelderRegistrationNo &&
+                        x.Status == "Approved");
+
+                if (alreadyClosed)
+                    throw new Exception("This welder registration is already closed.");
+
+
+                var pendingClosure = await _dbcontext.WelderClosures
+                    .AnyAsync(x =>
+                        x.WelderRegistrationNo == dto.WelderRegistrationNo &&
+                        x.Status == "Pending");
+
+                if (pendingClosure)
+                    throw new Exception("Closure request already submitted and pending.");
+
+               
+
+                var applicationId = await GenerateApplicationNumberAsync("close");
+
+               
+
+                var closure = new WelderClosure
+                {
+                    Id = Guid.NewGuid(),
+
+                    ApplicationId = applicationId,
+
+                    WelderRegistrationNo = dto.WelderRegistrationNo,
+
+                    ClosureReason = dto.ClosureReason,
+
+                    ClosureDate = dto.ClosureDate,
+
+                    Remarks = dto.Remarks,
+
+                    DocumentPath = dto.DocumentPath,
+
+                    Type = "close",
+
+                    Status = "Pending",
+
+                    CreatedDate = DateTime.Now,
+
+                    UpdatedDate = DateTime.Now,
+
+                    IsActive = true
+                };
+
+                _dbcontext.WelderClosures.Add(closure);
+
+                await _dbcontext.SaveChangesAsync();
+
+                await tx.CommitAsync();
+
+                return applicationId;
+            }
+            catch
+            {
+                await tx.RollbackAsync();
+                throw;
+            }
         }
 
     }

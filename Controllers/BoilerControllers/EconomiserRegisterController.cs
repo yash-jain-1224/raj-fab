@@ -100,6 +100,33 @@ namespace RajFabAPI.Controllers.BoilerControllers
             }
         }
 
+        [HttpPost("update/{applicationId}")]
+       
+        public async Task<IActionResult> UpdateEconomiser(   string applicationId,  [FromBody] EconomiserCreateDto dto)
+        {
+            try
+            {
+                var result = await _economiserService.UpdateEconomiserAsync(WebUtility.UrlDecode(applicationId), dto);
+
+                if (!result)
+                    return NotFound("Application not found.");
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "Economiser application updated successfully."
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = ex.Message
+                });
+            }
+        }
+
         [HttpGet("application/{applicationId}")]
         public async Task<IActionResult> GetByApplicationId(string applicationId)
         {

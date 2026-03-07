@@ -98,6 +98,34 @@ namespace RajFabAPI.Controllers.WelderApplicationControllers
         }
 
 
+        [HttpPost("update/{applicationId}")]
+        [Authorize]
+        public async Task<IActionResult> UpdateWelder( string applicationId,  [FromBody] CreateWelderRegistrationDto dto)
+        {
+            try
+            {
+                var result = await _service.UpdateWelderAsync(WebUtility.UrlDecode(applicationId), dto);
+
+                if (!result)
+                    return NotFound("Application not found.");
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "Welder application updated successfully."
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = ex.Message
+                });
+            }
+        }
+
+
         [HttpGet("application/{applicationId}")]
         public async Task<IActionResult> GetByApplicationId(string applicationId)
         {
@@ -127,5 +155,37 @@ namespace RajFabAPI.Controllers.WelderApplicationControllers
             var result = await _service.GetAllAsync();
             return Ok(result);
         }
+
+        [HttpPost("close")]
+      
+        public async Task<IActionResult> CloseWelder([FromBody] WelderClosureDto dto)
+        {
+            try
+            {
+                var userId = User.FindFirst("userId")?.Value;
+
+                var userIdGuid = Guid.TryParse(userId, out var parsedGuid)
+                    ? parsedGuid
+                    : Guid.Empty;
+
+                var applicationId = await _service.CloseWelderAsync(dto, userIdGuid);
+
+                return Ok(new
+                {
+                    success = true,
+                    applicationId,
+                    message = "Welder closure submitted successfully."
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = ex.Message
+                });
+            }
+        }
+
     }
 }

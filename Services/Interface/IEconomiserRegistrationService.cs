@@ -10,6 +10,7 @@ namespace RajFabAPI.Services.Interface
         Task<string> RenewEconomiserAsync(EconomiserRenewalDto dto, Guid userId);
         Task<List<EconomiserDetailsDto>> GetAllAsync();
         Task<EconomiserDetailsDto?> GetLatestApprovedByRegistrationNoAsync(string economiserRegistrationNo);
+        Task<bool> UpdateEconomiserAsync(string applicationId, EconomiserCreateDto dto);
         Task<EconomiserDetailsDto?> GetByApplicationIdAsync(string applicationId);
         Task<string> CloseEconomiserAsync(EconomiserClosureDto dto, Guid userId);
 

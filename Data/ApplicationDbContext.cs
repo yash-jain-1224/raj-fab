@@ -162,6 +162,8 @@ namespace RajFabAPI.Data
         public DbSet<WelderDetail> WelderDetails { get; set; }
 
         public DbSet<WelderEmployer> WelderEmployers { get; set; }
+        public DbSet<WelderClosure> WelderClosures { get; set; }
+
 
         public DbSet<FeeResult> FeeResults { get; set; }
 

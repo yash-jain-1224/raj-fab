@@ -1072,3 +1072,14 @@ CREATE TABLE WelderClosures
 
     IsActive BIT DEFAULT 1
 )
+
+ALTER TABLE FactoryMapApprovals
+ALTER COLUMN Status NVARCHAR(50);
+
+UPDATE Certificates
+SET Signature = ''
+WHERE Signature IS NULL;
+
+ALTER TABLE Certificates
+ADD CONSTRAINT DF_Certificates_Signature
+DEFAULT '' FOR Signature;

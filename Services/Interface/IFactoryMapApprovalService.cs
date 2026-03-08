@@ -17,5 +17,6 @@ namespace RajFabAPI.Services.Interface
         Task<bool> UpdateStatusAndRemark(string registrationId, string status);
         Task<string> GenerateFactoryMapApprovalPdf(FactoryMapApprovalDto dto);
         Task<string> GenerateCertificateAsync(MapApprovalCertificateRequestDto dto, Guid userId, string applicationId);
+        Task<ApiResponseDto<FactoryMapApprovalDto>> UpdateApplicationAsync(string applicationId, CreateFactoryMapApprovalRequest request);
     }
 }

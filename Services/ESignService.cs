@@ -126,7 +126,7 @@ namespace RajFabAPI.Services
                             byte[]? pdfBytes = null;
 
                             // ---- MODULE SWITCH ----
-                            if (applicationData.ModuleName == ApplicationTypeNames.NewEstablishment)
+                            if (applicationData.ModuleName == ApplicationTypeNames.NewEstablishment || applicationData.ModuleName == ApplicationTypeNames.FactoryAmendment || applicationData.ModuleName == ApplicationTypeNames.FactoryRenewal)
                             {
                                 _logger.LogInformation("Processing New Establishment PDF generation");
 
@@ -141,7 +141,7 @@ namespace RajFabAPI.Services
 
                                 pdfBytes = await File.ReadAllBytesAsync(filePath);
                             }
-                            else if (applicationData.ModuleName == ApplicationTypeNames.MapApproval)
+                            else if (applicationData.ModuleName == ApplicationTypeNames.MapApproval || applicationData.ModuleName == ApplicationTypeNames.MapApprovalAmendment)
                             {
                                 _logger.LogInformation("Processing Map Approval PDF generation");
 
@@ -193,7 +193,7 @@ namespace RajFabAPI.Services
 
                                 pdfBytes = await File.ReadAllBytesAsync(filePath);
                             }
-                            else if (applicationData.ModuleName == ApplicationTypeNames.FactoryLicense)
+                            else if (applicationData.ModuleName == ApplicationTypeNames.FactoryLicense || applicationData.ModuleName == ApplicationTypeNames.FactoryLicenseAmendment || applicationData.ModuleName == ApplicationTypeNames.FactoryLicenseRenewal)
                             {
                                 _logger.LogInformation("Processing Factory License PDF generation");
 

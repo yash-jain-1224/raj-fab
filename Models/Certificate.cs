@@ -17,7 +17,7 @@ namespace RajFabAPI.Models
         public Guid IssuedByUserId { get; set; }
         public DateTime IssuedAt { get; set; }
         public string Place { get; set; }
-        public string Signature { get; set; }
+        public string? Signature { get; set; }
         public string Status { get; set; }
         public Guid ModuleId { get; set; }
         public string Remarks { get; set; }

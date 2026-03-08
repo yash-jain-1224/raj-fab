@@ -2737,7 +2737,15 @@ namespace RajFabAPI.Services
                 existingReg.UpdatedDate = DateTime.Now;
                 _db.Entry(existingReg).State = EntityState.Modified;
 
-                var module = await _db.Set<FormModule>().FirstOrDefaultAsync(m => m.Name == ApplicationTypeNames.NewEstablishment);
+                string applicationTypeName = existingReg.Type switch
+                {
+                    "new" => ApplicationTypeNames.NewEstablishment,
+                    "amendment" => ApplicationTypeNames.FactoryAmendment,
+                    "renew" => ApplicationTypeNames.FactoryRenewal,
+                    _ => throw new ArgumentException($"Invalid registration type: {existingReg.Type}")
+                };
+
+                var module = await _db.Set<FormModule>().FirstOrDefaultAsync(m => m.Name == applicationTypeName);
                 var appReg = await _db.ApplicationRegistrations.OrderByDescending(x => x.CreatedDate).FirstOrDefaultAsync(x => x.ApplicationId == existingReg.EstablishmentRegistrationId);
 
                 var history = new ApplicationHistory

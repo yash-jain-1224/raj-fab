@@ -173,7 +173,7 @@ namespace RajFabAPI.Services
                         IsPaymentPending = latestStatus == "PENDING"
                     });
                 }
-                else if (appRegistration.ApplicationTypeName == ApplicationTypeNames.MapApproval)
+                else if (appRegistration.ApplicationTypeName == ApplicationTypeNames.MapApproval || appRegistration.ApplicationTypeName == ApplicationTypeNames.MapApprovalAmendment)
                 {
                     var mapApproval = _db.FactoryMapApprovals.FirstOrDefault(x => x.Id == appRegistration.ApplicationId);
                     if (mapApproval != null)
@@ -181,7 +181,7 @@ namespace RajFabAPI.Services
                         applicationUserDashboardDtos.Add(new ApplicationUserDashboardDto
                         {
                             ApplicationRegistrationId = appRegistration.Id,
-                            ApplicationType = ApplicationTypeNames.MapApproval,
+                            ApplicationType = appRegistration.ApplicationTypeName,
                             Status = mapApproval.Status,
                             CreatedDate = appRegistration.CreatedDate,
                             ApplicationId = Guid.Parse(appRegistration.ApplicationId),

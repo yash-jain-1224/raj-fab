@@ -138,9 +138,11 @@ namespace RajFabAPI.Services
                      Place = f.Place,
                      Status = f.Status,
                      IsNew = f.IsNew,
+                     Version = f.Version,
                      ApplicationPDFUrl = f.ApplicationPDFUrl,
                      FactoryDetails = f.FactoryDetails,
                      OccupierDetails = f.OccupierDetails,
+                     CreatedAt = f.CreatedAt,
                  })
                  .AsNoTracking()
                  .ToListAsync();
@@ -198,7 +200,7 @@ namespace RajFabAPI.Services
 
                 var activeCertificate = await _context.Certificates
                     .AsNoTracking()
-                    .Where(c => c.RegistrationNumber == application.AcknowledgementNumber && c.IsESignCompleted)
+                    .Where(c => c.ApplicationId == application.Id)
                     .OrderByDescending(c => c.CertificateVersion)
                     .FirstOrDefaultAsync();
                 dto.CertificatePDFUrl = activeCertificate?.CertificateUrl;
@@ -349,10 +351,9 @@ namespace RajFabAPI.Services
                         {
                             FactoryMapApprovalId = application.Id,
                             ProductName = product.ProductName,
-                            QuantityPerDay = 0,
-                            //Unit = product.Unit,
-                            Unit = "",
-                            MaxStorageCapacity = res,
+                            QuantityPerDay = product.QuantityPerDay,
+                            Unit = product.Unit ?? "",
+                            MaxStorageCapacity = res == 0 ? null : res,
                             StorageMethod = product.StorageMethod,
                             Remarks = product.Remarks
                         });
@@ -782,6 +783,7 @@ namespace RajFabAPI.Services
                 Place = application.Place,
                 Date = application.Date,
                 Status = application.Status,
+                Version = application.Version,
                 ApplicationPDFUrl = application.ApplicationPDFUrl,
                 CreatedAt = application.CreatedAt,
                 UpdatedAt = application.UpdatedAt,
@@ -1187,6 +1189,168 @@ namespace RajFabAPI.Services
             catch
             {
                 throw;
+            }
+        }
+
+        public async Task<ApiResponseDto<FactoryMapApprovalDto>> UpdateApplicationAsync(string applicationId, CreateFactoryMapApprovalRequest request)
+        {
+            try
+            {
+                var application = await _context.FactoryMapApprovals
+                    .Include(f => f.RawMaterials)
+                    .Include(f => f.IntermediateProducts)
+                    .Include(f => f.FinishGoods)
+                    .Include(f => f.Chemicals)
+                    .FirstOrDefaultAsync(f => f.Id == applicationId);
+
+                if (application == null)
+                    return new ApiResponseDto<FactoryMapApprovalDto> { Success = false, Message = "Application not found." };
+
+                // Update scalar fields
+                application.PlantParticulars = request.PlantParticulars;
+                application.ProductName = request.ProductName;
+                application.ManufacturingProcess = request.ManufacturingProcess;
+                application.MaxWorkerMale = request.MaxWorkerMale;
+                application.MaxWorkerFemale = request.MaxWorkerFemale;
+                application.AreaFactoryPremise = request.AreaFactoryPremise;
+                application.NoOfFactoriesIfCommonPremise = request.NoOfFactoriesIfCommonPremise;
+                application.PremiseOwnerName = request.PremiseOwnerName;
+                application.PremiseOwnerContactNo = request.PremiseOwnerContactNo;
+                application.PremiseOwnerAddressPlotNo = request.PremiseOwnerAddressPlotNo;
+                application.PremiseOwnerAddressStreet = request.PremiseOwnerAddressStreet;
+                application.PremiseOwnerAddressCity = request.PremiseOwnerAddressCity;
+                application.PremiseOwnerAddressDistrict = request.PremiseOwnerAddressDistrict;
+                application.PremiseOwnerAddressState = request.PremiseOwnerAddressState;
+                application.PremiseOwnerAddressPinCode = request.PremiseOwnerAddressPinCode;
+                application.Place = request.Place;
+                application.Date = request.Date;
+                application.OccupierDetails = request.OccupierDetails;
+                application.FactoryDetails = request.FactoryDetails;
+                application.UpdatedAt = DateTime.Now;
+                application.Status = "Pending";
+
+                // Replace child collections
+                _context.Set<FactoryMapRawMaterial>().RemoveRange(application.RawMaterials);
+                _context.Set<FactoryMapIntermediateProduct>().RemoveRange(application.IntermediateProducts);
+                _context.Set<FactoryMapFinishGood>().RemoveRange(application.FinishGoods);
+                _context.Set<FactoryMapApprovalChemical>().RemoveRange(application.Chemicals);
+
+                application.RawMaterials = request.RawMaterials?.Select(r => new FactoryMapRawMaterial
+                {
+                    FactoryMapApprovalId = application.Id,
+                    MaterialName = r.MaterialName,
+                    MaxStorageQuantity = r.MaxStorageQuantity
+                }).ToList() ?? new List<FactoryMapRawMaterial>();
+
+                application.IntermediateProducts = request.IntermediateProducts?.Select(p => new FactoryMapIntermediateProduct
+                {
+                    FactoryMapApprovalId = application.Id,
+                    ProductName = p.ProductName,
+                    MaxStorageQuantity = p.MaxStorageQuantity
+                }).ToList() ?? new List<FactoryMapIntermediateProduct>();
+
+                application.FinishGoods = request.FinishGoods?.Select(p =>
+                {
+                    decimal.TryParse(p.MaxStorageCapacity, out var maxStorage);
+                    return new FactoryMapFinishGood
+                    {
+                        FactoryMapApprovalId = application.Id,
+                        ProductName = p.ProductName,
+                        QuantityPerDay = p.QuantityPerDay,
+                        Unit = p.Unit ?? "",
+                        MaxStorageCapacity = maxStorage == 0 ? null : maxStorage,
+                        StorageMethod = p.StorageMethod,
+                        Remarks = p.Remarks
+                    };
+                }).ToList() ?? new List<FactoryMapFinishGood>();
+
+                application.Chemicals = request.Chemicals?.Select(c => new FactoryMapApprovalChemical
+                {
+                    FactoryMapApprovalId = application.Id,
+                    ChemicalName = c.ChemicalName,
+                    TradeName = c.TradeName,
+                    MaxStorageQuantity = c.MaxStorageQuantity
+                }).ToList() ?? new List<FactoryMapApprovalChemical>();
+
+                var history = new ApplicationHistory
+                {
+                    ApplicationId = applicationId,
+                    ApplicationType = "Map Approval",
+                    Action = "Application data updated",
+                    Comments = "Application data updated by citizen",
+                    ActionBy = "Applicant",
+                    ActionDate = DateTime.Now
+                };
+
+                _context.ApplicationHistories.Add(history);
+
+                await _context.SaveChangesAsync();
+
+                string applicationTypeName = application.IsNew
+                    ? ApplicationTypeNames.MapApproval
+                    : ApplicationTypeNames.MapApprovalAmendment;
+                // Add ApplicationApprovalRequest at Level 1 (resubmission pattern)
+                var module = await _context.Set<FormModule>().FirstOrDefaultAsync(m => m.Name == applicationTypeName);
+                var appReg = await _context.ApplicationRegistrations
+                    .OrderByDescending(x => x.CreatedDate)
+                    .FirstOrDefaultAsync(x => x.ApplicationId == applicationId);
+
+                if (module != null && appReg != null)
+                {
+                    int totalWorkers = application.MaxWorkerMale + application.MaxWorkerFemale;
+                    var workerRange = await _context.Set<WorkerRange>()
+                        .FirstOrDefaultAsync(wr => totalWorkers >= wr.MinWorkers && totalWorkers <= wr.MaxWorkers);
+
+                    var factoryType = await _context.FactoryTypes.FirstOrDefaultAsync(x => x.Name == "Not Applicable");
+                    Guid? workerRangeId = workerRange?.Id;
+                    Guid? factoryTypeId = factoryType?.Id;
+                    var factoryCategory = await _context.Set<FactoryCategory>()
+                        .FirstOrDefaultAsync(fc => fc.WorkerRangeId == workerRangeId && fc.FactoryTypeId == factoryTypeId);
+                    Guid? factoryCategoryId = factoryCategory?.Id;
+
+                    FactoryDetailsModel factoryDetails = null;
+                    if (!string.IsNullOrWhiteSpace(application.FactoryDetails))
+                        factoryDetails = JsonSerializer.Deserialize<FactoryDetailsModel>(application.FactoryDetails);
+
+                    if (factoryDetails?.subDivisionId != null && Guid.TryParse(factoryDetails.subDivisionId, out var subDivisionGuid))
+                    {
+                        var officeApplicationArea = await _context.Set<OfficeApplicationArea>()
+                            .FirstOrDefaultAsync(oaa => oaa.CityId == subDivisionGuid);
+
+                        if (officeApplicationArea != null)
+                        {
+                            var officeId = officeApplicationArea.OfficeId;
+                            var workflow = await _context.Set<ApplicationWorkFlow>()
+                                .FirstOrDefaultAsync(wf => wf.ModuleId == module.Id && wf.FactoryCategoryId == factoryCategoryId && wf.OfficeId == officeId);
+                            var workflowLevel = await _context.Set<ApplicationWorkFlowLevel>()
+                                .Where(wfl => wfl.ApplicationWorkFlowId == (workflow != null ? workflow.Id : Guid.Empty))
+                                .OrderBy(wfl => wfl.LevelNumber)
+                                .FirstOrDefaultAsync();
+
+                            if (workflow != null && workflowLevel != null)
+                            {
+                                var approvalRequest = new ApplicationApprovalRequest
+                                {
+                                    ModuleId = module.Id,
+                                    ApplicationRegistrationId = appReg.Id,
+                                    ApplicationWorkFlowLevelId = workflowLevel.Id,
+                                    Status = "Pending",
+                                    CreatedDate = DateTime.Now,
+                                    UpdatedDate = DateTime.Now
+                                };
+                                _context.Set<ApplicationApprovalRequest>().Add(approvalRequest);
+                                await _context.SaveChangesAsync();
+                            }
+                        }
+                    }
+                }
+
+                var dto = MapToDto(application);
+                return new ApiResponseDto<FactoryMapApprovalDto> { Success = true, Message = "Application updated successfully.", Data = dto };
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponseDto<FactoryMapApprovalDto> { Success = false, Message = $"Error updating application: {ex.Message}" };
             }
         }
     }

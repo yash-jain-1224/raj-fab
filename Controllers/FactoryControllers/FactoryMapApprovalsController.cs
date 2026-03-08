@@ -110,8 +110,11 @@ namespace RajFabAPI.Controllers.FactoryControllers
 
                 var userId = User.FindFirst("userId")?.Value;
                 var userIdGuid = Guid.TryParse(userId, out var parsedGuid) ? parsedGuid : Guid.Empty;
-                var html = await _factoryMapApprovalService.CreateApplicationAsync(request, userIdGuid, false, id);
+                var applicationId = await _factoryMapApprovalService.CreateApplicationAsync(request, userIdGuid, false, id);
 
+                if (applicationId == null)
+                    throw new Exception("Application not created");
+                var html = await _eSignService.GenerateESignHtmlAsync(applicationId);
                 return CreatedAtAction(null, new { html }, new { html });
 
             }
@@ -121,6 +124,21 @@ namespace RajFabAPI.Controllers.FactoryControllers
                 // log exception if you have logging; return generic error to client
                 return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while saving the registration.");
             }
+        }
+
+        [Authorize]
+        [HttpPost("update/{applicationId}")]
+        public async Task<ActionResult<ApiResponseDto<FactoryMapApprovalDto>>> UpdateApplication(
+            string applicationId, [FromBody] CreateFactoryMapApprovalRequest request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var result = await _factoryMapApprovalService.UpdateApplicationAsync(applicationId, request);
+            if (!result.Success)
+                return NotFound(result);
+
+            return Ok(result);
         }
 
         [HttpPost("{id}/delete")]

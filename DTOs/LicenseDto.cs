@@ -1,5 +1,6 @@
 using RajFabAPI.Models;
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace RajFabAPI.DTOs
@@ -30,5 +31,17 @@ namespace RajFabAPI.DTOs
     {
         public FactoryLicense FactoryLicense { get; set; }
         public EstablishmentRegistrationDetailsDto EstFullDetails { get; set; }
+        public List<ApplicationHistoryDto> ApplicationHistory { get; set; } = new();
+        public string? CertificatePDFUrl { get; set; }
+    }
+
+    public class FactoryLicenseCertificateRequestDto
+    {
+        public string? Remarks { get; set; }
+        public string StartDate { get; set; }
+        public string EndDate { get; set; }
+        public string? Place { get; set; }
+        public string? Signature { get; set; }
+        public string? IssuedAt { get; set; }
     }
 }

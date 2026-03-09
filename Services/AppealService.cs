@@ -122,7 +122,8 @@ namespace RajFabAPI.Services
                 PreviousStatus = null,
                 NewStatus = "Pending",
                 Comments = "Application submitted for review",
-                ActionBy = "Applicant",
+                ActionBy = userId.ToString(),
+                ActionByName = "Applicant",
                 ActionDate = DateTime.Now
             };
             _context.ApplicationHistories.Add(history);

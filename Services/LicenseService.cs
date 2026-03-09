@@ -56,10 +56,32 @@ namespace RajFabAPI.Services
                 .FirstOrDefaultAsync(x => x.Id == id);
             var estFullDetails = await _establishmentRegistrationService
                 .GetFactoryDetailsByFactoryRegistrationNumberAsync(factoryLicense.FactoryRegistrationNumber);
+            var applicationHistory = await _context.ApplicationHistories
+                .Where(h => h.ApplicationId == id)
+                .OrderByDescending(h => h.ActionDate)
+                .Select(h => new ApplicationHistoryDto
+                {
+                    Id = h.Id,
+                    Action = h.Action,
+                    PreviousStatus = h.PreviousStatus,
+                    NewStatus = h.NewStatus,
+                    Comments = h.Comments,
+                    ActionByName = h.ActionByName,
+                    ForwardedToName = h.ForwardedToName,
+                    ActionDate = h.ActionDate
+                })
+                .ToListAsync();
+            var activeCertificate = await _context.Set<Certificate>()
+                .Where(c => c.ApplicationId == id)
+                .OrderByDescending(c => c.CertificateVersion)
+                .FirstOrDefaultAsync();
+
             return new FactoryLicenseData
             {
                 FactoryLicense = factoryLicense,
-                EstFullDetails = estFullDetails
+                EstFullDetails = estFullDetails,
+                ApplicationHistory = applicationHistory,
+                CertificatePDFUrl = activeCertificate?.CertificateUrl
             };
         }
 
@@ -73,12 +95,12 @@ namespace RajFabAPI.Services
             decimal newVersion;
             string finalFactoryLicenseNumber;
 
-            if (type == "New" && string.IsNullOrEmpty(FactoryLicenseNumber))
+            if (type == "new" && string.IsNullOrEmpty(FactoryLicenseNumber))
             {
                 finalFactoryLicenseNumber = GenerateLicenseNumber();
                 newVersion = 1.0m;
             }
-            else if (type == "Amendment" || type == "Renewal")
+            else if (type == "amendment" || type == "renewal")
             {
                 var lastApproved = await _context.FactoryLicenses
                     .Where(r => r.FactoryLicenseNumber == FactoryLicenseNumber && r.Status == ApplicationStatus.Approved)
@@ -116,15 +138,30 @@ namespace RajFabAPI.Services
                     Version = newVersion,
                     Status = "Pending",
                     Amount = amount,
-                    Type = string.IsNullOrEmpty(type) ? "New" : type
+                    Type = string.IsNullOrEmpty(type) ? "new" : type
                 };
                 _context.FactoryLicenses.Add(license);
 
+                // Add application history for submission
+                var submittedHistory = new ApplicationHistory
+                {
+                    ApplicationId = license.Id,
+                    ApplicationType = "FactoryLicense",
+                    Action = "Application Submitted",
+                    PreviousStatus = null,
+                    NewStatus = "Pending",
+                    Comments = "Application submitted and payment initiated.",
+                    ActionBy = userId.ToString(),
+                    ActionByName = User?.FullName ?? "Unknown User",
+                    ActionDate = DateTime.Now
+                };
+                _context.ApplicationHistories.Add(submittedHistory);
+
                 string applicationTypeName = type switch
                 {
-                    "New" => ApplicationTypeNames.FactoryLicense,
-                    "Amendment" => ApplicationTypeNames.FactoryLicenseAmendment,
-                    "Renewal" => ApplicationTypeNames.FactoryLicenseRenewal,
+                    "new" => ApplicationTypeNames.FactoryLicense,
+                    "amendment" => ApplicationTypeNames.FactoryLicenseAmendment,
+                    "renewal" => ApplicationTypeNames.FactoryLicenseRenewal,
                     _ => throw new ArgumentException($"Invalid registration type: {type}")
                 };
 
@@ -217,10 +254,10 @@ namespace RajFabAPI.Services
             }
         }
 
-        public async Task<FactoryLicense?> UpdateAsync(Guid id, CreateFactoryLicenseDto dto, Guid userId)
+        public async Task<FactoryLicense?> UpdateAsync(string id, CreateFactoryLicenseDto dto, Guid userId)
         {
-            var license = await _context.FactoryLicenses.FindAsync(id);
-            if (license == null || !license.IsActive)
+            var license = await _context.FactoryLicenses.FirstOrDefaultAsync(x => x.Id == id && x.IsActive);
+            if (license == null)
                 return null;
 
             license.FactoryRegistrationNumber = dto.FactoryRegistrationNumber;
@@ -235,69 +272,110 @@ namespace RajFabAPI.Services
             license.UpdatedAt = DateTime.Now;
 
             await _context.SaveChangesAsync();
+            string applicationTypeName = license.Type switch
+            {
+                "new" => ApplicationTypeNames.FactoryLicense,
+                "amendment" => ApplicationTypeNames.FactoryLicenseAmendment,
+                "renew" => ApplicationTypeNames.FactoryLicenseRenewal,
+                _ => throw new ArgumentException($"Invalid registration type: {license.Type}")
+            };
 
-            var module = await _context.Set<FormModule>().FirstOrDefaultAsync(m => m.Name == ApplicationTypeNames.FactoryLicense);
-            var appReg = await _context.ApplicationRegistrations.OrderByDescending(x => x.CreatedDate).FirstOrDefaultAsync(x => x.ApplicationId == license.Id && x.ModuleId == module.Id);
+            var module = await _context.Set<FormModule>().FirstOrDefaultAsync(m => m.Name == applicationTypeName);
+            if (module == null)
+                return license;
 
-            // Fetch EstablishmentDetail for the user
+            var appReg = await _context.ApplicationRegistrations
+                .OrderByDescending(x => x.CreatedDate)
+                .FirstOrDefaultAsync(x => x.ApplicationId == license.Id && x.ModuleId == module.Id);
+            if (appReg == null)
+                return license;
+
+            // Fetch EstablishmentDetail for the factory registration number
             var estReg = await _context.Set<EstablishmentRegistration>()
-                .Where(er =>
-                    er.RegistrationNumber == dto.FactoryRegistrationNumber &&
-                    er.Status == "Approved")
+                .Where(er => er.RegistrationNumber == dto.FactoryRegistrationNumber && er.Status == "Approved")
                 .OrderByDescending(er => er.Version)
                 .FirstOrDefaultAsync();
 
             if (estReg == null)
-                throw new Exception("Establishment details not found for the user.");
+                return license;
+
             var estDetail = await _context.Set<EstablishmentDetail>()
                 .FirstOrDefaultAsync(ed => ed.Id == estReg.EstablishmentDetailId);
             if (estDetail == null)
-                throw new Exception("Establishment details not found for the user.");
+                return license;
 
             // Calculate total workers
-            int totalWorkers = estDetail.TotalNumberOfEmployee ?? 0 + estDetail.TotalNumberOfContractEmployee ?? 0 + estDetail.TotalNumberOfInterstateWorker ?? 0;
+            int totalWorkers = (estDetail.TotalNumberOfEmployee ?? 0) +
+                               (estDetail.TotalNumberOfContractEmployee ?? 0) +
+                               (estDetail.TotalNumberOfInterstateWorker ?? 0);
 
-            // Get WorkerRange and FactoryCategoryId
             var workerRange = await _context.Set<WorkerRange>()
                 .FirstOrDefaultAsync(wr => totalWorkers >= wr.MinWorkers && totalWorkers <= wr.MaxWorkers);
 
-            var factoryType = _context.FactoryTypes.FirstOrDefault(x => x.Name == "Not Applicable");
-            var factoryTypeIdGuid = factoryType?.Id;
-
-            Guid? workerRangeId = workerRange?.Id;
+            var factoryType = await _context.FactoryTypes.FirstOrDefaultAsync(x => x.Name == "Not Applicable");
             var factoryCategory = await _context.Set<FactoryCategory>()
-                .FirstOrDefaultAsync(fc => fc.WorkerRangeId == workerRangeId && fc.FactoryTypeId == factoryTypeIdGuid);
-            Guid? factoryCategoryId = factoryCategory?.Id;
+                .FirstOrDefaultAsync(fc => fc.WorkerRangeId == workerRange.Id && fc.FactoryTypeId == factoryType.Id);
+
+            if (!Guid.TryParse(estDetail.SubDivisionId, out var subDivisionGuid))
+                return license;
 
             var officeApplicationArea = await _context.Set<OfficeApplicationArea>()
-                .FirstOrDefaultAsync(oaa => oaa.CityId == Guid.Parse(estDetail.SubDivisionId));
-            if (officeApplicationArea != null)
-            {
-                var officeId = officeApplicationArea?.OfficeId;
-                var workflow = await _context.Set<ApplicationWorkFlow>()
-                    .FirstOrDefaultAsync(wf => wf.ModuleId == module.Id && wf.FactoryCategoryId == factoryCategoryId && wf.OfficeId == officeId);
-                var workflowLevel = await _context.Set<ApplicationWorkFlowLevel>()
-                    .Where(wfl => wfl.ApplicationWorkFlowId == (workflow != null ? workflow.Id : Guid.Empty))
-                    .OrderBy(wfl => wfl.LevelNumber)
-                    .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync(oaa => oaa.CityId == subDivisionGuid);
+            if (officeApplicationArea == null)
+                return license;
 
-                if (workflow != null)
-                {
-                    var applicationApprovalRequest = new ApplicationApprovalRequest
-                    {
-                        ModuleId = module.Id,
-                        ApplicationRegistrationId = appReg.Id,
-                        ApplicationWorkFlowLevelId = workflowLevel.Id,
-                        Status = "Pending",
-                        CreatedDate = DateTime.Now,
-                        UpdatedDate = DateTime.Now
-                    };
-                    _context.Set<ApplicationApprovalRequest>().Add(applicationApprovalRequest);
-                    await _context.SaveChangesAsync();
-                }
-            }
+            var workflow = await _context.Set<ApplicationWorkFlow>()
+                .FirstOrDefaultAsync(wf =>
+                    wf.ModuleId == module.Id &&
+                    wf.FactoryCategoryId == factoryCategory.Id &&
+                    wf.OfficeId == officeApplicationArea.OfficeId);
+            if (workflow == null)
+                return license;
+
+            var workflowLevel = await _context.Set<ApplicationWorkFlowLevel>()
+                .Where(wfl => wfl.ApplicationWorkFlowId == workflow.Id)
+                .OrderBy(wfl => wfl.LevelNumber)
+                .FirstOrDefaultAsync();
+            if (workflowLevel == null)
+                return license;
+
+            var applicationApprovalRequest = new ApplicationApprovalRequest
+            {
+                ModuleId = module.Id,
+                ApplicationRegistrationId = appReg.Id,
+                ApplicationWorkFlowLevelId = workflowLevel.Id,
+                Status = "Pending",
+                CreatedDate = DateTime.Now,
+                UpdatedDate = DateTime.Now
+            };
+            _context.Set<ApplicationApprovalRequest>().Add(applicationApprovalRequest);
+
+            var history = new ApplicationHistory
+            {
+                ApplicationId = appReg.ApplicationId,
+                ApplicationType = module.Name,
+                Action = "Application data updated",
+                Comments = "Application data updated by citizen",
+                ActionBy = userId.ToString(),
+                ActionByName = "Applicant",
+                ActionDate = DateTime.Now
+            };
+
+            _context.ApplicationHistories.Add(history);
+            await _context.SaveChangesAsync();
 
             return license;
+        }
+
+        public async Task<bool> UpdateStatusAndRemark(string applicationId, string status)
+        {
+            var license = await _context.FactoryLicenses.FirstOrDefaultAsync(x => x.Id == applicationId);
+            if (license == null)
+                return false;
+            license.Status = status;
+            license.UpdatedAt = DateTime.Now;
+            await _context.SaveChangesAsync();
+            return true;
         }
 
         // public async Task<bool> DeleteAsync(Guid id)
@@ -314,6 +392,62 @@ namespace RajFabAPI.Services
         //     return true;
         // }
 
+        public async Task<string> GenerateCertificateAsync(FactoryLicenseCertificateRequestDto dto, Guid userId, string licenseId)
+        {
+            try
+            {
+                var license = await _context.FactoryLicenses.FirstOrDefaultAsync(x => x.Id == licenseId)
+                    ?? throw new KeyNotFoundException("Factory license not found.");
+
+                var licenseData = await GetByIdAsync(licenseId);
+
+                var certificateUrl = await GenerateFactoryLicensePdf(licenseData, true);
+
+                var module = await _context.Set<FormModule>().FirstOrDefaultAsync(m => m.Name == ApplicationTypeNames.FactoryLicense)
+                    ?? throw new InvalidOperationException("FactoryLicense module not found.");
+
+                var certificate = new Certificate
+                {
+                    RegistrationNumber = license.FactoryLicenseNumber,
+                    CertificateVersion = 1.0m,
+                    StartDate = DateTime.TryParse(dto.StartDate, out var start) ? start : DateTime.Now,
+                    EndDate = DateTime.TryParse(dto.EndDate, out var end) ? end : DateTime.Now.AddYears(1),
+                    CertificateUrl = certificateUrl,
+                    IssuedByUserId = userId,
+                    IssuedAt = DateTime.TryParse(dto.IssuedAt, out var issuedAt) ? issuedAt : DateTime.Now,
+                    Place = dto.Place ?? string.Empty,
+                    Signature = dto.Signature,
+                    Status = "Issued",
+                    ModuleId = module.Id,
+                    Remarks = dto.Remarks ?? string.Empty,
+                    ApplicationId = licenseId,
+                    IsESignCompleted = false
+                };
+                _context.Set<Certificate>().Add(certificate);
+
+                var history = new ApplicationHistory
+                {
+                    ApplicationId = licenseId,
+                    ApplicationType = "FactoryLicense",
+                    Action = "Certificate Generated",
+                    PreviousStatus = license.Status,
+                    NewStatus = license.Status,
+                    Comments = "Factory license certificate generated",
+                    ActionBy = userId.ToString(),
+                    ActionDate = DateTime.Now
+                };
+                _context.ApplicationHistories.Add(history);
+
+                await _context.SaveChangesAsync();
+
+                return certificate.Id.ToString();
+            }
+            catch
+            {
+                throw;
+            }
+        }
+
         public string GenerateLicenseNumber()
         {
             var timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
@@ -321,7 +455,7 @@ namespace RajFabAPI.Services
             return $"FLN{timestamp}{random}";
         }
 
-        public async Task<string> GenerateFactoryLicensePdf(FactoryLicenseData dto)
+        public async Task<string> GenerateFactoryLicensePdf(FactoryLicenseData dto, bool isCertificate = false)
         {
             if (dto == null) throw new ArgumentNullException(nameof(dto));
 
@@ -329,9 +463,11 @@ namespace RajFabAPI.Services
             var factoryData = dto.EstFullDetails?.EstablishmentDetail;
             var occupierData = dto.EstFullDetails?.MainOwnerDetail;
 
+           var folderName = isCertificate ? "certificates" : "factory-license-forms";
+
             var fileName = $"factory_license_{appData.Id}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
 
-            var uploadPath = Path.Combine(_environment.WebRootPath, "factory-license-forms");
+            var uploadPath = Path.Combine(_environment.WebRootPath, folderName);
             Directory.CreateDirectory(uploadPath);
 
             var filePath = Path.Combine(uploadPath, fileName);
@@ -340,7 +476,7 @@ namespace RajFabAPI.Services
 
             var request = httpContext.Request;
             var baseUrl = _config["BaseUrl"] ?? $"{request.Scheme}://{request.Host}";
-            var fileUrl = $"{baseUrl}/factory-license-forms/{fileName}";
+            var fileUrl = $"{baseUrl}/{folderName}/{fileName}";
 
             using var writer = new PdfWriter(filePath);
             using var pdf = new PdfDocument(writer);
@@ -441,7 +577,7 @@ namespace RajFabAPI.Services
                 await _context.SaveChangesAsync();
             }
 
-            return filePath;
+            return fileUrl;
         }
 
         // Helper to create a two-column table

@@ -7,9 +7,11 @@ namespace RajFabAPI.Services
     {
         Task<IEnumerable<FactoryLicense>> GetAllAsync(Guid userId);
         Task<FactoryLicenseData?> GetByIdAsync(string id);
-        Task<string?> CreateAsync(CreateFactoryLicenseDto dto, Guid userId, string? type = "New", string FactoryLicenseNumber = "");
-        Task<FactoryLicense?> UpdateAsync(Guid id, CreateFactoryLicenseDto dto, Guid userId);
+        Task<string?> CreateAsync(CreateFactoryLicenseDto dto, Guid userId, string? type = "new", string FactoryLicenseNumber = "");
+        Task<FactoryLicense?> UpdateAsync(string id, CreateFactoryLicenseDto dto, Guid userId);
         // Task<bool> DeleteAsync(Guid id);
-        Task<string> GenerateFactoryLicensePdf(FactoryLicenseData dto);
+        Task<string> GenerateFactoryLicensePdf(FactoryLicenseData dto, bool isCertificate = false);
+        Task<string> GenerateCertificateAsync(FactoryLicenseCertificateRequestDto dto, Guid userId, string licenseId);
+        Task<bool> UpdateStatusAndRemark(string applicationId, string status);
     }
 }

@@ -227,7 +227,23 @@ namespace RajFabAPI.Services
                 .Distinct()
                 .ToList();
 
-            if (applicationType.ToLower().Contains("map"))
+            if (applicationType.ToLower().Contains("license"))
+            {
+                var application = await _context.FactoryLicenses
+                    .FirstOrDefaultAsync(f => f.Id == applicationId);
+
+                if (application == null) return null;
+
+                var history = await GetApplicationHistoryAsync(applicationType, applicationId);
+
+                return new ApplicationDetailDto
+                {
+                    ApplicationType = "FactoryLicense",
+                    History = history,
+                    AvailableActions = userPermissions
+                };
+            }
+            else if (applicationType.ToLower().Contains("map"))
             {
                 var application = await _context.FactoryMapApprovals
                     .Include(f => f.RawMaterials)
@@ -444,7 +460,33 @@ namespace RajFabAPI.Services
             var currentUser = await _context.Users.FindAsync(userGuid);
             var currentUserName = currentUser?.FullName ?? "Unknown User";
 
-            if (applicationType.ToLower().Contains("map"))
+            if (applicationType.ToLower().Contains("license"))
+            {
+                var application = await _context.FactoryLicenses.FirstOrDefaultAsync(f => f.Id == applicationId);
+                if (application == null) return false;
+
+                var previousStatus = application.Status;
+                application.Status = "Forwarded";
+                application.UpdatedAt = DateTime.Now;
+
+                var history = new Models.ApplicationHistory
+                {
+                    ApplicationId = applicationId,
+                    ApplicationType = "FactoryLicense",
+                    Action = "Forwarded",
+                    PreviousStatus = previousStatus,
+                    NewStatus = "Forwarded",
+                    Comments = request.Comments,
+                    ActionBy = userId,
+                    ActionByName = currentUserName,
+                    ForwardedTo = request.ForwardToUserId,
+                    ForwardedToName = forwardToUser.FullName,
+                    ActionDate = DateTime.Now
+                };
+
+                _context.ApplicationHistories.Add(history);
+            }
+            else if (applicationType.ToLower().Contains("map"))
             {
                 var application = await _context.FactoryMapApprovals.FindAsync(applicationId);
                 if (application == null) return false;
@@ -522,7 +564,8 @@ namespace RajFabAPI.Services
             var history = new Models.ApplicationHistory
             {
                 ApplicationId = applicationId,
-                ApplicationType = applicationType.ToLower().Contains("map") ? "FactoryMapApproval" : "FactoryRegistration",
+                ApplicationType = applicationType.ToLower().Contains("map") ? "FactoryMapApproval" :
+                                  applicationType.ToLower().Contains("license") ? "FactoryLicense" : "FactoryRegistration",
                 Action = "Remarked",
                 PreviousStatus = null,
                 NewStatus = "Remark Added",
@@ -545,7 +588,31 @@ namespace RajFabAPI.Services
             var currentUser = await _context.Users.FindAsync(userGuid);
             var currentUserName = currentUser?.FullName ?? "Unknown User";
 
-            if (applicationType.ToLower().Contains("map"))
+            if (applicationType.ToLower().Contains("license"))
+            {
+                var application = await _context.FactoryLicenses.FirstOrDefaultAsync(f => f.Id == applicationId);
+                if (application == null) return false;
+
+                var previousStatus = application.Status;
+                application.Status = "Approved";
+                application.UpdatedAt = DateTime.Now;
+
+                var history = new Models.ApplicationHistory
+                {
+                    ApplicationId = applicationId,
+                    ApplicationType = "FactoryLicense",
+                    Action = "Approved",
+                    PreviousStatus = previousStatus,
+                    NewStatus = "Approved",
+                    Comments = request.ApprovalComments,
+                    ActionBy = userId,
+                    ActionByName = currentUserName,
+                    ActionDate = DateTime.Now
+                };
+
+                _context.ApplicationHistories.Add(history);
+            }
+            else if (applicationType.ToLower().Contains("map"))
             {
                 var application = await _context.FactoryMapApprovals.FindAsync(applicationId);
                 if (application == null) return false;
@@ -614,7 +681,31 @@ namespace RajFabAPI.Services
             var currentUser = await _context.Users.FindAsync(userGuid);
             var currentUserName = currentUser?.FullName ?? "Unknown User";
 
-            if (applicationType.ToLower().Contains("map"))
+            if (applicationType.ToLower().Contains("license"))
+            {
+                var application = await _context.FactoryLicenses.FirstOrDefaultAsync(f => f.Id == applicationId);
+                if (application == null) return false;
+
+                var previousStatus = application.Status;
+                application.Status = "Rejected";
+                application.UpdatedAt = DateTime.Now;
+
+                var history = new Models.ApplicationHistory
+                {
+                    ApplicationId = applicationId,
+                    ApplicationType = "FactoryLicense",
+                    Action = "Rejected",
+                    PreviousStatus = previousStatus,
+                    NewStatus = "Rejected",
+                    Comments = request.RejectionReason,
+                    ActionBy = userId,
+                    ActionByName = currentUserName,
+                    ActionDate = DateTime.Now
+                };
+
+                _context.ApplicationHistories.Add(history);
+            }
+            else if (applicationType.ToLower().Contains("map"))
             {
                 var application = await _context.FactoryMapApprovals.FindAsync(applicationId);
                 if (application == null) return false;
@@ -683,13 +774,37 @@ namespace RajFabAPI.Services
             var currentUser = await _context.Users.FindAsync(userGuid);
             var currentUserName = currentUser?.FullName ?? "Unknown User";
 
-            var correctionsText = request.RequiredCorrections.Any() 
+            var correctionsText = request.RequiredCorrections.Any()
                 ? $"\n\nRequired Corrections:\n- {string.Join("\n- ", request.RequiredCorrections)}"
                 : "";
 
             var fullComments = request.Reason + correctionsText;
 
-            if (applicationType.ToLower().Contains("map"))
+            if (applicationType.ToLower().Contains("license"))
+            {
+                var application = await _context.FactoryLicenses.FirstOrDefaultAsync(f => f.Id == applicationId);
+                if (application == null) return false;
+
+                var previousStatus = application.Status;
+                application.Status = "Returned";
+                application.UpdatedAt = DateTime.Now;
+
+                var history = new Models.ApplicationHistory
+                {
+                    ApplicationId = applicationId,
+                    ApplicationType = "FactoryLicense",
+                    Action = "Returned to Applicant",
+                    PreviousStatus = previousStatus,
+                    NewStatus = "Returned",
+                    Comments = fullComments,
+                    ActionBy = userId,
+                    ActionByName = currentUserName,
+                    ActionDate = DateTime.Now
+                };
+
+                _context.ApplicationHistories.Add(history);
+            }
+            else if (applicationType.ToLower().Contains("map"))
             {
                 var application = await _context.FactoryMapApprovals.FindAsync(applicationId);
                 if (application == null) return false;
@@ -773,7 +888,16 @@ namespace RajFabAPI.Services
             string? areaName = null;
 
             // Get application location
-            if (applicationType.ToLower().Contains("map"))
+            if (applicationType.ToLower().Contains("license"))
+            {
+                var application = await _context.FactoryLicenses
+                    .Where(f => f.Id == applicationId)
+                    .FirstOrDefaultAsync();
+
+                if (application == null) return new List<EligibleReviewerDto>();
+                // FactoryLicense doesn't have district/area — return all active reviewers
+            }
+            else if (applicationType.ToLower().Contains("map"))
             {
                 var application = await _context.FactoryMapApprovals
                     .Where(f => f.Id == applicationId)

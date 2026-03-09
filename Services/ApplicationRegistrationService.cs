@@ -1,5 +1,6 @@
 using iText.Commons.Actions.Contexts;
 using Microsoft.EntityFrameworkCore;
+using Org.BouncyCastle.Bcpg;
 using RajFabAPI.Data;
 using RajFabAPI.DTOs;
 using RajFabAPI.Models;
@@ -267,7 +268,8 @@ namespace RajFabAPI.Services
                         ApplicationId = Guid.Parse(factoryLicense.Id),
                         ApplicationTitle = estDetails?.EstablishmentName ?? "Factory License",
                         IsPaymentCompleted = factoryLicense.IsPaymentCompleted,
-                        IsESignCompleted = factoryLicense.IsESignCompletedManager && factoryLicense.IsESignCompletedOccupier
+                        //IsESignCompleted = factoryLicense.IsESignCompletedManager && factoryLicense.IsESignCompletedOccupier
+                        IsESignCompleted = factoryLicense.IsESignCompletedOccupier
                     });
                 }
                 else if (
@@ -351,7 +353,7 @@ namespace RajFabAPI.Services
 
                     return true;
                 }
-                else if (applicationData.ModuleName == ApplicationTypeNames.FactoryLicense)
+                else if (applicationData.ModuleName == ApplicationTypeNames.FactoryLicense || applicationData.ModuleName == ApplicationTypeNames.FactoryLicenseAmendment || applicationData.ModuleName == ApplicationTypeNames.FactoryLicenseRenewal)
                 {
                     var factoryLicense = await _db.Set<FactoryLicense>()
                         .FirstOrDefaultAsync(x =>
@@ -652,7 +654,8 @@ namespace RajFabAPI.Services
                     PreviousStatus = null,
                     NewStatus = "",
                     Comments = "Application E-Signed and sent to " + roleInfo.Name + " for Verification",
-                    ActionBy = "Applicant",
+                    ActionBy = appReg.UserId.ToString(),
+                    ActionByName = "Applicant",
                     ActionDate = DateTime.Now
                 };
                 _db.ApplicationHistories.Add(history);

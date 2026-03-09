@@ -1196,6 +1196,9 @@ namespace RajFabAPI.Services
         {
             try
             {
+                var appReg = await _context.ApplicationRegistrations
+                    .OrderByDescending(x => x.CreatedDate)
+                    .FirstOrDefaultAsync(x => x.ApplicationId == applicationId);
                 var application = await _context.FactoryMapApprovals
                     .Include(f => f.RawMaterials)
                     .Include(f => f.IntermediateProducts)
@@ -1278,7 +1281,8 @@ namespace RajFabAPI.Services
                     ApplicationType = "Map Approval",
                     Action = "Application data updated",
                     Comments = "Application data updated by citizen",
-                    ActionBy = "Applicant",
+                    ActionByName = "Applicant",
+                    ActionBy = appReg.UserId.ToString(),
                     ActionDate = DateTime.Now
                 };
 
@@ -1291,9 +1295,7 @@ namespace RajFabAPI.Services
                     : ApplicationTypeNames.MapApprovalAmendment;
                 // Add ApplicationApprovalRequest at Level 1 (resubmission pattern)
                 var module = await _context.Set<FormModule>().FirstOrDefaultAsync(m => m.Name == applicationTypeName);
-                var appReg = await _context.ApplicationRegistrations
-                    .OrderByDescending(x => x.CreatedDate)
-                    .FirstOrDefaultAsync(x => x.ApplicationId == applicationId);
+
 
                 if (module != null && appReg != null)
                 {

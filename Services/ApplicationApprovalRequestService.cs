@@ -14,11 +14,13 @@ namespace RajFabAPI.Services
         private readonly IEstablishmentRegistrationService _establishmentRegistrationService;
         private readonly ICommencementCessationService _commencementCessationService;
         private readonly IFactoryMapApprovalService _factoryMapApprovalService;
+        private readonly IFactoryLicenseService _factoryLicenseService;
 
         public ApplicationApprovalRequestService(ApplicationDbContext db, ILogger<ApplicationApprovalRequestService> logger,
             IEstablishmentRegistrationService establishmentRegistrationService,
             ICommencementCessationService commencementCessationService,
-            IFactoryMapApprovalService factoryMapApprovalService
+            IFactoryMapApprovalService factoryMapApprovalService,
+            IFactoryLicenseService factoryLicenseService
             )
         {
             _db = db;
@@ -26,6 +28,7 @@ namespace RajFabAPI.Services
             _establishmentRegistrationService = establishmentRegistrationService;
             _commencementCessationService = commencementCessationService;
             _factoryMapApprovalService = factoryMapApprovalService;
+            _factoryLicenseService = factoryLicenseService;
         }
 
         public async Task<int> CreateAsync(CreateApplicationApprovalRequestDto dto)
@@ -131,7 +134,8 @@ namespace RajFabAPI.Services
                     .Where(r => r.Id == workflowLevel.RoleId)
                     .Select(r => new
                     {
-                        Name = r.Post.Name + ", " + r.Office.City.Name
+                        Name = r.Post.Name + ", " + r.Office.City.Name,
+                        PostId = r.PostId,
                     })
                     .FirstOrDefaultAsync();
                 string actionText = "";
@@ -195,7 +199,8 @@ namespace RajFabAPI.Services
                     ApplicationType = module.Name,
                     Action = actionText,
                     Comments = commentText,
-                    ActionBy = roleInfo?.Name,
+                    ActionBy = roleInfo?.PostId.ToString(),
+                    ActionByName = roleInfo?.Name,
                     ActionDate = DateTime.Now
                 };
 
@@ -424,7 +429,7 @@ namespace RajFabAPI.Services
                             ApplicationType = appRegistration.ApplicationTypeName, // FactoryLicense / Amendment / Renewal
                             ApplicationTitle = estDetails?.EstablishmentName ?? "Factory License",
                             ApplicationRegistrationNumber = factoryLicense.FactoryLicenseNumber,
-                            Status = factoryLicense.Status,
+                            Status = item.Status,
                             TotalEmployees = 0
                         });
                     }
@@ -489,6 +494,12 @@ namespace RajFabAPI.Services
             else if (module.Name == ApplicationTypeNames.FactoryCommencementCessation)
             {
                 await _commencementCessationService.UpdateStatusAndRemark(regId, status);
+            }
+            else if (module.Name == ApplicationTypeNames.FactoryLicense ||
+                     module.Name == ApplicationTypeNames.FactoryLicenseAmendment ||
+                     module.Name == ApplicationTypeNames.FactoryLicenseRenewal)
+            {
+                await _factoryLicenseService.UpdateStatusAndRemark(regId, status);
             }
         }
 

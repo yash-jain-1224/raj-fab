@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using RajFabAPI.DTOs;
 using RajFabAPI.Services;
-using System.ComponentModel;
+using RajFabAPI.Services.Interface;
 
 namespace RajFabAPI.Controllers
 {
@@ -10,10 +10,12 @@ namespace RajFabAPI.Controllers
     public class FactoryLicenseController : ControllerBase
     {
         private readonly IFactoryLicenseService _factoryLicenseService;
+        private readonly IESignService _eSignService;
 
-        public FactoryLicenseController(IFactoryLicenseService factoryLicenseService)
+        public FactoryLicenseController(IFactoryLicenseService factoryLicenseService, IESignService eSignService)
         {
             _factoryLicenseService = factoryLicenseService;
+            _eSignService = eSignService;
         }
 
         // GET: api/factorylicense
@@ -49,28 +51,44 @@ namespace RajFabAPI.Controllers
 
         // POST: api/factorylicense/update/{id}
         [HttpPost("update/{id}")]
-        public async Task<IActionResult> Update(Guid id, [FromBody] CreateFactoryLicenseDto dto)
+        public async Task<IActionResult> Update(string id, [FromBody] CreateFactoryLicenseDto dto)
         {
             var userId = User.FindFirst("userId")?.Value;
             var userIdGuid = Guid.TryParse(userId, out var parsedGuid) ? parsedGuid : Guid.Empty;
             var license = await _factoryLicenseService.UpdateAsync(id, dto, userIdGuid);
             if (license == null)
-                return NotFound();
+                return NotFound(new { success = false, message = "License not found" });
 
-            return Ok(license);
+            return Ok(new { success = true, data = license });
+        }
+
+        // POST: api/factorylicense/{id}/generateCertificate
+        [HttpPost("{id}/generateCertificate")]
+        public async Task<IActionResult> GenerateCertificate(string id, [FromBody] FactoryLicenseCertificateRequestDto dto)
+        {
+            var userId = User.FindFirst("userId")?.Value;
+            var userIdGuid = Guid.TryParse(userId, out var parsedGuid) ? parsedGuid : Guid.Empty;
+            try
+            {
+                var certificateId = await _factoryLicenseService.GenerateCertificateAsync(dto, userIdGuid, id);
+                var html = await _eSignService.GenerateCertificateESignHtmlAsync(certificateId);
+                return Ok(new { html });
+            }
+            catch (KeyNotFoundException ex) { return NotFound(new { success = false, message = ex.Message }); }
+            catch (Exception) { return StatusCode(500, new { success = false, message = "An error occurred while generating the certificate." }); }
         }
 
         // POST: api/factorylicense/amendment/{factoryLicenseNumber}
-        [HttpPost("amendment/{factoryLicenseNumber}")]
+        [HttpPost("amend/{factoryLicenseNumber}")]
         public async Task<IActionResult> Amendment(string factoryLicenseNumber, [FromBody] CreateFactoryLicenseDto dto)
         {
             var userId = User.FindFirst("userId")?.Value;
             var userIdGuid = Guid.TryParse(userId, out var parsedGuid) ? parsedGuid : Guid.Empty;
-            var FactoryLicenseNumber = await _factoryLicenseService.CreateAsync(dto, userIdGuid, "Amendment", factoryLicenseNumber);
-            if (FactoryLicenseNumber == null)
+            var paymentHtml = await _factoryLicenseService.CreateAsync(dto, userIdGuid, "amendment", factoryLicenseNumber);
+            if (paymentHtml == null)
                 return NotFound();
 
-            return CreatedAtAction(null, new { FactoryLicenseNumber }, new { FactoryLicenseNumber });
+            return Ok(new { success = true, data = new { paymentHtml } });
         }
 
         // POST: api/factorylicense/renew/{factoryLicenseNumber}
@@ -79,11 +97,11 @@ namespace RajFabAPI.Controllers
         {
             var userId = User.FindFirst("userId")?.Value;
             var userIdGuid = Guid.TryParse(userId, out var parsedGuid) ? parsedGuid : Guid.Empty;
-            var FactoryLicenseNumber = await _factoryLicenseService.CreateAsync(dto, userIdGuid, "Renewal", factoryLicenseNumber);
-            if (FactoryLicenseNumber == null)
+            var paymentHtml = await _factoryLicenseService.CreateAsync(dto, userIdGuid, "renewal", factoryLicenseNumber);
+            if (paymentHtml == null)
                 return NotFound();
 
-            return CreatedAtAction(null, new { FactoryLicenseNumber }, new { FactoryLicenseNumber });
+            return Ok(new { success = true, data = new { paymentHtml } });
         }
     }
 }

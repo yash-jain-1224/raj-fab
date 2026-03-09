@@ -97,9 +97,11 @@ namespace RajFabAPI.Controllers
                 //    return BadRequest("Checksum mismatch! Possible tampering detected.");
 
                 var transaction = await _transactionService.GetByPrnAsync(paymentResponse.PRN);
+                var userId = "";
 
                 if (transaction != null)
                 {
+                    userId = transaction.UserId.ToString() ?? "";
                     // Safely parse payment amount
                     decimal paidAmount = 0;
                     if (!string.IsNullOrWhiteSpace(paymentResponse.PAYMENTAMOUNT))
@@ -159,7 +161,8 @@ namespace RajFabAPI.Controllers
                         PreviousStatus = null,
                         NewStatus = "",
                         Comments = Comments,
-                        ActionBy = "Applicant",
+                        ActionBy = userId,
+                        ActionByName = "Applicant",
                         ActionDate = DateTime.Now
                     };
                     _db.ApplicationHistories.Add(history);

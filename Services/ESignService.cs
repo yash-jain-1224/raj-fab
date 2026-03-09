@@ -103,7 +103,8 @@ namespace RajFabAPI.Services
                         select new
                         {
                             Application = appReg,
-                            ModuleName = module.Name
+                            ModuleName = module.Name,
+                            UserId = appReg.UserId
                         }
                     ).FirstOrDefaultAsync();
 
@@ -315,7 +316,8 @@ namespace RajFabAPI.Services
                                 PreviousStatus = null,
                                 NewStatus = "Pending",
                                 Comments = "Esign Initiated",
-                                ActionBy = "Applicant",
+                                ActionBy = applicationData.UserId.ToString(),
+                                ActionByName = "Applicant",
                                 ActionDate = DateTime.Now
                             };
                             _db.ApplicationHistories.Add(history);

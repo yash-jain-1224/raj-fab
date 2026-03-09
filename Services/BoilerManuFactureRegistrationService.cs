@@ -822,7 +822,7 @@ namespace RajFabAPI.Services
         public async Task<List<BoilerManufactureDetailsDto>> GetAllAsync()
         {
             var records = await _dbcontext.BoilerManufactureRegistrations
-                .OrderByDescending(x => x.CreatedAt)   // latest created first
+                .OrderByDescending(x => x.CreatedAt)
                 .Include(x => x.DesignFacility)
                 .Include(x => x.TestingFacility)
                 .Include(x => x.RDFacility)

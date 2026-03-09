@@ -163,6 +163,8 @@ namespace RajFabAPI.Data
 
         public DbSet<WelderEmployer> WelderEmployers { get; set; }
         public DbSet<WelderClosure> WelderClosures { get; set; }
+        public DbSet<BoilerDrawingApplication> BoilerDrawingApplications { get; set; }
+        public DbSet<BoilerDrawingClosure> BoilerDrawingClosures { get; set; }
 
 
         public DbSet<FeeResult> FeeResults { get; set; }

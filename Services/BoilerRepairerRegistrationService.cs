@@ -90,9 +90,7 @@ namespace RajFabAPI.Services
             {
                 BoilerRepairerRegistration? baseRecord = null;
 
-                /* ============================================================
-                   ?? AMEND CASE (BASED ON RepairerRegistrationNo)
-                ============================================================ */
+             
 
                 if (type == "amend")
                 {
@@ -117,17 +115,13 @@ namespace RajFabAPI.Services
                         throw new Exception("Amendment already pending.");
                 }
 
-                /* ============================================================
-                   ?? GENERATE REGISTRATION NUMBER
-                ============================================================ */
+            
 
                 string regNo = type == "new"
                     ? await GenerateRepairerRegistrationNoAsync()
                     : repairerRegistrationNo!;
 
-                /* ============================================================
-                   ?? APPLICATION + VERSION
-                ============================================================ */
+               
 
                 var applicationId = await GenerateApplicationNumberAsync(type);
 
@@ -135,9 +129,6 @@ namespace RajFabAPI.Services
                     ? baseRecord!.Version + 0.1m
                     : 1.0m;
 
-                /* ============================================================
-                   ?? VALIDITY
-                ============================================================ */
 
                 DateTime? validFrom;
                 DateTime? validUpto;
@@ -153,9 +144,7 @@ namespace RajFabAPI.Services
                     validUpto = baseRecord.ValidUpto ?? validFrom.Value.AddYears(1);
                 }
 
-                /* ============================================================
-                   ?? MASTER INSERT
-                ============================================================ */
+                
 
                 var registration = new BoilerRepairerRegistration
                 {
@@ -196,9 +185,7 @@ namespace RajFabAPI.Services
                 _dbcontext.BoilerRepairerRegistrations.Add(registration);
                 await _dbcontext.SaveChangesAsync();
 
-                /* ============================================================
-                   ?? ENGINEERS (CLONE IF AMEND)
-                ============================================================ */
+               
 
                 if (dto.Engineers?.Any() == true)
                 {
@@ -237,9 +224,7 @@ namespace RajFabAPI.Services
                     }
                 }
 
-                /* ============================================================
-                   ?? WELDERS
-                ============================================================ */
+                
 
                 if (dto.Welders?.Any() == true)
                 {
@@ -303,9 +288,7 @@ namespace RajFabAPI.Services
 
             try
             {
-                /* =====================================================
-                   ?? Get Latest APPROVED Record
-                ===================================================== */
+                
 
                 var lastApproved = await _dbcontext.BoilerRepairerRegistrations
                     .Where(x =>
@@ -317,9 +300,7 @@ namespace RajFabAPI.Services
                 if (lastApproved == null)
                     throw new Exception("Approved repairer record not found.");
 
-                /* =====================================================
-                   ?? Prevent Multiple Pending Renewals
-                ===================================================== */
+
 
                 var pendingRenewal = await _dbcontext.BoilerRepairerRegistrations
                     .AnyAsync(x =>
@@ -330,9 +311,8 @@ namespace RajFabAPI.Services
                 if (pendingRenewal)
                     throw new Exception("Renewal already pending for this registration.");
 
-                /* =====================================================
-                   ?? Validity Calculation
-                ===================================================== */
+               
+
 
                 DateTime validFrom = lastApproved.ValidFrom ?? DateTime.Now;
 
@@ -345,17 +325,15 @@ namespace RajFabAPI.Services
 
                 DateTime newValidUpto = baseDate.AddYears(dto.RenewalYears);
 
-                /* =====================================================
-                   ?? Version + Application
-                ===================================================== */
+               
+
 
                 var newVersion = Math.Round(lastApproved.Version + 0.1m, 1);
 
                 var applicationId = await GenerateApplicationNumberAsync("renew");
 
-                /* =====================================================
-                   ?? Create Renewal Record (Clone Master)
-                ===================================================== */
+                
+
 
                 var renewed = new BoilerRepairerRegistration
                 {
@@ -395,9 +373,8 @@ namespace RajFabAPI.Services
                 _dbcontext.BoilerRepairerRegistrations.Add(renewed);
                 await _dbcontext.SaveChangesAsync();
 
-                /* =====================================================
-                   ?? Clone Engineers
-                ===================================================== */
+               
+
 
                 var oldEngineers = await _dbcontext.BoilerRepairerEngineers
                     .Where(x => x.BoilerRepairerRegistrationId == lastApproved.Id)
@@ -417,9 +394,8 @@ namespace RajFabAPI.Services
                     });
                 }
 
-                /* =====================================================
-                   ?? Clone Welders
-                ===================================================== */
+               
+
 
                 var oldWelders = await _dbcontext.BoilerRepairerWelders
                     .Where(x => x.BoilerRepairerRegistrationId == lastApproved.Id)

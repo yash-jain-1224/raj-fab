@@ -1218,7 +1218,7 @@ namespace RajFabAPI.Services
                     .Where(x => x.BoilerRegistrationNo == dto.BoilerRegistrationNo && x.Status == "Approved")
                     .OrderByDescending(x => x.Version)
                     .FirstOrDefaultAsync();
-
+                               
                 if (boiler == null)
                     throw new Exception("Approved boiler not found.");
 

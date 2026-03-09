@@ -135,9 +135,6 @@ namespace RajFabAPI.Controllers.BoilerControllers
         {
             var result = await _manufactureService.GetAllAsync();
 
-            if (!result.Any())
-                return NotFound("No records found.");
-
             return Ok(result);
         }
 

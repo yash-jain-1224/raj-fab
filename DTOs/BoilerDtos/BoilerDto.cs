@@ -3,7 +3,12 @@
 namespace RajFabAPI.DTOs
 {
     public class CreateBoilerRegistrationDto
-    {             
+    {
+
+        public string? TransferType { get; set; } // SameState / OtherState
+
+        public string? OldRegistrationNo { get; set; }
+        public string? OldStateName { get; set; }
 
         public PersonDetailDto? OwnerDetail { get; set; }
         public PersonDetailDto? MakerDetail { get; set; }

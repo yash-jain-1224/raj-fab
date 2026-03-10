@@ -30,7 +30,7 @@ namespace RajFabAPI.Services
             {
                 "new" => $"BR{year}/CIFB/",
                 "amend" => $"BAmend{year}/CIFB/",
-                "renew" => $"BREN{year}/CIFB/",               
+                "renew" => $"BREN{year}/CIFB/",
                 "repair" => $"BRREP{year}/CIFB/",
                 "transfer" => $"BRTRF{year}/CIFB/",
                 "closure" => $"BRCLS{year}/CIFB/",
@@ -114,8 +114,7 @@ namespace RajFabAPI.Services
             });
         }
 
-
-        public async Task<string> SaveBoilerAsync(     CreateBoilerRegistrationDto dto,  Guid userId,  string? type,  string? boilerRegistrationNo)
+        public async Task<string> SaveBoilerAsync(CreateBoilerRegistrationDto dto, Guid userId, string? type, string? boilerRegistrationNo)
         {
             if (dto == null)
                 throw new ArgumentNullException(nameof(dto));
@@ -129,26 +128,35 @@ namespace RajFabAPI.Services
                 BoilerRegistration? baseRecord = null;
                 BoilerDetail? baseDetail = null;
 
-                /* =====================================================
-                   ?? IF AMEND ? FETCH LAST APPROVED RECORD
-                ===================================================== */
+                bool isAmend = type == "amend";
 
-               
+                bool isTransferSameState = type == "transfer" && string.Equals(dto.TransferType, "SameState", StringComparison.OrdinalIgnoreCase);
 
-                if (type == "amend")
+                bool isTransferOtherState = type == "transfer" && string.Equals(dto.TransferType, "OtherState", StringComparison.OrdinalIgnoreCase);
+
+
+                if (isTransferSameState)
+                {
+                    if (string.IsNullOrWhiteSpace(dto.OldRegistrationNo))
+                        throw new Exception("OldRegistrationNo required for SameState transfer.");
+
+                    boilerRegistrationNo = dto.OldRegistrationNo;
+                }
+
+
+
+                if (isAmend || isTransferSameState)
                 {
                     if (string.IsNullOrWhiteSpace(boilerRegistrationNo))
-                        throw new Exception("BoilerRegistrationNo required for amendment.");
+                        throw new Exception("BoilerRegistrationNo required.");
 
-                    // ? Block if already pending exists
                     var pendingExists = await _dbcontext.BoilerRegistrations
                         .AnyAsync(x => x.BoilerRegistrationNo == boilerRegistrationNo
                                     && x.Status == "Pending");
 
                     if (pendingExists)
-                        throw new Exception("Previous amendment is still pending.");
+                        throw new Exception("Previous application is still pending.");
 
-                    // ? Get latest approved
                     baseRecord = await _dbcontext.BoilerRegistrations
                         .Where(x => x.BoilerRegistrationNo == boilerRegistrationNo
                                  && x.Status == "Approved")
@@ -162,25 +170,24 @@ namespace RajFabAPI.Services
                         .FirstAsync(x => x.BoilerRegistrationId == baseRecord.Id);
                 }
 
-
-
-                /* =====================================================
-                   ?? GENERATE NUMBERS
-                ===================================================== */
+                if (isTransferOtherState)
+                {
+                    if (string.IsNullOrWhiteSpace(dto.OldStateName))
+                        throw new Exception("Old State Name required.");
+                }
 
                 var applicationNumber = await GenerateApplicationNumberAsync(type);
 
-                var finalBoilerNo = type == "amend"
-                    ? baseRecord!.BoilerRegistrationNo   // SAME NUMBER
-                    : await GenerateBoilerRegistrationNoAsync();
+                var finalBoilerNo =
+                    (isAmend || isTransferSameState)
+                        ? baseRecord!.BoilerRegistrationNo
+                        : await GenerateBoilerRegistrationNoAsync();
 
-                var version = type == "amend"
-                    ? baseRecord!.Version + 0.1m
-                    : 1.0m;
+                var version =
+                    (isAmend || isTransferSameState)
+                        ? baseRecord!.Version + 0.1m
+                        : 1.0m;
 
-                /* =====================================================
-                   ?? MASTER ENTRY
-                ===================================================== */
 
                 var registration = new BoilerRegistration
                 {
@@ -190,6 +197,8 @@ namespace RajFabAPI.Services
                     Type = type,
                     Status = "Pending",
                     Version = version,
+                    OldRegistrationNo = isTransferOtherState ? dto.OldRegistrationNo : null,
+                    OldStateName = isTransferOtherState ? dto.OldStateName : null,
                     CreatedAt = DateTime.Now,
                     UpdatedAt = DateTime.Now
                 };
@@ -197,12 +206,13 @@ namespace RajFabAPI.Services
                 _dbcontext.BoilerRegistrations.Add(registration);
                 await _dbcontext.SaveChangesAsync();
 
-                /* =====================================================
-                   ?? BOILER DETAIL
-                ===================================================== */              
 
                 var bd = dto.BoilerDetail ?? new BoilerTechnicalDto();
-                var renewalYears =   type == "new"  ? (bd.RenewalYears ?? 1)    : bd.RenewalYears ?? baseDetail?.RenewalYears; // amend case
+
+                var renewalYears =
+                    type == "new"
+                        ? (bd.RenewalYears ?? 1)
+                        : bd.RenewalYears ?? baseDetail?.RenewalYears;
 
                 var validUpto =
                     type == "new"
@@ -213,8 +223,6 @@ namespace RajFabAPI.Services
                 {
                     Id = Guid.NewGuid(),
                     BoilerRegistrationId = registration.Id,
-
-                    /* ===== ADDRESS ===== */
 
                     AddressLine1 = bd.AddressLine1 ?? baseDetail?.AddressLine1,
                     AddressLine2 = bd.AddressLine2 ?? baseDetail?.AddressLine2,
@@ -227,8 +235,6 @@ namespace RajFabAPI.Services
                     Mobile = bd.Mobile ?? baseDetail?.Mobile,
                     Email = bd.Email ?? baseDetail?.Email,
                     ErectionTypeId = bd.ErectionTypeId ?? baseDetail?.ErectionTypeId,
-
-                    /* ===== BOILER ===== */
 
                     MakerNumber = bd.MakerNumber ?? baseDetail?.MakerNumber,
                     YearOfMake = bd.YearOfMake ?? baseDetail?.YearOfMake,
@@ -251,38 +257,13 @@ namespace RajFabAPI.Services
                     FurnaceType = bd.FurnaceTypeID ?? baseDetail?.FurnaceType,
 
                     RenewalYears = renewalYears,
-                    ValidUpto = validUpto,
-
-                    /* ===== DOCUMENTS ===== */
-
-                    DrawingsPath = bd.DrawingsPath ?? baseDetail?.DrawingsPath,
-                    SpecificationPath = bd.SpecificationPath ?? baseDetail?.SpecificationPath,
-                    FormI_B_CPath = bd.FormI_B_CPath ?? baseDetail?.FormI_B_CPath,
-                    FormI_DPath = bd.FormI_DPath ?? baseDetail?.FormI_DPath,
-                    FormI_EPath = bd.FormI_EPath ?? baseDetail?.FormI_EPath,
-                    FormIV_APath = bd.FormIV_APath ?? baseDetail?.FormIV_APath,
-                    FormV_APath = bd.FormV_APath ?? baseDetail?.FormV_APath,
-                    TestCertificatesPath = bd.TestCertificatesPath ?? baseDetail?.TestCertificatesPath,
-                    WeldRepairChartsPath = bd.WeldRepairChartsPath ?? baseDetail?.WeldRepairChartsPath,
-                    PipesCertificatesPath = bd.PipesCertificatesPath ?? baseDetail?.PipesCertificatesPath,
-                    TubesCertificatesPath = bd.TubesCertificatesPath ?? baseDetail?.TubesCertificatesPath,
-                    CastingCertificatePath = bd.CastingCertificatePath ?? baseDetail?.CastingCertificatePath,
-                    ForgingCertificatePath = bd.ForgingCertificatePath ?? baseDetail?.ForgingCertificatePath,
-                    HeadersCertificatePath = bd.HeadersCertificatePath ?? baseDetail?.HeadersCertificatePath,
-                    DishedEndsInspectionPath = bd.DishedEndsInspectionPath ?? baseDetail?.DishedEndsInspectionPath,
-                    BoilerAttendantCertificatePath =
-                        bd.BoilerAttendantCertificatePath ?? baseDetail?.BoilerAttendantCertificatePath,
-                    BoilerOperationEngineerCertificatePath =
-                        bd.BoilerOperationEngineerCertificatePath ?? baseDetail?.BoilerOperationEngineerCertificatePath
+                    ValidUpto = validUpto
                 };
 
                 _dbcontext.BoilerDetails.Add(detail);
 
-                /* =====================================================
-                   ?? PERSON DETAILS
-                ===================================================== */
 
-                if (type == "amend")
+                if (isAmend || isTransferSameState)
                 {
                     var oldPersons = await _dbcontext.PersonDetails
                         .Where(p => p.BoilerRegistrationId == baseRecord!.Id)
@@ -468,7 +449,7 @@ namespace RajFabAPI.Services
                         Name = person.Name,
                         RelationType = person.RelationType,
                         Designation = person.Designation,
-                       
+
                         Email = person.Email,
                         Mobile = person.Mobile,
                         District = person.District,
@@ -967,7 +948,7 @@ namespace RajFabAPI.Services
 
                 registration.UpdatedAt = DateTime.Now;
 
-               
+
 
                 await _dbcontext.SaveChangesAsync();
                 await tx.CommitAsync();
@@ -1082,7 +1063,7 @@ namespace RajFabAPI.Services
             }
         }
 
-        public async Task<bool> UpdateClosureAsync(  string applicationId, UpdateBoilerClosureDto dto, Guid userId)
+        public async Task<bool> UpdateClosureAsync(string applicationId, UpdateBoilerClosureDto dto, Guid userId)
         {
             if (string.IsNullOrWhiteSpace(applicationId))
                 throw new ArgumentException("ApplicationId is required.");
@@ -1218,7 +1199,7 @@ namespace RajFabAPI.Services
                     .Where(x => x.BoilerRegistrationNo == dto.BoilerRegistrationNo && x.Status == "Approved")
                     .OrderByDescending(x => x.Version)
                     .FirstOrDefaultAsync();
-                               
+
                 if (boiler == null)
                     throw new Exception("Approved boiler not found.");
 
@@ -1302,7 +1283,7 @@ namespace RajFabAPI.Services
 
                 Repairer = repair.PersonDetail == null ? null : new PersonDetailDto
                 {
-                   
+
                     Name = repair.PersonDetail.Name,
                     Designation = repair.PersonDetail.Designation,
                     AddressLine1 = repair.PersonDetail.AddressLine1,
@@ -1326,7 +1307,7 @@ namespace RajFabAPI.Services
 
             return repairs.Select(repair => new GetBoilerRepairDto
             {
-                ApplicationId=repair.ApplicationId,
+                ApplicationId = repair.ApplicationId,
                 BoilerRegistrationNo = repair.BoilerRegistrationNo,
                 RenewalApplicationId = repair.RenewalApplicationId,
                 RepairType = repair.RepairType,
@@ -1354,7 +1335,7 @@ namespace RajFabAPI.Services
             }).ToList();
         }
 
-        public async Task<bool> UpdateRepairAsync(     string applicationId,     UpdateBoilerRepairDto dto,     Guid userId)
+        public async Task<bool> UpdateRepairAsync(string applicationId, UpdateBoilerRepairDto dto, Guid userId)
         {
             if (string.IsNullOrWhiteSpace(applicationId))
                 throw new ArgumentException("ApplicationId is required.");

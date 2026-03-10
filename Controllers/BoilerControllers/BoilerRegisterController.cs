@@ -27,9 +27,12 @@ namespace RajFabAPI.Controllers.BoilerControllers
 
             if (userIdGuid == Guid.Empty)
                 return Unauthorized("Invalid user.");
-
+            var type = "new";
+            if (!string.IsNullOrWhiteSpace(dto.TransferType))
+                type = "transfer";
+            
             // ?? type = new
-            var applicationId = await _boilerService.SaveBoilerAsync(dto, userIdGuid, "new", null);
+            var applicationId = await _boilerService.SaveBoilerAsync(dto, userIdGuid, type, null);
 
             return Ok(new
             {

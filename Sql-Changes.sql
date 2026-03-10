@@ -1083,3 +1083,103 @@ WHERE Signature IS NULL;
 ALTER TABLE Certificates
 ADD CONSTRAINT DF_Certificates_Signature
 DEFAULT '' FOR Signature;
+
+-------------------------------------------------------------
+09-03-2026
+
+CREATE TABLE [dbo].[BoilerDrawingApplications](
+	[Id] [uniqueidentifier] NOT NULL,
+	[ApplicationId] [nvarchar](50) NULL,
+	[BoilerDrawingRegistrationNo] [nvarchar](100) NULL,
+	[FactoryRegistrationNumber] [nvarchar](100) NULL,
+	[FactoryDetailjson] [nvarchar](max) NULL,
+	[MakerNumber] [nvarchar](100) NULL,
+	[MakerNameAndAddress] [nvarchar](300) NULL,
+	[HeatingSurfaceArea] [nvarchar](100) NULL,
+	[EvaporationCapacity] [nvarchar](100) NULL,
+	[IntendedWorkingPressure] [nvarchar](100) NULL,
+	[BoilerType] [nvarchar](100) NULL,
+	[DrawingNo] [nvarchar](100) NULL,
+	[BoilerDrawing] [nvarchar](500) NULL,
+	[FeedPipelineDrawing] [nvarchar](500) NULL,
+	[PressurePartCalculation] [nvarchar](500) NULL,
+	[ValidFrom] [datetime] NULL,
+	[ValidUpto] [datetime] NULL,
+	[Type] [nvarchar](20) NULL,
+	[Version] [decimal](5, 2) NULL,
+	[Status] [nvarchar](50) NULL,
+	[CreatedDate] [datetime] NULL,
+	[UpdatedDate] [datetime] NULL,
+	[IsActive] [bit] NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[BoilerDrawingApplications] ADD  DEFAULT (newid()) FOR [Id]
+GO
+
+ALTER TABLE [dbo].[BoilerDrawingApplications] ADD  DEFAULT ((1.0)) FOR [Version]
+GO
+
+ALTER TABLE [dbo].[BoilerDrawingApplications] ADD  DEFAULT ('Pending') FOR [Status]
+GO
+
+ALTER TABLE [dbo].[BoilerDrawingApplications] ADD  DEFAULT (getdate()) FOR [CreatedDate]
+GO
+
+ALTER TABLE [dbo].[BoilerDrawingApplications] ADD  DEFAULT (getdate()) FOR [UpdatedDate]
+GO
+
+ALTER TABLE [dbo].[BoilerDrawingApplications] ADD  DEFAULT ((1)) FOR [IsActive]
+GO
+
+
+
+
+CREATE TABLE [dbo].[BoilerDrawingClosures](
+	[Id] [uniqueidentifier] NOT NULL,
+	[ApplicationId] [nvarchar](50) NULL,
+	[BoilerDrawingRegistrationNo] [nvarchar](100) NULL,
+	[ClosureReason] [nvarchar](max) NULL,
+	[ClosureDate] [datetime] NULL,
+	[Remarks] [nvarchar](max) NULL,
+	[DocumentPath] [nvarchar](500) NULL,
+	[Type] [nvarchar](20) NULL,
+	[Status] [nvarchar](50) NULL,
+	[CreatedDate] [datetime] NULL,
+	[UpdatedDate] [datetime] NULL,
+	[IsActive] [bit] NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[BoilerDrawingClosures] ADD  DEFAULT (newid()) FOR [Id]
+GO
+
+ALTER TABLE [dbo].[BoilerDrawingClosures] ADD  DEFAULT ('close') FOR [Type]
+GO
+
+ALTER TABLE [dbo].[BoilerDrawingClosures] ADD  DEFAULT ('Pending') FOR [Status]
+GO
+
+ALTER TABLE [dbo].[BoilerDrawingClosures] ADD  DEFAULT (getdate()) FOR [CreatedDate]
+GO
+
+ALTER TABLE [dbo].[BoilerDrawingClosures] ADD  DEFAULT (getdate()) FOR [UpdatedDate]
+GO
+
+ALTER TABLE [dbo].[BoilerDrawingClosures] ADD  DEFAULT ((1)) FOR [IsActive]
+GO
+
+
+
+ALTER TABLE BoilerRegistrations
+ADD 
+    OldRegistrationNo NVARCHAR(100) NULL,
+    OldStateName NVARCHAR(200) NULL;

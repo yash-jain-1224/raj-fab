@@ -102,6 +102,9 @@ namespace RajFabAPI.Services
                     g => g.Select(x => x.Action).ToList()
                 );
 
+            var isInspector = await _context.UserRoles
+                .AnyAsync(ur => ur.UserId == user.Id && ur.IsInspector);
+
             var userDto = new UserDetailsWithFormStatus
             {
                 Id = user.Id,
@@ -116,7 +119,8 @@ namespace RajFabAPI.Services
                 UserModuleStatus = userModuleStatus,
                 Permissions = permissions,
                 BRNNumber = user.BRNNumber,
-                LINNumber = user.LINNumber
+                LINNumber = user.LINNumber,
+                IsInspector = isInspector
             };
 
             return userDto;

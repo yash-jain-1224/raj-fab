@@ -61,5 +61,6 @@ namespace RajFabAPI.DTOs
     {
         public Dictionary<string, bool> UserModuleStatus { get; set; }
         public Dictionary<string, List<string>> Permissions { get; set; }
+        public bool IsInspector { get; set; } = false;
     }
 }

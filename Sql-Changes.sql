@@ -1083,3 +1083,65 @@ WHERE Signature IS NULL;
 ALTER TABLE Certificates
 ADD CONSTRAINT DF_Certificates_Signature
 DEFAULT '' FOR Signature;
+
+ALTER TABLE UserRoles
+ADD IsInspector BIT NOT NULL DEFAULT 0;
+
+CREATE TABLE InspectorApplicationAssignments (
+    Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+
+    ApplicationRegistrationId NVARCHAR(100) NOT NULL,
+    ApplicationType NVARCHAR(200) NOT NULL,
+    ApplicationTitle NVARCHAR(500) NOT NULL,
+    ApplicationRegistrationNumber NVARCHAR(100) NOT NULL,
+
+    AssignedToUserId UNIQUEIDENTIFIER NOT NULL,
+    AssignedByUserId UNIQUEIDENTIFIER NOT NULL,
+
+    Status NVARCHAR(50) NOT NULL DEFAULT 'Pending',
+    Remarks NVARCHAR(MAX) NULL,
+
+    AssignedDate DATETIME NOT NULL DEFAULT GETDATE(),
+    UpdatedDate DATETIME NOT NULL DEFAULT GETDATE(),
+
+    CONSTRAINT FK_InspectorAssignments_AssignedTo
+        FOREIGN KEY (AssignedToUserId) REFERENCES Users(Id),
+
+    CONSTRAINT FK_InspectorAssignments_AssignedBy
+        FOREIGN KEY (AssignedByUserId) REFERENCES Users(Id)
+);
+CREATE INDEX IX_InspectorAssignments_AssignedToUserId
+ON InspectorApplicationAssignments(AssignedToUserId);
+
+CREATE INDEX IX_InspectorAssignments_Status
+ON InspectorApplicationAssignments(Status);
+
+
+CREATE TABLE InspectorApplicationInspections (
+    Id UNIQUEIDENTIFIER NOT NULL PRIMARY KEY DEFAULT NEWID(),
+
+    InspectorApplicationAssignmentId UNIQUEIDENTIFIER NOT NULL,
+
+    InspectionDate DATETIME2 NOT NULL,
+
+    BoilerCondition NVARCHAR(MAX) NOT NULL,
+
+    MaxAllowableWorkingPressure NVARCHAR(MAX) NULL,
+
+    Observations NVARCHAR(MAX) NOT NULL,
+
+    DefectsFound BIT NOT NULL DEFAULT 0,
+
+    DefectDetails NVARCHAR(MAX) NULL,
+
+    InspectionReportNumber NVARCHAR(MAX) NULL,
+
+    CreatedDate DATETIME2 NOT NULL DEFAULT GETDATE(),
+
+    CONSTRAINT FK_InspectorApplicationInspections_Assignment
+    FOREIGN KEY (InspectorApplicationAssignmentId)
+    REFERENCES InspectorApplicationAssignments(Id)
+);
+
+CREATE INDEX IX_Inspection_AssignmentId
+ON InspectorApplicationInspections(InspectorApplicationAssignmentId);

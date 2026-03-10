@@ -16,6 +16,7 @@ namespace RajFabAPI.Models
         public DateTime JoiningDate { get; set; }
         public string JoiningDetail { get; set; } = string.Empty;
         public string JoiningType { get; set; } = string.Empty;
+        public bool IsInspector { get; set; }
     }
 
     public class CreateUserRoleRequest
@@ -25,5 +26,6 @@ namespace RajFabAPI.Models
         public DateTime JoiningDate { get; set; }
         public string JoiningDetail { get; set; } = string.Empty;
         public string JoiningType { get; set; } = string.Empty;
+        public bool IsInspector { get; set; } = false;
     }
 }

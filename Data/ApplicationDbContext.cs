@@ -65,6 +65,8 @@ namespace RajFabAPI.Data
         public DbSet<UserLocationAssignment> UserLocationAssignments { get; set; }
         public DbSet<Privilege> Privileges { get; set; }
         public DbSet<RolePrivilege> RolePrivileges { get; set; }
+        public DbSet<InspectorApplicationAssignment> InspectorApplicationAssignments { get; set; }
+        public DbSet<InspectorApplicationInspection> InspectorApplicationInspections { get; set; }
 
         // Enhanced Privilege System
         public DbSet<ModulePermission> ModulePermissions { get; set; }

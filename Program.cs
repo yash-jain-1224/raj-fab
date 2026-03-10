@@ -156,6 +156,7 @@ builder.Services.AddScoped<IActService, ActService>();
 builder.Services.AddScoped<IRuleService, RuleService>();
 builder.Services.AddScoped<IOfficeService, OfficeService>();
 builder.Services.AddScoped<IUserRoleAssignmentService, UserRoleAssignmentService>();
+builder.Services.AddScoped<IInspectorApplicationAssignmentService, InspectorApplicationAssignmentService>();
 builder.Services.AddScoped<IPostService, PostService>();
 builder.Services.AddScoped<IWorkerRangeService, WorkerRangeService>();
 builder.Services.AddScoped<IFactoryCategoryService, FactoryCategoryService>();

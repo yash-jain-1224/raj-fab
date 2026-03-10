@@ -39,7 +39,8 @@ namespace RajFabAPI.Services
 
                     JoiningDate = ur.JoiningDate,
                     JoiningDetail = ur.JoiningDetail,
-                    JoiningType = ur.JoiningType
+                    JoiningType = ur.JoiningType,
+                    IsInspector = ur.IsInspector
                 })
                 .ToListAsync();
         }
@@ -71,7 +72,8 @@ namespace RajFabAPI.Services
 
                     JoiningDate = ur.JoiningDate,
                     JoiningDetail = ur.JoiningDetail,
-                    JoiningType = ur.JoiningType
+                    JoiningType = ur.JoiningType,
+                    IsInspector = ur.IsInspector
                 })
                 .ToListAsync();
         }
@@ -94,6 +96,7 @@ namespace RajFabAPI.Services
                 JoiningDate = dto.JoiningDate,
                 JoiningDetail = dto.JoiningDetail,
                 JoiningType = dto.JoiningType,
+                IsInspector = dto.IsInspector,
                 CreatedAt = DateTime.Now,
                 UpdatedAt = DateTime.Now
             };
@@ -114,7 +117,8 @@ namespace RajFabAPI.Services
                 RoleName = role?.Post?.Name ?? "",
                 JoiningDate = assignment.JoiningDate,
                 JoiningDetail = assignment.JoiningDetail,
-                JoiningType = assignment.JoiningType
+                JoiningType = assignment.JoiningType,
+                IsInspector = assignment.IsInspector
             };
         }
 
@@ -139,6 +143,7 @@ namespace RajFabAPI.Services
             assignment.JoiningDate = dto.JoiningDate;
             assignment.JoiningDetail = dto.JoiningDetail;
             assignment.JoiningType = dto.JoiningType;
+            assignment.IsInspector = dto.IsInspector;
             assignment.UpdatedAt = DateTime.Now;
 
             await _context.SaveChangesAsync();
@@ -156,7 +161,8 @@ namespace RajFabAPI.Services
                 RoleName = role?.Post?.Name ?? "",
                 JoiningDate = assignment.JoiningDate,
                 JoiningDetail = assignment.JoiningDetail,
-                JoiningType = assignment.JoiningType
+                JoiningType = assignment.JoiningType,
+                IsInspector = assignment.IsInspector
             };
         }
 

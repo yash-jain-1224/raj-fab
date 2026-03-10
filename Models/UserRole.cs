@@ -14,6 +14,8 @@ namespace RajFabAPI.Models
         public string JoiningDetail { get; set; } = string.Empty;
         public string JoiningType { get; set; } = string.Empty;
 
+        public bool IsInspector { get; set; } = false;
+
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         public DateTime UpdatedAt { get; set; } = DateTime.Now;
     }

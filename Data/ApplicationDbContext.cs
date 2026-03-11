@@ -6,6 +6,7 @@ using System.Data;
 using System.Text.Json;
 using RajFabAPI.Models.BoilerModels;
 using static RajFabAPI.Services.EstablishmentRegistrationService;
+using RajFabAPI.Models.CompetentPerson;
 
 namespace RajFabAPI.Data
 {
@@ -167,6 +168,12 @@ namespace RajFabAPI.Data
         public DbSet<WelderClosure> WelderClosures { get; set; }
         public DbSet<BoilerDrawingApplication> BoilerDrawingApplications { get; set; }
         public DbSet<BoilerDrawingClosure> BoilerDrawingClosures { get; set; }
+        public DbSet<CompetentPersonRegistration> CompetentPersonRegistrations { get; set; }
+        public DbSet<CompetantEstablishmentDetail> CompetantEstablishmentDetails { get; set; }
+        public DbSet<CompetantOccupierDetail> CompetantOccupierDetails { get; set; }
+        public DbSet<CompetantPersonDetail> CompetantPersonDetails { get; set; }
+        public DbSet<CompetentEquipmentRegistration> CompetentEquipmentRegistrations { get; set; }
+        public DbSet<CompetentPersonEquipment> CompetentPersonEquipments { get; set; }
 
 
         public DbSet<FeeResult> FeeResults { get; set; }

@@ -1244,3 +1244,190 @@ CREATE TABLE InspectorApplicationInspections (
 
 CREATE INDEX IX_Inspection_AssignmentId
 ON InspectorApplicationInspections(InspectorApplicationAssignmentId);
+
+------------------------------------------------------------------------
+10-03-2026
+
+CREATE TABLE CompetentPersonRegistrations
+(
+    Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+
+    ApplicationId NVARCHAR(50) NOT NULL,
+    CompetentRegistrationNo NVARCHAR(50) NULL,
+
+    RegistrationType NVARCHAR(20) NOT NULL,   -- Individual / Institution
+    Type NVARCHAR(20) NOT NULL,               -- New / Amend / Renewal
+
+    Status NVARCHAR(20) NOT NULL DEFAULT 'Pending',
+
+    Version DECIMAL(4,1) NOT NULL DEFAULT 1.0,
+
+    IsActive BIT NOT NULL DEFAULT 1,
+
+    RenewalYears INT NULL,
+    ValidUpto DATETIME NULL,
+
+    CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+    UpdatedAt DATETIME NOT NULL DEFAULT GETDATE()
+);
+
+CREATE TABLE CompetantEstablishmentDetails
+(
+    Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+
+    RegistrationId UNIQUEIDENTIFIER NOT NULL,
+
+    EstablishmentName NVARCHAR(200) NOT NULL,
+    Email NVARCHAR(150) NULL,
+    Mobile NVARCHAR(20) NULL,
+    Telephone NVARCHAR(20) NULL,
+
+    AddressLine1 NVARCHAR(250) NULL,
+    AddressLine2 NVARCHAR(250) NULL,
+
+    DistrictId UNIQUEIDENTIFIER NULL,
+    TehsilId UNIQUEIDENTIFIER NULL,
+    SdoId UNIQUEIDENTIFIER NULL,
+
+    Area NVARCHAR(150) NULL,
+    Pincode NVARCHAR(10) NULL,
+
+    CONSTRAINT FK_Establishment_Registration
+    FOREIGN KEY (RegistrationId)
+    REFERENCES CompetentPersonRegistrations(Id)
+    ON DELETE CASCADE
+);
+
+CREATE TABLE CompetantOccupierDetails
+(
+    Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+
+    RegistrationId UNIQUEIDENTIFIER NOT NULL,
+
+    Name NVARCHAR(150) NOT NULL,
+    Designation NVARCHAR(150) NULL,
+    Relation NVARCHAR(100) NULL,
+
+    AddressLine1 NVARCHAR(250) NULL,
+    AddressLine2 NVARCHAR(250) NULL,
+
+    DistrictId UNIQUEIDENTIFIER NULL,
+    TehsilId UNIQUEIDENTIFIER NULL,
+    SdoId UNIQUEIDENTIFIER NULL,
+
+    City NVARCHAR(100) NULL,
+    Pincode NVARCHAR(10) NULL,
+
+    Email NVARCHAR(150) NULL,
+    Mobile NVARCHAR(20) NULL,
+    Telephone NVARCHAR(20) NULL,
+
+    CONSTRAINT FK_Occupier_Registration
+    FOREIGN KEY (RegistrationId)
+    REFERENCES CompetentPersonRegistrations(Id)
+    ON DELETE CASCADE
+);
+
+CREATE TABLE CompetantPersonDetails
+(
+    Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+
+    RegistrationId UNIQUEIDENTIFIER NOT NULL,
+
+    Name NVARCHAR(150) NOT NULL,
+    FatherName NVARCHAR(150) NULL,
+
+    DOB DATE NULL,
+    Address NVARCHAR(300) NULL,
+
+    Email NVARCHAR(150) NULL,
+    Mobile NVARCHAR(20) NULL,
+
+    Experience INT NULL,
+
+    Qualification NVARCHAR(150) NULL,
+    Engineering NVARCHAR(150) NULL,
+
+    PhotoPath NVARCHAR(300) NULL,
+    SignPath NVARCHAR(300) NULL,
+    AttachmentPath NVARCHAR(300) NULL,
+
+    CONSTRAINT FK_CompetentPerson_Registration
+    FOREIGN KEY (RegistrationId)
+    REFERENCES CompetentPersonRegistrations(Id)
+    ON DELETE CASCADE
+);
+
+
+CREATE TABLE [dbo].[CompetentPersonEquipments](
+	[Id] [uniqueidentifier] NOT NULL,
+	[EquipmentRegistrationId] [uniqueidentifier] NOT NULL,
+	[CompetentPersonId] [uniqueidentifier] NOT NULL,
+	[EquipmentType] [nvarchar](200) NULL,
+	[EquipmentName] [nvarchar](200) NULL,
+	[IdentificationNumber] [nvarchar](100) NULL,
+	[CalibrationCertificateNumber] [nvarchar](100) NULL,
+	[DateOfCalibration] [datetime] NULL,
+	[CalibrationValidity] [datetime] NULL,
+	[CalibrationCertificatePath] [nvarchar](300) NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[CompetentPersonEquipments] ADD  DEFAULT (newid()) FOR [Id]
+GO
+
+ALTER TABLE [dbo].[CompetentPersonEquipments]  WITH CHECK ADD  CONSTRAINT [FK_EquipmentPerson] FOREIGN KEY([CompetentPersonId])
+REFERENCES [dbo].[CompetantPersonDetails] ([Id])
+GO
+
+ALTER TABLE [dbo].[CompetentPersonEquipments] CHECK CONSTRAINT [FK_EquipmentPerson]
+GO
+
+ALTER TABLE [dbo].[CompetentPersonEquipments]  WITH CHECK ADD  CONSTRAINT [FK_EquipmentRegistration] FOREIGN KEY([EquipmentRegistrationId])
+REFERENCES [dbo].[CompetentEquipmentRegistrations] ([Id])
+GO
+
+ALTER TABLE [dbo].[CompetentPersonEquipments] CHECK CONSTRAINT [FK_EquipmentRegistration]
+GO
+
+CREATE TABLE [dbo].[CompetentEquipmentRegistrations](
+	[Id] [uniqueidentifier] NOT NULL,
+	[ApplicationId] [nvarchar](50) NOT NULL,
+	[CompetentEquipmentRegistrationNo] [nvarchar](50) NULL,
+	[Type] [nvarchar](20) NOT NULL,
+	[Status] [nvarchar](20) NOT NULL,
+	[Version] [decimal](4, 1) NOT NULL,
+	[IsActive] [bit] NOT NULL,
+	[RenewalYears] [int] NULL,
+	[ValidUpto] [datetime] NULL,
+	[CreatedAt] [datetime] NOT NULL,
+	[UpdatedAt] [datetime] NOT NULL,
+	[CompetentRegistrationNo] [nvarchar](50) NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[CompetentEquipmentRegistrations] ADD  DEFAULT (newid()) FOR [Id]
+GO
+
+ALTER TABLE [dbo].[CompetentEquipmentRegistrations] ADD  DEFAULT ('Pending') FOR [Status]
+GO
+
+ALTER TABLE [dbo].[CompetentEquipmentRegistrations] ADD  DEFAULT ((1.0)) FOR [Version]
+GO
+
+ALTER TABLE [dbo].[CompetentEquipmentRegistrations] ADD  DEFAULT ((1)) FOR [IsActive]
+GO
+
+ALTER TABLE [dbo].[CompetentEquipmentRegistrations] ADD  DEFAULT (getdate()) FOR [CreatedAt]
+GO
+
+ALTER TABLE [dbo].[CompetentEquipmentRegistrations] ADD  DEFAULT (getdate()) FOR [UpdatedAt]
+GO

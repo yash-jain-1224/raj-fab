@@ -179,6 +179,9 @@ builder.Services.AddScoped<IBoilerRepairerService, BoilerRepairerService>();
 builder.Services.AddScoped<IEconomiserService, EconomiserService>();
 builder.Services.AddScoped<IWelderApplicationService, WelderApplicationService>();
 builder.Services.AddScoped<IBoilerDrawingService, BoilerDrawingService>();
+builder.Services.AddScoped<ICompetantPersonRegistartionService, CompetantPersonRegistartionService>();
+builder.Services.AddScoped<ICompetantPersonEquipmentRegistartionService, CompetantPersonEquipmentRegistartionService>();
+
 
 
 builder.Services.AddScoped<IDynamicPDFGenerationFormService, DynamicPDFGenerationFormService>();

@@ -178,6 +178,16 @@ namespace RajFabAPI.Services
                 else if (appRegistration.ApplicationTypeName == ApplicationTypeNames.MapApproval || appRegistration.ApplicationTypeName == ApplicationTypeNames.MapApprovalAmendment)
                 {
                     var mapApproval = _db.FactoryMapApprovals.FirstOrDefault(x => x.Id == appRegistration.ApplicationId);
+                    var options = new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    };
+
+                    var factoryDetails = JsonSerializer.Deserialize<FactoryDetailsModel>(
+                        mapApproval.FactoryDetails,
+                        options
+                    );
+
                     if (mapApproval != null)
                     {
                         applicationUserDashboardDtos.Add(new ApplicationUserDashboardDto
@@ -187,7 +197,7 @@ namespace RajFabAPI.Services
                             Status = mapApproval.Status,
                             CreatedDate = appRegistration.CreatedDate,
                             ApplicationId = appRegistration.ApplicationId,
-                            ApplicationTitle = mapApproval != null ? "Map Approval" : "",
+                            ApplicationTitle = factoryDetails != null ? factoryDetails.name : "",
                             IsESignCompleted = mapApproval.IsESignCompleted,
                         });
                     }
@@ -444,10 +454,12 @@ namespace RajFabAPI.Services
 
             byte[]? pdfBytes = null;
 
-            if (!string.IsNullOrWhiteSpace(signedPDFBase64) && signedPDFBase64.Contains(","))
+            if (!string.IsNullOrWhiteSpace(signedPDFBase64))
             {
-                signedPDFBase64 = signedPDFBase64.Split(',')[1];
-                pdfBytes = Convert.FromBase64String(signedPDFBase64);
+                string cleanBase64 = signedPDFBase64.Contains(",")
+                    ? signedPDFBase64.Split(',')[1]
+                    : signedPDFBase64;
+                pdfBytes = Convert.FromBase64String(cleanBase64);
             }
 
             int totalWorkers = 0;

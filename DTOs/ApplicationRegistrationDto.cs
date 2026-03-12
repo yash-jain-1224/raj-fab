@@ -36,7 +36,7 @@ namespace RajFabAPI.DTOs
         public string ApplicationRegistrationId { get; set; }
         public int ApprovalRequestId { get; set; }
         public Guid ModuleId { get; set; }
-        public Guid ApplicationId { get; set; }
+        public string ApplicationId { get; set; }
         public string ApplicationTitle { get; set; }
         public string ApplicationType { get; set; }
         public string Status { get; set; }

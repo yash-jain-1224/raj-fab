@@ -1178,11 +1178,15 @@ ALTER TABLE [dbo].[BoilerDrawingClosures] ADD  DEFAULT ((1)) FOR [IsActive]
 GO
 
 
-
 ALTER TABLE BoilerRegistrations
 ADD 
     OldRegistrationNo NVARCHAR(100) NULL,
-    OldStateName NVARCHAR(200) NULL;
+    OldStateName NVARCHAR(100) NULL,
+    Amount DECIMAL(18,2) NOT NULL DEFAULT 0,
+    IsPaymentCompleted BIT NOT NULL DEFAULT 0,
+    IsESignCompleted BIT NOT NULL DEFAULT 0,
+    ApplicationPDFUrl NVARCHAR(500) NULL;
+
 ALTER TABLE UserRoles
 ADD IsInspector BIT NOT NULL DEFAULT 0;
 
@@ -1244,3 +1248,244 @@ CREATE TABLE InspectorApplicationInspections (
 
 CREATE INDEX IX_Inspection_AssignmentId
 ON InspectorApplicationInspections(InspectorApplicationAssignmentId);
+
+ALTER TABLE EstablishmentRegistrations
+DROP COLUMN ContractorDetailId;
+
+ALTER TABLE EstablishmentRegistrations
+ADD FactoryCategoryId UNIQUEIDENTIFIER;
+
+ALTER TABLE EstablishmentRegistrations
+ADD CONSTRAINT FK_EstablishmentRegistrations_FactoryCategories
+FOREIGN KEY (FactoryCategoryId)
+REFERENCES FactoryCategories(Id);
+
+ALTER TABLE InspectorApplicationInspections
+ADD
+    HydraulicTestPressure NVARCHAR(100) NULL,
+    HydraulicTestDuration NVARCHAR(100) NULL,
+
+    -- Shell / component conditions
+    JointsCondition NVARCHAR(100) NULL,
+    RivetsCondition NVARCHAR(100) NULL,
+    PlatingCondition NVARCHAR(100) NULL,
+    StaysCondition NVARCHAR(100) NULL,
+    CrownCondition NVARCHAR(100) NULL,
+    FireboxCondition NVARCHAR(100) NULL,
+    FusiblePlugCondition NVARCHAR(100) NULL,
+    FireTubesCondition NVARCHAR(100) NULL,
+    FlueFurnaceCondition NVARCHAR(100) NULL,
+    SmokeBoxCondition NVARCHAR(100) NULL,
+    SteamDrumCondition NVARCHAR(100) NULL,
+
+    -- Mountings conditions
+    SafetyValveCondition NVARCHAR(100) NULL,
+    PressureGaugeCondition NVARCHAR(100) NULL,
+    FeedCheckCondition NVARCHAR(100) NULL,
+    StopValveCondition NVARCHAR(100) NULL,
+    BlowDownCondition NVARCHAR(100) NULL,
+    EconomiserCondition NVARCHAR(100) NULL,
+    SuperheaterCondition NVARCHAR(100) NULL,
+    AirPressureGaugeCondition NVARCHAR(100) NULL,
+
+    -- Working pressure allowed
+    AllowedWorkingPressure NVARCHAR(100) NULL,
+
+    -- Provisional order
+    ProvisionalOrderNumber NVARCHAR(100) NULL,
+    ProvisionalOrderDate DATETIME NULL,
+
+    -- Boiler attendant details
+    BoilerAttendantName NVARCHAR(200) NULL,
+    BoilerAttendantCertNo NVARCHAR(100) NULL,
+
+    -- Fee and challan
+    FeeAmount NVARCHAR(100) NULL,
+    ChallanNumber NVARCHAR(100) NULL;
+
+
+CREATE TABLE BoilerWorkflowLogs (
+    Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+
+    ApplicationId NVARCHAR(100) NOT NULL,
+
+    Part INT NOT NULL,
+
+    FromUserId UNIQUEIDENTIFIER NULL,
+    ToUserId UNIQUEIDENTIFIER NULL,
+
+    FromLevel INT NULL,
+    ToLevel INT NULL,
+
+    ActionType NVARCHAR(100) NOT NULL,
+
+    Remarks NVARCHAR(MAX) NULL,
+
+    CycleNumber INT NULL,
+
+    ChiefActionValue NVARCHAR(200) NULL,
+
+    CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+
+    CONSTRAINT FK_BoilerWorkflowLogs_FromUser
+        FOREIGN KEY (FromUserId) REFERENCES Users(Id),
+
+    CONSTRAINT FK_BoilerWorkflowLogs_ToUser
+        FOREIGN KEY (ToUserId) REFERENCES Users(Id)
+);
+CREATE TABLE BoilerApplicationStates (
+    Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+
+    ApplicationId NVARCHAR(100) NOT NULL,
+
+    CurrentStatus NVARCHAR(50) NOT NULL DEFAULT 'Draft',
+
+    CurrentPart INT NOT NULL DEFAULT 1,
+
+    CurrentLevel INT NOT NULL DEFAULT 1,
+
+    AssignedInspectorId UNIQUEIDENTIFIER NULL,
+
+    AuthorityForwardedAt DATETIME NULL,
+
+    InspectorActionsEnabled BIT NOT NULL DEFAULT 0,
+
+    ChiefCycleCount INT NOT NULL DEFAULT 0,
+
+    LastChiefActionValue NVARCHAR(100) NULL,
+
+    RegistrationNumber NVARCHAR(100) NULL,
+
+    CertificatePath NVARCHAR(500) NULL,
+
+    CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+
+    UpdatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+
+    CONSTRAINT FK_BoilerApplicationStates_AssignedInspector
+        FOREIGN KEY (AssignedInspectorId) REFERENCES Users(Id)
+);
+CREATE TABLE ChiefInspectionScrutinyRemarks (
+    Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+
+    RemarkText NVARCHAR(500) NOT NULL,
+
+    IsActive BIT NOT NULL DEFAULT 1,
+
+    DisplayOrder INT NOT NULL DEFAULT 0,
+
+    CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+
+    UpdatedAt DATETIME NOT NULL DEFAULT GETDATE()
+);
+CREATE TABLE InspectionFormSubmissions (
+    Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+
+    ApplicationId NVARCHAR(100) NOT NULL,
+
+    InspectorId UNIQUEIDENTIFIER NOT NULL,
+
+    FormData NVARCHAR(MAX) NULL,
+
+    Photos NVARCHAR(MAX) NULL,
+
+    Documents NVARCHAR(MAX) NULL,
+
+    GeneratedPdfPath NVARCHAR(500) NULL,
+
+    ESignData NVARCHAR(MAX) NULL,
+
+    SubmittedAt DATETIME NULL,
+
+    PreviewGeneratedAt DATETIME NULL,
+
+    CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+
+    UpdatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+
+    CONSTRAINT FK_InspectionFormSubmissions_Inspector
+        FOREIGN KEY (InspectorId) REFERENCES Users(Id)
+);
+CREATE TABLE InspectionSchedules (
+    Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+
+    ApplicationId NVARCHAR(100) NOT NULL,
+
+    InspectorId UNIQUEIDENTIFIER NOT NULL,
+
+    InspectionDate DATETIME NOT NULL,
+
+    InspectionTime TIME NOT NULL,
+
+    PlaceAddress NVARCHAR(500) NOT NULL,
+
+    InspectionType NVARCHAR(100) NULL,
+
+    EstimatedDuration NVARCHAR(100) NULL,
+
+    InspectorNotes NVARCHAR(MAX) NULL,
+
+    IsLocked BIT NOT NULL DEFAULT 0,
+
+    CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+
+    UpdatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+
+    CONSTRAINT FK_InspectionSchedules_Inspector
+        FOREIGN KEY (InspectorId) REFERENCES Users(Id)
+);
+
+CREATE TABLE InspectionScrutinyWorkflows (
+    Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+
+    OfficeId UNIQUEIDENTIFIER NOT NULL,
+
+    LevelCount INT NOT NULL CHECK (LevelCount BETWEEN 2 AND 3),
+
+    IsBidirectional BIT NOT NULL DEFAULT 1,
+
+    IsActive BIT NOT NULL DEFAULT 1,
+
+    CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+
+    UpdatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+
+    CONSTRAINT FK_InspectionScrutinyWorkflows_Office
+        FOREIGN KEY (OfficeId) REFERENCES Offices(Id)
+);
+
+CREATE TABLE InspectionScrutinyLevels (
+    Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+
+    WorkflowId UNIQUEIDENTIFIER NOT NULL,
+
+    LevelNumber INT NOT NULL,
+
+    OfficePostId UNIQUEIDENTIFIER NOT NULL,
+
+    IsPrefilled BIT NOT NULL DEFAULT 0,
+
+    PrefillSource NVARCHAR(100) NULL,
+
+    IsActive BIT NOT NULL DEFAULT 1,
+
+    CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+
+    UpdatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+
+    CONSTRAINT FK_InspectionScrutinyLevels_Workflow
+        FOREIGN KEY (WorkflowId) REFERENCES InspectionScrutinyWorkflows(Id)
+);
+
+
+CREATE INDEX IX_BoilerWorkflowLogs_ApplicationId
+ON BoilerWorkflowLogs(ApplicationId);
+
+CREATE INDEX IX_BoilerApplicationStates_ApplicationId
+ON BoilerApplicationStates(ApplicationId);
+
+CREATE INDEX IX_InspectionSchedules_ApplicationId
+ON InspectionSchedules(ApplicationId);
+
+CREATE INDEX IX_InspectionFormSubmissions_ApplicationId
+ON InspectionFormSubmissions(ApplicationId);

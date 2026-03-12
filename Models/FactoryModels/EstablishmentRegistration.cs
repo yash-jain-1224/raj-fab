@@ -13,7 +13,7 @@ namespace RajFabAPI.Models
         public Guid? EstablishmentDetailId { get; set; }
         public Guid? MainOwnerDetailId { get; set; }
         public Guid? ManagerOrAgentDetailId { get; set; }
-        public Guid? ContractorDetailId { get; set; }
+        public Guid? FactoryCategoryId { get; set; } = null;
 
         public string? Status { get; set; }
         [Required]

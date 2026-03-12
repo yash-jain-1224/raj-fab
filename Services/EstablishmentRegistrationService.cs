@@ -2623,16 +2623,16 @@ namespace RajFabAPI.Services
                     var manager = await _db.Set<PersonDetail>().FindAsync(existingReg.ManagerOrAgentDetailId);
                     if (manager != null) _ = _db.Set<PersonDetail>().Remove(manager);
                 }
-                if (existingReg.ContractorDetailId != null)
-                {
-                    var contractorDetail = await _db.Set<ContractorDetail>().FindAsync(existingReg.ContractorDetailId);
-                    if (contractorDetail != null)
-                    {
-                        var contractorPerson = await _db.Set<PersonDetail>().FindAsync(existingReg.ContractorDetailId);
-                        if (contractorPerson != null) _ = _db.Set<PersonDetail>().Remove(contractorPerson);
-                        _ = _db.Set<ContractorDetail>().Remove(contractorDetail);
-                    }
-                }
+                //if (existingReg.ContractorDetailId != null)
+                //{
+                //    var contractorDetail = await _db.Set<ContractorDetail>().FindAsync(existingReg.ContractorDetailId);
+                //    if (contractorDetail != null)
+                //    {
+                //        var contractorPerson = await _db.Set<PersonDetail>().FindAsync(existingReg.ContractorDetailId);
+                //        if (contractorPerson != null) _ = _db.Set<PersonDetail>().Remove(contractorPerson);
+                //        _ = _db.Set<ContractorDetail>().Remove(contractorDetail);
+                //    }
+                //}
 
                 Guid? mainOwnerId = null;
                 Guid? managerAgentId = null;
@@ -2729,7 +2729,7 @@ namespace RajFabAPI.Services
 
                 existingReg.MainOwnerDetailId = mainOwnerId;
                 existingReg.ManagerOrAgentDetailId = managerAgentId;
-                existingReg.ContractorDetailId = contractorId;
+                //existingReg.ContractorDetailId = contractorId;
                 existingReg.Place = dto.Place;
                 existingReg.Date = dto.Date;
                 existingReg.Signature = dto.Signature;
@@ -2855,7 +2855,7 @@ namespace RajFabAPI.Services
                     Type = "renew",
                     Amount = feeResult,
                     RegistrationNumber = lastApproved.RegistrationNumber,
-                    ContractorDetailId = lastApproved.ContractorDetailId,
+                    //ContractorDetailId = lastApproved.ContractorDetailId,
                     MainOwnerDetailId = lastApproved.MainOwnerDetailId,
                     ManagerOrAgentDetailId = lastApproved.ManagerOrAgentDetailId,
                     Place = lastApproved.Place,

@@ -1,3 +1,11 @@
+using iText.IO.Font.Constants;
+using iText.Kernel.Colors;
+using iText.Kernel.Font;
+using iText.Kernel.Pdf;
+using iText.Layout;
+using iText.Layout.Borders;
+using iText.Layout.Element;
+using iText.Layout.Properties;
 using Microsoft.EntityFrameworkCore;
 using RajFabAPI.Data;
 using RajFabAPI.DTOs;
@@ -5,6 +13,11 @@ using RajFabAPI.Models;
 using RajFabAPI.Models.BoilerModels;
 using RajFabAPI.Services.Interface;
 using System.Text.Json;
+using static RajFabAPI.Constants.AppConstants;
+using PdfCell = iText.Layout.Element.Cell;
+using PdfDoc = iText.Layout.Document;
+using PdfTable = iText.Layout.Element.Table;
+using PdfWriter = iText.Kernel.Pdf.PdfWriter;
 
 namespace RajFabAPI.Services
 {
@@ -12,11 +25,17 @@ namespace RajFabAPI.Services
     {
         private readonly ApplicationDbContext _dbcontext;
         private readonly IWebHostEnvironment _environment;
+        private readonly IPaymentService _paymentService;
+        private readonly IConfiguration _config;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public BoilerRegistrationService(ApplicationDbContext dbcontext, IWebHostEnvironment environment)
+        public BoilerRegistrationService(ApplicationDbContext dbcontext, IWebHostEnvironment environment, IPaymentService paymentService, IConfiguration config, IHttpContextAccessor httpContextAccessor)
         {
             _dbcontext = dbcontext;
             _environment = environment;
+            _paymentService = paymentService;
+            _config = config;
+            _httpContextAccessor = httpContextAccessor;
         }
 
 
@@ -57,7 +76,7 @@ namespace RajFabAPI.Services
             return $"{prefix}{nextNumber:D4}";
         }
 
-        private async Task<string> GenerateBoilerRegistrationNoAsync()
+        public async Task<string> GenerateBoilerRegistrationNoAsync()
         {
             const string prefix = "BR-";
 
@@ -188,6 +207,7 @@ namespace RajFabAPI.Services
                         ? baseRecord!.Version + 0.1m
                         : 1.0m;
 
+                const decimal boilerRegistrationFee = 10000m;
 
                 var registration = new BoilerRegistration
                 {
@@ -197,6 +217,7 @@ namespace RajFabAPI.Services
                     Type = type,
                     Status = "Pending",
                     Version = version,
+                    Amount = type == "new" ? boilerRegistrationFee : 100m,
                     OldRegistrationNo = isTransferOtherState ? dto.OldRegistrationNo : null,
                     OldStateName = isTransferOtherState ? dto.OldStateName : null,
                     CreatedAt = DateTime.Now,
@@ -257,7 +278,29 @@ namespace RajFabAPI.Services
                     FurnaceType = bd.FurnaceTypeID ?? baseDetail?.FurnaceType,
 
                     RenewalYears = renewalYears,
-                    ValidUpto = validUpto
+                    ValidUpto = validUpto,
+
+                    /* ===== DOCUMENTS ===== */
+
+                    DrawingsPath = bd.DrawingsPath ?? baseDetail?.DrawingsPath,
+                    SpecificationPath = bd.SpecificationPath ?? baseDetail?.SpecificationPath,
+                    FormI_B_CPath = bd.FormI_B_CPath ?? baseDetail?.FormI_B_CPath,
+                    FormI_DPath = bd.FormI_DPath ?? baseDetail?.FormI_DPath,
+                    FormI_EPath = bd.FormI_EPath ?? baseDetail?.FormI_EPath,
+                    FormIV_APath = bd.FormIV_APath ?? baseDetail?.FormIV_APath,
+                    FormV_APath = bd.FormV_APath ?? baseDetail?.FormV_APath,
+                    TestCertificatesPath = bd.TestCertificatesPath ?? baseDetail?.TestCertificatesPath,
+                    WeldRepairChartsPath = bd.WeldRepairChartsPath ?? baseDetail?.WeldRepairChartsPath,
+                    PipesCertificatesPath = bd.PipesCertificatesPath ?? baseDetail?.PipesCertificatesPath,
+                    TubesCertificatesPath = bd.TubesCertificatesPath ?? baseDetail?.TubesCertificatesPath,
+                    CastingCertificatePath = bd.CastingCertificatePath ?? baseDetail?.CastingCertificatePath,
+                    ForgingCertificatePath = bd.ForgingCertificatePath ?? baseDetail?.ForgingCertificatePath,
+                    HeadersCertificatePath = bd.HeadersCertificatePath ?? baseDetail?.HeadersCertificatePath,
+                    DishedEndsInspectionPath = bd.DishedEndsInspectionPath ?? baseDetail?.DishedEndsInspectionPath,
+                    BoilerAttendantCertificatePath =
+                        bd.BoilerAttendantCertificatePath ?? baseDetail?.BoilerAttendantCertificatePath,
+                    BoilerOperationEngineerCertificatePath =
+                        bd.BoilerOperationEngineerCertificatePath ?? baseDetail?.BoilerOperationEngineerCertificatePath
                 };
 
                 _dbcontext.BoilerDetails.Add(detail);
@@ -297,8 +340,87 @@ namespace RajFabAPI.Services
                 }
 
                 await _dbcontext.SaveChangesAsync();
-                await tx.CommitAsync();
 
+                // For new boiler registration: create ApplicationRegistration + history, then trigger payment
+                if (type == "new")
+                {
+                    var module = await _dbcontext.Set<FormModule>()
+                        .FirstOrDefaultAsync(m => m.Name == ApplicationTypeNames.BoilerRegistration)
+                        ?? throw new Exception("Boiler Registration module not found in FormModules. Please ensure the module is seeded.");
+
+                    var appReg = new ApplicationRegistration
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        ModuleId = module.Id,
+                        UserId = userId,
+                        ApplicationId = registration.ApplicationId,
+                        ApplicationRegistrationNumber = registration.ApplicationId,
+                        CreatedDate = DateTime.Now,
+                        UpdatedDate = DateTime.Now
+                    };
+                    _dbcontext.ApplicationRegistrations.Add(appReg);
+                    await _dbcontext.SaveChangesAsync();
+
+                    // Auto-assign the first available inspector
+                    var inspector = await _dbcontext.UserRoles
+                        .Where(ur => ur.IsInspector)
+                        .Select(ur => ur.UserId)
+                        .FirstOrDefaultAsync();
+
+                    if (inspector != Guid.Empty && inspector != default)
+                    {
+                        var autoAssignment = new InspectorApplicationAssignment
+                        {
+                            ApplicationRegistrationId = appReg.Id,
+                            ApplicationType = ApplicationTypeNames.BoilerRegistration,
+                            ApplicationTitle = registration.BoilerRegistrationNo ?? registration.ApplicationId ?? "",
+                            ApplicationRegistrationNumber = registration.ApplicationId ?? "",
+                            AssignedToUserId = inspector,
+                            AssignedByUserId = userId,
+                            Status = "Pending",
+                            AssignedDate = DateTime.Now,
+                            UpdatedDate = DateTime.Now
+                        };
+                        _dbcontext.Set<InspectorApplicationAssignment>().Add(autoAssignment);
+                    }
+
+                    var history = new ApplicationHistory
+                    {
+                        ApplicationId = registration.ApplicationId,
+                        ApplicationType = module.Name,
+                        Action = "Application Submitted",
+                        PreviousStatus = null,
+                        NewStatus = "Pending",
+                        Comments = "Application Submitted and sent for payment",
+                        ActionBy = userId.ToString(),
+                        ActionByName = "Applicant",
+                        ActionDate = DateTime.Now
+                    };
+                    _dbcontext.ApplicationHistories.Add(history);
+
+                    await _dbcontext.SaveChangesAsync();
+                    await tx.CommitAsync();
+
+                    var user = await _dbcontext.Users
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(u => u.Id == userId)
+                        ?? throw new Exception("User not found.");
+
+                    return await _paymentService.ActionRequestPaymentRPP(
+                        registration.Amount,
+                        user.FullName,
+                        user.Mobile,
+                        user.Email,
+                        user.Username,
+                        "4157FE34BBAE3A958D8F58CCBFAD7",
+                        "UWf6a7cDCP",
+                        registration.ApplicationId!,
+                        module.Id.ToString(),
+                        userId.ToString()
+                    );
+                }
+
+                await tx.CommitAsync();
                 return registration.ApplicationId!;
             }
             catch
@@ -499,6 +621,23 @@ namespace RajFabAPI.Services
                     x.Role != null &&
                     x.Role.Equals("BoilerMaker", StringComparison.OrdinalIgnoreCase));
 
+            var applicationHistory = await _dbcontext.ApplicationHistories
+                .AsNoTracking()
+                .Where(x => x.ApplicationId == applicationId)
+                .OrderByDescending(x => x.ActionDate)
+                .ToListAsync();
+
+            string? certificateUrl = null;
+            if (!string.IsNullOrEmpty(registration.BoilerRegistrationNo))
+            {
+                var cert = await _dbcontext.Certificates
+                    .AsNoTracking()
+                    .Where(x => x.RegistrationNumber == registration.BoilerRegistrationNo)
+                    .OrderByDescending(x => x.IssuedAt)
+                    .FirstOrDefaultAsync();
+                certificateUrl = cert?.CertificateUrl;
+            }
+
             return new GetBoilerResponseDto
             {
                 Id = registration.Id,
@@ -507,6 +646,8 @@ namespace RajFabAPI.Services
                 Status = registration.Status,
                 Type = registration.Type,
                 Version = registration.Version,
+                ApplicationPDFUrl = registration.ApplicationPDFUrl,
+                CertificateUrl = certificateUrl,
 
                 BoilerDetail = registration.BoilerDetail == null ? null : new BoilerTechnicalDto
                 {
@@ -599,8 +740,23 @@ namespace RajFabAPI.Services
                     Telephone = maker.Telephone,
                     Mobile = maker.Mobile,
                     Email = maker.Email
-                }
+                },
+
+                ApplicationHistory = applicationHistory
             };
+        }
+
+        public async Task<GetBoilerResponseDto?> GetByIdAsync(Guid id)
+        {
+            var registration = await _dbcontext.BoilerRegistrations
+                .Include(x => x.BoilerDetail)
+                .Include(x => x.Persons)
+                .FirstOrDefaultAsync(x => x.Id == id);
+
+            if (registration == null)
+                return null;
+
+            return await GetByApplicationIdAsync(registration.ApplicationId!);
         }
 
         public async Task<List<GetBoilerResponseDto>> GetAllFullAsync()
@@ -611,6 +767,20 @@ namespace RajFabAPI.Services
                 .OrderByDescending(x => x.CreatedAt)
                 .ToListAsync();
 
+            // Batch fetch certificates for all registration numbers
+            var regNos = registrations
+                .Where(x => !string.IsNullOrEmpty(x.BoilerRegistrationNo))
+                .Select(x => x.BoilerRegistrationNo!)
+                .Distinct()
+                .ToList();
+
+    //        var certificateMap = await _dbcontext.Certificates
+    //.Where(x => regNos.Contains(x.RegistrationNumber))
+    //.OrderByDescending(x => x.IssuedAt)
+    //.GroupBy(x => x.RegistrationNumber)
+    //.Select(g => g.First())
+    //.ToDictionaryAsync(x => x.RegistrationNumber, x => x.CertificateUrl);
+
             var result = registrations.Select(registration =>
             {
                 var owner = registration.Persons?
@@ -618,6 +788,8 @@ namespace RajFabAPI.Services
 
                 var maker = registration.Persons?
                     .FirstOrDefault(x => x.Role == "BoilerMaker");
+
+                //certificateMap.TryGetValue(registration.BoilerRegistrationNo ?? "", out var certUrl);
 
                 return new GetBoilerResponseDto
                 {
@@ -629,6 +801,8 @@ namespace RajFabAPI.Services
                     Version = registration.Version,
                     CreatedAt = registration.CreatedAt,
                     UpdatedAt = registration.UpdatedAt,
+                    ApplicationPDFUrl = registration.ApplicationPDFUrl,
+                    CertificateUrl = "",
 
                     BoilerDetail = registration.BoilerDetail == null ? null : new BoilerTechnicalDto
                     {
@@ -946,13 +1120,82 @@ namespace RajFabAPI.Services
 
                 /* ================= MASTER UPDATE ================= */
 
+                registration.Status = "Pending";
                 registration.UpdatedAt = DateTime.Now;
 
-
-
                 await _dbcontext.SaveChangesAsync();
-                await tx.CommitAsync();
 
+                // Add application history + re-enter workflow at level 1
+                var module = await _dbcontext.Set<FormModule>()
+                    .FirstOrDefaultAsync(m => m.Name == ApplicationTypeNames.BoilerRegistration);
+
+                if (module != null)
+                {
+                    var appReg = await _dbcontext.ApplicationRegistrations
+                        .OrderByDescending(x => x.CreatedDate)
+                        .FirstOrDefaultAsync(x => x.ApplicationId == registration.ApplicationId);
+
+                    if (appReg != null)
+                    {
+                        _dbcontext.ApplicationHistories.Add(new ApplicationHistory
+                        {
+                            ApplicationId = appReg.ApplicationId,
+                            ApplicationType = module.Name,
+                            Action = "Application data updated",
+                            NewStatus = "Pending",
+                            Comments = "Application data updated by citizen",
+                            ActionByName = "Applicant",
+                            ActionBy = appReg.UserId.ToString(),
+                            ActionDate = DateTime.Now
+                        });
+                        await _dbcontext.SaveChangesAsync();
+
+                        // Lookup SubDivisionId to find workflow
+                        var boilerDetail = await _dbcontext.BoilerDetails
+                            .FirstOrDefaultAsync(x => x.BoilerRegistrationId == registration.Id);
+
+                        if (boilerDetail?.SubDivisionId != null)
+                        {
+                            var officeId = await _dbcontext.Set<OfficeApplicationArea>()
+                                .Where(oaa => oaa.CityId == boilerDetail.SubDivisionId.Value)
+                                .Select(oaa => (Guid?)oaa.OfficeId)
+                                .FirstOrDefaultAsync();
+
+                            if (officeId.HasValue)
+                            {
+                                var workflow = await _dbcontext.Set<ApplicationWorkFlow>()
+                                    .FirstOrDefaultAsync(wf =>
+                                        wf.ModuleId == module.Id &&
+                                        wf.FactoryCategoryId == Guid.Parse("07D30285-E8BC-4483-9631-921839817724") &&
+                                        wf.OfficeId == officeId.Value);
+
+                                if (workflow != null)
+                                {
+                                    var workflowLevel = await _dbcontext.Set<ApplicationWorkFlowLevel>()
+                                        .Where(wfl => wfl.ApplicationWorkFlowId == workflow.Id)
+                                        .OrderBy(wfl => wfl.LevelNumber)
+                                        .FirstOrDefaultAsync();
+
+                                    if (workflowLevel != null)
+                                    {
+                                        _dbcontext.Set<ApplicationApprovalRequest>().Add(new ApplicationApprovalRequest
+                                        {
+                                            ModuleId = module.Id,
+                                            ApplicationRegistrationId = appReg.Id,
+                                            ApplicationWorkFlowLevelId = workflowLevel.Id,
+                                            Status = "Pending",
+                                            CreatedDate = DateTime.Now,
+                                            UpdatedDate = DateTime.Now
+                                        });
+                                        await _dbcontext.SaveChangesAsync();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                await tx.CommitAsync();
                 return true;
             }
             catch
@@ -1397,6 +1640,123 @@ namespace RajFabAPI.Services
                 await tx.RollbackAsync();
                 throw;
             }
+        }
+
+        public async Task<string> GenerateBoilerApplicationPdfAsync(string applicationId)
+        {
+            var boilerReg = await _dbcontext.BoilerRegistrations
+                .Include(b => b.BoilerDetail)
+                .Include(b => b.Persons)
+                .FirstOrDefaultAsync(b => b.ApplicationId == applicationId);
+
+            if (boilerReg == null)
+                throw new Exception("Boiler registration not found");
+
+            var uploadPath = Path.Combine(_environment.WebRootPath, "boiler-registration-forms");
+            Directory.CreateDirectory(uploadPath);
+
+            var fileName = $"boiler_registration_application_{boilerReg.Id}.pdf";
+            var filePath = Path.Combine(uploadPath, fileName);
+
+            var httpContext = _httpContextAccessor.HttpContext
+                ?? throw new InvalidOperationException("HTTP context unavailable");
+            var request = httpContext.Request;
+            var baseUrl = _config["BaseUrl"] ?? $"{request.Scheme}://{request.Host}";
+            var fileUrl = $"{baseUrl}/boiler-registration-forms/{fileName}";
+
+            var boldFont = PdfFontFactory.CreateFont(StandardFonts.HELVETICA_BOLD);
+            var regularFont = PdfFontFactory.CreateFont(StandardFonts.HELVETICA);
+
+            using var writer = new PdfWriter(filePath);
+            using var pdf = new iText.Kernel.Pdf.PdfDocument(writer);
+            using var document = new Document(pdf);
+
+            // Header
+            document.Add(new Paragraph("Government of Rajasthan")
+                .SetFont(boldFont).SetFontSize(14).SetTextAlignment(TextAlignment.CENTER));
+            document.Add(new Paragraph("Boiler Registration Application")
+                .SetFont(boldFont).SetFontSize(12).SetTextAlignment(TextAlignment.CENTER));
+            document.Add(new Paragraph($"Application No: {boilerReg.ApplicationId ?? "-"}")
+                .SetFont(regularFont).SetFontSize(10).SetTextAlignment(TextAlignment.CENTER));
+            document.Add(new Paragraph($"Date: {boilerReg.CreatedAt:dd/MM/yyyy}")
+                .SetFont(regularFont).SetFontSize(10).SetTextAlignment(TextAlignment.CENTER));
+            document.Add(new Paragraph("\n"));
+
+            // Factory/Boiler Location Details
+            document.Add(new Paragraph("Boiler Location Details")
+                .SetFont(boldFont).SetFontSize(11).SetBackgroundColor(new DeviceGray(0.85f)));
+
+            var locationTable = new PdfTable(UnitValue.CreatePercentArray(new float[] { 1, 2 })).UseAllAvailableWidth();
+            void AddRow(string label, string? value)
+            {
+                locationTable.AddCell(new PdfCell().Add(new Paragraph(label).SetFont(boldFont).SetFontSize(9)).SetBackgroundColor(new DeviceGray(0.93f)));
+                locationTable.AddCell(new PdfCell().Add(new Paragraph(value ?? "-").SetFont(regularFont).SetFontSize(9)));
+            }
+
+            AddRow("Address Line 1", boilerReg.BoilerDetail?.AddressLine1);
+            AddRow("Address Line 2", boilerReg.BoilerDetail?.AddressLine2);
+            AddRow("Area", boilerReg.BoilerDetail?.Area);
+            AddRow("Pin Code", boilerReg.BoilerDetail?.PinCode?.ToString());
+            AddRow("Telephone", boilerReg.BoilerDetail?.Telephone);
+            AddRow("Mobile", boilerReg.BoilerDetail?.Mobile);
+            AddRow("Email", boilerReg.BoilerDetail?.Email);
+            document.Add(locationTable);
+            document.Add(new Paragraph("\n"));
+
+            // Boiler Technical Details
+            document.Add(new Paragraph("Boiler Technical Details")
+                .SetFont(boldFont).SetFontSize(11).SetBackgroundColor(new DeviceGray(0.85f)));
+
+            var techTable = new PdfTable(UnitValue.CreatePercentArray(new float[] { 1, 2 })).UseAllAvailableWidth();
+            void AddTechRow(string label, string? value)
+            {
+                techTable.AddCell(new PdfCell().Add(new Paragraph(label).SetFont(boldFont).SetFontSize(9)).SetBackgroundColor(new DeviceGray(0.93f)));
+                techTable.AddCell(new PdfCell().Add(new Paragraph(value ?? "-").SetFont(regularFont).SetFontSize(9)));
+            }
+
+            AddTechRow("Maker Number", boilerReg.BoilerDetail?.MakerNumber);
+            AddTechRow("Year of Make", boilerReg.BoilerDetail?.YearOfMake?.ToString());
+            AddTechRow("Heating Surface Area", boilerReg.BoilerDetail?.HeatingSurfaceArea?.ToString());
+            AddTechRow("Evaporation Capacity", $"{boilerReg.BoilerDetail?.EvaporationCapacity} {boilerReg.BoilerDetail?.EvaporationUnit}");
+            AddTechRow("Intended Working Pressure", $"{boilerReg.BoilerDetail?.IntendedWorkingPressure} {boilerReg.BoilerDetail?.PressureUnit}");
+            document.Add(techTable);
+            document.Add(new Paragraph("\n"));
+
+            // Person Details
+            if (boilerReg.Persons != null && boilerReg.Persons.Any())
+            {
+                document.Add(new Paragraph("Owner / Maker Details")
+                    .SetFont(boldFont).SetFontSize(11).SetBackgroundColor(new DeviceGray(0.85f)));
+
+                foreach (var person in boilerReg.Persons)
+                {
+                    var personTable = new PdfTable(UnitValue.CreatePercentArray(new float[] { 1, 2 })).UseAllAvailableWidth();
+                    void AddPersonRow(string label, string? value)
+                    {
+                        personTable.AddCell(new PdfCell().Add(new Paragraph(label).SetFont(boldFont).SetFontSize(9)).SetBackgroundColor(new DeviceGray(0.93f)));
+                        personTable.AddCell(new PdfCell().Add(new Paragraph(value ?? "-").SetFont(regularFont).SetFontSize(9)));
+                    }
+                    AddPersonRow("Name", person.Name);
+                    AddPersonRow("Designation", person.Designation);
+                    AddPersonRow("Email", person.Email);
+                    AddPersonRow("Mobile", person.Mobile);
+                    document.Add(personTable);
+                    document.Add(new Paragraph("\n"));
+                }
+            }
+
+            // Declaration
+            document.Add(new Paragraph("Declaration")
+                .SetFont(boldFont).SetFontSize(11).SetBackgroundColor(new DeviceGray(0.85f)));
+            document.Add(new Paragraph("I hereby declare that the information provided in this application is true and correct to the best of my knowledge.")
+                .SetFont(regularFont).SetFontSize(9));
+
+            // Save URL back to DB
+            boilerReg.ApplicationPDFUrl = fileUrl;
+            boilerReg.UpdatedAt = DateTime.Now;
+            await _dbcontext.SaveChangesAsync();
+
+            return filePath;
         }
     }
 }

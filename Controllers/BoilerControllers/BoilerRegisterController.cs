@@ -30,15 +30,10 @@ namespace RajFabAPI.Controllers.BoilerControllers
             var type = "new";
             if (!string.IsNullOrWhiteSpace(dto.TransferType))
                 type = "transfer";
-            
-            // ?? type = new
-            var applicationId = await _boilerService.SaveBoilerAsync(dto, userIdGuid, type, null);
+            // Saves application to DB and returns payment gateway HTML
+            var html = await _boilerService.SaveBoilerAsync(dto, userIdGuid, type, null);
 
-            return Ok(new
-            {
-                message = "Boiler created successfully",
-                applicationId = applicationId
-            });
+            return CreatedAtAction(null, new { html }, new { html });
         }
 
         [HttpPost("renew")]
@@ -95,6 +90,17 @@ namespace RajFabAPI.Controllers.BoilerControllers
                     message = ex.Message
                 });
             }
+        }
+
+        [HttpGet("getbyid/{id}")]
+        public async Task<IActionResult> GetById(Guid id)
+        {
+            var result = await _boilerService.GetByIdAsync(id);
+
+            if (result == null)
+                return NotFound("Boiler not found.");
+
+            return Ok(result);
         }
 
         [HttpGet("{applicationId}")]
@@ -167,7 +173,7 @@ namespace RajFabAPI.Controllers.BoilerControllers
         }
 
         [HttpPost("closure/update")]
-        public async Task<IActionResult> UpdateClosure(  string applicationId,  [FromBody] UpdateBoilerClosureDto dto)
+        public async Task<IActionResult> UpdateClosure(string applicationId, [FromBody] UpdateBoilerClosureDto dto)
         {
             var userId = Guid.Parse(User.FindFirst("UserId")!.Value);
 
@@ -223,7 +229,7 @@ namespace RajFabAPI.Controllers.BoilerControllers
         }
 
         [HttpPost("repairmodification/update")]
-        public async Task<IActionResult> UpdateRepair(  [FromQuery] string applicationId, [FromBody] UpdateBoilerRepairDto dto)
+        public async Task<IActionResult> UpdateRepair([FromQuery] string applicationId, [FromBody] UpdateBoilerRepairDto dto)
         {
             var userId = Guid.Parse(User.FindFirst("UserId")!.Value);
 

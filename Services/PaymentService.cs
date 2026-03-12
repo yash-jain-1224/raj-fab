@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using RajFabAPI.Data;
 using RajFabAPI.DTOs;
 using RajFabAPI.Models;
+using RajFabAPI.Models.BoilerModels;
 using RajFabAPI.Services.Interface;
 using System.Security.Cryptography;
 using System.Text;
@@ -75,6 +76,27 @@ namespace RajFabAPI.Services
                     "4157FE34BBAE3A958D8F58CCBFAD7",
                     "UWf6a7cDCP",
                     registration.EstablishmentRegistrationId,
+                    module.Id.ToString(),
+                    userId.ToString()
+                );
+            }
+
+            if (module.Name == ApplicationTypeNames.BoilerRegistration)
+            {
+                var boilerRegistration = await _db.Set<BoilerRegistration>()
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(r => r.ApplicationId == applicationId)
+                    ?? throw new Exception("Boiler registration not found.");
+
+                return await ActionRequestPaymentRPP(
+                    boilerRegistration.Amount,
+                    user.FullName,
+                    user.Mobile,
+                    user.Email,
+                    user.Username,
+                    "4157FE34BBAE3A958D8F58CCBFAD7",
+                    "UWf6a7cDCP",
+                    boilerRegistration.ApplicationId!,
                     module.Id.ToString(),
                     userId.ToString()
                 );

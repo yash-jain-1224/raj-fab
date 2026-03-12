@@ -52,6 +52,7 @@ namespace RajFabAPI.Services
         private readonly IAppealService _appealService;
         private readonly ILogger<ESignService> _logger;
         private readonly IWebHostEnvironment _environment;
+        private readonly IBoilerRegistartionService _boilerRegistrationService;
 
         public ESignService(
             IMemoryCache cache, IEstablishmentRegistrationService estRegService, ApplicationDbContext db, IConfiguration config,
@@ -60,7 +61,8 @@ namespace RajFabAPI.Services
             ICommencementCessationService commencementCessationService, IFactoryLicenseService factoryLicenseService,
             ILogger<ESignService> logger,
             IAppealService appealService,
-            IWebHostEnvironment environment)
+            IWebHostEnvironment environment,
+            IBoilerRegistartionService boilerRegistrationService)
         {
             _logger = logger;
             _cache = cache;
@@ -74,6 +76,7 @@ namespace RajFabAPI.Services
             _factoryLicenseService = factoryLicenseService;
             _appealService = appealService;
             _environment = environment;
+            _boilerRegistrationService = boilerRegistrationService;
         }
 
         public async Task<string> GenerateESignHtmlAsync(string applicationId)
@@ -232,6 +235,23 @@ namespace RajFabAPI.Services
                                 }
 
                                 var filePath = await _appealService.GenerateAppealPdf(response);
+
+                                _logger.LogInformation("Generated PDF Path: {FilePath}", filePath);
+
+                                if (!File.Exists(filePath))
+                                {
+                                    _logger.LogError("PDF file not found at path: {FilePath}", filePath);
+                                    throw new Exception("Generated PDF not found");
+                                }
+
+                                pdfBytes = await File.ReadAllBytesAsync(filePath);
+                            }
+
+                            else if (applicationData.ModuleName == ApplicationTypeNames.BoilerRegistration)
+                            {
+                                _logger.LogInformation("Processing Boiler Registration PDF generation");
+
+                                var filePath = await _boilerRegistrationService.GenerateBoilerApplicationPdfAsync(applicationId);
 
                                 _logger.LogInformation("Generated PDF Path: {FilePath}", filePath);
 
@@ -878,6 +898,10 @@ namespace RajFabAPI.Services
 
                     var filePath = await _factoryLicenseService
                         .GenerateFactoryLicensePdf(response);
+                }
+                else if (Module.Name == ApplicationTypeNames.BoilerRegistration)
+                {
+                    await _boilerRegistrationService.GenerateBoilerApplicationPdfAsync(applicationId);
                 }
 
                 // Use LogContext to automatically enrich all logs with Txn and PRN

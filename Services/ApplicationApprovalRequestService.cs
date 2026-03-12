@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using RajFabAPI.Data;
 using RajFabAPI.DTOs;
 using RajFabAPI.Models;
+using RajFabAPI.Models.BoilerModels;
 using RajFabAPI.Services.Interface;
 using static RajFabAPI.Constants.AppConstants;
 
@@ -433,6 +434,28 @@ namespace RajFabAPI.Services
                             TotalEmployees = 0
                         });
                     }
+                    else if (appRegistration.ApplicationTypeName == ApplicationTypeNames.BoilerRegistration ||
+                             appRegistration.ApplicationTypeName == ApplicationTypeNames.BoilerInspection)
+                    {
+                        var boilerReg = _db.BoilerRegistrations
+                            .FirstOrDefault(x => x.ApplicationId == appRegistration.ApplicationId);
+
+                        if (boilerReg == null)
+                            continue;
+
+                        result.Add(new ApplicationApprovalDashboardDto
+                        {
+                            ApprovalRequestId = item.Id,
+                            ModuleId = appRegistration.ModuleId,
+                            ApplicationId = boilerReg.Id,
+                            CreatedDate = appRegistration.CreatedDate,
+                            ApplicationType = appRegistration.ApplicationTypeName,
+                            ApplicationTitle = boilerReg.BoilerRegistrationNo ?? appRegistration.ApplicationTypeName,
+                            ApplicationRegistrationNumber = boilerReg.ApplicationId ?? "",
+                            Status = item.Status,
+                            TotalEmployees = 0
+                        });
+                    }
                 }
             }
             return result
@@ -500,6 +523,59 @@ namespace RajFabAPI.Services
                      module.Name == ApplicationTypeNames.FactoryLicenseRenewal)
             {
                 await _factoryLicenseService.UpdateStatusAndRemark(regId, status);
+            }
+            else if (module.Name == ApplicationTypeNames.BoilerRegistration)
+            {
+                var boilerReg = await _db.BoilerRegistrations
+                    .FirstOrDefaultAsync(x => x.ApplicationId == regId);
+
+                if (boilerReg != null)
+                {
+                    boilerReg.Status = status;
+                    boilerReg.UpdatedAt = DateTime.Now;
+                    await _db.SaveChangesAsync();
+                }
+            }
+            else if (module.Name == ApplicationTypeNames.BoilerInspection)
+            {
+                var boilerReg = await _db.BoilerRegistrations
+                    .FirstOrDefaultAsync(x => x.ApplicationId == regId);
+
+                if (boilerReg != null)
+                {
+                    if (status == ApplicationStatus.Approved)
+                    {
+                        boilerReg.Status = ApplicationStatus.Approved;
+                        boilerReg.UpdatedAt = DateTime.Now;
+
+                        // Generate certificate
+                        var regNo = boilerReg.BoilerRegistrationNo ?? boilerReg.ApplicationId ?? boilerReg.Id.ToString();
+                        var inspectionModule = await _db.Modules.FirstOrDefaultAsync(m => m.Name == ApplicationTypeNames.BoilerInspection);
+                        var existingVersion = await _db.Certificates
+                            .Where(c => c.RegistrationNumber == regNo)
+                            .MaxAsync(c => (decimal?)c.CertificateVersion) ?? 0m;
+                        _db.Certificates.Add(new Certificate
+                        {
+                            RegistrationNumber = regNo,
+                            StartDate = DateTime.Now,
+                            EndDate = DateTime.Now.AddYears(1),
+                            IssuedAt = DateTime.Now,
+                            Status = "Issued",
+                            ModuleId = inspectionModule?.Id ?? Guid.Empty,
+                            CertificateVersion = existingVersion + 1m,
+                            ApplicationId = boilerReg.ApplicationId ?? "",
+                            CertificateUrl = "",
+                            Place = "",
+                            Remarks = "Boiler Inspection Certificate"
+                        });
+                    }
+                    else
+                    {
+                        boilerReg.Status = status;
+                        boilerReg.UpdatedAt = DateTime.Now;
+                    }
+                    await _db.SaveChangesAsync();
+                }
             }
         }
 

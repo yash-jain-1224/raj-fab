@@ -91,6 +91,30 @@ namespace RajFabAPI.Controllers
             }
         }
 
+        // PUT: api/InspectorApplicationAssignment/reassign — admin reassigns inspector
+        [Authorize]
+        [HttpPut("reassign")]
+        public async Task<IActionResult> ReassignInspector([FromBody] UpdateInspectorAssignmentDto dto)
+        {
+            try
+            {
+                var userIdStr = User.FindFirst("userId")?.Value;
+                if (!Guid.TryParse(userIdStr, out var updatedByUserId))
+                    return BadRequest(new { success = false, message = "Invalid user token." });
+
+                var result = await _service.UpdateInspectorAsync(dto, updatedByUserId);
+                if (result == null)
+                    return NotFound(new { success = false, message = "Assignment not found." });
+
+                return Ok(new { success = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error reassigning inspector");
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+        }
+
         // POST: api/InspectorApplicationAssignment/{id}/action — inspector/admin takes action
         [Authorize]
         [HttpPost("{id}/action")]

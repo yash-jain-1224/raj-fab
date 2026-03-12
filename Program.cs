@@ -179,7 +179,7 @@ builder.Services.AddScoped<IBoilerRepairerService, BoilerRepairerService>();
 builder.Services.AddScoped<IEconomiserService, EconomiserService>();
 builder.Services.AddScoped<IWelderApplicationService, WelderApplicationService>();
 builder.Services.AddScoped<IBoilerDrawingService, BoilerDrawingService>();
-
+builder.Services.AddScoped<IBoilerWorkflowService, BoilerWorkflowService>();
 
 builder.Services.AddScoped<IDynamicPDFGenerationFormService, DynamicPDFGenerationFormService>();
 builder.Services.AddHttpContextAccessor();
@@ -871,7 +871,8 @@ var folders = new[]
     "certificates",
     "factory-establishment-forms",
     "factory-map-forms",
-    "factory-license-forms"
+    "factory-license-forms",
+    "boiler-registration-forms",
 };
 
 foreach (var folder in folders)

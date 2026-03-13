@@ -1678,3 +1678,81 @@ ON InspectionFormSubmissions(ApplicationId);
 
 ALTER TABLE EstablishmentRegistrations 
 ADD ApplicationId NVARCHAR(50) NOT NULL DEFAULT '';
+
+----------------------------------------------------------------
+13.03.2026
+CREATE TABLE [dbo].[SMTCTrainerDetails](
+	[Id] [uniqueidentifier] NOT NULL,
+	[SMTCRegistrationId] [uniqueidentifier] NOT NULL,
+	[TrainerName] [nvarchar](200) NOT NULL,
+	[TotalYearsExperience] [int] NULL,
+	[Mobile] [nvarchar](20) NULL,
+	[PhotoPath] [nvarchar](500) NULL,
+	[DegreeDocumentPath] [nvarchar](500) NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[SMTCTrainerDetails] ADD  DEFAULT (newid()) FOR [Id]
+GO
+
+ALTER TABLE [dbo].[SMTCTrainerDetails]  WITH CHECK ADD  CONSTRAINT [FK_SMTCTrainerRegistration] FOREIGN KEY([SMTCRegistrationId])
+REFERENCES [dbo].[SMTCRegistrations] ([Id])
+GO
+
+ALTER TABLE [dbo].[SMTCTrainerDetails] CHECK CONSTRAINT [FK_SMTCTrainerRegistration]
+GO
+
+CREATE TABLE [dbo].[SMTCTrainerDetails](
+	[Id] [uniqueidentifier] NOT NULL,
+	[SMTCRegistrationId] [uniqueidentifier] NOT NULL,
+	[TrainerName] [nvarchar](200) NOT NULL,
+	[TotalYearsExperience] [int] NULL,
+	[Mobile] [nvarchar](20) NULL,
+	[PhotoPath] [nvarchar](500) NULL,
+	[DegreeDocumentPath] [nvarchar](500) NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[SMTCTrainerDetails] ADD  DEFAULT (newid()) FOR [Id]
+GO
+
+ALTER TABLE [dbo].[SMTCTrainerDetails]  WITH CHECK ADD  CONSTRAINT [FK_SMTCTrainerRegistration] FOREIGN KEY([SMTCRegistrationId])
+REFERENCES [dbo].[SMTCRegistrations] ([Id])
+GO
+
+ALTER TABLE [dbo].[SMTCTrainerDetails] CHECK CONSTRAINT [FK_SMTCTrainerRegistration]
+GO
+
+CREATE TABLE [dbo].[SMTCTrainerEducationDetails](
+	[Id] [uniqueidentifier] NOT NULL,
+	[TrainerId] [uniqueidentifier] NOT NULL,
+	[EducationType] [nvarchar](20) NOT NULL,
+	[Course] [nvarchar](200) NULL,
+	[Degree] [nvarchar](200) NULL,
+	[UniversityCollege] [nvarchar](300) NULL,
+	[PassingYear] [int] NULL,
+	[Specialization] [nvarchar](200) NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[SMTCTrainerEducationDetails] ADD  DEFAULT (newid()) FOR [Id]
+GO
+
+ALTER TABLE [dbo].[SMTCTrainerEducationDetails]  WITH CHECK ADD  CONSTRAINT [FK_SMTCTrainerEducation] FOREIGN KEY([TrainerId])
+REFERENCES [dbo].[SMTCTrainerDetails] ([Id])
+GO
+
+ALTER TABLE [dbo].[SMTCTrainerEducationDetails] CHECK CONSTRAINT [FK_SMTCTrainerEducation]
+GO

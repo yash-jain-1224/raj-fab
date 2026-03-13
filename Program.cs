@@ -181,7 +181,7 @@ builder.Services.AddScoped<IWelderApplicationService, WelderApplicationService>(
 builder.Services.AddScoped<IBoilerDrawingService, BoilerDrawingService>();
 builder.Services.AddScoped<ICompetantPersonRegistartionService, CompetantPersonRegistartionService>();
 builder.Services.AddScoped<ICompetantPersonEquipmentRegistartionService, CompetantPersonEquipmentRegistartionService>();
-
+builder.Services.AddScoped<ISMTCRegistrationService,SMTCRegistrationService>();
 
 builder.Services.AddScoped<IBoilerWorkflowService, BoilerWorkflowService>();
 

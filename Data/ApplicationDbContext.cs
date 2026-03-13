@@ -175,6 +175,9 @@ namespace RajFabAPI.Data
         public DbSet<CompetentEquipmentRegistration> CompetentEquipmentRegistrations { get; set; }
         public DbSet<CompetentPersonEquipment> CompetentPersonEquipments { get; set; }
 
+        public DbSet<SMTCRegistration> SMTCRegistrations { get; set; }
+        public DbSet<SMTCTrainerDetail> SMTCTrainerDetails { get; set; }
+        public DbSet<SMTCTrainerEducationDetail> SMTCTrainerEducationDetails { get; set; }
 
         public DbSet<FeeResult> FeeResults { get; set; }
 

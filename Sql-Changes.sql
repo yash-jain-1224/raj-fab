@@ -1489,3 +1489,6 @@ ON InspectionSchedules(ApplicationId);
 
 CREATE INDEX IX_InspectionFormSubmissions_ApplicationId
 ON InspectionFormSubmissions(ApplicationId);
+
+ALTER TABLE EstablishmentRegistrations 
+ADD ApplicationId NVARCHAR(50) NOT NULL DEFAULT '';

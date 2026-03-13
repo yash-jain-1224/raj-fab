@@ -462,60 +462,50 @@ namespace RajFabAPI.Services
 
                     _logger.LogInformation("Signing successful. Updating application DB");
 
-                    var updateSuccess = await _applicationRegistrationService
+                    var certificate = await _db.Certificates
+                            .FirstOrDefaultAsync(c => c.ESignPrnNumber == esignTempData.prn);
+
+                    if (certificate != null)
+                    {
+                        _logger.LogInformation("PRN matched a certificate. Updating certificate status");
+
+                        if (!string.IsNullOrWhiteSpace(signingResponse.data.signedPDFBase64))
+                        {
+                            var signedPdfBase64 = signingResponse.data.signedPDFBase64;
+
+                            if (signedPdfBase64.Contains(","))
+                                signedPdfBase64 = signedPdfBase64.Split(',')[1];
+
+                            var signedPdfBytes = Convert.FromBase64String(signedPdfBase64);
+
+                            var fileName = Path.GetFileName(
+                                new Uri(certificate.CertificateUrl).AbsolutePath);
+
+                            var physicalPath = Path.Combine(
+                                _environment.WebRootPath,
+                                "certificates",
+                                fileName
+                            );
+
+                            _logger.LogInformation("Writing signed certificate PDF to: {Path}", physicalPath);
+
+                            await File.WriteAllBytesAsync(physicalPath, signedPdfBytes);
+
+                            _logger.LogInformation("Certificate PDF written successfully");
+                        }
+
+                        certificate.IsESignCompleted = true;
+                        certificate.Status = "Active";
+                        await _db.SaveChangesAsync();
+                        _logger.LogInformation("Certificate DB updated successfully");
+                    } else
+                    {
+                        var updateSuccess = await _applicationRegistrationService
                         .UpdateApplicationESignData(
                             esignTempData.prn,
                             signingResponse.data.signedPDFBase64);
 
-                    _logger.LogInformation("Application DB update result: {Result}", updateSuccess);
-
-                    if (!updateSuccess)
-                    {
-                        _logger.LogInformation("Checking certificate table for PRN: {PRN}", esignTempData.prn);
-
-                        var certificate = await _db.Certificates
-                            .FirstOrDefaultAsync(c => c.ESignPrnNumber == esignTempData.prn);
-
-                        if (certificate != null)
-                        {
-                            _logger.LogInformation("PRN matched a certificate. Updating certificate status");
-
-                            if (!string.IsNullOrWhiteSpace(signingResponse.data.signedPDFBase64))
-                            {
-                                var signedPdfBase64 = signingResponse.data.signedPDFBase64;
-
-                                if (signedPdfBase64.Contains(","))
-                                    signedPdfBase64 = signedPdfBase64.Split(',')[1];
-
-                                var signedPdfBytes = Convert.FromBase64String(signedPdfBase64);
-
-                                var fileName = Path.GetFileName(
-                                    new Uri(certificate.CertificateUrl).AbsolutePath);
-
-                                var physicalPath = Path.Combine(
-                                    _environment.WebRootPath,
-                                    "certificates",
-                                    fileName
-                                );
-
-                                _logger.LogInformation("Writing signed certificate PDF to: {Path}", physicalPath);
-
-                                await File.WriteAllBytesAsync(physicalPath, signedPdfBytes);
-
-                                _logger.LogInformation("Certificate PDF written successfully");
-                            }
-
-                            certificate.IsESignCompleted = true;
-                            certificate.Status = "Active";
-                            await _db.SaveChangesAsync();
-                            _logger.LogInformation("Certificate DB updated successfully");
-                        }
-                        else
-                        {
-                            _logger.LogError("DB update failed after signing. PRN not found in applications or certificates");
-
-                            return BuildErrorRedirect("Error updating application after signing");
-                        }
+                        _logger.LogInformation("Application DB update result: {Result}", updateSuccess);
                     }
 
                     _logger.LogInformation(

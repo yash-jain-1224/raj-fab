@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using RajFabAPI.Data;
 using RajFabAPI.DTOs;
 using RajFabAPI.Models;
+using RajFabAPI.Models.BoilerModels;
 using RajFabAPI.Services.Interface;
 
 namespace RajFabAPI.Services
@@ -209,6 +210,23 @@ namespace RajFabAPI.Services
                 AreaName = app.Area
             }));
 
+            // Get all Boiler Registrations (E-Signed, in workflow)
+            var boilerRegistrations = await _context.BoilerRegistrations
+                .Where(b => b.IsESignCompleted)
+                .ToListAsync();
+
+            applications.AddRange(boilerRegistrations.Select(app => new ApplicationSummaryDto
+            {
+                Id = app.ApplicationId ?? app.Id.ToString(),
+                ApplicationNumber = app.ApplicationId ?? app.Id.ToString(),
+                ApplicationType = "Boiler Registration",
+                ApplicantName = app.BoilerRegistrationNo ?? "Boiler Registration",
+                FactoryName = app.BoilerRegistrationNo ?? "Boiler Registration",
+                Status = app.Status,
+                SubmittedDate = app.CreatedAt,
+                DaysPending = (DateTime.Now - app.CreatedAt).Days
+            }));
+
             return applications.OrderByDescending(a => a.SubmittedDate).ToList();
         }
 
@@ -227,7 +245,26 @@ namespace RajFabAPI.Services
                 .Distinct()
                 .ToList();
 
-            if (applicationType.ToLower().Contains("license"))
+            if (applicationType.ToLower().Contains("boiler"))
+            {
+                var application = await _context.BoilerRegistrations
+                    .Include(b => b.BoilerDetail)
+                    .Include(b => b.Persons)
+                    .FirstOrDefaultAsync(b => b.ApplicationId == applicationId);
+
+                if (application == null) return null;
+
+                var history = await GetApplicationHistoryAsync(applicationType, applicationId);
+
+                return new ApplicationDetailDto
+                {
+                    ApplicationType = "BoilerRegistration",
+                    ApplicationData = application,
+                    History = history,
+                    AvailableActions = userPermissions
+                };
+            }
+            else if (applicationType.ToLower().Contains("license"))
             {
                 var application = await _context.FactoryLicenses
                     .FirstOrDefaultAsync(f => f.Id == applicationId);
@@ -460,7 +497,33 @@ namespace RajFabAPI.Services
             var currentUser = await _context.Users.FindAsync(userGuid);
             var currentUserName = currentUser?.FullName ?? "Unknown User";
 
-            if (applicationType.ToLower().Contains("license"))
+            if (applicationType.ToLower().Contains("boiler"))
+            {
+                var application = await _context.BoilerRegistrations.FirstOrDefaultAsync(b => b.ApplicationId == applicationId);
+                if (application == null) return false;
+
+                var previousStatus = application.Status;
+                application.Status = "Forwarded";
+                application.UpdatedAt = DateTime.Now;
+
+                var history = new Models.ApplicationHistory
+                {
+                    ApplicationId = applicationId,
+                    ApplicationType = "BoilerRegistration",
+                    Action = "Forwarded",
+                    PreviousStatus = previousStatus,
+                    NewStatus = "Forwarded",
+                    Comments = request.Comments,
+                    ActionBy = userId,
+                    ActionByName = currentUserName,
+                    ForwardedTo = request.ForwardToUserId,
+                    ForwardedToName = forwardToUser.FullName,
+                    ActionDate = DateTime.Now
+                };
+
+                _context.ApplicationHistories.Add(history);
+            }
+            else if (applicationType.ToLower().Contains("license"))
             {
                 var application = await _context.FactoryLicenses.FirstOrDefaultAsync(f => f.Id == applicationId);
                 if (application == null) return false;
@@ -588,7 +651,31 @@ namespace RajFabAPI.Services
             var currentUser = await _context.Users.FindAsync(userGuid);
             var currentUserName = currentUser?.FullName ?? "Unknown User";
 
-            if (applicationType.ToLower().Contains("license"))
+            if (applicationType.ToLower().Contains("boiler"))
+            {
+                var application = await _context.BoilerRegistrations.FirstOrDefaultAsync(b => b.ApplicationId == applicationId);
+                if (application == null) return false;
+
+                var previousStatus = application.Status;
+                application.Status = "Approved";
+                application.UpdatedAt = DateTime.Now;
+
+                var history = new Models.ApplicationHistory
+                {
+                    ApplicationId = applicationId,
+                    ApplicationType = "BoilerRegistration",
+                    Action = "Approved",
+                    PreviousStatus = previousStatus,
+                    NewStatus = "Approved",
+                    Comments = request.ApprovalComments,
+                    ActionBy = userId,
+                    ActionByName = currentUserName,
+                    ActionDate = DateTime.Now
+                };
+
+                _context.ApplicationHistories.Add(history);
+            }
+            else if (applicationType.ToLower().Contains("license"))
             {
                 var application = await _context.FactoryLicenses.FirstOrDefaultAsync(f => f.Id == applicationId);
                 if (application == null) return false;
@@ -681,7 +768,31 @@ namespace RajFabAPI.Services
             var currentUser = await _context.Users.FindAsync(userGuid);
             var currentUserName = currentUser?.FullName ?? "Unknown User";
 
-            if (applicationType.ToLower().Contains("license"))
+            if (applicationType.ToLower().Contains("boiler"))
+            {
+                var application = await _context.BoilerRegistrations.FirstOrDefaultAsync(b => b.ApplicationId == applicationId);
+                if (application == null) return false;
+
+                var previousStatus = application.Status;
+                application.Status = "Rejected";
+                application.UpdatedAt = DateTime.Now;
+
+                var history = new Models.ApplicationHistory
+                {
+                    ApplicationId = applicationId,
+                    ApplicationType = "BoilerRegistration",
+                    Action = "Rejected",
+                    PreviousStatus = previousStatus,
+                    NewStatus = "Rejected",
+                    Comments = request.RejectionReason,
+                    ActionBy = userId,
+                    ActionByName = currentUserName,
+                    ActionDate = DateTime.Now
+                };
+
+                _context.ApplicationHistories.Add(history);
+            }
+            else if (applicationType.ToLower().Contains("license"))
             {
                 var application = await _context.FactoryLicenses.FirstOrDefaultAsync(f => f.Id == applicationId);
                 if (application == null) return false;
@@ -780,7 +891,31 @@ namespace RajFabAPI.Services
 
             var fullComments = request.Reason + correctionsText;
 
-            if (applicationType.ToLower().Contains("license"))
+            if (applicationType.ToLower().Contains("boiler"))
+            {
+                var application = await _context.BoilerRegistrations.FirstOrDefaultAsync(b => b.ApplicationId == applicationId);
+                if (application == null) return false;
+
+                var previousStatus = application.Status;
+                application.Status = "Returned to Applicant";
+                application.UpdatedAt = DateTime.Now;
+
+                var history = new Models.ApplicationHistory
+                {
+                    ApplicationId = applicationId,
+                    ApplicationType = "BoilerRegistration",
+                    Action = "Returned to Applicant",
+                    PreviousStatus = previousStatus,
+                    NewStatus = "Returned to Applicant",
+                    Comments = fullComments,
+                    ActionBy = userId,
+                    ActionByName = currentUserName,
+                    ActionDate = DateTime.Now
+                };
+
+                _context.ApplicationHistories.Add(history);
+            }
+            else if (applicationType.ToLower().Contains("license"))
             {
                 var application = await _context.FactoryLicenses.FirstOrDefaultAsync(f => f.Id == applicationId);
                 if (application == null) return false;

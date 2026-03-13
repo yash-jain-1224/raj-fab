@@ -183,6 +183,7 @@ builder.Services.AddScoped<ICompetantPersonRegistartionService, CompetantPersonR
 builder.Services.AddScoped<ICompetantPersonEquipmentRegistartionService, CompetantPersonEquipmentRegistartionService>();
 
 
+builder.Services.AddScoped<IBoilerWorkflowService, BoilerWorkflowService>();
 
 builder.Services.AddScoped<IDynamicPDFGenerationFormService, DynamicPDFGenerationFormService>();
 builder.Services.AddHttpContextAccessor();
@@ -874,7 +875,8 @@ var folders = new[]
     "certificates",
     "factory-establishment-forms",
     "factory-map-forms",
-    "factory-license-forms"
+    "factory-license-forms",
+    "boiler-registration-forms",
 };
 
 foreach (var folder in folders)

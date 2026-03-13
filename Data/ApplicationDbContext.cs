@@ -178,6 +178,15 @@ namespace RajFabAPI.Data
 
         public DbSet<FeeResult> FeeResults { get; set; }
 
+        // Boiler Workflow tables
+        public DbSet<InspectionScrutinyWorkflow> InspectionScrutinyWorkflows { get; set; } = null!;
+        public DbSet<InspectionScrutinyLevel> InspectionScrutinyLevels { get; set; } = null!;
+        public DbSet<BoilerApplicationState> BoilerApplicationStates { get; set; } = null!;
+        public DbSet<InspectionSchedule> InspectionSchedules { get; set; } = null!;
+        public DbSet<InspectionFormSubmission> InspectionFormSubmissions { get; set; } = null!;
+        public DbSet<ChiefInspectionScrutinyRemark> ChiefInspectionScrutinyRemarks { get; set; } = null!;
+        public DbSet<BoilerWorkflowLog> BoilerWorkflowLogs { get; set; } = null!;
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -772,8 +781,8 @@ namespace RajFabAPI.Data
                 entity.Property(e => e.ManagerOrAgentDetailId)
                       .HasColumnType("uniqueidentifier");
 
-                entity.Property(e => e.ContractorDetailId)
-                      .HasColumnType("uniqueidentifier");
+                //entity.Property(e => e.ContractorDetailId)
+                //      .HasColumnType("uniqueidentifier");
 
                 // nvarchar columns
                 entity.Property(e => e.Status)

@@ -12,6 +12,7 @@ namespace RajFabAPI.Constants
             public const string Rejected = "Rejected";
             public const string Forwarded = "Forwarded";
             public const string ReturnedToApplicant = "Returned to applicant";
+            public const string PendingInspection = "Pending Inspection";
 
         }
 
@@ -35,6 +36,8 @@ namespace RajFabAPI.Constants
             public const string FactoryLicenseRenewal = "Factory License Renewal";
             public const string FactoryCommencementCessation = "Factory Commencement And Cessation";
             public const string Appeal = "Appeal";
+            public const string BoilerRegistration = "Boiler Registration";
+            public const string BoilerInspection = "Boiler Inspection";
         }
 
         public static class BoilerApplicationType

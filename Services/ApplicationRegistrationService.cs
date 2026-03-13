@@ -4,6 +4,7 @@ using Org.BouncyCastle.Bcpg;
 using RajFabAPI.Data;
 using RajFabAPI.DTOs;
 using RajFabAPI.Models;
+using RajFabAPI.Models.BoilerModels;
 using RajFabAPI.Models.FactoryModels;
 using RajFabAPI.Services.Interface;
 using System.Reflection;
@@ -167,7 +168,7 @@ namespace RajFabAPI.Services
                         ApplicationType = appRegistration.ApplicationTypeName,
                         Status = estDetailSingle.Status,
                         CreatedDate = appRegistration.CreatedDate,
-                        ApplicationId = Guid.Parse(appRegistration.ApplicationId),
+                        ApplicationId = appRegistration.ApplicationId,
                         ApplicationTitle = estDetailSingle != null ? estDetailSingle.EstablishmentName : "",
                         IsPaymentCompleted = estDetailSingle.IsPaymentCompleted,
                         IsESignCompleted = estDetailSingle.IsESignCompleted,
@@ -177,6 +178,16 @@ namespace RajFabAPI.Services
                 else if (appRegistration.ApplicationTypeName == ApplicationTypeNames.MapApproval || appRegistration.ApplicationTypeName == ApplicationTypeNames.MapApprovalAmendment)
                 {
                     var mapApproval = _db.FactoryMapApprovals.FirstOrDefault(x => x.Id == appRegistration.ApplicationId);
+                    var options = new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    };
+
+                    var factoryDetails = JsonSerializer.Deserialize<FactoryDetailsModel>(
+                        mapApproval.FactoryDetails,
+                        options
+                    );
+
                     if (mapApproval != null)
                     {
                         applicationUserDashboardDtos.Add(new ApplicationUserDashboardDto
@@ -185,8 +196,8 @@ namespace RajFabAPI.Services
                             ApplicationType = appRegistration.ApplicationTypeName,
                             Status = mapApproval.Status,
                             CreatedDate = appRegistration.CreatedDate,
-                            ApplicationId = Guid.Parse(appRegistration.ApplicationId),
-                            ApplicationTitle = mapApproval != null ? "Map Approval" : "",
+                            ApplicationId = appRegistration.ApplicationId,
+                            ApplicationTitle = factoryDetails != null ? factoryDetails.name : "",
                             IsESignCompleted = mapApproval.IsESignCompleted,
                         });
                     }
@@ -207,7 +218,7 @@ namespace RajFabAPI.Services
                             ApplicationType = ApplicationTypeNames.FactoryCommencementCessation,
                             Status = commCess.Status,
                             CreatedDate = appRegistration.CreatedDate,
-                            ApplicationId = Guid.Parse(appRegistration.ApplicationId),
+                            ApplicationId = appRegistration.ApplicationId,
                             ApplicationTitle = estDetails != null ? estDetails.EstablishmentName : "",
                             IsESignCompleted = commCess.IsESignCompleted,
                         });
@@ -234,7 +245,7 @@ namespace RajFabAPI.Services
                             ApplicationType = ApplicationTypeNames.ManagerChange,
                             Status = managerChange.Status,
                             CreatedDate = appRegistration.CreatedDate,
-                            ApplicationId = Guid.Parse(appRegistration.ApplicationId),
+                            ApplicationId = appRegistration.ApplicationId,
                             ApplicationTitle = estDetails.EstablishmentName
                         });
                     }
@@ -265,11 +276,38 @@ namespace RajFabAPI.Services
                         ApplicationType = appRegistration.ApplicationTypeName, // FactoryLicense / Amendment / Renewal
                         Status = factoryLicense.Status,
                         CreatedDate = appRegistration.CreatedDate,
-                        ApplicationId = Guid.Parse(factoryLicense.Id),
+                        ApplicationId = factoryLicense.Id,
                         ApplicationTitle = estDetails?.EstablishmentName ?? "Factory License",
                         IsPaymentCompleted = factoryLicense.IsPaymentCompleted,
                         //IsESignCompleted = factoryLicense.IsESignCompletedManager && factoryLicense.IsESignCompletedOccupier
                         IsESignCompleted = factoryLicense.IsESignCompletedOccupier
+                    });
+                }
+                else if (appRegistration.ApplicationTypeName == ApplicationTypeNames.BoilerRegistration)
+                {
+                    var boilerReg = await _db.Set<BoilerRegistration>()
+                        .FirstOrDefaultAsync(x => x.ApplicationId == appRegistration.ApplicationId);
+
+                    if (boilerReg == null)
+                        continue;
+
+                    var latestStatus = await _db.Transactions
+                        .Where(x => x.ApplicationId == appRegistration.ApplicationId)
+                        .OrderByDescending(x => x.Id)
+                        .Select(x => x.Status)
+                        .FirstOrDefaultAsync();
+
+                    applicationUserDashboardDtos.Add(new ApplicationUserDashboardDto
+                    {
+                        ApplicationRegistrationId = appRegistration.Id,
+                        ApplicationType = appRegistration.ApplicationTypeName,
+                        Status = boilerReg.Status,
+                        CreatedDate = appRegistration.CreatedDate,
+                        ApplicationId = appRegistration.ApplicationId,
+                        ApplicationTitle = boilerReg.BoilerRegistrationNo ?? "Boiler Registration",
+                        IsPaymentCompleted = boilerReg.IsPaymentCompleted,
+                        IsESignCompleted = boilerReg.IsESignCompleted,
+                        IsPaymentPending = latestStatus == "PENDING"
                     });
                 }
                 else if (
@@ -296,7 +334,7 @@ namespace RajFabAPI.Services
                         ApplicationType = appRegistration.ApplicationTypeName, // FactoryLicense / Amendment / Renewal
                         Status = appeal.Status,
                         CreatedDate = appRegistration.CreatedDate,
-                        ApplicationId = Guid.Parse(appeal.Id),
+                        ApplicationId = appeal.Id,
                         ApplicationTitle = estDetails?.EstablishmentName ?? "Appeal",
                         IsESignCompleted = appeal.IsESignCompleted
                     });
@@ -371,6 +409,22 @@ namespace RajFabAPI.Services
 
                     return true;
                 }
+                else if (applicationData.ModuleName == ApplicationTypeNames.BoilerRegistration)
+                {
+                    var boilerReg = await _db.Set<BoilerRegistration>()
+                        .FirstOrDefaultAsync(x => x.ApplicationId == applicationId);
+
+                    if (boilerReg != null)
+                    {
+                        boilerReg.IsPaymentCompleted = true;
+                        boilerReg.UpdatedAt = DateTime.Now;
+                    }
+
+                    await _db.SaveChangesAsync();
+                    await dbTx.CommitAsync();
+
+                    return true;
+                }
 
                 return false;
             }
@@ -400,16 +454,19 @@ namespace RajFabAPI.Services
 
             byte[]? pdfBytes = null;
 
-            if (!string.IsNullOrWhiteSpace(signedPDFBase64) && signedPDFBase64.Contains(","))
+            if (!string.IsNullOrWhiteSpace(signedPDFBase64))
             {
-                signedPDFBase64 = signedPDFBase64.Split(',')[1];
-                pdfBytes = Convert.FromBase64String(signedPDFBase64);
+                string cleanBase64 = signedPDFBase64.Contains(",")
+                    ? signedPDFBase64.Split(',')[1]
+                    : signedPDFBase64;
+                pdfBytes = Convert.FromBase64String(cleanBase64);
             }
 
             int totalWorkers = 0;
             Guid? factoryTypeId = null;
             Guid? subDivisionId = null;
             string applicationUrl = null;
+            Guid? factoryCategoryId = null;
 
             using var transaction = await _db.Database.BeginTransactionAsync();
 
@@ -585,13 +642,31 @@ namespace RajFabAPI.Services
                     appealReg.UpdatedAt = DateTime.Now;
                     applicationUrl = appealReg.ApplicationPDFUrl;
                 }
+                else if (module.Name == ApplicationTypeNames.BoilerRegistration)
+                {
+                    var boilerReg = await _db.Set<BoilerRegistration>()
+                        .Include(b => b.BoilerDetail)
+                        .FirstOrDefaultAsync(x => x.ApplicationId == appReg.ApplicationId);
+
+                    if (boilerReg == null)
+                        return false;
+
+                    if (boilerReg.BoilerDetail?.SubDivisionId == null)
+                        return false;
+
+                    subDivisionId = boilerReg.BoilerDetail.SubDivisionId.Value;
+                    totalWorkers = 60;
+                    factoryTypeId = Guid.Parse("C3AE3BD6-E45D-4D61-A09C-25365A7EA099");
+                    boilerReg.IsESignCompleted = true;
+                    boilerReg.UpdatedAt = DateTime.Now;
+                    applicationUrl = boilerReg.ApplicationPDFUrl;
+                    // factoryCategoryId = Guid.Parse("C3AE3BD6-E45D-4D61-A09C-25365A7EA099");
+                }
 
                 var workerRange = await _db.Set<WorkerRange>()
                     .FirstOrDefaultAsync(wr =>
                         totalWorkers >= wr.MinWorkers &&
                         totalWorkers <= wr.MaxWorkers);
-
-                Guid? factoryCategoryId = null;
 
                 if (workerRange != null)
                 {

@@ -48,6 +48,47 @@ namespace RajFabAPI.Services
             _logger = logger;
         }
 
+        private async Task<string> GenerateApplicationNumberAsync(string type)
+        {
+            var year = DateTime.Now.Year;
+
+            // Switch to handle the prefix logic
+            string prefix = type.ToLower() switch
+            {
+                "new" => $"FR{year}/CIFB/",
+                "amend" => $"FAMEND{year}/CIFB/",
+                "renew" => $"FREN{year}/CIFB/",
+                "closure" => $"FCLS{year}/CIFB/",
+                _ => throw new ArgumentException("Invalid factory application type")
+            };
+
+            // Get the highest number for this specific prefix
+            var lastApp = await _db.EstablishmentRegistrations
+                .Where(x => x.ApplicationId.StartsWith(prefix))
+                .OrderBy(x => x.CreatedDate)
+                .Select(x => x.ApplicationId)
+                .FirstOrDefaultAsync();
+
+            int nextNumber = 1;
+
+            if (!string.IsNullOrEmpty(lastApp))
+            {
+                // Use LastIndexOf for better performance than Split().Last()
+                int lastSlashIndex = lastApp.LastIndexOf('/');
+                if (lastSlashIndex != -1)
+                {
+                    var lastNumberPart = lastApp.Substring(lastSlashIndex + 1);
+                    if (int.TryParse(lastNumberPart, out int lastNumber))
+                    {
+                        nextNumber = lastNumber + 1;
+                    }
+                }
+            }
+
+            // :D4 ensures leading zeros (e.g., 0001, 0045, 0123)
+            return $"{prefix}{nextNumber:D4}";
+        }
+
         // Create full registration and persist all sub-objects in a single transaction.
         // Uses EF Core instead of raw SQL for inserts.
         public async Task<string> SaveEstablishmentAsync(CreateEstablishmentRegistrationDto dto, Guid userId, string? type, string? establishmentRegistrationId)
@@ -103,6 +144,7 @@ namespace RajFabAPI.Services
             };
 
             var feeResult = type == "new" ? await GetFeeAmountAsync(feeRequest) : 100;
+            var applicationNumber = await GenerateApplicationNumberAsync(type);
             //var feeResult = new { TotalFee = 30 };
             await using var tx = await _db.Database.BeginTransactionAsync();
             try
@@ -112,6 +154,7 @@ namespace RajFabAPI.Services
                 {
                     EstablishmentRegistrationId = Guid.NewGuid().ToString().ToUpper(),
                     Status = ApplicationStatus.Pending,
+                    ApplicationId = applicationNumber,
                     CreatedDate = DateTime.Now,
                     UpdatedDate = DateTime.Now,
                     Date = dto.Date,
@@ -2623,16 +2666,16 @@ namespace RajFabAPI.Services
                     var manager = await _db.Set<PersonDetail>().FindAsync(existingReg.ManagerOrAgentDetailId);
                     if (manager != null) _ = _db.Set<PersonDetail>().Remove(manager);
                 }
-                if (existingReg.ContractorDetailId != null)
-                {
-                    var contractorDetail = await _db.Set<ContractorDetail>().FindAsync(existingReg.ContractorDetailId);
-                    if (contractorDetail != null)
-                    {
-                        var contractorPerson = await _db.Set<PersonDetail>().FindAsync(existingReg.ContractorDetailId);
-                        if (contractorPerson != null) _ = _db.Set<PersonDetail>().Remove(contractorPerson);
-                        _ = _db.Set<ContractorDetail>().Remove(contractorDetail);
-                    }
-                }
+                //if (existingReg.ContractorDetailId != null)
+                //{
+                //    var contractorDetail = await _db.Set<ContractorDetail>().FindAsync(existingReg.ContractorDetailId);
+                //    if (contractorDetail != null)
+                //    {
+                //        var contractorPerson = await _db.Set<PersonDetail>().FindAsync(existingReg.ContractorDetailId);
+                //        if (contractorPerson != null) _ = _db.Set<PersonDetail>().Remove(contractorPerson);
+                //        _ = _db.Set<ContractorDetail>().Remove(contractorDetail);
+                //    }
+                //}
 
                 Guid? mainOwnerId = null;
                 Guid? managerAgentId = null;
@@ -2729,7 +2772,7 @@ namespace RajFabAPI.Services
 
                 existingReg.MainOwnerDetailId = mainOwnerId;
                 existingReg.ManagerOrAgentDetailId = managerAgentId;
-                existingReg.ContractorDetailId = contractorId;
+                //existingReg.ContractorDetailId = contractorId;
                 existingReg.Place = dto.Place;
                 existingReg.Date = dto.Date;
                 existingReg.Signature = dto.Signature;
@@ -2855,7 +2898,7 @@ namespace RajFabAPI.Services
                     Type = "renew",
                     Amount = feeResult,
                     RegistrationNumber = lastApproved.RegistrationNumber,
-                    ContractorDetailId = lastApproved.ContractorDetailId,
+                    //ContractorDetailId = lastApproved.ContractorDetailId,
                     MainOwnerDetailId = lastApproved.MainOwnerDetailId,
                     ManagerOrAgentDetailId = lastApproved.ManagerOrAgentDetailId,
                     Place = lastApproved.Place,

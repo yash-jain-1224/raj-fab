@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Org.BouncyCastle.Tls;
 using RajFabAPI.Services.Interface;
+using System.Net;
 
 namespace RajFabAPI.Controllers
 {
@@ -49,7 +50,7 @@ namespace RajFabAPI.Controllers
         {
             try
             {
-                var result = await _esignService.ManualESignVerifyAsync(applicationId);
+                var result = await _esignService.ManualESignVerifyAsync(WebUtility.UrlDecode(applicationId));
                 return CreatedAtAction(null, new { message = "Esign Completed" });
             }
             catch (Exception ex)

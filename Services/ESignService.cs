@@ -52,6 +52,7 @@ namespace RajFabAPI.Services
         private readonly IAppealService _appealService;
         private readonly ILogger<ESignService> _logger;
         private readonly IWebHostEnvironment _environment;
+        private readonly IBoilerRegistartionService _boilerRegistrationService;
 
         public ESignService(
             IMemoryCache cache, IEstablishmentRegistrationService estRegService, ApplicationDbContext db, IConfiguration config,
@@ -60,7 +61,8 @@ namespace RajFabAPI.Services
             ICommencementCessationService commencementCessationService, IFactoryLicenseService factoryLicenseService,
             ILogger<ESignService> logger,
             IAppealService appealService,
-            IWebHostEnvironment environment)
+            IWebHostEnvironment environment,
+            IBoilerRegistartionService boilerRegistrationService)
         {
             _logger = logger;
             _cache = cache;
@@ -74,6 +76,7 @@ namespace RajFabAPI.Services
             _factoryLicenseService = factoryLicenseService;
             _appealService = appealService;
             _environment = environment;
+            _boilerRegistrationService = boilerRegistrationService;
         }
 
         public async Task<string> GenerateESignHtmlAsync(string applicationId)
@@ -232,6 +235,23 @@ namespace RajFabAPI.Services
                                 }
 
                                 var filePath = await _appealService.GenerateAppealPdf(response);
+
+                                _logger.LogInformation("Generated PDF Path: {FilePath}", filePath);
+
+                                if (!File.Exists(filePath))
+                                {
+                                    _logger.LogError("PDF file not found at path: {FilePath}", filePath);
+                                    throw new Exception("Generated PDF not found");
+                                }
+
+                                pdfBytes = await File.ReadAllBytesAsync(filePath);
+                            }
+
+                            else if (applicationData.ModuleName == ApplicationTypeNames.BoilerRegistration)
+                            {
+                                _logger.LogInformation("Processing Boiler Registration PDF generation");
+
+                                var filePath = await _boilerRegistrationService.GenerateBoilerApplicationPdfAsync(applicationId);
 
                                 _logger.LogInformation("Generated PDF Path: {FilePath}", filePath);
 
@@ -442,60 +462,50 @@ namespace RajFabAPI.Services
 
                     _logger.LogInformation("Signing successful. Updating application DB");
 
-                    var updateSuccess = await _applicationRegistrationService
+                    var certificate = await _db.Certificates
+                            .FirstOrDefaultAsync(c => c.ESignPrnNumber == esignTempData.prn);
+
+                    if (certificate != null)
+                    {
+                        _logger.LogInformation("PRN matched a certificate. Updating certificate status");
+
+                        if (!string.IsNullOrWhiteSpace(signingResponse.data.signedPDFBase64))
+                        {
+                            var signedPdfBase64 = signingResponse.data.signedPDFBase64;
+
+                            if (signedPdfBase64.Contains(","))
+                                signedPdfBase64 = signedPdfBase64.Split(',')[1];
+
+                            var signedPdfBytes = Convert.FromBase64String(signedPdfBase64);
+
+                            var fileName = Path.GetFileName(
+                                new Uri(certificate.CertificateUrl).AbsolutePath);
+
+                            var physicalPath = Path.Combine(
+                                _environment.WebRootPath,
+                                "certificates",
+                                fileName
+                            );
+
+                            _logger.LogInformation("Writing signed certificate PDF to: {Path}", physicalPath);
+
+                            await File.WriteAllBytesAsync(physicalPath, signedPdfBytes);
+
+                            _logger.LogInformation("Certificate PDF written successfully");
+                        }
+
+                        certificate.IsESignCompleted = true;
+                        certificate.Status = "Active";
+                        await _db.SaveChangesAsync();
+                        _logger.LogInformation("Certificate DB updated successfully");
+                    } else
+                    {
+                        var updateSuccess = await _applicationRegistrationService
                         .UpdateApplicationESignData(
                             esignTempData.prn,
                             signingResponse.data.signedPDFBase64);
 
-                    _logger.LogInformation("Application DB update result: {Result}", updateSuccess);
-
-                    if (!updateSuccess)
-                    {
-                        _logger.LogInformation("Checking certificate table for PRN: {PRN}", esignTempData.prn);
-
-                        var certificate = await _db.Certificates
-                            .FirstOrDefaultAsync(c => c.ESignPrnNumber == esignTempData.prn);
-
-                        if (certificate != null)
-                        {
-                            _logger.LogInformation("PRN matched a certificate. Updating certificate status");
-
-                            if (!string.IsNullOrWhiteSpace(signingResponse.data.signedPDFBase64))
-                            {
-                                var signedPdfBase64 = signingResponse.data.signedPDFBase64;
-
-                                if (signedPdfBase64.Contains(","))
-                                    signedPdfBase64 = signedPdfBase64.Split(',')[1];
-
-                                var signedPdfBytes = Convert.FromBase64String(signedPdfBase64);
-
-                                var fileName = Path.GetFileName(
-                                    new Uri(certificate.CertificateUrl).AbsolutePath);
-
-                                var physicalPath = Path.Combine(
-                                    _environment.WebRootPath,
-                                    "certificates",
-                                    fileName
-                                );
-
-                                _logger.LogInformation("Writing signed certificate PDF to: {Path}", physicalPath);
-
-                                await File.WriteAllBytesAsync(physicalPath, signedPdfBytes);
-
-                                _logger.LogInformation("Certificate PDF written successfully");
-                            }
-
-                            certificate.IsESignCompleted = true;
-                            certificate.Status = "Active";
-                            await _db.SaveChangesAsync();
-                            _logger.LogInformation("Certificate DB updated successfully");
-                        }
-                        else
-                        {
-                            _logger.LogError("DB update failed after signing. PRN not found in applications or certificates");
-
-                            return BuildErrorRedirect("Error updating application after signing");
-                        }
+                        _logger.LogInformation("Application DB update result: {Result}", updateSuccess);
                     }
 
                     _logger.LogInformation(
@@ -878,6 +888,10 @@ namespace RajFabAPI.Services
 
                     var filePath = await _factoryLicenseService
                         .GenerateFactoryLicensePdf(response);
+                }
+                else if (Module.Name == ApplicationTypeNames.BoilerRegistration)
+                {
+                    await _boilerRegistrationService.GenerateBoilerApplicationPdfAsync(applicationId);
                 }
 
                 // Use LogContext to automatically enrich all logs with Txn and PRN

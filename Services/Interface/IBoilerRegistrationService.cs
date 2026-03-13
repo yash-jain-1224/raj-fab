@@ -9,6 +9,7 @@ namespace RajFabAPI.Services.Interface
         Task<string> RenewBoilerAsync(RenewalBoilerDto dto, Guid userId);
 
         Task<GetBoilerResponseDto?> GetByApplicationIdAsync(string applicationId);
+        Task<GetBoilerResponseDto?> GetByIdAsync(Guid id);
         Task<List<GetBoilerResponseDto>> GetAllFullAsync();
         Task<GetBoilerResponseDto?> GetLatestApprovedByRegistrationNoAsync(string registrationNo);
         Task<bool> UpdateBoilerAsync(string applicationId, CreateBoilerRegistrationDto dto);
@@ -25,5 +26,7 @@ namespace RajFabAPI.Services.Interface
         Task<List<GetBoilerRepairDto>> GetAllRepairsAsync();
         Task<GetBoilerRepairDto?> GetRepairByApplicationIdAsync(string applicationId);
         Task<bool> UpdateRepairAsync(string applicationId, UpdateBoilerRepairDto dto, Guid userId);
+        Task<string> GenerateBoilerApplicationPdfAsync(string applicationId);
+        Task<string> GenerateBoilerRegistrationNoAsync();
     }
 }

@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using RajFabAPI.Models;
+using System.ComponentModel.DataAnnotations;
 
 namespace RajFabAPI.DTOs
 {
@@ -26,6 +27,12 @@ namespace RajFabAPI.DTOs
         public string? BoilerOperationEngineerCertificatePath { get; set; }
     }
 
+    public class CertificateResult
+    {
+        public string RegistrationNumber { get; set; }
+        public string CertificateUrl { get; set; }
+    }
+
     public class GetBoilerResponseDto
     {
         public Guid Id { get; set; }
@@ -36,11 +43,15 @@ namespace RajFabAPI.DTOs
         public decimal Version { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
+        public string? ApplicationPDFUrl { get; set; }
+        public string? CertificateUrl { get; set; }
 
         public BoilerTechnicalDto? BoilerDetail { get; set; }
 
         public PersonDetailDto? Owner { get; set; }
         public PersonDetailDto? Maker { get; set; }
+
+        public List<ApplicationHistory> ApplicationHistory { get; set; } = new();
     }
 
     public class BoilerTechnicalDto

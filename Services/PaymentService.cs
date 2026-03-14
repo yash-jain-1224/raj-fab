@@ -60,7 +60,7 @@ namespace RajFabAPI.Services
             {
                 throw new Exception("Payment is already completed for this application.");
             }
-            if (module.Name == ApplicationTypeNames.NewEstablishment)
+            if (module.Name == ApplicationTypeNames.NewEstablishment || module.Name == ApplicationTypeNames.FactoryAmendment || module.Name == ApplicationTypeNames.FactoryAmendment)
             {
                 var registration = await _db.Set<EstablishmentRegistration>()
                     .AsNoTracking()

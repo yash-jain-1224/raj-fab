@@ -56,7 +56,7 @@ namespace RajFabAPI.Services
             string prefix = type.ToLower() switch
             {
                 "new" => $"FR{year}/CIFB/",
-                "amend" => $"FAMEND{year}/CIFB/",
+                "amendment" => $"FAMEND{year}/CIFB/",
                 "renew" => $"FREN{year}/CIFB/",
                 "closure" => $"FCLS{year}/CIFB/",
                 _ => throw new ArgumentException("Invalid factory application type")

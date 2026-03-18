@@ -7,6 +7,7 @@ using RajFabAPI.Models;
 using RajFabAPI.Models.BoilerModels;
 using RajFabAPI.Models.FactoryModels;
 using RajFabAPI.Services.Interface;
+using Serilog.Context;
 using System.Reflection;
 using System.Text.Json;
 using static RajFabAPI.Constants.AppConstants;
@@ -437,273 +438,462 @@ namespace RajFabAPI.Services
 
         public async Task<bool> UpdateApplicationESignData(string prnNumber, string signedPDFBase64)
         {
-            //if (string.IsNullOrWhiteSpace(prnNumber) || string.IsNullOrWhiteSpace(signedPDFBase64))
-            //    return false;
+            _logger.LogInformation("===== UpdateApplicationESignData STARTED =====");
 
-            var appReg = await _db.Set<ApplicationRegistration>()
-                .FirstOrDefaultAsync(r => r.ESignPrnNumber == prnNumber);
-
-            if (appReg == null || appReg.ModuleId == Guid.Empty)
-                return false;
-
-            var module = await _db.Set<FormModule>()
-                .FirstOrDefaultAsync(m => m.Id == appReg.ModuleId);
-
-            if (module == null)
-                return false;
-
-            byte[]? pdfBytes = null;
-
-            if (!string.IsNullOrWhiteSpace(signedPDFBase64))
+            using (LogContext.PushProperty("PRN", prnNumber))
             {
-                string cleanBase64 = signedPDFBase64.Contains(",")
-                    ? signedPDFBase64.Split(',')[1]
-                    : signedPDFBase64;
-                pdfBytes = Convert.FromBase64String(cleanBase64);
-            }
-
-            int totalWorkers = 0;
-            Guid? factoryTypeId = null;
-            Guid? subDivisionId = null;
-            string applicationUrl = null;
-            Guid? factoryCategoryId = null;
-
-            using var transaction = await _db.Database.BeginTransactionAsync();
-
-            try
-            {
-                if (module.Name == ApplicationTypeNames.NewEstablishment || module.Name == ApplicationTypeNames.FactoryAmendment || module.Name == ApplicationTypeNames.FactoryRenewal)
+                try
                 {
-                    var estReg = await _db.Set<EstablishmentRegistration>()
-                        .FirstOrDefaultAsync(x => x.EstablishmentRegistrationId == appReg.ApplicationId);
-
-                    if (estReg == null)
-                        return false;
-
-                    var estDetails = await _db.Set<EstablishmentDetail>()
-                        .FirstOrDefaultAsync(ed => ed.Id == estReg.EstablishmentDetailId);
-
-                    // Fetch entity mapping
-                    var entityData = await _db.Set<EstablishmentEntityMapping>()
-                        .FirstOrDefaultAsync(ed => ed.EstablishmentRegistrationId == estReg.EstablishmentRegistrationId);
-
-                    // Check if entityData exists
-                    if (entityData == null)
-                        return false;
-
-                    FactoryDetail? factorydata = null;
-
-                    // If entity type is Factory, fetch factory details
-                    if (entityData.EntityType == "Factory")
+                    if (string.IsNullOrWhiteSpace(prnNumber))
                     {
-                        factorydata = await _db.Set<FactoryDetail>()
-                            .FirstOrDefaultAsync(f => f.Id == entityData.EntityId);
+                        _logger.LogWarning("PRN number is empty");
+                        return false;
                     }
 
-                    // Check if factory data exists
-                    if (factorydata == null)
-                        return false;
+                    _logger.LogInformation("Fetching ApplicationRegistration for PRN: {PRN}", prnNumber);
 
-                    // Validate SubDivisionId is a valid GUID
-                    if (!Guid.TryParse(factorydata.SubDivisionId, out Guid parsedSubDiv))
-                        return false;
+                    var appReg = await _db.Set<ApplicationRegistration>()
+                        .FirstOrDefaultAsync(r => r.ESignPrnNumber == prnNumber);
 
-                    totalWorkers =
-                        (estDetails.TotalNumberOfEmployee ?? 0) +
-                        (estDetails.TotalNumberOfContractEmployee ?? 0) +
-                        (estDetails.TotalNumberOfInterstateWorker ?? 0);
-
-                    factoryTypeId = estDetails.FactoryTypeId ?? Guid.Empty;
-                    subDivisionId = parsedSubDiv;
-
-                    estReg.IsESignCompleted = true;
-                    estReg.UpdatedDate = DateTime.Now;
-
-                    applicationUrl = estReg.ApplicationPDFUrl;
-                }
-                else if (module.Name == ApplicationTypeNames.MapApproval || module.Name == ApplicationTypeNames.MapApprovalAmendment)
-                {
-                    var mapReg = await _db.Set<FactoryMapApproval>()
-                        .FirstOrDefaultAsync(x => x.Id == appReg.ApplicationId);
-
-                    if (mapReg == null)
-                        return false;
-                    var options = new JsonSerializerOptions
+                    if (appReg == null)
                     {
-                        PropertyNameCaseInsensitive = true
-                    };
-
-                    var factoryDetails = JsonSerializer.Deserialize<FactoryDetailsModel>(
-                        mapReg.FactoryDetails,
-                        options
-                    );
-
-                    var factoryType = _db.FactoryTypes.FirstOrDefault(x => x.Name == "Not Applicable");
-
-                    if (!Guid.TryParse(factoryDetails.subDivisionId, out Guid parsedSubDiv))
+                        _logger.LogWarning("ApplicationRegistration not found for PRN: {PRN}", prnNumber);
                         return false;
+                    }
 
-                    totalWorkers =
-                        (mapReg?.MaxWorkerMale ?? 0) +
-                        (mapReg?.MaxWorkerFemale ?? 0);
-                    factoryTypeId = factoryType?.Id;
-                    subDivisionId = parsedSubDiv;
-                    mapReg.IsESignCompleted = true;
-                    mapReg.UpdatedAt = DateTime.Now;
-                    applicationUrl = mapReg.ApplicationPDFUrl;
-                }
-                else if (module.Name == ApplicationTypeNames.FactoryLicense || module.Name == ApplicationTypeNames.FactoryLicenseRenewal || module.Name == ApplicationTypeNames.FactoryLicenseAmendment)
-                {
-                    var factoryLicenseReg = await _db.Set<FactoryLicense>()
-                        .FirstOrDefaultAsync(x => x.Id == appReg.ApplicationId);
-
-                    if (factoryLicenseReg == null)
+                    if (appReg.ModuleId == Guid.Empty)
+                    {
+                        _logger.LogWarning("ModuleId is empty for ApplicationRegistrationId: {Id}", appReg.Id);
                         return false;
+                    }
 
-                    var EstablishmentDetailId = await _db.Set<EstablishmentRegistration>()
-                                   .Where(m => m.RegistrationNumber == factoryLicenseReg.FactoryRegistrationNumber)
-                                   .Select(m => m.EstablishmentDetailId)
-                                   .FirstOrDefaultAsync();
+                    _logger.LogInformation("ApplicationRegistration found -> Id: {Id}, ModuleId: {ModuleId}", appReg.Id, appReg.ModuleId);
 
-                    var establishmentDetail = await _db.Set<EstablishmentDetail>()
-                        .FirstOrDefaultAsync(m => m.Id == EstablishmentDetailId);
+                    var module = await _db.Set<FormModule>()
+                        .FirstOrDefaultAsync(m => m.Id == appReg.ModuleId);
 
-                    if (!Guid.TryParse(establishmentDetail.SubDivisionId, out Guid parsedSubDiv))
+                    if (module == null)
+                    {
+                        _logger.LogWarning("Module not found for ModuleId: {ModuleId}", appReg.ModuleId);
                         return false;
+                    }
 
-                    totalWorkers =
-                       (establishmentDetail?.TotalNumberOfEmployee ?? 0) +
-                       (establishmentDetail?.TotalNumberOfContractEmployee ?? 0) +
-                       (establishmentDetail?.TotalNumberOfInterstateWorker ?? 0);
+                    _logger.LogInformation("Module identified: {ModuleName}", module.Name);
 
-                    factoryTypeId = establishmentDetail.FactoryTypeId;
-                    subDivisionId = parsedSubDiv;
-                    factoryLicenseReg.IsESignCompletedOccupier = true;
-                    factoryLicenseReg.UpdatedAt = DateTime.Now;
-                    applicationUrl = factoryLicenseReg.ApplicationPDFUrl;
-                }
-                else if (module.Name == ApplicationTypeNames.FactoryCommencementCessation)
-                {
-                    var comReg = await _db.Set<CommencementCessationApplication>()
-                        .FirstOrDefaultAsync(x => x.ApplicationId == appReg.ApplicationId);
+                    byte[]? pdfBytes = null;
 
-                    if (comReg == null)
-                        return false;
+                    if (!string.IsNullOrWhiteSpace(signedPDFBase64))
+                    {
+                        _logger.LogInformation("Converting signed PDF Base64 to byte array");
 
-                    var EstablishmentDetailId = await _db.Set<EstablishmentRegistration>()
-                                   .Where(m => m.RegistrationNumber == comReg.FactoryRegistrationNumber)
-                                   .Select(m => m.EstablishmentDetailId)
-                                   .FirstOrDefaultAsync();
+                        string cleanBase64 = signedPDFBase64.Contains(",")
+                            ? signedPDFBase64.Split(',')[1]
+                            : signedPDFBase64;
 
-                    var establishmentDetail = await _db.Set<EstablishmentDetail>()
-                        .FirstOrDefaultAsync(m => m.Id == EstablishmentDetailId);
+                        pdfBytes = Convert.FromBase64String(cleanBase64);
 
+                        _logger.LogInformation("PDF converted successfully. Byte length: {Length}", pdfBytes.Length);
+                    }
 
-                    if (!Guid.TryParse(establishmentDetail.SubDivisionId, out Guid parsedSubDiv))
-                        return false;
+                    int totalWorkers = 0;
+                    Guid? factoryTypeId = null;
+                    Guid? subDivisionId = null;
+                    string applicationUrl = null;
+                    Guid? factoryCategoryId = null;
 
-                    totalWorkers =
-                       (establishmentDetail?.TotalNumberOfEmployee ?? 0) +
-                       (establishmentDetail?.TotalNumberOfContractEmployee ?? 0) +
-                       (establishmentDetail?.TotalNumberOfInterstateWorker ?? 0);
-                    factoryTypeId = establishmentDetail.FactoryTypeId;
-                    subDivisionId = parsedSubDiv;
-                    comReg.IsESignCompleted = true;
-                    comReg.UpdatedDate = DateTime.Now;
-                    applicationUrl = comReg.ApplicationPDFUrl;
-                }
-                else if (module.Name == ApplicationTypeNames.Appeal)
-                {
-                    var appealReg = await _db.Set<Appeal>()
-                        .FirstOrDefaultAsync(x => x.AppealApplicationNumber == appReg.ApplicationId);
+                    using var transaction = await _db.Database.BeginTransactionAsync();
 
-                    if (appealReg == null)
-                        return false;
+                    _logger.LogInformation("Database transaction started");
 
-                    var EstablishmentDetailId = await _db.Set<EstablishmentRegistration>()
-                                   .Where(m => m.RegistrationNumber == appealReg.FactoryRegistrationNumber)
-                                   .Select(m => m.EstablishmentDetailId)
-                                   .FirstOrDefaultAsync();
+                    if (module.Name == ApplicationTypeNames.NewEstablishment ||
+                        module.Name == ApplicationTypeNames.FactoryAmendment ||
+                        module.Name == ApplicationTypeNames.FactoryRenewal)
+                    {
+                        _logger.LogInformation("Processing Establishment module workflow");
 
-                    var establishmentDetail = await _db.Set<EstablishmentDetail>()
-                        .FirstOrDefaultAsync(m => m.Id == EstablishmentDetailId);
+                        var estReg = await _db.Set<EstablishmentRegistration>()
+                            .FirstOrDefaultAsync(x => x.EstablishmentRegistrationId == appReg.ApplicationId);
 
-                    if (!Guid.TryParse(establishmentDetail.SubDivisionId, out Guid parsedSubDiv))
-                        return false;
+                        if (estReg == null)
+                        {
+                            _logger.LogWarning("EstablishmentRegistration not found for ApplicationId: {AppId}", appReg.ApplicationId);
+                            return false;
+                        }
 
-                    totalWorkers =
-                       (establishmentDetail?.TotalNumberOfEmployee ?? 0) +
-                       (establishmentDetail?.TotalNumberOfContractEmployee ?? 0) +
-                       (establishmentDetail?.TotalNumberOfInterstateWorker ?? 0);
+                        var estDetails = await _db.Set<EstablishmentDetail>()
+                            .FirstOrDefaultAsync(ed => ed.Id == estReg.EstablishmentDetailId);
 
-                    factoryTypeId = establishmentDetail.FactoryTypeId;
-                    subDivisionId = parsedSubDiv;
-                    appealReg.IsESignCompleted = true;
-                    appealReg.UpdatedAt = DateTime.Now;
-                    applicationUrl = appealReg.ApplicationPDFUrl;
-                }
-                else if (module.Name == ApplicationTypeNames.BoilerRegistration)
-                {
-                    var boilerReg = await _db.Set<BoilerRegistration>()
-                        .Include(b => b.BoilerDetail)
-                        .FirstOrDefaultAsync(x => x.ApplicationId == appReg.ApplicationId);
+                        var entityData = await _db.Set<EstablishmentEntityMapping>()
+                            .FirstOrDefaultAsync(ed => ed.EstablishmentRegistrationId == estReg.EstablishmentRegistrationId);
 
-                    if (boilerReg == null)
-                        return false;
+                        if (entityData == null)
+                        {
+                            _logger.LogWarning("Entity mapping not found");
+                            return false;
+                        }
 
-                    if (boilerReg.BoilerDetail?.SubDivisionId == null)
-                        return false;
+                        FactoryDetail? factorydata = null;
 
-                    subDivisionId = boilerReg.BoilerDetail.SubDivisionId.Value;
-                    totalWorkers = 60;
-                    factoryTypeId = Guid.Parse("C3AE3BD6-E45D-4D61-A09C-25365A7EA099");
-                    boilerReg.IsESignCompleted = true;
-                    boilerReg.UpdatedAt = DateTime.Now;
-                    applicationUrl = boilerReg.ApplicationPDFUrl;
-                    // factoryCategoryId = Guid.Parse("C3AE3BD6-E45D-4D61-A09C-25365A7EA099");
-                }
+                        if (entityData.EntityType == "Factory")
+                        {
+                            factorydata = await _db.Set<FactoryDetail>()
+                                .FirstOrDefaultAsync(f => f.Id == entityData.EntityId);
+                        }
 
-                var workerRange = await _db.Set<WorkerRange>()
-                    .FirstOrDefaultAsync(wr =>
-                        totalWorkers >= wr.MinWorkers &&
-                        totalWorkers <= wr.MaxWorkers);
+                        if (factorydata == null)
+                        {
+                            _logger.LogWarning("Factory details not found");
+                            return false;
+                        }
 
-                if (workerRange != null)
-                {
-                    factoryCategoryId = await _db.Set<FactoryCategory>()
-                        .Where(fc =>
-                            fc.WorkerRangeId == workerRange.Id &&
-                            fc.FactoryTypeId == factoryTypeId)
-                        .Select(fc => (Guid?)fc.Id)
+                        if (!Guid.TryParse(factorydata.SubDivisionId, out Guid parsedSubDiv))
+                        {
+                            _logger.LogWarning("Invalid SubDivisionId: {SubDivision}", factorydata.SubDivisionId);
+                            return false;
+                        }
+
+                        totalWorkers =
+                            (estDetails.TotalNumberOfEmployee ?? 0) +
+                            (estDetails.TotalNumberOfContractEmployee ?? 0) +
+                            (estDetails.TotalNumberOfInterstateWorker ?? 0);
+
+                        factoryTypeId = estDetails.FactoryTypeId ?? Guid.Empty;
+                        subDivisionId = parsedSubDiv;
+
+                        _logger.LogInformation(
+                            "Computed Workers: {Workers}, FactoryTypeId: {FactoryTypeId}, SubDivisionId: {SubDivisionId}",
+                            totalWorkers,
+                            factoryTypeId,
+                            subDivisionId
+                        );
+
+                        estReg.IsESignCompleted = true;
+                        estReg.UpdatedDate = DateTime.Now;
+                        applicationUrl = estReg.ApplicationPDFUrl;
+                    }
+                    else if (module.Name == ApplicationTypeNames.MapApproval ||
+                             module.Name == ApplicationTypeNames.MapApprovalAmendment)
+                    {
+                        _logger.LogInformation("Processing MapApproval workflow");
+
+                        var mapReg = await _db.Set<FactoryMapApproval>()
+                            .FirstOrDefaultAsync(x => x.Id == appReg.ApplicationId);
+
+                        if (mapReg == null)
+                        {
+                            _logger.LogWarning("MapApproval record not found");
+                            return false;
+                        }
+
+                        var options = new JsonSerializerOptions
+                        {
+                            PropertyNameCaseInsensitive = true
+                        };
+
+                        var factoryDetails = JsonSerializer.Deserialize<FactoryDetailsModel>(
+                            mapReg.FactoryDetails,
+                            options
+                        );
+
+                        var factoryType = _db.FactoryTypes.FirstOrDefault(x => x.Name == "Not Applicable");
+
+                        if (!Guid.TryParse(factoryDetails.subDivisionId, out Guid parsedSubDiv))
+                        {
+                            _logger.LogWarning("Invalid SubDivisionId from MapApproval");
+                            return false;
+                        }
+
+                        totalWorkers =
+                            (mapReg?.MaxWorkerMale ?? 0) +
+                            (mapReg?.MaxWorkerFemale ?? 0);
+
+                        factoryTypeId = factoryType?.Id;
+                        subDivisionId = parsedSubDiv;
+
+                        _logger.LogInformation(
+                            "MapApproval Workers: {Workers}, FactoryTypeId: {FactoryTypeId}, SubDivisionId: {SubDivisionId}",
+                            totalWorkers,
+                            factoryTypeId,
+                            subDivisionId
+                        );
+
+                        mapReg.IsESignCompleted = true;
+                        mapReg.UpdatedAt = DateTime.Now;
+                        applicationUrl = mapReg.ApplicationPDFUrl;
+                    }
+                    else if (module.Name == ApplicationTypeNames.FactoryLicense ||
+                         module.Name == ApplicationTypeNames.FactoryLicenseRenewal ||
+                         module.Name == ApplicationTypeNames.FactoryLicenseAmendment)
+                    {
+                        _logger.LogInformation("Processing FactoryLicense workflow for ApplicationId: {ApplicationId}", appReg.ApplicationId);
+
+                        var factoryLicenseReg = await _db.Set<FactoryLicense>()
+                            .FirstOrDefaultAsync(x => x.Id == appReg.ApplicationId);
+
+                        if (factoryLicenseReg == null)
+                        {
+                            _logger.LogWarning("FactoryLicense record not found for ApplicationId: {ApplicationId}", appReg.ApplicationId);
+                            return false;
+                        }
+
+                        _logger.LogInformation("Fetching EstablishmentDetailId using RegistrationNumber: {RegNo}", factoryLicenseReg.FactoryRegistrationNumber);
+
+                        var EstablishmentDetailId = await _db.Set<EstablishmentRegistration>()
+                            .Where(m => m.RegistrationNumber == factoryLicenseReg.FactoryRegistrationNumber)
+                            .Select(m => m.EstablishmentDetailId)
+                            .FirstOrDefaultAsync();
+
+                        if (EstablishmentDetailId == Guid.Empty)
+                        {
+                            _logger.LogWarning("EstablishmentDetailId not found for RegistrationNumber: {RegNo}", factoryLicenseReg.FactoryRegistrationNumber);
+                            return false;
+                        }
+
+                        var establishmentDetail = await _db.Set<EstablishmentDetail>()
+                            .FirstOrDefaultAsync(m => m.Id == EstablishmentDetailId);
+
+                        if (establishmentDetail == null)
+                        {
+                            _logger.LogWarning("EstablishmentDetail not found for Id: {Id}", EstablishmentDetailId);
+                            return false;
+                        }
+
+                        if (!Guid.TryParse(establishmentDetail.SubDivisionId, out Guid parsedSubDiv))
+                        {
+                            _logger.LogWarning("Invalid SubDivisionId: {SubDivisionId}", establishmentDetail.SubDivisionId);
+                            return false;
+                        }
+
+                        totalWorkers =
+                           (establishmentDetail?.TotalNumberOfEmployee ?? 0) +
+                           (establishmentDetail?.TotalNumberOfContractEmployee ?? 0) +
+                           (establishmentDetail?.TotalNumberOfInterstateWorker ?? 0);
+
+                        factoryTypeId = establishmentDetail.FactoryTypeId;
+                        subDivisionId = parsedSubDiv;
+
+                        _logger.LogInformation(
+                            "FactoryLicense Workers calculated: {Workers}, FactoryTypeId: {FactoryTypeId}, SubDivisionId: {SubDivisionId}",
+                            totalWorkers,
+                            factoryTypeId,
+                            subDivisionId
+                        );
+
+                        factoryLicenseReg.IsESignCompletedOccupier = true;
+                        factoryLicenseReg.UpdatedAt = DateTime.Now;
+                        applicationUrl = factoryLicenseReg.ApplicationPDFUrl;
+
+                        _logger.LogInformation("FactoryLicense ESign completed for ApplicationId: {ApplicationId}", appReg.ApplicationId);
+                    }
+
+                    else if (module.Name == ApplicationTypeNames.FactoryCommencementCessation)
+                    {
+                        _logger.LogInformation("Processing FactoryCommencementCessation workflow for ApplicationId: {ApplicationId}", appReg.ApplicationId);
+
+                        var comReg = await _db.Set<CommencementCessationApplication>()
+                            .FirstOrDefaultAsync(x => x.ApplicationId == appReg.ApplicationId);
+
+                        if (comReg == null)
+                        {
+                            _logger.LogWarning("CommencementCessationApplication not found for ApplicationId: {ApplicationId}", appReg.ApplicationId);
+                            return false;
+                        }
+
+                        _logger.LogInformation("Fetching EstablishmentDetailId using RegistrationNumber: {RegNo}", comReg.FactoryRegistrationNumber);
+
+                        var EstablishmentDetailId = await _db.Set<EstablishmentRegistration>()
+                            .Where(m => m.RegistrationNumber == comReg.FactoryRegistrationNumber)
+                            .Select(m => m.EstablishmentDetailId)
+                            .FirstOrDefaultAsync();
+
+                        var establishmentDetail = await _db.Set<EstablishmentDetail>()
+                            .FirstOrDefaultAsync(m => m.Id == EstablishmentDetailId);
+
+                        if (establishmentDetail == null)
+                        {
+                            _logger.LogWarning("EstablishmentDetail not found for Id: {Id}", EstablishmentDetailId);
+                            return false;
+                        }
+
+                        if (!Guid.TryParse(establishmentDetail.SubDivisionId, out Guid parsedSubDiv))
+                        {
+                            _logger.LogWarning("Invalid SubDivisionId: {SubDivisionId}", establishmentDetail.SubDivisionId);
+                            return false;
+                        }
+
+                        totalWorkers =
+                           (establishmentDetail?.TotalNumberOfEmployee ?? 0) +
+                           (establishmentDetail?.TotalNumberOfContractEmployee ?? 0) +
+                           (establishmentDetail?.TotalNumberOfInterstateWorker ?? 0);
+
+                        factoryTypeId = establishmentDetail.FactoryTypeId;
+                        subDivisionId = parsedSubDiv;
+
+                        _logger.LogInformation(
+                            "CommencementCessation Workers calculated: {Workers}, FactoryTypeId: {FactoryTypeId}, SubDivisionId: {SubDivisionId}",
+                            totalWorkers,
+                            factoryTypeId,
+                            subDivisionId
+                        );
+
+                        comReg.IsESignCompleted = true;
+                        comReg.UpdatedDate = DateTime.Now;
+                        applicationUrl = comReg.ApplicationPDFUrl;
+
+                        _logger.LogInformation("CommencementCessation ESign completed for ApplicationId: {ApplicationId}", appReg.ApplicationId);
+                    }
+
+                    else if (module.Name == ApplicationTypeNames.Appeal)
+                    {
+                        _logger.LogInformation("Processing Appeal workflow for ApplicationId: {ApplicationId}", appReg.ApplicationId);
+
+                        var appealReg = await _db.Set<Appeal>()
+                            .FirstOrDefaultAsync(x => x.AppealApplicationNumber == appReg.ApplicationId);
+
+                        if (appealReg == null)
+                        {
+                            _logger.LogWarning("Appeal record not found for ApplicationId: {ApplicationId}", appReg.ApplicationId);
+                            return false;
+                        }
+
+                        _logger.LogInformation("Fetching EstablishmentDetailId using RegistrationNumber: {RegNo}", appealReg.FactoryRegistrationNumber);
+
+                        var EstablishmentDetailId = await _db.Set<EstablishmentRegistration>()
+                            .Where(m => m.RegistrationNumber == appealReg.FactoryRegistrationNumber)
+                            .Select(m => m.EstablishmentDetailId)
+                            .FirstOrDefaultAsync();
+
+                        var establishmentDetail = await _db.Set<EstablishmentDetail>()
+                            .FirstOrDefaultAsync(m => m.Id == EstablishmentDetailId);
+
+                        if (establishmentDetail == null)
+                        {
+                            _logger.LogWarning("EstablishmentDetail not found for Id: {Id}", EstablishmentDetailId);
+                            return false;
+                        }
+
+                        if (!Guid.TryParse(establishmentDetail.SubDivisionId, out Guid parsedSubDiv))
+                        {
+                            _logger.LogWarning("Invalid SubDivisionId: {SubDivisionId}", establishmentDetail.SubDivisionId);
+                            return false;
+                        }
+
+                        totalWorkers =
+                           (establishmentDetail?.TotalNumberOfEmployee ?? 0) +
+                           (establishmentDetail?.TotalNumberOfContractEmployee ?? 0) +
+                           (establishmentDetail?.TotalNumberOfInterstateWorker ?? 0);
+
+                        factoryTypeId = establishmentDetail.FactoryTypeId;
+                        subDivisionId = parsedSubDiv;
+
+                        _logger.LogInformation(
+                            "Appeal Workers calculated: {Workers}, FactoryTypeId: {FactoryTypeId}, SubDivisionId: {SubDivisionId}",
+                            totalWorkers,
+                            factoryTypeId,
+                            subDivisionId
+                        );
+
+                        appealReg.IsESignCompleted = true;
+                        appealReg.UpdatedAt = DateTime.Now;
+                        applicationUrl = appealReg.ApplicationPDFUrl;
+
+                        _logger.LogInformation("Appeal ESign completed for ApplicationId: {ApplicationId}", appReg.ApplicationId);
+                    }
+
+                    else if (module.Name == ApplicationTypeNames.BoilerRegistration)
+                    {
+                        _logger.LogInformation("Processing BoilerRegistration workflow for ApplicationId: {ApplicationId}", appReg.ApplicationId);
+
+                        var boilerReg = await _db.Set<BoilerRegistration>()
+                            .Include(b => b.BoilerDetail)
+                            .FirstOrDefaultAsync(x => x.ApplicationId == appReg.ApplicationId);
+
+                        if (boilerReg == null)
+                        {
+                            _logger.LogWarning("BoilerRegistration not found for ApplicationId: {ApplicationId}", appReg.ApplicationId);
+                            return false;
+                        }
+
+                        if (boilerReg.BoilerDetail?.SubDivisionId == null)
+                        {
+                            _logger.LogWarning("BoilerDetail SubDivisionId missing for ApplicationId: {ApplicationId}", appReg.ApplicationId);
+                            return false;
+                        }
+
+                        subDivisionId = boilerReg.BoilerDetail.SubDivisionId.Value;
+                        totalWorkers = 60;
+                        factoryTypeId = Guid.Parse("C3AE3BD6-E45D-4D61-A09C-25365A7EA099");
+
+                        _logger.LogInformation(
+                            "BoilerRegistration Workers: {Workers}, FactoryTypeId: {FactoryTypeId}, SubDivisionId: {SubDivisionId}",
+                            totalWorkers,
+                            factoryTypeId,
+                            subDivisionId
+                        );
+
+                        boilerReg.IsESignCompleted = true;
+                        boilerReg.UpdatedAt = DateTime.Now;
+                        applicationUrl = boilerReg.ApplicationPDFUrl;
+
+                        _logger.LogInformation("BoilerRegistration ESign completed for ApplicationId: {ApplicationId}", appReg.ApplicationId);
+                    }
+
+                    _logger.LogInformation("Determining WorkerRange for workers: {Workers}", totalWorkers);
+
+                    var workerRange = await _db.Set<WorkerRange>()
+                        .FirstOrDefaultAsync(wr =>
+                            totalWorkers >= wr.MinWorkers &&
+                            totalWorkers <= wr.MaxWorkers);
+
+                    if (workerRange != null)
+                    {
+                        factoryCategoryId = await _db.Set<FactoryCategory>()
+                            .Where(fc =>
+                                fc.WorkerRangeId == workerRange.Id &&
+                                fc.FactoryTypeId == factoryTypeId)
+                            .Select(fc => (Guid?)fc.Id)
+                            .FirstOrDefaultAsync();
+                    }
+
+                    _logger.LogInformation("FactoryCategoryId resolved: {FactoryCategoryId}", factoryCategoryId);
+
+                    var officeId = await _db.Set<OfficeApplicationArea>()
+                        .Where(oaa => oaa.CityId == subDivisionId)
+                        .Select(oaa => (Guid?)oaa.OfficeId)
                         .FirstOrDefaultAsync();
-                }
 
-                var officeId = await _db.Set<OfficeApplicationArea>()
-                    .Where(oaa => oaa.CityId == subDivisionId)
-                    .Select(oaa => (Guid?)oaa.OfficeId)
-                    .FirstOrDefaultAsync();
+                    if (!officeId.HasValue)
+                    {
+                        _logger.LogWarning("Office not found for SubDivisionId: {SubDivisionId}", subDivisionId);
+                        return false;
+                    }
 
-                if (!officeId.HasValue)
-                    return false;
+                    _logger.LogInformation("OfficeId resolved: {OfficeId}", officeId);
 
-                var workflow = await _db.Set<ApplicationWorkFlow>()
-                    .FirstOrDefaultAsync(wf =>
-                        wf.ModuleId == appReg.ModuleId &&
-                        wf.FactoryCategoryId == factoryCategoryId &&
-                        wf.OfficeId == officeId.Value);
+                    var workflow = await _db.Set<ApplicationWorkFlow>()
+                        .FirstOrDefaultAsync(wf =>
+                            wf.ModuleId == appReg.ModuleId &&
+                            wf.FactoryCategoryId == factoryCategoryId &&
+                            wf.OfficeId == officeId.Value);
 
-                if (workflow == null)
-                    return false;
+                    if (workflow == null)
+                    {
+                        _logger.LogWarning("Workflow not found for ModuleId: {ModuleId}", appReg.ModuleId);
+                        return false;
+                    }
 
-                var workflowLevel = await _db.Set<ApplicationWorkFlowLevel>()
-                    .Where(wfl => wfl.ApplicationWorkFlowId == workflow.Id)
-                    .OrderBy(wfl => wfl.LevelNumber)
-                    .FirstOrDefaultAsync();
+                    var workflowLevel = await _db.Set<ApplicationWorkFlowLevel>()
+                        .Where(wfl => wfl.ApplicationWorkFlowId == workflow.Id)
+                        .OrderBy(wfl => wfl.LevelNumber)
+                        .FirstOrDefaultAsync();
 
-                if (workflowLevel == null)
-                    return false;
+                    if (workflowLevel == null)
+                    {
+                        _logger.LogWarning("Workflow level not found");
+                        return false;
+                    }
 
-                var roleInfo = await _db.Set<Role>()
+                    var roleInfo = await _db.Set<Role>()
                     .Where(r => r.Id == workflowLevel.RoleId)
                     .Select(r => new
                     {
@@ -711,47 +901,60 @@ namespace RajFabAPI.Services
                     })
                     .FirstOrDefaultAsync();
 
-                var approvalRequest = new ApplicationApprovalRequest
-                {
-                    ModuleId = appReg.ModuleId,
-                    ApplicationRegistrationId = appReg.Id,
-                    ApplicationWorkFlowLevelId = workflowLevel.Id,
-                    Status = "Pending",
-                    CreatedDate = DateTime.Now,
-                    UpdatedDate = DateTime.Now
-                };
+                    _logger.LogInformation("Workflow Level determined: {LevelId}", workflowLevel.Id);
 
-                var history = new ApplicationHistory
-                {
-                    ApplicationId = appReg.ApplicationId,
-                    ApplicationType = module.Name,
-                    Action = "E-Sign Successful",
-                    PreviousStatus = null,
-                    NewStatus = "",
-                    Comments = "Application E-Signed and sent to " + roleInfo.Name + " for Verification",
-                    ActionBy = appReg.UserId.ToString(),
-                    ActionByName = "Applicant",
-                    ActionDate = DateTime.Now
-                };
-                _db.ApplicationHistories.Add(history);
+                    var approvalRequest = new ApplicationApprovalRequest
+                    {
+                        ModuleId = appReg.ModuleId,
+                        ApplicationRegistrationId = appReg.Id,
+                        ApplicationWorkFlowLevelId = workflowLevel.Id,
+                        Status = "Pending",
+                        CreatedDate = DateTime.Now,
+                        UpdatedDate = DateTime.Now
+                    };
 
-                _db.Set<ApplicationApprovalRequest>().Add(approvalRequest);
+                    var history = new ApplicationHistory
+                    {
+                        ApplicationId = appReg.ApplicationId,
+                        ApplicationType = module.Name,
+                        Action = "E-Sign Successful",
+                        PreviousStatus = null,
+                        NewStatus = "",
+                        Comments = "Application E-Signed and sent to " + roleInfo.Name + " for Verification",
+                        ActionBy = appReg.UserId.ToString(),
+                        ActionByName = "Applicant",
+                        ActionDate = DateTime.Now
+                    };
+                    _db.ApplicationHistories.Add(history);
 
-                await _db.SaveChangesAsync();
-                await transaction.CommitAsync();
+                    _db.Set<ApplicationApprovalRequest>().Add(approvalRequest);
 
-                if (pdfBytes != null)
-                {
-                    await OverwriteExistingPdfAsync(applicationUrl, pdfBytes);
+                    await _db.SaveChangesAsync();
+
+                    _logger.LogInformation("Approval request created successfully");
+
+                    await transaction.CommitAsync();
+
+                    _logger.LogInformation("Transaction committed successfully");
+
+                    if (pdfBytes != null)
+                    {
+                        _logger.LogInformation("Overwriting existing PDF at: {Url}", applicationUrl);
+                        await OverwriteExistingPdfAsync(applicationUrl, pdfBytes);
+                    }
+
+                    _logger.LogInformation("===== UpdateApplicationESignData COMPLETED SUCCESSFULLY =====");
+
+                    return true;
                 }
-                return true;
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error occurred while updating ESign data for PRN: {PRN}", prnNumber);
+                    throw;
+                }
             }
         }
+
         public async Task OverwriteExistingPdfAsync(string fileUrl, byte[] newPdfBytes)
         {
             if (string.IsNullOrWhiteSpace(fileUrl))

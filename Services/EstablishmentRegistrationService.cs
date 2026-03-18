@@ -129,10 +129,11 @@ namespace RajFabAPI.Services
             var factoryTypeIdGuid = dto.EstablishmentDetails.FactoryTypeId ?? factoryType?.Id;
 
             // Calculate total workers
-            int totalWorkers =
-                (dto?.EstablishmentDetails.TotalNumberOfEmployee ?? 0)
-                + (dto?.EstablishmentDetails.TotalNumberOfContractEmployee ?? 0)
-                + (dto?.EstablishmentDetails.TotalNumberOfInterstateWorker ?? 0);
+            // int totalWorkers =
+            //     (dto?.EstablishmentDetails.TotalNumberOfEmployee ?? 0)
+            //     + (dto?.EstablishmentDetails.TotalNumberOfContractEmployee ?? 0)
+            //     + (dto?.EstablishmentDetails.TotalNumberOfInterstateWorker ?? 0);
+            int totalWorkers = dto?.Factory.NumberOfWorker ?? 0;
 
             var feeRequest = new FeeRequest
             {
@@ -161,6 +162,10 @@ namespace RajFabAPI.Services
                     Version = newVersion,
                     Type = type,
                     Amount = feeResult ?? 0,
+                    OccupierIdProof = dto.OccupierIdProof,
+                    PartnershipDeed = dto.PartnershipDeed,
+                    ManagerIdProof = dto.ManagerIdProof,
+                    LoadSanctionCopy = dto.LoadSanctionCopy,
                     RegistrationNumber = finalRegistrationNumber,
                     Signature = dto.Signature,
                 };
@@ -923,6 +928,10 @@ namespace RajFabAPI.Services
                        Id = reg.EstablishmentRegistrationId,
                        RegistrationNumber = factoryRegistrationNumber,
                        ApplicationPDFUrl = reg.ApplicationPDFUrl,
+                       OccupierIdProof = reg.OccupierIdProof,
+                       PartnershipDeed = reg.PartnershipDeed,
+                       ManagerIdProof = reg.ManagerIdProof,
+                       LoadSanctionCopy = reg.LoadSanctionCopy,
                        EstablishmentDetail = new EstablishmentDetailsDto
                        {
                            Id = estDetail != null ? estDetail.Id.ToString() : null,
@@ -1187,6 +1196,10 @@ namespace RajFabAPI.Services
                         Id = reg.EstablishmentRegistrationId,
                         RegistrationNumber = reg.RegistrationNumber,
                         ApplicationPDFUrl = reg.ApplicationPDFUrl,
+                        OccupierIdProof = reg.OccupierIdProof,
+                        PartnershipDeed = reg.PartnershipDeed,
+                        ManagerIdProof = reg.ManagerIdProof,
+                        LoadSanctionCopy = reg.LoadSanctionCopy,
                         EstablishmentDetail = new EstablishmentDetailsDto
                         {
                             Id = estDetail != null ? estDetail.Id.ToString() : null,
@@ -1308,6 +1321,12 @@ namespace RajFabAPI.Services
                         from districtDetail in districtJoin.DefaultIfEmpty()
                         join division in _db.Set<Division>().AsNoTracking() on districtDetail.DivisionId equals division.Id into divisionJoin
                         from divisionDetail in divisionJoin.DefaultIfEmpty()
+                        join subDiv in _db.Set<City>().AsNoTracking()
+                                    on est.SubDivisionId equals subDiv.Id.ToString() into subDivJoin
+                        from subDivisionDetail in subDivJoin.DefaultIfEmpty()
+                        join tehsil in _db.Set<Tehsil>().AsNoTracking()
+                            on est.TehsilId equals tehsil.Id.ToString() into tehsilJoin
+                        from tehsilDetail in tehsilJoin.DefaultIfEmpty()
                         select new EstablishmentDetailsDto
                         {
                             Id = reg.EstablishmentRegistrationId,
@@ -1319,6 +1338,8 @@ namespace RajFabAPI.Services
                             Area = est.Area,
                             DistrictId = areaDetail.DistrictId.ToString(),
                             DistrictName = districtDetail.Name,
+                            SubDivisionName = subDivisionDetail.Name,
+                            TehsilName = tehsilDetail.Name,
                             TotalNumberOfEmployee = est.TotalNumberOfEmployee ?? 0,
                             TotalNumberOfContractEmployee = est.TotalNumberOfContractEmployee ?? 0,
                             TotalNumberOfInterstateWorker = est.TotalNumberOfInterstateWorker ?? 0,
@@ -1354,6 +1375,10 @@ namespace RajFabAPI.Services
                         Amount = reg.Amount,
                         ApplicationPDFUrl = reg.ApplicationPDFUrl,
                         ApplicationRegistrationNumber = reg.RegistrationNumber,
+                        OccupierIdProof = reg.OccupierIdProof,
+                        PartnershipDeed = reg.PartnershipDeed,
+                        ManagerIdProof = reg.ManagerIdProof,
+                        LoadSanctionCopy = reg.LoadSanctionCopy,
                         CertificatePDFUrl = activeCertificate?.CertificateUrl
                     };
                 }
@@ -1776,7 +1801,6 @@ namespace RajFabAPI.Services
                 throw (ex);
             }
         }
-
 
         public async Task<List<EstablishmentDetailsDto>> GetAllEstablishmentDetailsAsync(Guid userId)
         {
@@ -2776,7 +2800,10 @@ namespace RajFabAPI.Services
                 existingReg.Place = dto.Place;
                 existingReg.Date = dto.Date;
                 existingReg.Signature = dto.Signature;
-                existingReg.Status = "Pending";
+                existingReg.OccupierIdProof = dto.OccupierIdProof;
+                existingReg.PartnershipDeed = dto.PartnershipDeed;
+                existingReg.ManagerIdProof = dto.ManagerIdProof;
+                existingReg.LoadSanctionCopy = dto.LoadSanctionCopy;
                 existingReg.UpdatedDate = DateTime.Now;
                 _db.Entry(existingReg).State = EntityState.Modified;
 
@@ -2846,7 +2873,7 @@ namespace RajFabAPI.Services
                         _ = await _db.SaveChangesAsync();
                     }
                 }
-                
+
                 await tx.CommitAsync();
                 return appReg.ApplicationRegistrationNumber;
             }
@@ -2897,6 +2924,10 @@ namespace RajFabAPI.Services
                     Version = newVersion,
                     Type = "renew",
                     Amount = feeResult,
+                    OccupierIdProof = lastApproved.OccupierIdProof,
+                    PartnershipDeed = lastApproved.PartnershipDeed,
+                    ManagerIdProof = lastApproved.ManagerIdProof,
+                    LoadSanctionCopy = lastApproved.LoadSanctionCopy,
                     RegistrationNumber = lastApproved.RegistrationNumber,
                     //ContractorDetailId = lastApproved.ContractorDetailId,
                     MainOwnerDetailId = lastApproved.MainOwnerDetailId,
@@ -2987,9 +3018,9 @@ namespace RajFabAPI.Services
             if (dto == null)
                 throw new ArgumentNullException(nameof(dto));
 
-            if (dto.StartDate == default || dto.EndDate == default)
+            if (dto.StartDate == default)
                 throw new ArgumentException("StartDate and EndDate are required");
-            
+
             var appReg = await _db.ApplicationRegistrations
                 .FirstOrDefaultAsync(r => r.ApplicationId == registrationId);
 
@@ -3002,6 +3033,32 @@ namespace RajFabAPI.Services
             if (estReg == null)
                 throw new KeyNotFoundException("Establishment registration not found");
 
+            // Get user details (Approval Authority - the signer)
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+            if (user == null)
+                throw new KeyNotFoundException("User not found");
+
+            var officePost = await (
+                from ur in _db.UserRoles
+                join r in _db.Roles on ur.RoleId equals r.Id
+                join p in _db.Posts on r.PostId equals p.Id
+                join o in _db.Offices on r.OfficeId equals o.Id
+                join c in _db.Cities on o.CityId equals c.Id
+                where ur.UserId == userId
+                select new
+                {
+                    OfficeName = o.Name,
+                    PostName = p.Name,
+                    CityName = c.Name,
+                    PostId = p.Id
+                }
+            ).FirstOrDefaultAsync();
+
+            if (officePost == null)
+            {
+                throw new Exception("No office post found for this user");
+            }
+
             var allDetails = await GetAllEntitiesByRegistrationIdAsync(registrationId);
             var dtoDetails = allDetails.ApplicationDetails;
 
@@ -3010,13 +3067,12 @@ namespace RajFabAPI.Services
                 // Top-level registration info
                 ApplicationRegistrationNumber = dtoDetails.RegistrationDetail?.ApplicationRegistrationNumber,
                 StartDate = dto?.StartDate ?? DateTime.Now,
-                EndDate = dto?.EndDate ?? DateTime.Now.AddYears(1),
-                DeclarationPlace = dtoDetails.RegistrationDetail?.Place,
+                DeclarationPlace = officePost.CityName,
 
                 // Establishment info
                 EstablishmentName = dtoDetails.EstablishmentDetail?.Name,
                 NatureOfWork = dtoDetails.Factory.ManuacturingDetail,
-                EstablishmentType = dtoDetails.EstablishmentTypes.FirstOrDefault() ?? "Factory",
+                // EstablishmentType = dtoDetails.EstablishmentTypes.FirstOrDefault() ?? "Factory",
 
                 // Employees / contractors
                 DirectEmployees = dtoDetails.EstablishmentDetail?.TotalNumberOfEmployee,
@@ -3063,11 +3119,10 @@ namespace RajFabAPI.Services
                 }.Where(s => !string.IsNullOrWhiteSpace(s))),
 
                 // Other info
-                MaxWorkers = dtoDetails.EstablishmentDetail?.TotalNumberOfEmployee ?? 0,
+                MaxWorkers = dtoDetails.Factory?.NumberOfWorker ?? 0,
                 RegistrationFeesPaid = dtoDetails.RegistrationDetail?.Amount,
-
-                // Optional scanned signature (base64)
-                SignatureBase64 = "N/A"
+                NumberOfContractors = dtoDetails.ContractorDetail?.Count() ?? 0,
+                Remarks = dto.Remarks ?? "-"
             };
 
             if (dtoDetails == null)
@@ -3105,39 +3160,11 @@ namespace RajFabAPI.Services
                 Status = "PendingESign",
                 ModuleId = module.Id,
                 StartDate = dto.StartDate,
-                EndDate = dto.EndDate,
-                Place = dto.Place,
-                Signature = dto.Signature,
+                EndDate = null, // Certificates can be evergreen or have fixed validity based on requirements
                 Remarks = dto.Remarks
             };
 
             _ = _db.Certificates.Add(certificate);
-
-            // Get user details (Approval Authority - the signer)
-            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
-            if (user == null)
-                throw new KeyNotFoundException("User not found");
-
-            var officePost = await (
-                from ur in _db.UserRoles
-                join r in _db.Roles on ur.RoleId equals r.Id
-                join p in _db.Posts on r.PostId equals p.Id
-                join o in _db.Offices on r.OfficeId equals o.Id
-                join c in _db.Cities on o.CityId equals c.Id
-                where ur.UserId == userId
-                select new
-                {
-                    OfficeName = o.Name,
-                    PostName = p.Name,
-                    CityName = c.Name,
-                    PostId = p.Id
-                }
-            ).FirstOrDefaultAsync();
-
-            if (officePost == null)
-            {
-                throw new Exception("No office post found for this user");
-            }
 
             // Create application history with dynamic ActionBy
             var history = new ApplicationHistory
@@ -3160,467 +3187,6 @@ namespace RajFabAPI.Services
             return certificate.Id.ToString();
         }
 
-        private static async Task<byte[]?> DownloadImageAsync(string? imageUrl)
-        {
-            if (string.IsNullOrWhiteSpace(imageUrl))
-                return null;
-
-            try
-            {
-                using var httpClient = new HttpClient();
-                return await httpClient.GetByteArrayAsync(imageUrl);
-            }
-            catch
-            {
-                return null; // URL invalid / network issue
-            }
-        }
-
-
-        public async Task<string> GenerateCertificate(EstablishmentCertificatePdfRequestDto dto, string registrationId)
-        {
-            if (dto == null) throw new ArgumentNullException(nameof(dto));
-            var contractorDetails = dto.ContractorDetails != null
-            ? $"Name: {dto.ContractorDetails.Name ?? "-"}\n" +
-            $"Address: {dto.ContractorDetails.AddressLine1 + dto.ContractorDetails.AddressLine2 + dto.ContractorDetails.Area + dto.ContractorDetails.Tehsil + dto.ContractorDetails.District + dto.ContractorDetails.Pincode ?? "-"}\n" +
-            $"Email: {dto.ContractorDetails.Email ?? "-"}\n" +
-            $"Mobile: {dto.ContractorDetails.Mobile ?? "-"}\n" +
-            $"Work: {dto.ContractorDetails.NameOfWork ?? "-"}\n" +
-            $"Max Male Workers: {dto.ContractorDetails.MaxContractWorkerCountMale?.ToString() ?? "-"}\n" +
-            $"Max Female Workers: {dto.ContractorDetails.MaxContractWorkerCountFemale?.ToString() ?? "-"}\n" +
-            $"Duration: {dto.ContractorDetails.DateOfCommencement?.ToString("dd/MM/yyyy") ?? "-"} - {dto.ContractorDetails.DateOfCompletion?.ToString("dd/MM/yyyy") ?? "-"}"
-            : "-";
-
-            var fileName = $"certificate_{registrationId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
-
-            // Ensure wwwroot exists
-            var webRootPath = _environment.WebRootPath;
-            if (string.IsNullOrWhiteSpace(webRootPath))
-            {
-                throw new InvalidOperationException("wwwroot is not configured. Make sure UseStaticFiles() is enabled.");
-            }
-
-            // Ensure documents folder exists
-            var uploadPath = Path.Combine(webRootPath, "certificates");
-            _ = Directory.CreateDirectory(uploadPath);
-
-            // Final file path
-            var filePath = Path.Combine(uploadPath, fileName);
-
-            // Build public URL
-            var httpContext = _httpContextAccessor.HttpContext
-                ?? throw new InvalidOperationException("HTTP context unavailable");
-
-            var request = httpContext.Request;
-
-            var baseUrl = _config["BaseUrl"]
-                        ?? $"{request.Scheme}://{request.Host}";
-
-            var fileUrl = $"{baseUrl}/certificates/{fileName}";
-
-            // Create PDF
-            using var writer = new PdfWriter(filePath);
-            using var pdf = new PdfDocument(writer);
-            using var document = new PdfDoc(pdf);
-
-            // Fonts
-            var boldFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA_BOLD);
-            var regularFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA);
-
-            // ================= HEADER =================
-            var headerTable = new PdfTable(2).UseAllAvailableWidth();
-            _ = headerTable.AddCell(new PdfCell()
-                .Add(new PdfImage(ImageDataFactory.Create("wwwroot/Emblem_of_India.png")).ScaleToFit(40, 40))
-                .SetBorder(Border.NO_BORDER));
-
-            _ = headerTable.AddCell(new PdfCell()
-                .Add(new Paragraph("Form - 2").SetFont(boldFont).SetFontSize(18))
-                .Add(new Paragraph("(See clause (d) of sub rule (1) of rule 5)").SetFont(regularFont).SetFontSize(12))
-                .Add(new Paragraph("Certificate of Registration").SetFontColor(ColorConstants.BLUE).SetFontSize(12))
-                .SetBorder(Border.NO_BORDER));
-            _ = document.Add(headerTable);
-            _ = document.Add(new Paragraph("\n"));
-
-            // ================= APPLICATION INFO =================
-            var appTable = new PdfTable(2).UseAllAvailableWidth();
-            _ = appTable.AddCell(new PdfCell().Add(new Paragraph($"Application Registration Number: {dto.ApplicationRegistrationNumber ?? "-"}")).SetBorder(Border.NO_BORDER));
-            _ = appTable.AddCell(new PdfCell().Add(new Paragraph($"Date: {dto.StartDate:dd/MM/yyyy}")).SetBorder(Border.NO_BORDER));
-            _ = document.Add(appTable);
-            _ = document.Add(new Paragraph("\n"));
-
-            // ================= ESTABLISHMENT INFO =================
-            _ = document.Add(new Paragraph($"A Certificate of registration containing the following particulars is hereby granted to {dto.EstablishmentName ?? "-"}").SetFont(regularFont));
-            _ = document.Add(new Paragraph($"Nature of Work carried on in the establishment: {dto.NatureOfWork ?? "Factory"}").SetFont(regularFont));
-            _ = document.Add(new Paragraph("\n"));
-
-            // ================= DETAILS TABLE =================
-            var detailsTable = new PdfTable(2).UseAllAvailableWidth();
-            _ = detailsTable.AddCell(new PdfCell().Add(new Paragraph("Total Number of Employees engaged directly:").SetFont(boldFont)));
-            _ = detailsTable.AddCell(new PdfCell().Add(new Paragraph(dto.DirectEmployees?.ToString() ?? "-")));
-
-            _ = detailsTable.AddCell(new PdfCell().Add(new Paragraph("Total Number of Employees engaged through Contractor:").SetFont(boldFont)));
-            _ = detailsTable.AddCell(new PdfCell().Add(new Paragraph(dto.ContractorEmployees?.ToString() ?? "-")));
-
-            // detailsTable.AddCell(new PdfCell().Add(new Paragraph("Total Number of Contractors and their details:").SetFont(boldFont)));
-            // detailsTable.AddCell(new PdfCell().Add(new Paragraph(contractorDetails)));
-
-            _ = detailsTable.AddCell(new PdfCell().Add(new Paragraph("Total Number of Inter State Migrant Workers engaged:").SetFont(boldFont)));
-            _ = detailsTable.AddCell(new PdfCell().Add(new Paragraph(dto.InterStateWorkers?.ToString() ?? "-")));
-            _ = document.Add(detailsTable);
-            _ = document.Add(new Paragraph("\n"));
-
-            // ================= ESTABLISHMENT TYPE =================
-            _ = document.Add(new Paragraph($"Establishment Type: {dto.EstablishmentType ?? "Factory"}").SetFont(boldFont));
-            _ = document.Add(new Paragraph("\n"));
-
-            // ================= FACTORY DETAILS =================
-            var factoryTable = new PdfTable(2).UseAllAvailableWidth();
-            _ = factoryTable.AddCell(new PdfCell().Add(new Paragraph("Manufacturing Process").SetFont(boldFont)));
-            _ = factoryTable.AddCell(new PdfCell().Add(new Paragraph(dto.FactoryManufacturingDetail ?? "-")));
-
-            _ = factoryTable.AddCell(new PdfCell().Add(new Paragraph("Situation of Factory").SetFont(boldFont)));
-            _ = factoryTable.AddCell(new PdfCell().Add(new Paragraph(dto.FactorySituation ?? "-")));
-
-            _ = factoryTable.AddCell(new PdfCell().Add(new Paragraph("Factory Address").SetFont(boldFont)));
-            _ = factoryTable.AddCell(new PdfCell().Add(new Paragraph(dto.FactoryAddress ?? "-")));
-            _ = document.Add(factoryTable);
-            _ = document.Add(new Paragraph("\n"));
-
-            // ================= EMPLOYER DETAILS =================
-            var employerTable = new PdfTable(2).UseAllAvailableWidth();
-            _ = employerTable.AddCell(new PdfCell().Add(new Paragraph("Occupier Name").SetFont(boldFont)));
-            _ = employerTable.AddCell(new PdfCell().Add(new Paragraph(dto.EmployerName ?? "-")));
-
-            // employerTable.AddCell(new PdfCell().Add(new Paragraph("Designation").SetFont(boldFont)));
-            // employerTable.AddCell(new PdfCell().Add(new Paragraph(dto.EmployerDesignation ?? "-")));
-
-            _ = employerTable.AddCell(new PdfCell().Add(new Paragraph("Address").SetFont(boldFont)));
-            _ = employerTable.AddCell(new PdfCell().Add(new Paragraph(dto.EmployerAddress ?? "-")));
-            _ = document.Add(employerTable);
-            _ = document.Add(new Paragraph("\n"));
-
-            // ================= MANAGER/AGENT DETAILS =================
-            var managerTable = new PdfTable(2).UseAllAvailableWidth();
-            _ = managerTable.AddCell(new PdfCell().Add(new Paragraph("Manager Name").SetFont(boldFont)));
-            _ = managerTable.AddCell(new PdfCell().Add(new Paragraph(dto.ManagerName ?? "-")));
-
-            // managerTable.AddCell(new PdfCell().Add(new Paragraph("Designation").SetFont(boldFont)));
-            // managerTable.AddCell(new PdfCell().Add(new Paragraph(dto.ManagerDesignation ?? "-")));
-
-            _ = managerTable.AddCell(new PdfCell().Add(new Paragraph("Address").SetFont(boldFont)));
-            _ = managerTable.AddCell(new PdfCell().Add(new Paragraph(dto.ManagerAddress ?? "-")));
-            _ = document.Add(managerTable);
-            _ = document.Add(new Paragraph("\n"));
-
-            // ================= OTHER INFO =================
-            var otherTable = new PdfTable(2).UseAllAvailableWidth();
-            _ = otherTable.AddCell(new PdfCell().Add(new Paragraph("Factory Maximum Workers to be employed on any day").SetFont(boldFont)));
-            _ = otherTable.AddCell(new PdfCell().Add(new Paragraph(dto.MaxWorkers?.ToString() ?? "-")));
-
-            _ = otherTable.AddCell(new PdfCell().Add(new Paragraph("Amount of registration fees paid").SetFont(boldFont)));
-            _ = otherTable.AddCell(new PdfCell().Add(new Paragraph(dto.RegistrationFeesPaid?.ToString("F2") ?? "-")));
-            _ = document.Add(otherTable);
-            _ = document.Add(new Paragraph("\n"));
-
-            // ================= DECLARATION / SIGNATURE =================
-            var sigTable = new PdfTable(3).UseAllAvailableWidth();
-            _ = sigTable.AddCell(new PdfCell().Add(new Paragraph(dto.StartDate.ToString("dd/MM/yyyy"))).SetTextAlignment(TextAlignment.CENTER));
-            _ = sigTable.AddCell(new PdfCell().Add(new Paragraph(dto.EndDate.ToString("dd/MM/yyyy"))).SetTextAlignment(TextAlignment.CENTER));
-
-            var sigCell = new PdfCell().SetTextAlignment(TextAlignment.CENTER);
-
-            var signatureBytes = await DownloadImageAsync(dto.SignatureBase64);
-
-            if (signatureBytes != null)
-            {
-                var signatureImage = new PdfImage(
-                    ImageDataFactory.Create(signatureBytes)
-                )
-                .ScaleToFit(80, 35);
-
-                _ = sigCell.Add(signatureImage);
-            }
-
-            _ = sigCell.Add(new Paragraph("Chief Inspector of Factories and Boilers").SetFontSize(8));
-            _ = sigCell.Add(new Paragraph("Rajasthan, Jaipur").SetFontSize(8));
-
-            _ = sigTable.AddCell(sigCell);
-            _ = document.Add(sigTable);
-
-            // Place & footer note
-            _ = document.Add(new Paragraph($"\nPlace: {dto.DeclarationPlace ?? "-"}").SetFontSize(9));
-            _ = document.Add(new Paragraph("This is a computer generated certificate and bears scanned signature. No physical signature is required.")
-                .SetFontSize(7)
-                .SetFontColor(ColorConstants.GRAY));
-
-            return fileUrl;
-        }
-
-        public async Task<string> GenerateEstablishmentPdf(EstablishmentApplicationDto item)
-        {
-
-            if (item == null) throw new ArgumentNullException(nameof(item));
-
-            var trasactiondata = item.TransactionHistory;
-            var dto = item.ApplicationDetails;
-            // File name and paths
-            var fileName = $"establishment_{dto.RegistrationDetail.ApplicationRegistrationNumber}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
-            var webRootPath = _environment.WebRootPath;
-            if (string.IsNullOrWhiteSpace(webRootPath))
-                throw new InvalidOperationException("wwwroot is not configured.");
-
-            var uploadPath = Path.Combine(webRootPath, "factory-establishment-forms");
-            _ = Directory.CreateDirectory(uploadPath);
-
-            var filePath = Path.Combine(uploadPath, fileName);
-
-            var httpContext = _httpContextAccessor.HttpContext
-                ?? throw new InvalidOperationException("HTTP context unavailable");
-            var request = httpContext.Request;
-            var baseUrl = _config["BaseUrl"] ?? $"{request.Scheme}://{request.Host}";
-            var fileUrl = $"{baseUrl}/factory-establishment-forms/{fileName}";
-
-            // Create PDF
-            using var writer = new PdfWriter(filePath);
-            using var pdf = new PdfDocument(writer);
-            using var document = new PdfDoc(pdf);
-
-            var boldFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA_BOLD);
-            var regularFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA);
-
-            // ================= HEADER =================
-            var headerTable = new PdfTable(2).UseAllAvailableWidth();
-            _ = headerTable.AddCell(new PdfCell()
-                .Add(new PdfImage(ImageDataFactory.Create("wwwroot/Emblem_of_India.png")).ScaleToFit(40, 40))
-                .SetBorder(Border.NO_BORDER));
-            _ = headerTable.AddCell(new PdfCell()
-                .Add(new Paragraph("FORM – I").SetFont(boldFont).SetFontSize(18))
-                .Add(new Paragraph("(See clause (i) of sub-rule (1) of rule 5)").SetFont(regularFont).SetFontSize(12))
-                .Add(new Paragraph("Application for Registration for existing/new establishment or Amendment").SetFontSize(12))
-                .SetBorder(Border.NO_BORDER));
-            _ = document.Add(headerTable);
-            _ = document.Add(new Paragraph("\n"));
-
-            // ================= REGISTRATION INFO =================
-            var regTable = new PdfTable(2).UseAllAvailableWidth();
-            _ = regTable.AddCell(new PdfCell().Add(new Paragraph($"Application Registration Number: {dto.RegistrationDetail.ApplicationRegistrationNumber ?? "-"}")).SetBorder(Border.NO_BORDER));
-            _ = regTable.AddCell(new PdfCell().Add(new Paragraph($"Date: {dto.RegistrationDetail.CreatedDate:dd/MM/yyyy}")).SetBorder(Border.NO_BORDER));
-            _ = document.Add(regTable);
-            _ = document.Add(new Paragraph("\n"));
-
-            // ================= A. Establishment Details =================
-            var estTable = new PdfTable(2).UseAllAvailableWidth();
-            _ = estTable.AddCell(new PdfCell().Add(new Paragraph("BRN").SetFont(boldFont)));
-            _ = estTable.AddCell(new PdfCell().Add(new Paragraph(dto.EstablishmentDetail.BrnNumber ?? "-")));
-            _ = estTable.AddCell(new PdfCell().Add(new Paragraph("LIN").SetFont(boldFont)));
-            _ = estTable.AddCell(new PdfCell().Add(new Paragraph(dto.EstablishmentDetail.LinNumber ?? "-")));
-
-            _ = estTable.AddCell(new PdfCell().Add(new Paragraph("Name").SetFont(boldFont)));
-            _ = estTable.AddCell(new PdfCell().Add(new Paragraph(dto.EstablishmentDetail.Name ?? "-")));
-
-            _ = estTable.AddCell(new PdfCell().Add(new Paragraph("Address").SetFont(boldFont)));
-            _ = estTable.AddCell(new PdfCell()
-                .Add(new Paragraph(FormatAddress(
-                    dto.EstablishmentDetail.AddressLine1,
-                    dto.EstablishmentDetail.AddressLine2,
-                    dto.EstablishmentDetail.Area,
-                    dto.EstablishmentDetail.TehsilName,
-                    dto.EstablishmentDetail.DistrictName,
-                    dto.EstablishmentDetail.Pincode
-                ))));
-
-            _ = estTable.AddCell(new PdfCell().Add(new Paragraph("Email").SetFont(boldFont)));
-            _ = estTable.AddCell(new PdfCell().Add(new Paragraph(dto.EstablishmentDetail.Email ?? "-")));
-
-            _ = estTable.AddCell(new PdfCell().Add(new Paragraph("Mobile").SetFont(boldFont)));
-            _ = estTable.AddCell(new PdfCell().Add(new Paragraph(dto.EstablishmentDetail.Mobile ?? "-")));
-
-            _ = estTable.AddCell(new PdfCell().Add(new Paragraph("Direct Employees").SetFont(boldFont)));
-            _ = estTable.AddCell(new PdfCell().Add(new Paragraph(dto.EstablishmentDetail.TotalNumberOfEmployee.ToString() ?? "-")));
-
-            _ = estTable.AddCell(new PdfCell().Add(new Paragraph("Contract Employees").SetFont(boldFont)));
-            _ = estTable.AddCell(new PdfCell().Add(new Paragraph(dto.EstablishmentDetail.TotalNumberOfContractEmployee.ToString() ?? "-")));
-
-            _ = estTable.AddCell(new PdfCell().Add(new Paragraph("Interstate Workers").SetFont(boldFont)));
-            _ = estTable.AddCell(new PdfCell().Add(new Paragraph(dto.EstablishmentDetail.TotalNumberOfInterstateWorker.ToString() ?? "-")));
-            _ = document.Add(estTable);
-            _ = document.Add(new Paragraph("\n"));
-
-            // ================= B. Type of Establishment =================
-            _ = document.Add(new Paragraph(
-                    $"Establishment Type(s): {(dto.EstablishmentTypes != null && dto.EstablishmentTypes.Any() ? string.Join(", ", dto.EstablishmentTypes) : "-")}"
-                ).SetFont(boldFont));
-            _ = document.Add(new Paragraph("\n"));
-
-            // ================= C. Factory Details =================
-            if (dto.Factory != null)
-            {
-                var factoryTable = new PdfTable(2).UseAllAvailableWidth();
-                _ = factoryTable.AddCell(new PdfCell().Add(new Paragraph("Manufacturing Detail").SetFont(boldFont)));
-                _ = factoryTable.AddCell(new PdfCell().Add(new Paragraph(dto.Factory.ManuacturingDetail ?? "-")));
-
-                _ = factoryTable.AddCell(new PdfCell().Add(new Paragraph("Situation").SetFont(boldFont)));
-                _ = factoryTable.AddCell(new PdfCell().Add(new Paragraph(dto.Factory.Situation ?? "-")));
-
-                _ = factoryTable.AddCell(new PdfCell().Add(new Paragraph("Address").SetFont(boldFont)));
-                _ = factoryTable.AddCell(new PdfCell().Add(new Paragraph(FormatAddress(
-                    dto.Factory.AddressLine1,
-                    dto.Factory.AddressLine2,
-                    dto.Factory.Area,
-                    dto.Factory.DistrictName,
-                    dto.Factory.Pincode
-                ))));
-                _ = document.Add(factoryTable);
-                _ = document.Add(new Paragraph("\n"));
-            }
-
-            // ================= D. Employer Details =================
-            if (dto.MainOwnerDetail != null)
-            {
-                var employerTable = new PdfTable(2).UseAllAvailableWidth();
-                _ = employerTable.AddCell(new PdfCell().Add(new Paragraph("Name").SetFont(boldFont)));
-                _ = employerTable.AddCell(new PdfCell().Add(new Paragraph(dto.MainOwnerDetail.Name ?? "-")));
-
-                _ = employerTable.AddCell(new PdfCell().Add(new Paragraph("Designation").SetFont(boldFont)));
-                _ = employerTable.AddCell(new PdfCell().Add(new Paragraph(dto.MainOwnerDetail.Designation ?? "-")));
-
-                _ = employerTable.AddCell(new PdfCell().Add(new Paragraph("Address").SetFont(boldFont)));
-                _ = employerTable.AddCell(new PdfCell().Add(new Paragraph(FormatAddress(
-                    dto.MainOwnerDetail.AddressLine1,
-                    dto.MainOwnerDetail.AddressLine2,
-                    dto.MainOwnerDetail.Area,
-                    dto.MainOwnerDetail.Tehsil,
-                    dto.MainOwnerDetail.District,
-                    dto.MainOwnerDetail.Pincode
-                ))));
-                _ = employerTable.AddCell(new PdfCell().Add(new Paragraph("Email").SetFont(boldFont)));
-                _ = employerTable.AddCell(new PdfCell().Add(new Paragraph(dto.MainOwnerDetail.Email ?? "-")));
-
-                _ = employerTable.AddCell(new PdfCell().Add(new Paragraph("Mobile").SetFont(boldFont)));
-                _ = employerTable.AddCell(new PdfCell().Add(new Paragraph(dto.MainOwnerDetail.Mobile ?? "-")));
-
-                _ = document.Add(employerTable);
-                _ = document.Add(new Paragraph("\n"));
-            }
-
-            // ================= E. Manager/Agent Details =================
-            if (dto.ManagerOrAgentDetail != null)
-            {
-                var managerTable = new PdfTable(2).UseAllAvailableWidth();
-                _ = managerTable.AddCell(new PdfCell().Add(new Paragraph("Name").SetFont(boldFont)));
-                _ = managerTable.AddCell(new PdfCell().Add(new Paragraph(dto.ManagerOrAgentDetail.Name ?? "-")));
-
-                _ = managerTable.AddCell(new PdfCell().Add(new Paragraph("Designation").SetFont(boldFont)));
-                _ = managerTable.AddCell(new PdfCell().Add(new Paragraph(dto.ManagerOrAgentDetail.Designation ?? "-")));
-
-                _ = managerTable.AddCell(new PdfCell().Add(new Paragraph("Address").SetFont(boldFont)));
-                _ = managerTable.AddCell(new PdfCell().Add(new Paragraph(FormatAddress(
-                    dto.ManagerOrAgentDetail.AddressLine1,
-                    dto.ManagerOrAgentDetail.AddressLine2,
-                    dto.ManagerOrAgentDetail.Area,
-                    dto.ManagerOrAgentDetail.Tehsil,
-                    dto.ManagerOrAgentDetail.District,
-                    dto.ManagerOrAgentDetail.Pincode
-                ))));
-                _ = document.Add(managerTable);
-                _ = document.Add(new Paragraph("\n"));
-            }
-
-            // ================= F. Contractor Details =================
-            if (dto.ContractorDetail != null && dto.ContractorDetail.Any())
-            {
-                foreach (var contractor in dto.ContractorDetail)
-                {
-                    var contractorTable = new PdfTable(2).UseAllAvailableWidth();
-                    _ = contractorTable.AddCell(new PdfCell().Add(new Paragraph("Name").SetFont(boldFont)));
-                    _ = contractorTable.AddCell(new PdfCell().Add(new Paragraph(contractor.Name ?? "-")));
-
-                    _ = contractorTable.AddCell(new PdfCell().Add(new Paragraph("Work").SetFont(boldFont)));
-                    _ = contractorTable.AddCell(new PdfCell().Add(new Paragraph(contractor.NameOfWork ?? "-")));
-
-                    _ = contractorTable.AddCell(new PdfCell().Add(new Paragraph("Max Male Workers").SetFont(boldFont)));
-                    _ = contractorTable.AddCell(new PdfCell().Add(new Paragraph(contractor.MaxContractWorkerCountMale?.ToString() ?? "-")));
-
-                    _ = contractorTable.AddCell(new PdfCell().Add(new Paragraph("Max Female Workers").SetFont(boldFont)));
-                    _ = contractorTable.AddCell(new PdfCell().Add(new Paragraph(contractor.MaxContractWorkerCountFemale?.ToString() ?? "-")));
-
-                    _ = contractorTable.AddCell(new PdfCell().Add(new Paragraph("Duration").SetFont(boldFont)));
-                    _ = contractorTable.AddCell(new PdfCell().Add(new Paragraph($"{contractor.DateOfCommencement:dd/MM/yyyy} - {contractor.DateOfCompletion:dd/MM/yyyy}")));
-
-                    _ = document.Add(contractorTable);
-                    _ = document.Add(new Paragraph("\n"));
-                }
-            }
-
-            // ================= G. Payment Details =================
-            var transactionData = item.TransactionHistory?
-                                    .Where(t => t.Status != null && t.Status.ToUpper() == "SUCCESS")
-                                    .ToList();
-
-            if (transactionData != null && transactionData.Any())
-            {
-                document.Add(new Paragraph("Payment Details").SetFont(boldFont).SetFontSize(12));
-                document.Add(new Paragraph("\n"));
-
-                var paymentTable = new PdfTable(2).UseAllAvailableWidth();
-
-                foreach (var payment in transactionData)
-                {
-                    _ = paymentTable.AddCell(new PdfCell().Add(new Paragraph("Transaction ID").SetFont(boldFont)));
-                    _ = paymentTable.AddCell(new PdfCell().Add(new Paragraph(payment.RPPTXNID ?? "-")));
-
-                    _ = paymentTable.AddCell(new PdfCell().Add(new Paragraph("Amount").SetFont(boldFont)));
-                    _ = paymentTable.AddCell(new PdfCell().Add(new Paragraph(payment.Amount.ToString("0.00"))));
-
-                    _ = paymentTable.AddCell(new PdfCell().Add(new Paragraph("Paid Amount").SetFont(boldFont)));
-                    _ = paymentTable.AddCell(new PdfCell().Add(new Paragraph(payment.PaidAmount?.ToString("0.00") ?? "-")));
-
-                    _ = paymentTable.AddCell(new PdfCell().Add(new Paragraph("Status").SetFont(boldFont)));
-                    _ = paymentTable.AddCell(new PdfCell().Add(new Paragraph(payment.Status ?? "-")));
-
-                    _ = paymentTable.AddCell(new PdfCell().Add(new Paragraph("Transaction Date").SetFont(boldFont)));
-                    _ = paymentTable.AddCell(new PdfCell().Add(new Paragraph(payment.CreatedAt.ToString("dd/MM/yyyy HH:mm"))));
-
-                    _ = paymentTable.AddCell(new PdfCell(1, 2).Add(new Paragraph("\n"))); // spacing
-                }
-
-                _ = document.Add(paymentTable);
-            }
-
-            // ================= G. Declaration =================
-            var sigTable = new PdfTable(3).UseAllAvailableWidth();
-            _ = sigTable.AddCell(new PdfCell().Add(new Paragraph(dto.StartDate.ToString("dd/MM/yyyy"))).SetTextAlignment(TextAlignment.CENTER));
-            _ = sigTable.AddCell(new PdfCell().Add(new Paragraph(dto.EndDate.ToString("dd/MM/yyyy"))).SetTextAlignment(TextAlignment.CENTER));
-
-            var sigCell = new PdfCell().SetTextAlignment(TextAlignment.CENTER);
-            var signatureBytes = await DownloadImageAsync(dto.SignatureBase64);
-            if (signatureBytes != null)
-            {
-                var signatureImage = new PdfImage(ImageDataFactory.Create(signatureBytes)).ScaleToFit(80, 35);
-                _ = sigCell.Add(signatureImage);
-            }
-            _ = sigCell.Add(new Paragraph("Chief Inspector of Factories and Boilers").SetFontSize(8));
-            _ = sigCell.Add(new Paragraph("Rajasthan, Jaipur").SetFontSize(8));
-            _ = sigTable.AddCell(sigCell);
-            _ = document.Add(sigTable);
-
-            _ = document.Add(new Paragraph($"\nPlace: {dto.DeclarationPlace ?? "-"}").SetFontSize(9));
-            _ = document.Add(new Paragraph("This is a computer generated certificate and bears scanned signature. No physical signature is required.")
-                .SetFontSize(7).SetFontColor(ColorConstants.GRAY));
-
-            document.Close();
-
-            var pdfBytes = await File.ReadAllBytesAsync(filePath);
-
-            var reg = await _db.EstablishmentRegistrations.FirstOrDefaultAsync(x => x.EstablishmentRegistrationId == dto.RegistrationDetail.EstablishmentRegistrationId);
-            if (reg != null)
-            {
-                reg.ApplicationPDFUrl = fileUrl;
-                await _db.SaveChangesAsync();
-            }
-
-            return filePath;
-        }
         private string FormatAddress(params string[] parts)
         {
             // Filter out null or whitespace
@@ -3691,5 +3257,825 @@ namespace RajFabAPI.Services
             public int TotalPerson { get; set; }
             public string Type { get; set; } // new, update, renew
         }
+
+        public async Task<string> GenerateEstablishmentPdf(EstablishmentApplicationDto item)
+        {
+            if (item == null) throw new ArgumentNullException(nameof(item));
+
+            var transactiondata = item.TransactionHistory;
+            var dto = item.ApplicationDetails;
+
+            // File name and paths
+            var fileName = $"establishment_{dto.RegistrationDetail.ApplicationRegistrationNumber}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+            var webRootPath = _environment.WebRootPath;
+            if (string.IsNullOrWhiteSpace(webRootPath))
+                throw new InvalidOperationException("wwwroot is not configured.");
+
+            var uploadPath = Path.Combine(webRootPath, "factory-establishment-forms");
+            _ = Directory.CreateDirectory(uploadPath);
+            var filePath = Path.Combine(uploadPath, fileName);
+
+            var httpContext = _httpContextAccessor.HttpContext
+                ?? throw new InvalidOperationException("HTTP context unavailable");
+            var request = httpContext.Request;
+            var baseUrl = _config["BaseUrl"] ?? $"{request.Scheme}://{request.Host}";
+            var fileUrl = $"{baseUrl}/factory-establishment-forms/{fileName}";
+
+            // Create PDF
+            using var writer = new PdfWriter(filePath);
+            using var pdf = new PdfDocument(writer);
+            using var document = new PdfDoc(pdf);
+
+            document.SetMargins(40, 40, 40, 40);
+
+            var boldFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA_BOLD);
+            var regularFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA);
+
+            // ─────────────────────────────────────────────
+            // HEADER  (centered, no borders)
+            // ─────────────────────────────────────────────
+            _ = document.Add(new Paragraph("Form-1")
+                .SetFont(boldFont).SetFontSize(13)
+                .SetTextAlignment(TextAlignment.CENTER));
+
+            _ = document.Add(new Paragraph("(See clause (i) of sub-rule (1) of rule 5)")
+                .SetFont(regularFont).SetFontSize(10)
+                .SetTextAlignment(TextAlignment.CENTER));
+
+            _ = document.Add(new Paragraph(
+                    "Application for Registration for existing establishment or factory/New Establishment or\nfactory/Amendment to certificate of Registration")
+                .SetFont(boldFont).SetFontSize(10)
+                .SetTextAlignment(TextAlignment.CENTER)
+                .SetMarginBottom(8));
+
+            // ─────────────────────────────────────────────
+            // SECTION A – Establishment Details
+            // Items 1, 2, 3, 4 (with sub-items a,b,c)
+            // ─────────────────────────────────────────────
+            var estTableTop = new PdfTable(new float[] { 260f, 260f }).UseAllAvailableWidth()
+                .SetBorder(Border.NO_BORDER);
+
+            // 1, 2, 3
+            var estItems = new[]
+            {
+                ("1. Retrieve details of Establishment through LIN:", dto.EstablishmentDetail.LinNumber ?? "-"),
+                ("2. Name of Establishment:",                        dto.EstablishmentDetail.Name ?? "-"),
+                ("3. Location and Address of the Establishment:",    FormatAddress(
+                                                                        dto.EstablishmentDetail.AddressLine1,
+                                                                        dto.EstablishmentDetail.AddressLine2,
+                                                                        dto.EstablishmentDetail.Area,
+                                                                        dto.EstablishmentDetail.TehsilName,
+                                                                        dto.EstablishmentDetail.DistrictName,
+                                                                        dto.EstablishmentDetail.Pincode)),
+            };
+            foreach (var (label, value) in estItems)
+            {
+                _ = estTableTop.AddCell(new PdfCell()
+                    .Add(new Paragraph(label).SetFont(boldFont).SetFontSize(9))
+                    .SetBorder(Border.NO_BORDER).SetPaddingLeft(4));
+                _ = estTableTop.AddCell(new PdfCell()
+                    .Add(new Paragraph(value).SetFont(regularFont).SetFontSize(9))
+                    .SetBorder(Border.NO_BORDER));
+            }
+
+            // 4. Others details — full-width heading
+            _ = estTableTop.AddCell(new PdfCell(1, 2)
+                .Add(new Paragraph("4. Others details of Establishment:").SetFont(boldFont).SetFontSize(9))
+                .SetBorder(Border.NO_BORDER).SetPaddingLeft(4));
+
+            // Sub-items a, b, c
+            var subItems = new[]
+            {
+                ("a.   Total Number of employees engaged directly in the establishment:",
+                    dto.EstablishmentDetail.TotalNumberOfEmployee.ToString()),
+                ("b.   Total Number of the contract employees engaged:",
+                    dto.EstablishmentDetail.TotalNumberOfContractEmployee.ToString()),
+                ("c.   Total Number of Inter-State Migrant workers employed:",
+                    dto.EstablishmentDetail.TotalNumberOfInterstateWorker.ToString()),
+            };
+            foreach (var (label, value) in subItems)
+            {
+                _ = estTableTop.AddCell(new PdfCell()
+                    .Add(new Paragraph(label).SetFont(boldFont).SetFontSize(9))
+                    .SetBorder(Border.NO_BORDER).SetPaddingLeft(24));
+                _ = estTableTop.AddCell(new PdfCell()
+                    .Add(new Paragraph(value ?? "-").SetFont(regularFont).SetFontSize(9))
+                    .SetBorder(Border.NO_BORDER));
+            }
+
+            // ── Flush items 1–4 to document BEFORE 5(a) table ────────────────
+            _ = document.Add(estTableTop);
+
+            // add space for visual separation before next section
+            // _ = document.Add(new Paragraph("\n").SetFontSize(4));
+
+            // ─────────────────────────────────────────────
+            // 5(a). For Factories
+            // ─────────────────────────────────────────────
+            if (dto.Factory != null)
+            {
+                _ = document.Add(new Paragraph("5(a). For Factories:")
+                    .SetFont(boldFont).SetFontSize(9));
+                // .SetMarginLeft(24)
+                // .SetMarginBottom(2));
+
+                var factoryHeaders = new[]
+                {
+                    "Details of the\nmanufacturing\nprocess",
+                    "Full postal address and\nsituation of the factory\nalong with plan\napproval details",
+                    "Name and address\nof the occupier and\nmanager",
+                    "Maximum\nnumber of\nworkers to be\nemployed on any\nday",
+                    "Sanctioned\nLoad\n(HP)"
+                };
+
+                var factoryTable = new PdfTable(new float[] { 80f, 120f, 110f, 90f, 70f })
+                    .UseAllAvailableWidth().SetMarginLeft(24);
+
+                // Header row
+                foreach (var h in factoryHeaders)
+                    _ = factoryTable.AddCell(BuildHeaderCell(h, boldFont));
+
+                // Number row
+                for (int i = 1; i <= 5; i++)
+                    _ = factoryTable.AddCell(BuildCenterCell(i.ToString(), regularFont));
+
+                // Data row
+                _ = factoryTable.AddCell(BuildDataCell(dto.Factory.ManuacturingDetail ?? "-", regularFont));
+                _ = factoryTable.AddCell(BuildDataCell(FormatAddress(
+                    dto.Factory.AddressLine1, dto.Factory.AddressLine2, dto.Factory.DistrictName,
+                    dto.Factory.SubDivisionName, dto.Factory.TehsilName, dto.Factory.Area,
+                    dto.Factory.Pincode), regularFont));
+                _ = factoryTable.AddCell(BuildDataCell(
+                    FormatNameAddress(dto.MainOwnerDetail?.Name, dto.ManagerOrAgentDetail?.Name,
+                        dto.MainOwnerDetail == null ? null : FormatAddress(
+                            dto.MainOwnerDetail.AddressLine1, dto.MainOwnerDetail.AddressLine2,
+                            dto.MainOwnerDetail.Area, dto.MainOwnerDetail.Tehsil,
+                            dto.MainOwnerDetail.District, dto.MainOwnerDetail.Pincode)), regularFont));
+                _ = factoryTable.AddCell(BuildDataCell(dto.Factory.NumberOfWorker.ToString() ?? "-", regularFont));
+                _ = factoryTable.AddCell(BuildDataCell(dto.Factory.SanctionedLoad?.ToString("0.##") ?? "-", regularFont));
+
+                _ = document.Add(factoryTable);
+                _ = document.Add(new Paragraph("\n").SetFontSize(4));
+            }
+
+            // ─────────────────────────────────────────────
+            // Items 6, 7, 8, 9  (new table, added AFTER 5(a))
+            // ─────────────────────────────────────────────
+            var estTableBottom = new PdfTable(new float[] { 260f, 260f }).UseAllAvailableWidth()
+                .SetBorder(Border.NO_BORDER);
+
+            var estItems2 = new[]
+            {
+                ("6. Ownership Type/Sector:",                              dto.Factory.OwnershipTypeSector ?? "-"),
+                ("7. Activity as per National Industrial Classification:", dto.Factory.ActivityAsPerNIC ?? "-"),
+                ("8. Details of Selected NIC Code:",                       dto.Factory.NICCodeDetail ?? "-"),
+                ("9. Identification of the establishment e-sign/ digital sign of employer/ representative:",
+                    dto.Factory.IdentificationOfEstablishment ?? "-"),
+            };
+            foreach (var (label, value) in estItems2)
+            {
+                _ = estTableBottom.AddCell(new PdfCell()
+                    .Add(new Paragraph(label).SetFont(boldFont).SetFontSize(9))
+                    .SetBorder(Border.NO_BORDER).SetPaddingLeft(4));
+                _ = estTableBottom.AddCell(new PdfCell()
+                    .Add(new Paragraph(value).SetFont(regularFont).SetFontSize(9))
+                    .SetBorder(Border.NO_BORDER));
+            }
+            _ = document.Add(estTableBottom);
+            _ = document.Add(new Paragraph("\n").SetFontSize(4));
+
+            // ─────────────────────────────────────────────
+            // SECTION B – Details of Employer
+            // ─────────────────────────────────────────────
+            if (dto.MainOwnerDetail != null)
+            {
+                _ = document.Add(new Paragraph("B.   Details of Employer")
+                    .SetFont(boldFont).SetFontSize(10).SetMarginBottom(4));
+
+                var empTable = new PdfTable(new float[] { 260f, 260f })
+                    .UseAllAvailableWidth().SetBorder(Border.NO_BORDER);
+
+                var empItems = new[]
+                {
+                ("1. Name & Address of Employer / Occupier / Owner/Agent/ Chief Executive/ port authority etc.:",
+                    dto.MainOwnerDetail.Name ?? "-"),
+                ("   Address:", FormatAddress(
+                    dto.MainOwnerDetail.AddressLine1,
+                    dto.MainOwnerDetail.AddressLine2,
+                    dto.MainOwnerDetail.Area,
+                    dto.MainOwnerDetail.Tehsil,
+                    dto.MainOwnerDetail.District,
+                    dto.MainOwnerDetail.Pincode)),
+                ("2. Designation:", dto.MainOwnerDetail.Designation ?? "-"),
+                ("3. Father 's/ Husband 's Name of the Employer:", $"{dto.MainOwnerDetail.RelativeName ?? "-"} ({dto.MainOwnerDetail.RelationType ?? "-"})"),
+                ("4. Email Address, Telephone & Mobile No:", $"{dto.MainOwnerDetail.Email ?? "-"}  , {dto.MainOwnerDetail.Telephone ?? "-"} , {dto.MainOwnerDetail.Mobile ?? "-"}"),
+            };
+
+                foreach (var (label, value) in empItems)
+                {
+                    _ = empTable.AddCell(new PdfCell()
+                        .Add(new Paragraph(label).SetFont(boldFont).SetFontSize(9))
+                        .SetBorder(Border.NO_BORDER).SetPaddingLeft(4));
+                    _ = empTable.AddCell(new PdfCell()
+                        .Add(new Paragraph(value).SetFont(regularFont).SetFontSize(9))
+                        .SetBorder(Border.NO_BORDER));
+                }
+                _ = document.Add(empTable);
+                _ = document.Add(new Paragraph("\n").SetFontSize(4));
+            }
+
+
+            // Signature on right
+            var sigOuterTable1 = new PdfTable(new float[] { 300f, 220f })
+                .UseAllAvailableWidth().SetBorder(Border.NO_BORDER);
+
+            // Left: Date & Place
+            var leftCell1 = new PdfCell().SetBorder(Border.NO_BORDER).SetPaddingTop(20);
+            _ = leftCell1.Add(new Paragraph($"Dated: {dto.StartDate:dd/MM/yyyy}")
+                .SetFont(regularFont).SetFontSize(9));
+            _ = sigOuterTable1.AddCell(leftCell1);
+
+            // Right: Signature block
+            var sigCell1 = new PdfCell()
+                .SetBorder(Border.NO_BORDER)
+                .SetPaddingTop(20);
+            // .SetTextAlignment(TextAlignment.CENTER);
+
+            _ = sigCell1.Add(new Paragraph("Signature/ E-sign/digital sign of employer")
+                .SetFont(regularFont).SetFontSize(8)
+                .SetTextAlignment(TextAlignment.RIGHT));
+
+            _ = sigOuterTable1.AddCell(sigCell1);
+            _ = document.Add(sigOuterTable1);
+
+            // ─────────────────────────────────────────────
+            // SECTION C – Manager/Agent Details
+            // ─────────────────────────────────────────────
+            if (dto.ManagerOrAgentDetail != null)
+            {
+                _ = document.Add(new Paragraph("C.   Manager/ Agent Details")
+                    .SetFont(boldFont).SetFontSize(10).SetMarginBottom(4));
+
+                var mgrTable = new PdfTable(new float[] { 260f, 260f })
+                    .UseAllAvailableWidth().SetBorder(Border.NO_BORDER);
+
+                var mgrItems = new[]
+                {
+                ("1. Full name & Address of Manager/ Agent or person responsible for supervision and control of the Establishment:",
+                    dto.ManagerOrAgentDetail.Name ?? "-"),
+                ("2. Address of Manager/ Agent:", FormatAddress(
+                    dto.ManagerOrAgentDetail.AddressLine1,
+                    dto.ManagerOrAgentDetail.AddressLine2,
+                    dto.ManagerOrAgentDetail.Area,
+                    dto.ManagerOrAgentDetail.Tehsil,
+                    dto.ManagerOrAgentDetail.District,
+                    dto.ManagerOrAgentDetail.Pincode)),
+                ("3. Email Address, Telephone & Mobile No:", $"{dto.ManagerOrAgentDetail.Email ?? "-"}  , {dto.ManagerOrAgentDetail.Telephone ?? "-"} , {dto.ManagerOrAgentDetail.Mobile ?? "-"}"),
+            };
+
+                foreach (var (label, value) in mgrItems)
+                {
+                    _ = mgrTable.AddCell(new PdfCell()
+                        .Add(new Paragraph(label).SetFont(boldFont).SetFontSize(9))
+                        .SetBorder(Border.NO_BORDER).SetPaddingLeft(4));
+                    _ = mgrTable.AddCell(new PdfCell()
+                        .Add(new Paragraph(value).SetFont(regularFont).SetFontSize(9))
+                        .SetBorder(Border.NO_BORDER));
+                }
+                _ = document.Add(mgrTable);
+                _ = document.Add(new Paragraph("\n").SetFontSize(4));
+            }
+
+            // ─────────────────────────────────────────────
+            // SECTION D – Contractor Details
+            // ─────────────────────────────────────────────
+            if (dto.ContractorDetail != null && dto.ContractorDetail.Any())
+            {
+                _ = document.Add(new Paragraph("D.   Contractor Details")
+                    .SetFont(boldFont).SetFontSize(10).SetMarginBottom(4));
+
+                var contractorHeaders = new[]
+                {
+                "Name and\nAddress\nContractor",
+                "Email address &\nMobile of\nContractor",
+                "Name of Work",
+                "Maximum No. of\nContract labour\nengaged",
+                "Date of\nCommencement\n-Probable date\nof Completion\nof work"
+            };
+
+                var contractorTable = new PdfTable(new float[] { 100f, 100f, 100f, 100f, 120f })
+                    .UseAllAvailableWidth();
+
+                foreach (var h in contractorHeaders)
+                    _ = contractorTable.AddCell(BuildHeaderCell(h, boldFont));
+
+                for (int i = 1; i <= 5; i++)
+                    _ = contractorTable.AddCell(BuildCenterCell(i.ToString(), regularFont));
+
+                foreach (var contractor in dto.ContractorDetail)
+                {
+                    _ = contractorTable.AddCell(BuildDataCell(
+                        $"{contractor?.Name ?? "-"}\n{FormatAddress(
+                            contractor?.AddressLine1,
+                            contractor?.AddressLine2,
+                            contractor?.Area,
+                            contractor?.Tehsil,
+                            contractor?.District,
+                            contractor?.Pincode
+                        ) ?? ""}",
+                        regularFont
+                    ));
+                    _ = contractorTable.AddCell(BuildDataCell(
+                        $"{contractor.Email ?? "-"}\n{contractor.Mobile ?? "-"}", regularFont));
+                    _ = contractorTable.AddCell(BuildDataCell(contractor.NameOfWork ?? "-", regularFont));
+                    _ = contractorTable.AddCell(BuildDataCell(
+                        $"Male: {contractor.MaxContractWorkerCountMale?.ToString() ?? "-"}\nFemale: {contractor.MaxContractWorkerCountFemale?.ToString() ?? "-"}", regularFont));
+                    _ = contractorTable.AddCell(BuildDataCell(
+                        $"{contractor.DateOfCommencement:dd/MM/yyyy}-\n{contractor.DateOfCompletion:dd/MM/yyyy}", regularFont));
+                }
+
+                _ = document.Add(contractorTable);
+                _ = document.Add(new Paragraph("\n").SetFontSize(4));
+            }
+
+            _ = document.Add(new Paragraph("\n").SetFontSize(225)); // add vertical space before signature section
+
+            // Signature on right
+            var sigOuterTable = new PdfTable(new float[] { 300f, 220f })
+                .UseAllAvailableWidth().SetBorder(Border.NO_BORDER);
+
+            // Left: Date & Place
+            var leftCell = new PdfCell().SetBorder(Border.NO_BORDER).SetPaddingTop(20);
+            _ = leftCell.Add(new Paragraph($"Dated: {dto.StartDate:dd/MM/yyyy}")
+                .SetFont(regularFont).SetFontSize(9));
+            _ = leftCell.Add(new Paragraph($"Place: {dto.EstablishmentDetail.SubDivisionName ?? "-"}")
+                .SetFont(regularFont).SetFontSize(9));
+            _ = sigOuterTable.AddCell(leftCell);
+
+            // Right: Signature block
+            var sigCell = new PdfCell()
+                .SetBorder(Border.NO_BORDER)
+                .SetPaddingTop(20);
+            // .SetTextAlignment(TextAlignment.CENTER);
+
+            _ = sigCell.Add(new Paragraph("Signature/ E-sign/digital sign of employer")
+                .SetFont(regularFont).SetFontSize(8)
+                .SetTextAlignment(TextAlignment.RIGHT));
+
+            _ = sigOuterTable.AddCell(sigCell);
+            _ = document.Add(sigOuterTable);
+
+            // _ = document.Add(new Paragraph(
+            //         "This is a computer generated certificate and bears scanned signature. No physical signature is required.")
+            //     .SetFont(regularFont).SetFontSize(7)
+            //     .SetFontColor(ColorConstants.GRAY)
+            //     .SetMarginTop(10));
+
+            document.Close();
+
+            var pdfBytes = await File.ReadAllBytesAsync(filePath);
+
+            var reg = await _db.EstablishmentRegistrations
+                .FirstOrDefaultAsync(x => x.EstablishmentRegistrationId == dto.RegistrationDetail.EstablishmentRegistrationId);
+            if (reg != null)
+            {
+                reg.ApplicationPDFUrl = fileUrl;
+                await _db.SaveChangesAsync();
+            }
+
+            return filePath;
+        }
+
+        // ─────────────────────────────────────────────
+        // Helper methods
+        // ─────────────────────────────────────────────
+
+        /// <summary>Builds a bold, centered, bordered header cell with small font.</summary>
+        private static PdfCell BuildHeaderCell(string text, PdfFont boldFont)
+        {
+            return new PdfCell()
+                .Add(new Paragraph(text).SetFont(boldFont).SetFontSize(8))
+                .SetTextAlignment(TextAlignment.CENTER)
+                .SetBackgroundColor(new DeviceRgb(240, 240, 240))
+                .SetPadding(4);
+        }
+
+        /// <summary>Builds a centered cell (used for column-index row).</summary>
+        private static PdfCell BuildCenterCell(string text, PdfFont font)
+        {
+            return new PdfCell()
+                .Add(new Paragraph(text).SetFont(font).SetFontSize(8))
+                .SetTextAlignment(TextAlignment.CENTER)
+                .SetPadding(3);
+        }
+
+        /// <summary>Builds a standard data cell.</summary>
+        private static PdfCell BuildDataCell(string text, PdfFont font)
+        {
+            return new PdfCell()
+                .Add(new Paragraph(text ?? "-").SetFont(font).SetFontSize(9))
+                .SetPadding(4);
+        }
+
+        /// <summary>Formats occupier + manager names for factory table column 3.</summary>
+        private static string FormatNameAddress(string? occupierName, string? managerName, string? address)
+        {
+            var parts = new List<string>();
+            if (!string.IsNullOrWhiteSpace(occupierName))
+                parts.Add($"Occupier: {occupierName}");
+            if (!string.IsNullOrWhiteSpace(managerName))
+                parts.Add($"Manager: {managerName}");
+            if (!string.IsNullOrWhiteSpace(address))
+                parts.Add(address);
+            return parts.Any() ? string.Join("\n", parts) : "-";
+        }
+
+        public async Task<string> GenerateCertificate(EstablishmentCertificatePdfRequestDto dto, string registrationId)
+        {
+            if (dto == null) throw new ArgumentNullException(nameof(dto));
+
+            var fileName = $"certificate_{registrationId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+
+            var webRootPath = _environment.WebRootPath;
+            if (string.IsNullOrWhiteSpace(webRootPath))
+                throw new InvalidOperationException("wwwroot is not configured. Make sure UseStaticFiles() is enabled.");
+
+            var uploadPath = Path.Combine(webRootPath, "certificates");
+            _ = Directory.CreateDirectory(uploadPath);
+            var filePath = Path.Combine(uploadPath, fileName);
+
+            var httpContext = _httpContextAccessor.HttpContext
+                ?? throw new InvalidOperationException("HTTP context unavailable");
+            var request = httpContext.Request;
+            var baseUrl = _config["BaseUrl"] ?? $"{request.Scheme}://{request.Host}";
+            var fileUrl = $"{baseUrl}/certificates/{fileName}";
+
+            // ── Fonts ─────────────────────────────────────────────────────────────────
+            var boldFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA_BOLD);
+            var regularFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA);
+
+            // ── PDF setup ─────────────────────────────────────────────────────────────
+            using var writer = new PdfWriter(filePath);
+            using var pdf = new PdfDocument(writer);
+            using var document = new PdfDoc(pdf);
+            document.SetMargins(50, 50, 50, 50);
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // HEADER
+            // ═════════════════════════════════════════════════════════════════════════
+            _ = document.Add(new Paragraph("Form-2")
+                .SetFont(boldFont).SetFontSize(12)
+                .SetTextAlignment(TextAlignment.CENTER)
+                .SetUnderline()
+                .SetMarginBottom(2f));
+
+            _ = document.Add(new Paragraph("(See clause (d) of sub-rule (1) of rule 5)")
+                .SetFont(regularFont).SetFontSize(10)
+                .SetTextAlignment(TextAlignment.CENTER)
+                .SetMarginBottom(2f));
+
+            _ = document.Add(new Paragraph("Certificate of Registration of Establishment")
+                .SetFont(boldFont).SetFontSize(11)
+                .SetTextAlignment(TextAlignment.CENTER)
+                .SetMarginBottom(10f));
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // Registration No.  +  Date  (left / right, no border)
+            // ═════════════════════════════════════════════════════════════════════════
+            var regTable = new PdfTable(new float[] { 1f, 1f })
+                .UseAllAvailableWidth().SetBorder(Border.NO_BORDER).SetMarginBottom(8f);
+
+            _ = regTable.AddCell(new PdfCell()
+                .Add(new Paragraph($"Registration No.  {dto.ApplicationRegistrationNumber ?? ""}").SetFont(regularFont).SetFontSize(9))
+                .SetBorder(Border.NO_BORDER));
+            _ = regTable.AddCell(new PdfCell()
+                .Add(new Paragraph($"Date  {dto.StartDate:dd/MM/yyyy}").SetFont(regularFont).SetFontSize(9)
+                    .SetTextAlignment(TextAlignment.RIGHT))
+                .SetBorder(Border.NO_BORDER));
+            _ = document.Add(regTable);
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // Certificate opening paragraph
+            // ═════════════════════════════════════════════════════════════════════════
+            _ = document.Add(new Paragraph(
+                    "A Certificate of registration containing the following particulars is hereby granted under sub-section (2) of " +
+                    "section 3 of the Occupational Safety, Health and Working Conditions Code, 2020 (Central Act No 37 of 2020) " +
+                    $"to {dto.EstablishmentName ?? "-"} (Name of the establishment)")
+                .SetFont(regularFont).SetFontSize(9)
+                .SetMarginBottom(6f));
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // 1. Nature of work — tick-mark options (two columns)
+            // ═════════════════════════════════════════════════════════════════════════
+            _ = document.Add(new Paragraph("1.Nature of work carried on in the establishment")
+                .SetFont(regularFont).SetFontSize(9)
+                .SetMarginBottom(3f));
+
+            string selectedType = dto.EstablishmentType ?? "Factory";
+
+            var natureTable = new PdfTable(new float[] { 1f, 1f })
+                .UseAllAvailableWidth()
+                .SetBorder(Border.NO_BORDER)
+                .SetMarginBottom(4f);
+
+            void AddNatureRow(string leftCode, string leftLabel, string rightCode, string rightLabel)
+            {
+                // Check if the left/right option is selected
+                bool lSel = selectedType.IndexOf(leftLabel, StringComparison.OrdinalIgnoreCase) >= 0;
+                bool rSel = selectedType.IndexOf(rightLabel, StringComparison.OrdinalIgnoreCase) >= 0;
+
+                // Only add checkbox for (a) Factory when selected
+                string leftPrefix = (leftCode == "(a)" && leftLabel == "Factory" && lSel)
+                    ? "\u2611 "  // ☑
+                    : "";
+
+                // LEFT CELL
+                _ = natureTable.AddCell(new PdfCell()
+                    .Add(new Paragraph($"{leftPrefix}{leftCode} {leftLabel}{(lSel ? " \u2713" : "")}")
+                        .SetFont(lSel ? boldFont : regularFont)
+                        .SetFontSize(9))
+                    .SetBorder(Border.NO_BORDER)
+                    .SetPaddingLeft(20f));
+
+                // RIGHT CELL
+                _ = natureTable.AddCell(new PdfCell()
+                    .Add(new Paragraph($" {rightCode} {rightLabel}{(rSel ? " \u2713" : "")}")
+                        .SetFont(rSel ? boldFont : regularFont)
+                        .SetFontSize(9))
+                    .SetBorder(Border.NO_BORDER)
+                    .SetPaddingLeft(20f));
+            }
+
+            // Add rows
+            AddNatureRow("(a)", "Factory", "(b)", "Mining");
+            AddNatureRow("(c)", "Dock work", "(d)", "Contract Work");
+            AddNatureRow("(e)", "Building and Other Construction Works", "(f)", "Any other work (not covered above)");
+
+            // Add table to document
+            _ = document.Add(natureTable);
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // 2. Details of the establishment  a–d
+            // ═════════════════════════════════════════════════════════════════════════
+            _ = document.Add(new Paragraph("2. Details of the establishment:")
+                .SetFont(regularFont).SetFontSize(9)
+                .SetMarginTop(4f).SetMarginBottom(3f));
+
+            var detRows = new[]
+            {
+                ("a.", "Total Number of employees engaged directly in the establishment:",      dto.DirectEmployees?.ToString()   ?? ""),
+                ("b.", "Total Number of the employees engaged through contractor:",             dto.ContractorEmployees?.ToString() ?? ""),
+                ("c.", "Total Number of Contractors and their details:",                        dto.NumberOfContractors?.ToString() ?? ""),
+                ("d.", "Number of inter-state migrant workers engaged:",                        dto.InterStateWorkers?.ToString() ?? ""),
+            };
+
+            foreach (var (letter, label, value) in detRows)
+            {
+                var row = new PdfTable(new float[] { 20f, 320f, 80f })
+                    .UseAllAvailableWidth().SetBorder(Border.NO_BORDER).SetMarginBottom(1f);
+                _ = row.AddCell(new PdfCell()
+                    .Add(new Paragraph(letter).SetFont(regularFont).SetFontSize(9))
+                    .SetBorder(Border.NO_BORDER).SetPaddingLeft(20f));
+                _ = row.AddCell(new PdfCell()
+                    .Add(new Paragraph(label).SetFont(regularFont).SetFontSize(9))
+                    .SetBorder(Border.NO_BORDER));
+                _ = row.AddCell(new PdfCell()
+                    .Add(new Paragraph(value).SetFont(regularFont).SetFontSize(9))
+                    .SetBorder(Border.NO_BORDER));
+                _ = document.Add(row);
+            }
+            _ = document.Add(new Paragraph("").SetMarginBottom(6f));
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // 3(a). For factories — 4-column bordered table
+            // ═════════════════════════════════════════════════════════════════════════
+            _ = document.Add(new Paragraph("3. (a) For factories")
+                .SetFont(regularFont).SetFontSize(9)
+                .SetMarginLeft(10f).SetMarginBottom(3f));
+
+            var factTable = new PdfTable(new float[] { 1f, 1.4f, 1.3f, 1f })
+                .UseAllAvailableWidth().SetMarginBottom(10f);
+
+            foreach (var h in new[]
+            {
+                "Details of the\nmanufacturing process",
+                "Full postal address and\nsituation of the factory\nalong with plan approval\ndetails",
+                "Name and address of the\noccupier and manager",
+                "Maximum number\nof workers to be\nemployed on\nany day"
+            })
+                _ = factTable.AddCell(CertHeaderCell(h, boldFont));
+
+            for (int i = 1; i <= 4; i++)
+                _ = factTable.AddCell(CertIndexCell(i.ToString(), regularFont));
+
+            _ = factTable.AddCell(CertDataCell(dto.FactoryManufacturingDetail ?? "", regularFont));
+            _ = factTable.AddCell(CertDataCell(dto.FactoryAddress ?? "", regularFont));
+            _ = factTable.AddCell(CertDataCell(
+                string.Join("\n", new[] { dto.EmployerName, dto.EmployerAddress, dto.ManagerName, dto.ManagerAddress }
+                    .Where(s => !string.IsNullOrWhiteSpace(s))), regularFont));
+            _ = factTable.AddCell(CertDataCell(dto.MaxWorkers?.ToString() ?? "", regularFont));
+            _ = document.Add(factTable);
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // 3(b). For mines — 5-column bordered table
+            // ═════════════════════════════════════════════════════════════════════════
+            _ = document.Add(new Paragraph("3. (b) For mines")
+                .SetFont(regularFont).SetFontSize(9)
+                .SetMarginLeft(10f).SetMarginBottom(3f));
+
+            var mineTable = new PdfTable(new float[] { 1f, 1.2f, 1.1f, 1.2f, 1.1f })
+                .UseAllAvailableWidth().SetMarginBottom(10f);
+
+            foreach (var h in new[]
+            {
+                "Name of\nMineral(s)",
+                "Lease extent of the\nmine (in Acres)",
+                "Name and address\nof the owner",
+                "Average Monthly\noutput, targeted\n(Tonne)",
+                "Maximum number\nof persons to be\nemployed on any\nday"
+            })
+                _ = mineTable.AddCell(CertHeaderCell(h, boldFont));
+
+            for (int i = 1; i <= 5; i++)
+                _ = mineTable.AddCell(CertIndexCell(i.ToString(), regularFont));
+
+            for (int i = 0; i < 5; i++)
+                _ = mineTable.AddCell(CertDataCell("-", regularFont));
+
+            _ = document.Add(mineTable);
+
+            _ = document.Add(new Paragraph("\n").SetFontSize(10));
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // 3(c). For Dock work — 5-column bordered table
+            // ═════════════════════════════════════════════════════════════════════════
+            _ = document.Add(new Paragraph("3. (c) For Dock work")
+                .SetFont(regularFont).SetFontSize(9)
+                .SetMarginLeft(10f).SetMarginBottom(3f));
+
+            var dockTable = new PdfTable(new float[] { 1f, 1f, 1.2f, 1.2f, 1.2f })
+                .UseAllAvailableWidth().SetMarginBottom(10f);
+
+            foreach (var h in new[]
+            {
+                "Name of Dock\nWork / Major\nPort",
+                "Types of Dock\nWorks",
+                "Name of the Cargo\nhandled and stored\nalong with quantity",
+                "Name of the\nchemicals handled\nand stored along\nwith quantity",
+                "Name of the\nhazardous\nchemicals\nhandled and\nstored along with\nquantity"
+            })
+                _ = dockTable.AddCell(CertHeaderCell(h, boldFont));
+
+            for (int i = 1; i <= 5; i++)
+                _ = dockTable.AddCell(CertIndexCell(i.ToString(), regularFont));
+
+            for (int i = 0; i < 5; i++)
+                _ = dockTable.AddCell(CertDataCell("", regularFont));
+
+            _ = document.Add(dockTable);
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // 3(d). For Building and other construction work — 4-column bordered table
+            // ═════════════════════════════════════════════════════════════════════════
+            _ = document.Add(new Paragraph("3. (d) For building and other construction work")
+                .SetFont(regularFont).SetFontSize(9)
+                .SetMarginLeft(10f).SetMarginBottom(3f));
+
+            var buildTable = new PdfTable(new float[] { 1f, 1.3f, 1.3f, 1.2f })
+                .UseAllAvailableWidth().SetMarginBottom(10f);
+
+            foreach (var h in new[]
+            {
+                "Type of\nConstruction\nwork",
+                "Probable period of\ncommencement of work",
+                "Expected period for\ncompletion of work",
+                "Details of approval\nof the local\nauthority"
+            })
+                _ = buildTable.AddCell(CertHeaderCell(h, boldFont));
+
+            for (int i = 1; i <= 4; i++)
+                _ = buildTable.AddCell(CertIndexCell(i.ToString(), regularFont));
+
+            for (int i = 0; i < 4; i++)
+                _ = buildTable.AddCell(CertDataCell("", regularFont));
+
+            _ = document.Add(buildTable);
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // 4. Amount of fees  +  5. Remarks
+            // ═════════════════════════════════════════════════════════════════════════
+            _ = document.Add(new Paragraph(
+                    $"4. Amount of registration fee paid: " +
+                    $"{(dto.RegistrationFeesPaid.HasValue ? dto.RegistrationFeesPaid.Value.ToString("F2") : "")}")
+                .SetFont(regularFont).SetFontSize(9)
+                .SetMarginBottom(3f));
+
+            _ = document.Add(new Paragraph("5. Remarks of registering officers:" +
+                    $" {dto.Remarks}")
+                .SetFont(regularFont).SetFontSize(9)
+                .SetMarginBottom(16f));
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // Signature block — right aligned
+            // ═════════════════════════════════════════════════════════════════════════
+            var sigOuterTable = new PdfTable(new float[] { 1f, 1f })
+                .UseAllAvailableWidth().SetBorder(Border.NO_BORDER).SetMarginBottom(8f);
+
+            // Left: empty
+            _ = sigOuterTable.AddCell(new PdfCell()
+                .Add(new Paragraph(""))
+                .SetBorder(Border.NO_BORDER));
+
+            // Right: signature label + image
+            var sigCell = new PdfCell().SetBorder(Border.NO_BORDER);
+            _ = sigCell.Add(new Paragraph("Signature E -Sign/DSC of Registering Officer along with designation")
+                .SetFont(regularFont).SetFontSize(8)
+                .SetTextAlignment(TextAlignment.RIGHT));
+
+            _ = sigOuterTable.AddCell(sigCell);
+            _ = document.Add(sigOuterTable);
+
+            // Place & Date
+            _ = document.Add(new Paragraph($"Place: {dto.DeclarationPlace ?? ""}")
+                .SetFont(regularFont).SetFontSize(9).SetMarginBottom(2f));
+            _ = document.Add(new Paragraph($"Date:  {dto.StartDate:dd/MM/yyyy}")
+                .SetFont(regularFont).SetFontSize(9).SetMarginBottom(14f));
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // Conditions of Registration
+            // ═════════════════════════════════════════════════════════════════════════
+            _ = document.Add(new Paragraph("Conditions of Registration")
+                .SetFont(boldFont).SetFontSize(10)
+                .SetMarginBottom(6f));
+
+            _ = document.Add(new Paragraph(
+                    "(1)  Every certificate of registration issued under rule 4 shall be subject to the following conditions, namely:")
+                .SetFont(regularFont).SetFontSize(9)
+                .SetMarginBottom(3f));
+
+            foreach (var (code, text) in new[]
+            {
+                ("(a)", "the certificate of registration shall be non-transferable;"),
+                ("(b)", "the number of workers employed in an establishment directly and contract employees shall not, on any day, exceed the maximum number specified in the certificate of registration; and"),
+                ("(c)", "Save as provided in these rules, the fees paid for the grant of registration certificate shall be nonrefundable."),
+            })
+            {
+                var subRow = new PdfTable(new float[] { 30f, 1f })
+                    .UseAllAvailableWidth().SetBorder(Border.NO_BORDER).SetMarginBottom(2f);
+                _ = subRow.AddCell(new PdfCell()
+                    .Add(new Paragraph(code).SetFont(regularFont).SetFontSize(9))
+                    .SetBorder(Border.NO_BORDER).SetPaddingLeft(30f));
+                _ = subRow.AddCell(new PdfCell()
+                    .Add(new Paragraph(text).SetFont(regularFont).SetFontSize(9))
+                    .SetBorder(Border.NO_BORDER));
+                _ = document.Add(subRow);
+            }
+
+            _ = document.Add(new Paragraph(
+                    "(2)  The employer shall intimate the change, if any, in the number of workers or the conditions of work to the registering officer within 30 days")
+                .SetFont(regularFont).SetFontSize(9)
+                .SetMarginTop(3f).SetMarginBottom(3f));
+
+            _ = document.Add(new Paragraph(
+                    "(3)  The employer shall, within thirty days of the commencement and completion of any work, intimate to the Inspector-cum-Facilitator, having jurisdiction in the area where the proposed establishment or as the case may be work is to be executed, intimating the actual date of the commencement or, as the case may be, completion of establishment such work in Form-4 annexed to these rules electronically.")
+                .SetFont(regularFont).SetFontSize(9)
+                .SetMarginBottom(3f));
+
+            _ = document.Add(new Paragraph(
+                    "(4)  A copy of the certificate of registration shall be displayed at the conspicuous places at the premises where the work is being carried on.")
+                .SetFont(regularFont).SetFontSize(9)
+                .SetMarginBottom(6f));
+
+            _ = document.Add(new Paragraph(
+                    "This is a computer generated certificate and bears scanned signature. No physical signature is required on this document. You can verify this document by visiting www.rajfab.rajasthan.gov.in and entering Application No./ID after clicking the link for verification on the page.")
+                .SetFont(regularFont).SetFontSize(7)
+                .SetFontColor(ColorConstants.GRAY));
+
+            document.Close();
+
+            return fileUrl;
+        }
+
+        // ─────────────────────────────────────────────────────────────────────────────
+        // Certificate helper cells  (add alongside your existing BuildHeaderCell etc.)
+        // ─────────────────────────────────────────────────────────────────────────────
+        private static PdfCell CertHeaderCell(string text, PdfFont boldFont)
+            => new PdfCell()
+                .Add(new Paragraph(text).SetFont(boldFont).SetFontSize(8))
+                .SetTextAlignment(TextAlignment.CENTER)
+                .SetVerticalAlignment(VerticalAlignment.MIDDLE)
+                .SetPadding(4f);
+
+        private static PdfCell CertIndexCell(string text, PdfFont regularFont)
+            => new PdfCell()
+                .Add(new Paragraph(text).SetFont(regularFont).SetFontSize(8))
+                .SetTextAlignment(TextAlignment.CENTER)
+                .SetPadding(6f);
+
+        private static PdfCell CertDataCell(string text, PdfFont regularFont)
+            => new PdfCell()
+                .Add(new Paragraph(text ?? "").SetFont(regularFont).SetFontSize(9))
+                .SetPadding(6f)
+                .SetMinHeight(30f);
     }
 }

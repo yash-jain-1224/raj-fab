@@ -415,8 +415,6 @@ namespace RajFabAPI.Services
                     CertificateUrl = certificateUrl,
                     IssuedByUserId = userId,
                     IssuedAt = DateTime.TryParse(dto.IssuedAt, out var issuedAt) ? issuedAt : DateTime.Now,
-                    Place = dto.Place ?? string.Empty,
-                    Signature = dto.Signature,
                     Status = "Issued",
                     ModuleId = module.Id,
                     Remarks = dto.Remarks ?? string.Empty,

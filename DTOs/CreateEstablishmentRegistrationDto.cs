@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace RajFabAPI.DTOs
 {
     public class CreateEstablishmentRegistrationDto
@@ -20,6 +22,24 @@ namespace RajFabAPI.DTOs
         public string? Place { get; set; }
         public DateTime? Date { get; set; }         // use string for payload dates to match incoming JSON
         public string? Signature { get; set; }    // file reference or base64 string depending on client
+        
+        [Required]
+        [StringLength(500)]
+        public string OccupierIdProof { get; set; }
+
+        [Required]
+        [StringLength(500)]
+
+        public string PartnershipDeed { get; set; }
+
+        [Required]
+
+        [StringLength(500)]
+        public string ManagerIdProof { get; set; }
+
+        [Required]
+        [StringLength(500)]
+        public string LoadSanctionCopy { get; set; }
     }
 
     public class EstablishmentRegistrationDetailsDto
@@ -27,6 +47,10 @@ namespace RajFabAPI.DTOs
         public string Id { get; set; }
         public string RegistrationNumber { get; set; }
         public string ApplicationPDFUrl { get; set; }
+        public string OccupierIdProof { get; set; }
+        public string PartnershipDeed { get; set; }
+        public string ManagerIdProof { get; set; }
+        public string LoadSanctionCopy { get; set; }
         public EstablishmentDetailsDto EstablishmentDetail { get; set; }
         public PersonDetailDto MainOwnerDetail { get; set; }
         public PersonDetailDto ManagerOrAgentDetail { get; set; }
@@ -119,10 +143,10 @@ namespace RajFabAPI.DTOs
     {
         public string? ManuacturingDetail { get; set; }
         public string? FactorySituation { get; set; }
-        
+
         public Guid EmployerId { get; set; }
         public Guid ManagerId { get; set; }
-        
+
         public string DistrictId { get; set; }
         public string DistrictName { get; set; }
         public string? SubDivisionId { get; set; }
@@ -174,7 +198,7 @@ namespace RajFabAPI.DTOs
         public string? NatureOfService { get; set; }
         public string? Situation { get; set; }
         public string? AddressLine1 { get; set; }
-        public string? AddressLine2{ get; set; }
+        public string? AddressLine2 { get; set; }
         public string SubDivisionId { get; set; }
         public string TehsilId { get; set; }
         public string? Area { get; set; }

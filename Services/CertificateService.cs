@@ -30,9 +30,7 @@ public class CertificateService : ICertificateService
             IssuedByUserId = issuerUserId,
             IssuedAt = dto.IssuedAt ?? DateTime.Now,
             Status = dto.Status,
-            Place = dto.Place,
             CertificateVersion = version,
-            Signature = dto.Signature,
             ModuleId = dto.ModuleId,
             Remarks = dto.Remarks,
             CertificateUrl = dto.CertificateUrl

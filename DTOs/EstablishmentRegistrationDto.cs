@@ -27,15 +27,16 @@ namespace RajFabAPI.DTOs
         // Audit
         public DateTime? CreatedDate { get; set; }
         public DateTime? UpdatedDate { get; set; }
+        public string OccupierIdProof { get; set; }
+        public string PartnershipDeed { get; set; }
+        public string ManagerIdProof { get; set; }
+        public string LoadSanctionCopy { get; set; }
     }
     public class EstablishmentCertificateRequestDto
     {
         public string Remarks { get; set; }
         public DateTime StartDate { get; set; }
-        public DateTime EndDate { get; set; }
         public string Place { get; set; }
-        public string Signature { get; set; }
-        public DateTime? IssuedAt { get; set; }
     }
     public class EstablishmentCertificatePdfRequestDto : CreateEstablishmentRegistrationDto
     {
@@ -64,6 +65,8 @@ namespace RajFabAPI.DTOs
         public string ManagerAddress { get; set; }
 
         public int? MaxWorkers { get; set; }
+        public int? NumberOfContractors { get; set; }
+        public string Remarks { get; set; }
         public decimal? RegistrationFeesPaid { get; set; }
 
         public string DeclarationPlace { get; set; }

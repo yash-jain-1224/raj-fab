@@ -25,6 +25,18 @@ namespace RajFabAPI.Models
         [Column(TypeName = "decimal(18,2)")]
         public decimal Amount { get; set; }
 
+        [StringLength(500)]
+        public string OccupierIdProof { get; set; } = string.Empty;
+        [StringLength(500)]
+
+        public string PartnershipDeed { get; set; } = string.Empty;
+        [StringLength(500)]
+
+        public string ManagerIdProof { get; set; } = string.Empty;
+        [StringLength(500)]
+
+        public string LoadSanctionCopy { get; set; } = string.Empty;
+
         public string? RegistrationNumber { get; set; }
 
         [Required]

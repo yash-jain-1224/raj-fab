@@ -1756,3 +1756,60 @@ GO
 
 ALTER TABLE [dbo].[SMTCTrainerEducationDetails] CHECK CONSTRAINT [FK_SMTCTrainerEducation]
 GO
+
+
+/****** Object:  Table [dbo].[DocumentUploads]    Script Date: 16/03/2026 18:25:32 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[DocumentUploads](
+	[Id] [int] IDENTITY(1,1) NOT NULL,
+	[UserId] [uniqueidentifier] NOT NULL,
+	[ModuleId] [uniqueidentifier] NOT NULL,
+	[DocumentType] [nvarchar](100) NOT NULL,
+	[DocumentName] [nvarchar](255) NOT NULL,
+	[DocumentUrl] [nvarchar](500) NOT NULL,
+	[DocumentSize] [bigint] NOT NULL,
+	[CreatedAt] [datetime2](7) NOT NULL,
+	[UpdatedAt] [datetime2](7) NOT NULL,
+	[ModuleDocType] [nvarchar](100) NOT NULL,
+	[Version] [decimal](5, 2) NOT NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[DocumentUploads] ADD  DEFAULT (getutcdate()) FOR [CreatedAt]
+GO
+
+ALTER TABLE [dbo].[DocumentUploads] ADD  DEFAULT (getutcdate()) FOR [UpdatedAt]
+GO
+
+ALTER TABLE [dbo].[DocumentUploads] ADD  DEFAULT ('') FOR [ModuleDocType]
+GO
+
+ALTER TABLE [dbo].[DocumentUploads] ADD  DEFAULT ((1.0)) FOR [Version]
+GO
+
+
+CREATE INDEX IX_DocumentUploads_User_Module_DocType
+ON DocumentUploads(UserId, ModuleId, ModuleDocType, Version);
+
+ALTER TABLE EstablishmentRegistrations
+ADD OccupierIdProof NVARCHAR(500) NOT NULL DEFAULT '',
+    PartnershipDeed NVARCHAR(500) NOT NULL DEFAULT '',
+    ManagerIdProof NVARCHAR(500) NOT NULL DEFAULT '',
+    LoadSanctionCopy NVARCHAR(500) NOT NULL DEFAULT '';
+
+ALTER TABLE Certificates
+DROP CONSTRAINT DF_Certificates_Signature;
+    ALTER TABLE Certificates
+DROP COLUMN Place, Signature;
+
+ALTER TABLE Certificates
+ALTER COLUMN EndDate DATETIME NULL;

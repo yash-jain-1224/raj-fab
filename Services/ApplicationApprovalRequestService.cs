@@ -565,7 +565,6 @@ namespace RajFabAPI.Services
                             CertificateVersion = existingVersion + 1m,
                             ApplicationId = boilerReg.ApplicationId ?? "",
                             CertificateUrl = "",
-                            Place = "",
                             Remarks = "Boiler Inspection Certificate"
                         });
                     }

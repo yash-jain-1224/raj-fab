@@ -1757,7 +1757,7 @@ GO
 ALTER TABLE [dbo].[SMTCTrainerEducationDetails] CHECK CONSTRAINT [FK_SMTCTrainerEducation]
 GO
 
-
+drop table DocumentUploads
 /****** Object:  Table [dbo].[DocumentUploads]    Script Date: 16/03/2026 18:25:32 ******/
 SET ANSI_NULLS ON
 GO
@@ -1813,3 +1813,51 @@ DROP COLUMN Place, Signature;
 
 ALTER TABLE Certificates
 ALTER COLUMN EndDate DATETIME NULL;
+
+ALTER TABLE EstablishmentRegistrations
+ADD ObjectionLetterUrl NVARCHAR(500) NOT NULL DEFAULT '';
+
+CREATE TABLE ApplicationObjectionLetters (
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+
+    ApplicationId NVARCHAR(100) NOT NULL,
+
+    ModuleName NVARCHAR(100) NOT NULL,
+
+    FileUrl NVARCHAR(MAX) NOT NULL,
+
+    Subject NVARCHAR(MAX) NULL,
+
+    GeneratedBy NVARCHAR(100) NULL,
+
+    GeneratedByName NVARCHAR(200) NULL,
+
+    SignatoryDesignation NVARCHAR(200) NULL,
+
+    SignatoryLocation NVARCHAR(200) NULL,
+
+    Version INT NOT NULL DEFAULT 1,
+
+    CreatedDate DATETIME NOT NULL DEFAULT GETDATE()
+);
+
+CREATE INDEX IX_ApplicationObjectionLetters_ApplicationId
+ON ApplicationObjectionLetters (ApplicationId);
+
+CREATE INDEX IX_AppObjection_AppId_Version
+ON ApplicationObjectionLetters (ApplicationId, Version);
+
+CREATE UNIQUE INDEX UX_AppObjection_AppId_Version
+ON ApplicationObjectionLetters (ApplicationId, Version);
+
+CREATE INDEX IX_ApplicationObjectionLetters_AppId_Version
+ON ApplicationObjectionLetters (ApplicationId, Version);
+
+CREATE UNIQUE INDEX UX_ApplicationObjectionLetters_AppId_Version
+ON ApplicationObjectionLetters (ApplicationId, Version);
+
+ALTER TABLE EstablishmentRegistrations
+ADD AutoRenewal BIT NOT NULL DEFAULT 0;
+
+ALTER TABLE EstablishmentDetails
+ADD PanNumber NVARCHAR(20) NOT NULL DEFAULT '';

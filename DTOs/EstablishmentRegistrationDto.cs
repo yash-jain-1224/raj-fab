@@ -16,6 +16,8 @@ namespace RajFabAPI.DTOs
         // Workflow / processing status (e.g. "Pending", "Approved", "Rejected")
         public string? Status { get; set; } 
 
+        public bool AutoRenewal { get; set; }
+
         public string? Place { get; set; }
         public decimal Amount { get; set; }
         public string? Signature { get; set; }

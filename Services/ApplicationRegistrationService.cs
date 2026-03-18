@@ -552,10 +552,11 @@ namespace RajFabAPI.Services
                             return false;
                         }
 
-                        totalWorkers =
-                            (estDetails.TotalNumberOfEmployee ?? 0) +
-                            (estDetails.TotalNumberOfContractEmployee ?? 0) +
-                            (estDetails.TotalNumberOfInterstateWorker ?? 0);
+                        totalWorkers = factorydata.NumberOfWorker ?? 0;
+                        //totalWorkers =
+                        //    (estDetails.TotalNumberOfEmployee ?? 0) +
+                        //    (estDetails.TotalNumberOfContractEmployee ?? 0) +
+                        //    (estDetails.TotalNumberOfInterstateWorker ?? 0);
 
                         factoryTypeId = estDetails.FactoryTypeId ?? Guid.Empty;
                         subDivisionId = parsedSubDiv;

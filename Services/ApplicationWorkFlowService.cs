@@ -2,8 +2,9 @@ using Microsoft.EntityFrameworkCore;
 using RajFabAPI.Data;
 using RajFabAPI.DTOs;
 using RajFabAPI.Models;
-using System.ComponentModel.DataAnnotations;
+using RajFabAPI.Models.FactoryModels;
 using RajFabAPI.Services.Interface;
+using System.ComponentModel.DataAnnotations;
 using static RajFabAPI.Constants.AppConstants;
 
 namespace RajFabAPI.Services
@@ -336,7 +337,7 @@ namespace RajFabAPI.Services
             Guid factoryTypeIdGuid = Guid.Empty;
             Guid? subDivisionId = null;
 
-            if (module?.Name == ApplicationTypeNames.NewEstablishment)
+            if (module?.Name == ApplicationTypeNames.NewEstablishment || module?.Name == ApplicationTypeNames.FactoryAmendment || module?.Name == ApplicationTypeNames.FactoryRenewal)
             {
                 // Load establishment and details together
                 var estReg = await _context.Set<EstablishmentRegistration>()
@@ -347,14 +348,28 @@ namespace RajFabAPI.Services
                     var estDetails = await _context.Set<EstablishmentDetail>()
                         .FirstOrDefaultAsync(ed => ed.Id == estReg.EstablishmentDetailId);
 
-                    if (estDetails != null)
+                    var entityData = await _context.Set<EstablishmentEntityMapping>()
+                        .FirstOrDefaultAsync(ed => ed.EstablishmentRegistrationId == estReg.EstablishmentRegistrationId);
+
+                    if (entityData == null)
                     {
-                        totalWorkers = (estDetails.TotalNumberOfEmployee
-                                        + estDetails.TotalNumberOfContractEmployee
-                                        + estDetails.TotalNumberOfInterstateWorker) ?? 0;
+                        return false;
+                    }
+
+                    FactoryDetail? factorydata = null;
+
+                    if (entityData.EntityType == "Factory")
+                    {
+                        factorydata = await _context.Set<FactoryDetail>()
+                            .FirstOrDefaultAsync(f => f.Id == entityData.EntityId);
+                    }
+
+                    if (factorydata != null)
+                    {
+                        totalWorkers = factorydata.NumberOfWorker ?? 0;
                         factoryTypeIdGuid = estDetails.FactoryTypeId ?? Guid.Empty;
 
-                        if (Guid.TryParse(estDetails.SubDivisionId, out var parsedSubDivision))
+                        if (Guid.TryParse(factorydata.SubDivisionId, out var parsedSubDivision))
                             subDivisionId = parsedSubDivision;
                     }
                 }

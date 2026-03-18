@@ -21,6 +21,7 @@ namespace RajFabAPI.DTOs
 
         public string? Place { get; set; }
         public DateTime? Date { get; set; }         // use string for payload dates to match incoming JSON
+        public bool AutoRenewal { get; set; } = false;
         public string? Signature { get; set; }    // file reference or base64 string depending on client
         
         [Required]
@@ -66,6 +67,7 @@ namespace RajFabAPI.DTOs
         public Guid? FactoryTypeId { get; set; }
         public string? LinNumber { get; set; }
         public string BrnNumber { get; set; }
+        public string? PanNumber { get; set; }
         public string Name { get; set; }
         public string AddressLine1 { get; set; }
         public string AddressLine2 { get; set; }

@@ -13,6 +13,7 @@ namespace RajFabAPI.Services.Interface
         Task<List<ApplicationApprovalDashboardDto>> GetApplicationsByOfficePostIdAsync(Guid roleId);
         Task<bool> IsLastWorkflowLevelAsync(int applicationApprovalRequestId);
         Task<RemarkDetailsDto> GetRemarksByApplicationId(string registrationId);
+        Task<List<ObjectionLetterHistoryDto>> GetObjectionLettersByApplicationIdAsync(string applicationId);
     }
 
 }

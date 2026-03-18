@@ -18,5 +18,6 @@ namespace RajFabAPI.Services.Interface
         Task<string?> GetFactoryRegistrationNumber(Guid userId);
         Task<string> GenerateEstablishmentPdf(EstablishmentApplicationDto dto);
         Task<string?> getFilePathByPrn(string prnNumber);
+        Task<string> GenerateObjectionLetter(EstablishmentObjectionLetterDto dto, string registrationId);
     }
 }

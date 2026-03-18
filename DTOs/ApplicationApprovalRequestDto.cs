@@ -35,4 +35,18 @@ namespace RajFabAPI.DTOs
     {
         public string? Remarks { get; set; }
     }
+
+    public class ObjectionLetterHistoryDto
+    {
+        public int Id { get; set; }
+        public string ApplicationId { get; set; } = string.Empty;
+        public string ModuleName { get; set; } = string.Empty;
+        public string FileUrl { get; set; } = string.Empty;
+        public string? Subject { get; set; }
+        public string? GeneratedByName { get; set; }
+        public string? SignatoryDesignation { get; set; }
+        public string? SignatoryLocation { get; set; }
+        public int Version { get; set; }
+        public DateTime CreatedDate { get; set; }
+    }
 }

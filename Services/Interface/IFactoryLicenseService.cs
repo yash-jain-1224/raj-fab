@@ -13,5 +13,6 @@ namespace RajFabAPI.Services
         Task<string> GenerateFactoryLicensePdf(FactoryLicenseData dto, bool isCertificate = false);
         Task<string> GenerateCertificateAsync(FactoryLicenseCertificateRequestDto dto, Guid userId, string licenseId);
         Task<bool> UpdateStatusAndRemark(string applicationId, string status);
+        Task<string> GenerateObjectionLetter(LicenseObjectionLetterDto dto, string licenseId);
     }
 }

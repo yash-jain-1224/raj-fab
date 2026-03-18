@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using RajFabAPI.Data;
 using RajFabAPI.DTOs;
@@ -16,12 +17,14 @@ namespace RajFabAPI.Services
         private readonly ICommencementCessationService _commencementCessationService;
         private readonly IFactoryMapApprovalService _factoryMapApprovalService;
         private readonly IFactoryLicenseService _factoryLicenseService;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
         public ApplicationApprovalRequestService(ApplicationDbContext db, ILogger<ApplicationApprovalRequestService> logger,
             IEstablishmentRegistrationService establishmentRegistrationService,
             ICommencementCessationService commencementCessationService,
             IFactoryMapApprovalService factoryMapApprovalService,
-            IFactoryLicenseService factoryLicenseService
+            IFactoryLicenseService factoryLicenseService,
+            IHttpContextAccessor httpContextAccessor
             )
         {
             _db = db;
@@ -30,6 +33,7 @@ namespace RajFabAPI.Services
             _commencementCessationService = commencementCessationService;
             _factoryMapApprovalService = factoryMapApprovalService;
             _factoryLicenseService = factoryLicenseService;
+            _httpContextAccessor = httpContextAccessor;
         }
 
         public async Task<int> CreateAsync(CreateApplicationApprovalRequestDto dto)
@@ -137,6 +141,8 @@ namespace RajFabAPI.Services
                     {
                         Name = r.Post.Name + ", " + r.Office.City.Name,
                         PostId = r.PostId,
+                        PostName = r.Post.Name,
+                        OfficeCityName = r.Office.City.Name,
                     })
                     .FirstOrDefaultAsync();
                 string actionText = "";
@@ -244,6 +250,8 @@ namespace RajFabAPI.Services
                 else if (dto.Status == ApplicationStatus.ReturnedToApplicant)
                 {
                     await UpdateStatusInRespectiveApplications(entity, ApplicationStatus.ReturnedToApplicant);
+                    var currentUserId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value;
+                    await GenerateObjectionLetterAsync(module.Name, appReg.ApplicationId, entity.Remarks, roleInfo?.PostName, roleInfo?.OfficeCityName, currentUserId);
                 }
                 return new ApplicationApprovalRequestDto
                 {
@@ -487,6 +495,27 @@ namespace RajFabAPI.Services
             return request.Status == "Pending";
         }
 
+        public async Task<List<ObjectionLetterHistoryDto>> GetObjectionLettersByApplicationIdAsync(string applicationId)
+        {
+            return await _db.ApplicationObjectionLetters
+                .Where(l => l.ApplicationId == applicationId)
+                .OrderBy(l => l.Version)
+                .Select(l => new ObjectionLetterHistoryDto
+                {
+                    Id = l.Id,
+                    ApplicationId = l.ApplicationId,
+                    ModuleName = l.ModuleName,
+                    FileUrl = l.FileUrl,
+                    Subject = l.Subject,
+                    GeneratedByName = l.GeneratedByName,
+                    SignatoryDesignation = l.SignatoryDesignation,
+                    SignatoryLocation = l.SignatoryLocation,
+                    Version = l.Version,
+                    CreatedDate = l.CreatedDate
+                })
+                .ToListAsync();
+        }
+
         public async Task<RemarkDetailsDto> GetRemarksByApplicationId(string registrationId)
         {
             var appReq = _db.ApplicationRegistrations.FirstOrDefault(x => x.ApplicationId == registrationId);
@@ -498,6 +527,176 @@ namespace RajFabAPI.Services
                 Remarks = approvalReq.Remarks
             };
             return remarkDetails;
+        }
+
+        // ─────────────────────────────────────────────────────────────────────────────
+        // Generate objection letter based on module name — called on ReturnedToApplicant
+        // ─────────────────────────────────────────────────────────────────────────────
+        private async Task GenerateObjectionLetterAsync(
+            string moduleName,
+            string applicationId,
+            string? subject,
+            string? signatoryDesignation,
+            string? signatoryLocation,
+            string? createdBy)
+        {
+            // Resolve signatory name from user record
+            string? signatoryName = null;
+            if (Guid.TryParse(createdBy, out var createdByGuid))
+            {
+                var user = await _db.Users.FindAsync(createdByGuid);
+                signatoryName = user?.FullName;
+            }
+
+            // Next version number for this application
+            var nextVersion = await _db.ApplicationObjectionLetters
+                .CountAsync(l => l.ApplicationId == applicationId) + 1;
+
+            var objections = subject?
+                .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                .Select(o => o.Trim())
+                .Where(o => !string.IsNullOrEmpty(o))
+                .ToList() ?? new List<string>();
+
+            string? fileUrl = null;
+
+            if (moduleName == ApplicationTypeNames.NewEstablishment ||
+                moduleName == ApplicationTypeNames.FactoryAmendment ||
+                moduleName == ApplicationTypeNames.FactoryRenewal)
+            {
+                var reg = await _db.EstablishmentRegistrations
+                    .FirstOrDefaultAsync(e => e.EstablishmentRegistrationId == applicationId);
+                if (reg == null) return;
+
+                EstablishmentDetail? detail = reg.EstablishmentDetailId.HasValue
+                    ? await _db.EstablishmentDetails.FindAsync(reg.EstablishmentDetailId.Value)
+                    : null;
+
+                string? factoryTypeName = null;
+                if (detail?.FactoryTypeId.HasValue == true)
+                {
+                    var factoryType = await _db.FactoryTypes.FindAsync(detail.FactoryTypeId.Value);
+                    factoryTypeName = factoryType?.Name;
+                }
+
+                string? categoryName = null;
+                if (reg.FactoryCategoryId.HasValue)
+                {
+                    var category = await _db.FactoryCategories.FindAsync(reg.FactoryCategoryId.Value);
+                    categoryName = category?.Name;
+                }
+
+                var address = string.Join("\n", new[]
+                    { detail?.AddressLine1, detail?.AddressLine2, detail?.Area, detail?.Pincode }
+                    .Where(x => !string.IsNullOrWhiteSpace(x)));
+
+                fileUrl = await _establishmentRegistrationService.GenerateObjectionLetter(
+                    new EstablishmentObjectionLetterDto
+                    {
+                        ApplicationId = reg.ApplicationId,
+                        Date = DateTime.Today,
+                        EstablishmentName = detail?.EstablishmentName ?? "",
+                        EstablishmentAddress = address,
+                        Subject = subject,
+                        FactoryType = factoryTypeName,
+                        Category = categoryName,
+                        WorkerCount = detail?.TotalNumberOfEmployee,
+                        Objections = objections,
+                        SignatoryName = signatoryName,
+                        SignatoryDesignation = signatoryDesignation,
+                        SignatoryLocation = signatoryLocation
+                    }, applicationId);
+            }
+            else if (moduleName == ApplicationTypeNames.MapApproval ||
+                     moduleName == ApplicationTypeNames.MapApprovalAmendment)
+            {
+                var app = await _db.FactoryMapApprovals.FindAsync(applicationId);
+                if (app == null) return;
+
+                var mapDetail = await _db.MapApprovalFactoryDetails
+                    .FirstOrDefaultAsync(d => d.FactoryMapApprovalId == applicationId);
+
+                var address = string.Join(", ", new[]
+                    { mapDetail?.FactoryPlotNo, mapDetail?.FactoryPincode }
+                    .Where(x => !string.IsNullOrWhiteSpace(x)));
+
+                fileUrl = await _factoryMapApprovalService.GenerateObjectionLetter(
+                    new MapApprovalObjectionLetterDto
+                    {
+                        ApplicationId = app.AcknowledgementNumber,
+                        Date = DateTime.Today,
+                        EstablishmentName = mapDetail?.FactoryName ?? "",
+                        EstablishmentAddress = address,
+                        Subject = subject,
+                        PlantParticulars = app.PlantParticulars,
+                        ProductName = app.ProductName,
+                        ManufacturingProcess = app.ManufacturingProcess,
+                        MaxWorkers = app.MaxWorkerMale + app.MaxWorkerFemale,
+                        Objections = objections,
+                        SignatoryName = signatoryName,
+                        SignatoryDesignation = signatoryDesignation,
+                        SignatoryLocation = signatoryLocation
+                    }, applicationId);
+            }
+            else if (moduleName == ApplicationTypeNames.FactoryLicense ||
+                     moduleName == ApplicationTypeNames.FactoryLicenseAmendment ||
+                     moduleName == ApplicationTypeNames.FactoryLicenseRenewal)
+            {
+                var license = await _db.FactoryLicenses.FirstOrDefaultAsync(f => f.Id == applicationId);
+                if (license == null) return;
+
+                EstablishmentDetail? estDetail = null;
+                if (!string.IsNullOrWhiteSpace(license.FactoryRegistrationNumber))
+                {
+                    var estReg = await _db.EstablishmentRegistrations
+                        .FirstOrDefaultAsync(e => e.RegistrationNumber == license.FactoryRegistrationNumber);
+                    if (estReg?.EstablishmentDetailId.HasValue == true)
+                        estDetail = await _db.EstablishmentDetails.FindAsync(estReg.EstablishmentDetailId.Value);
+                }
+
+                var address = string.Join(", ", new[]
+                    { estDetail?.AddressLine1, estDetail?.AddressLine2, estDetail?.Area, estDetail?.Pincode }
+                    .Where(x => !string.IsNullOrWhiteSpace(x)));
+
+                fileUrl = await _factoryLicenseService.GenerateObjectionLetter(
+                    new LicenseObjectionLetterDto
+                    {
+                        ApplicationId = license.Id,
+                        Date = DateTime.Today,
+                        EstablishmentName = estDetail?.EstablishmentName ?? "",
+                        EstablishmentAddress = address,
+                        Subject = subject,
+                        LicenseNumber = license.FactoryLicenseNumber,
+                        RegistrationNumber = license.FactoryRegistrationNumber,
+                        ValidFrom = license.ValidFrom,
+                        ValidTo = license.ValidTo,
+                        NoOfYears = license.NoOfYears,
+                        Objections = objections,
+                        SignatoryName = signatoryName,
+                        SignatoryDesignation = signatoryDesignation,
+                        SignatoryLocation = signatoryLocation
+                    }, applicationId);
+            }
+            // Boiler and other modules — no objection letter
+
+            // Save history record
+            if (!string.IsNullOrEmpty(fileUrl))
+            {
+                _db.ApplicationObjectionLetters.Add(new ApplicationObjectionLetter
+                {
+                    ApplicationId = applicationId,
+                    ModuleName = moduleName,
+                    FileUrl = fileUrl,
+                    Subject = subject,
+                    GeneratedBy = createdBy,
+                    GeneratedByName = signatoryName,
+                    SignatoryDesignation = signatoryDesignation,
+                    SignatoryLocation = signatoryLocation,
+                    Version = nextVersion,
+                    CreatedDate = DateTime.Now
+                });
+                await _db.SaveChangesAsync();
+            }
         }
 
         private async Task UpdateStatusInRespectiveApplications(ApplicationApprovalRequest entity, string status)

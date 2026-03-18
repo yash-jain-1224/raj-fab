@@ -45,6 +45,7 @@ namespace RajFabAPI.Models
         public DateTime? Date { get; set; }
         public bool IsESignCompleted { get; set; } = false;
         public string? ApplicationPDFUrl { get; set; } = string.Empty;
+        public string? ObjectionLetterUrl { get; set; }
 
         [StringLength(20)]
         public string Status { get; set; } = "Pending"; // Pending, Approved, Rejected

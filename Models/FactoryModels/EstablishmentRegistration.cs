@@ -46,9 +46,11 @@ namespace RajFabAPI.Models
         public string? Place { get; set; }
         public string? Signature { get; set; }
         public DateTime? Date { get; set; }
+        public bool AutoRenewal { get; set; } = false;
         public bool IsESignCompleted { get; set; } = false;
         public bool IsPaymentCompleted { get; set; } = false;
         public string? ApplicationPDFUrl { get; set; }
+        public string? ObjectionLetterUrl { get; set; }
 
         [StringLength(100)]
         public string? ESignPrnNumber { get; set; }

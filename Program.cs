@@ -877,6 +877,7 @@ var folders = new[]
     "factory-map-forms",
     "factory-license-forms",
     "boiler-registration-forms",
+    "objection-letters",
 };
 
 foreach (var folder in folders)

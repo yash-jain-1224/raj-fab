@@ -5,8 +5,8 @@ using RajFabAPI.Models.FactoryModels;
 using System.Data;
 using System.Text.Json;
 using RajFabAPI.Models.BoilerModels;
-using static RajFabAPI.Services.EstablishmentRegistrationService;
 using RajFabAPI.Models.CompetentPerson;
+using RajFabAPI.DTOs;
 
 namespace RajFabAPI.Data
 {
@@ -36,6 +36,7 @@ namespace RajFabAPI.Data
         public DbSet<ApplicationApprovalRequest> ApplicationApprovalRequests { get; set; }
         public DbSet<ApplicationRegistration> ApplicationRegistrations { get; set; }
         public DbSet<Certificate> Certificates { get; set; }
+        public DbSet<ApplicationObjectionLetter> ApplicationObjectionLetters { get; set; }
 
 
         public DbSet<CommencementCessationApplication> CommencementCessationApplication { get; set; }

@@ -1,7 +1,9 @@
 using iText.Commons.Actions.Contexts;
 using iText.Kernel.Colors;
+using iText.Kernel.Pdf.Event;
 using iText.Kernel.Font;
 using iText.Kernel.Pdf;
+using iText.Kernel.Pdf.Canvas;
 using iText.Layout;
 using iText.Layout.Borders;
 using iText.Layout.Element;
@@ -16,13 +18,13 @@ using RajFabAPI.Services.Interface;
 using System.Data;
 using System.Diagnostics.Contracts;
 using static RajFabAPI.Constants.AppConstants;
-using static RajFabAPI.Services.EstablishmentRegistrationService;
 using static System.Net.Mime.MediaTypeNames;
 using ImageDataFactory = iText.IO.Image.ImageDataFactory;
 using PdfCell = iText.Layout.Element.Cell;
 using PdfDoc = iText.Layout.Document;
 using PdfImage = iText.Layout.Element.Image;
 using PdfTable = iText.Layout.Element.Table;
+using Text = iText.Layout.Element.Text;
 
 namespace RajFabAPI.Services
 {
@@ -135,18 +137,69 @@ namespace RajFabAPI.Services
             //     + (dto?.EstablishmentDetails.TotalNumberOfInterstateWorker ?? 0);
             int totalWorkers = dto?.Factory.NumberOfWorker ?? 0;
 
-            var feeRequest = new FeeRequest
-            {
-                FormCategory = "Non Electric",
-                FormType = type == "new" ? "Registration" : "Renewal License",
-                GivenHP = dto.Factory.SanctionedLoad ?? 0,
-                TotalPerson = totalWorkers,
-                Type = type
-            };
+            var manuType = (dto.Factory?.ManuacturingDetail ?? "manufacture").ToLower().Replace(" ", "");
+            bool isElectricGen = manuType == "electricgeneration";
+            bool isElectricTrans = manuType == "electrictransforming";
+            bool isBoth = manuType == "both";
+            bool isElectric = isElectricGen || isElectricTrans;
 
-            var feeResult = type == "new" ? await GetFeeAmountAsync(feeRequest) : 100;
+            var rawLoad = dto.Factory?.SanctionedLoad ?? 0;
+            var loadUnit = (dto.Factory?.SanctionedLoadUnit ?? "HP").ToUpper();
+
+            // Normalize any unit to KW first, then convert to target
+            decimal ToKW(decimal val, string unit) => unit switch
+            {
+                "HP" => val * 0.746m,
+                "KW" => val,
+                "KVA" => val,          // assuming power factor = 1
+                "MW" => val * 1000m,
+                "MVA" => val * 1000m,
+                _ => val
+            };
+            decimal ConvertToKW(decimal val, string unit) => ToKW(val, unit);
+            decimal ConvertToHP(decimal val, string unit) => ToKW(val, unit) / 0.746m;
+
+            decimal feeResult = 100;
+            if (type == "new")
+            {
+                if (isBoth)
+                {
+                    // Non Electric (HP) + Electric (KW, both generating and transforming)
+                    var feeHP = await GetFeeAmountAsync(new FeeRequest
+                    {
+                        FormCategory = "Non Electric",
+                        FormType = "Registration",
+                        CategorySubType = null,
+                        GivenHP = ConvertToHP(rawLoad, loadUnit),
+                        TotalPerson = totalWorkers,
+                        Type = type
+                    });
+                    var feeKW = await GetFeeAmountAsync(new FeeRequest
+                    {
+                        FormCategory = "Electric",
+                        FormType = "Registration",
+                        CategorySubType = null,
+                        GivenHP = ConvertToKW(rawLoad, loadUnit),
+                        TotalPerson = totalWorkers,
+                        Type = type
+                    });
+                    feeResult = (feeHP ?? 0) + (feeKW ?? 0);
+                }
+                else
+                {
+                    var feeReq = new FeeRequest
+                    {
+                        FormCategory = isElectric ? "Electric" : "Non Electric",
+                        FormType = "Registration",
+                        CategorySubType = isElectricGen ? "Generating" : isElectricTrans ? "Transforming" : null,
+                        GivenHP = isElectric ? ConvertToKW(rawLoad, loadUnit) : ConvertToHP(rawLoad, loadUnit),
+                        TotalPerson = totalWorkers,
+                        Type = type
+                    };
+                    feeResult = await GetFeeAmountAsync(feeReq) ?? 0;
+                }
+            }
             var applicationNumber = await GenerateApplicationNumberAsync(type);
-            //var feeResult = new { TotalFee = 30 };
             await using var tx = await _db.Database.BeginTransactionAsync();
             try
             {
@@ -161,13 +214,14 @@ namespace RajFabAPI.Services
                     Date = dto.Date,
                     Version = newVersion,
                     Type = type,
-                    Amount = feeResult ?? 0,
+                    Amount = feeResult,
                     OccupierIdProof = dto.OccupierIdProof,
                     PartnershipDeed = dto.PartnershipDeed,
                     ManagerIdProof = dto.ManagerIdProof,
                     LoadSanctionCopy = dto.LoadSanctionCopy,
                     RegistrationNumber = finalRegistrationNumber,
                     Signature = dto.Signature,
+                    AutoRenewal = dto.AutoRenewal,
                 };
 
                 _ = _db.Set<EstablishmentRegistration>().Add(registration);
@@ -884,7 +938,7 @@ namespace RajFabAPI.Services
                 await _db.SaveChangesAsync();
 
                 await tx.CommitAsync();
-                var html = await _payment.ActionRequestPaymentRPP(feeResult ?? 0, User.FullName, User.Mobile, User.Email, User.Username, "4157FE34BBAE3A958D8F58CCBFAD7", "UWf6a7cDCP", registration.EstablishmentRegistrationId, module.Id.ToString(), userId.ToString());
+                var html = await _payment.ActionRequestPaymentRPP(feeResult, User.FullName, User.Mobile, User.Email, User.Username, "4157FE34BBAE3A958D8F58CCBFAD7", "UWf6a7cDCP", registration.EstablishmentRegistrationId, module.Id.ToString(), userId.ToString());
                 return html;
             }
             catch
@@ -1332,6 +1386,7 @@ namespace RajFabAPI.Services
                             Id = reg.EstablishmentRegistrationId,
                             LinNumber = est.LinNumber,
                             BrnNumber = est.BrnNumber,
+                            PanNumber = est.PanNumber,
                             Name = est.EstablishmentName,
                             SubDivisionId = est.SubDivisionId,
                             TehsilId = est.TehsilId,
@@ -1372,6 +1427,7 @@ namespace RajFabAPI.Services
                         Date = reg.Date,
                         Status = reg.Status,
                         Signature = reg.Signature,
+                        AutoRenewal = reg.AutoRenewal,
                         Amount = reg.Amount,
                         ApplicationPDFUrl = reg.ApplicationPDFUrl,
                         ApplicationRegistrationNumber = reg.RegistrationNumber,
@@ -2051,6 +2107,7 @@ namespace RajFabAPI.Services
                         {
                             estDetail.LinNumber = dto.EstablishmentDetails.LinNumber;
                             estDetail.BrnNumber = dto.EstablishmentDetails.BrnNumber;
+                            estDetail.PanNumber = dto.EstablishmentDetails.PanNumber;
                             estDetail.EstablishmentName = dto.EstablishmentDetails.Name;
                             estDetail.AddressLine1 = dto.EstablishmentDetails.AddressLine1;
                             estDetail.AddressLine2 = dto.EstablishmentDetails.AddressLine2;
@@ -2073,6 +2130,7 @@ namespace RajFabAPI.Services
                         {
                             LinNumber = dto.EstablishmentDetails.LinNumber,
                             BrnNumber = dto.EstablishmentDetails.BrnNumber,
+                            PanNumber = dto.EstablishmentDetails.PanNumber,
                             EstablishmentName = dto.EstablishmentDetails.Name,
                             AddressLine1 = dto.EstablishmentDetails.AddressLine1,
                             AddressLine2 = dto.EstablishmentDetails.AddressLine2,
@@ -2800,9 +2858,11 @@ namespace RajFabAPI.Services
                 existingReg.Place = dto.Place;
                 existingReg.Date = dto.Date;
                 existingReg.Signature = dto.Signature;
+                existingReg.Status = "Pending";
                 existingReg.OccupierIdProof = dto.OccupierIdProof;
                 existingReg.PartnershipDeed = dto.PartnershipDeed;
                 existingReg.ManagerIdProof = dto.ManagerIdProof;
+                existingReg.AutoRenewal = dto.AutoRenewal;
                 existingReg.LoadSanctionCopy = dto.LoadSanctionCopy;
                 existingReg.UpdatedDate = DateTime.Now;
                 _db.Entry(existingReg).State = EntityState.Modified;
@@ -2833,7 +2893,8 @@ namespace RajFabAPI.Services
                 _ = await _db.SaveChangesAsync();
 
                 // Calculate total workers
-                int totalWorkers = estDetail.TotalNumberOfEmployee ?? 0 + estDetail.TotalNumberOfContractEmployee ?? 0 + estDetail.TotalNumberOfInterstateWorker ?? 0;
+                //int totalWorkers = estDetail.TotalNumberOfEmployee ?? 0 + estDetail.TotalNumberOfContractEmployee ?? 0 + estDetail.TotalNumberOfInterstateWorker ?? 0;
+                int totalWorkers = dto?.Factory.NumberOfWorker ?? 0;
 
                 // Get WorkerRange and FactoryCategoryId
                 var workerRange = await _db.Set<WorkerRange>()
@@ -3220,8 +3281,7 @@ namespace RajFabAPI.Services
                 {
                     new SqlParameter("@FormCategory", SqlDbType.NVarChar, 150) { Value = (object?)request.FormCategory ?? DBNull.Value },
                     new SqlParameter("@FormType", SqlDbType.NVarChar, 150) { Value = (object?)request.FormType ?? DBNull.Value },
-                    // optional parameter present in the SP - supply NULL unless you have a value
-                    new SqlParameter("@CategorySubType", SqlDbType.NVarChar, 150) { Value = DBNull.Value },
+                    new SqlParameter("@CategorySubType", SqlDbType.NVarChar, 150) { Value = (object?)request.CategorySubType ?? DBNull.Value },
                     // SP expects BIGINT - pass a long (rounding decimal HP to nearest whole number)
                     new SqlParameter("@GivenHP", SqlDbType.BigInt) { Value = Convert.ToInt64(Math.Round(request.GivenHP)) },
                     new SqlParameter("@TotalPerson", SqlDbType.BigInt) { Value = Convert.ToInt64(request.TotalPerson) },
@@ -3243,19 +3303,6 @@ namespace RajFabAPI.Services
                 Console.WriteLine("GetFeeAmountAsync exception: " + ex);
                 return null;
             }
-        }
-
-        public class FeeResult
-        {
-            public decimal? Amount { get; set; }
-        }
-        public class FeeRequest
-        {
-            public string FormCategory { get; set; }
-            public string FormType { get; set; }
-            public decimal GivenHP { get; set; }
-            public int TotalPerson { get; set; }
-            public string Type { get; set; } // new, update, renew
         }
 
         public async Task<string> GenerateEstablishmentPdf(EstablishmentApplicationDto item)
@@ -3900,7 +3947,7 @@ namespace RajFabAPI.Services
                 _ = mineTable.AddCell(CertIndexCell(i.ToString(), regularFont));
 
             for (int i = 0; i < 5; i++)
-                _ = mineTable.AddCell(CertDataCell("-", regularFont));
+                _ = mineTable.AddCell(CertDataCell("-", regularFont).SetTextAlignment(TextAlignment.CENTER));
 
             _ = document.Add(mineTable);
 
@@ -3930,7 +3977,7 @@ namespace RajFabAPI.Services
                 _ = dockTable.AddCell(CertIndexCell(i.ToString(), regularFont));
 
             for (int i = 0; i < 5; i++)
-                _ = dockTable.AddCell(CertDataCell("", regularFont));
+                _ = dockTable.AddCell(CertDataCell("-", regularFont).SetTextAlignment(TextAlignment.CENTER));
 
             _ = document.Add(dockTable);
 
@@ -3957,7 +4004,7 @@ namespace RajFabAPI.Services
                 _ = buildTable.AddCell(CertIndexCell(i.ToString(), regularFont));
 
             for (int i = 0; i < 4; i++)
-                _ = buildTable.AddCell(CertDataCell("", regularFont));
+                _ = buildTable.AddCell(CertDataCell("-", regularFont).SetTextAlignment(TextAlignment.CENTER));
 
             _ = document.Add(buildTable);
 
@@ -4009,7 +4056,7 @@ namespace RajFabAPI.Services
                 .SetMarginBottom(6f));
 
             _ = document.Add(new Paragraph(
-                    "(1)  Every certificate of registration issued under rule 4 shall be subject to the following conditions, namely:")
+                    "(1) Every certificate of registration issued under rule 4 shall be subject to the following conditions, namely:")
                 .SetFont(regularFont).SetFontSize(9)
                 .SetMarginBottom(3f));
 
@@ -4032,17 +4079,17 @@ namespace RajFabAPI.Services
             }
 
             _ = document.Add(new Paragraph(
-                    "(2)  The employer shall intimate the change, if any, in the number of workers or the conditions of work to the registering officer within 30 days")
+                    "(2) The employer shall intimate the change, if any, in the number of workers or the conditions of work to the registering officer within 30 days")
                 .SetFont(regularFont).SetFontSize(9)
                 .SetMarginTop(3f).SetMarginBottom(3f));
 
             _ = document.Add(new Paragraph(
-                    "(3)  The employer shall, within thirty days of the commencement and completion of any work, intimate to the Inspector-cum-Facilitator, having jurisdiction in the area where the proposed establishment or as the case may be work is to be executed, intimating the actual date of the commencement or, as the case may be, completion of establishment such work in Form-4 annexed to these rules electronically.")
+                    "(3) The employer shall, within thirty days of the commencement and completion of any work, intimate to the Inspector-cum-Facilitator, having jurisdiction in the area where the proposed establishment or as the case may be work is to be executed, intimating the actual date of the commencement or, as the case may be, completion of establishment such work in Form-4 annexed to these rules electronically.")
                 .SetFont(regularFont).SetFontSize(9)
                 .SetMarginBottom(3f));
 
             _ = document.Add(new Paragraph(
-                    "(4)  A copy of the certificate of registration shall be displayed at the conspicuous places at the premises where the work is being carried on.")
+                    "(4) A copy of the certificate of registration shall be displayed at the conspicuous places at the premises where the work is being carried on.")
                 .SetFont(regularFont).SetFontSize(9)
                 .SetMarginBottom(6f));
 
@@ -4077,5 +4124,278 @@ namespace RajFabAPI.Services
                 .Add(new Paragraph(text ?? "").SetFont(regularFont).SetFontSize(9))
                 .SetPadding(6f)
                 .SetMinHeight(30f);
+
+        // ─────────────────────────────────────────────────────────────────────────────
+        // Generate Objection Letter
+        // ─────────────────────────────────────────────────────────────────────────────
+        public async Task<string> GenerateObjectionLetter(EstablishmentObjectionLetterDto dto, string registrationId)
+        {
+            if (dto == null) throw new ArgumentNullException(nameof(dto));
+
+            var fileName = $"objection_{registrationId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+            var webRootPath = _environment.WebRootPath;
+            if (string.IsNullOrWhiteSpace(webRootPath))
+                throw new InvalidOperationException("wwwroot is not configured.");
+
+            var uploadPath = Path.Combine(webRootPath, "objection-letters");
+            _ = Directory.CreateDirectory(uploadPath);
+            var filePath = Path.Combine(uploadPath, fileName);
+
+            var httpContext = _httpContextAccessor.HttpContext
+                ?? throw new InvalidOperationException("HTTP context unavailable");
+            var request = httpContext.Request;
+            var baseUrl = _config["BaseUrl"] ?? $"{request.Scheme}://{request.Host}";
+            var fileUrl = $"{baseUrl}/objection-letters/{fileName}";
+
+            // ── Fonts ─────────────────────────────────────────────────────────────────
+            var boldFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA_BOLD);
+            var regularFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA);
+
+            // ── PDF setup ─────────────────────────────────────────────────────────────
+            using var writer = new PdfWriter(filePath);
+            using var pdf = new PdfDocument(writer);
+            pdf.AddEventHandler(PdfDocumentEvent.END_PAGE, new PageBorderEventHandler());
+            using var document = new PdfDoc(pdf);
+            document.SetMargins(50, 50, 65, 50); // extra bottom margin for fixed footer
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // HEADER — Government of Rajasthan (centered, bold)
+            // ═════════════════════════════════════════════════════════════════════════
+            _ = document.Add(new Paragraph("Government of Rajasthan")
+                .SetFont(boldFont).SetFontSize(13)
+                .SetTextAlignment(TextAlignment.CENTER)
+                .SetMarginBottom(1f));
+
+            _ = document.Add(new Paragraph("Factories and Boilers Inspection Department")
+                .SetFont(boldFont).SetFontSize(11)
+                .SetTextAlignment(TextAlignment.CENTER)
+                .SetMarginBottom(1f));
+
+            _ = document.Add(new Paragraph("6-C, Jhalana Institutional Area, Jaipur, 302004")
+                .SetFont(regularFont).SetFontSize(9)
+                .SetTextAlignment(TextAlignment.CENTER)
+                .SetMarginBottom(10f));
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // Application Id  +  Dated  (two columns, no border)
+            // ═════════════════════════════════════════════════════════════════════════
+            var topRow = new PdfTable(new float[] { 1f, 1f })
+                .UseAllAvailableWidth().SetBorder(Border.NO_BORDER).SetMarginBottom(12f);
+
+            _ = topRow.AddCell(new PdfCell()
+                .Add(new Paragraph($"Application Id:-  {dto.ApplicationId ?? "-"}")
+                    .SetFont(boldFont).SetFontSize(10))
+                .SetBorder(Border.NO_BORDER));
+
+            _ = topRow.AddCell(new PdfCell()
+                .Add(new Paragraph($"Dated:-  {dto.Date:dd/MM/yyyy}")
+                    .SetFont(boldFont).SetFontSize(10)
+                    .SetTextAlignment(TextAlignment.RIGHT))
+                .SetBorder(Border.NO_BORDER));
+
+            _ = document.Add(topRow);
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // Establishment name + address (left-aligned, plain)
+            // ═════════════════════════════════════════════════════════════════════════
+            _ = document.Add(new Paragraph(dto.EstablishmentName ?? "-")
+                .SetFont(regularFont).SetFontSize(10)
+                .SetMarginBottom(1f));
+
+            var addressLines = (dto.EstablishmentAddress ?? "-").Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            for (int i = 0; i < addressLines.Length; i++)
+            {
+                _ = document.Add(new Paragraph(addressLines[i].Trim())
+                    .SetFont(regularFont).SetFontSize(10)
+                    .SetMarginBottom(i == addressLines.Length - 1 ? 10f : 1f));
+            }
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // Sub:- line
+            // ═════════════════════════════════════════════════════════════════════════
+            var subPara = new Paragraph();
+            subPara.Add(new Text("Sub:- ").SetFont(boldFont).SetFontSize(10));
+            subPara.Add(new Text("Regarding approval of Factory Registration").SetFont(regularFont).SetFontSize(10));
+            _ = document.Add(subPara.SetMarginBottom(4f));
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // "The details of your factory..." intro line
+            // ═════════════════════════════════════════════════════════════════════════
+            _ = document.Add(new Paragraph(
+                    "The details of your factory as per application, drawings and documents are shown below:-")
+                .SetFont(regularFont).SetFontSize(10)
+                .SetMarginBottom(4f));
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // Factory details table  (red border as in PDF)
+            // ═════════════════════════════════════════════════════════════════════════
+            var detailsTable = new PdfTable(new float[] { 150f, 1f })
+                .UseAllAvailableWidth().SetMarginBottom(12f);
+
+            // helper — red-bordered cell
+            PdfCell RedCell(string text, PdfFont font, float fontSize = 10f, bool isHeader = false)
+            {
+                var border = new iText.Layout.Borders.SolidBorder(new DeviceRgb(220, 0, 0), 0.75f);
+                return new PdfCell()
+                    .Add(new Paragraph(text ?? "-").SetFont(font).SetFontSize(fontSize))
+                    .SetBorderTop(border).SetBorderBottom(border)
+                    .SetBorderLeft(border).SetBorderRight(border)
+                    .SetPadding(5f);
+            }
+
+            _ = detailsTable.AddCell(RedCell("Manufacturing Process", boldFont));
+            _ = detailsTable.AddCell(RedCell(dto.ManufacturingProcess ?? "-", regularFont));
+
+            _ = detailsTable.AddCell(RedCell("Type", boldFont));
+            _ = detailsTable.AddCell(RedCell(dto.FactoryType ?? "-", regularFont));
+
+            _ = detailsTable.AddCell(RedCell("Category", boldFont));
+            _ = detailsTable.AddCell(RedCell(dto.Category ?? "-", regularFont));
+
+            _ = detailsTable.AddCell(RedCell("Workers", boldFont));
+            _ = detailsTable.AddCell(RedCell(dto.WorkerCount?.ToString() ?? "-", regularFont));
+
+            _ = document.Add(detailsTable);
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // "Following objections are need to be removed..." heading
+            // ═════════════════════════════════════════════════════════════════════════
+            _ = document.Add(new Paragraph("Following objections are need to be removed related to your factory")
+                .SetFont(regularFont).SetFontSize(10)
+                .SetMarginBottom(12f));
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // Numbered objections list
+            // ═════════════════════════════════════════════════════════════════════════
+            if (dto.Objections != null && dto.Objections.Any())
+            {
+                for (int i = 0; i < dto.Objections.Count; i++)
+                {
+                    _ = document.Add(new Paragraph($"{i + 1}.{dto.Objections[i]}")
+                        .SetFont(regularFont).SetFontSize(10)
+                        .SetMarginBottom(6f));
+                }
+            }
+
+            _ = document.Add(new Paragraph("").SetMarginBottom(10f));
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // "Please comply..." closing line
+            // ═════════════════════════════════════════════════════════════════════════
+            _ = document.Add(new Paragraph(
+                    "Please comply with the above observations and submit relevant details/documents")
+                .SetFont(regularFont).SetFontSize(10)
+                .SetMarginBottom(30f));
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // Signature block — right side
+            // ═════════════════════════════════════════════════════════════════════════
+            var sigOuterTable = new PdfTable(new float[] { 1f, 1f })
+                .UseAllAvailableWidth().SetBorder(Border.NO_BORDER).SetMarginBottom(8f);
+
+            // Left: empty
+            _ = sigOuterTable.AddCell(new PdfCell()
+                .Add(new Paragraph("")).SetBorder(Border.NO_BORDER));
+
+            // Right: signature image + name + designation + location
+            var sigCell = new PdfCell().SetBorder(Border.NO_BORDER);
+
+            var signatureBytes = await DownloadImageAsync(dto.SignatureBase64);
+            if (signatureBytes != null)
+            {
+                var sigImg = new PdfImage(ImageDataFactory.Create(signatureBytes)).ScaleToFit(80, 40);
+                sigImg.SetHorizontalAlignment(HorizontalAlignment.RIGHT);
+                _ = sigCell.Add(sigImg);
+            }
+
+            _ = sigCell.Add(new Paragraph($"( {dto.SignatoryName ?? "Inspector"} )")
+                .SetFont(regularFont).SetFontSize(9)
+                .SetTextAlignment(TextAlignment.RIGHT)
+                .SetMarginTop(2f));
+
+            _ = sigCell.Add(new Paragraph(dto.SignatoryDesignation ?? "Inspector")
+                .SetFont(regularFont).SetFontSize(9)
+                .SetTextAlignment(TextAlignment.RIGHT));
+
+            _ = sigCell.Add(new Paragraph(dto.SignatoryLocation ?? "Jaipur, Rajasthan")
+                .SetFont(regularFont).SetFontSize(9)
+                .SetTextAlignment(TextAlignment.RIGHT));
+
+            _ = sigOuterTable.AddCell(sigCell);
+            _ = document.Add(sigOuterTable);
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // Footer disclaimer — fixed at page bottom
+            // ═════════════════════════════════════════════════════════════════════════
+            var pageWidth = pdf.GetDefaultPageSize().GetWidth();
+            _ = document.Add(new Paragraph(
+                    "This is a computer generated certificate and bears scanned signature. No physical signature is required on this document. You " +
+                    "can verify this document by visiting www.rajfab.rajasthan.gov.in and entering Application No./ID after clicking the link for " +
+                    "verification on the page.")
+                .SetFont(regularFont).SetFontSize(7)
+                .SetFontColor(ColorConstants.GRAY)
+                .SetTextAlignment(TextAlignment.JUSTIFIED)
+                .SetFixedPosition(35, 33, pageWidth - 70));
+
+            document.Close();
+
+            // ── Save URL to DB ────────────────────────────────────────────────────────
+            var reg = await _db.EstablishmentRegistrations
+                .FirstOrDefaultAsync(x => x.EstablishmentRegistrationId.ToString() == registrationId);
+            if (reg != null)
+            {
+                reg.ObjectionLetterUrl = fileUrl;
+                await _db.SaveChangesAsync();
+            }
+
+            return fileUrl;
+        }
+
+        // ─────────────────────────────────────────────────────────────────────────────
+        // Helper — convert base64 string or data-URI to bytes for PDF image embedding
+        // ─────────────────────────────────────────────────────────────────────────────
+        private static Task<byte[]?> DownloadImageAsync(string? source)
+        {
+            if (string.IsNullOrWhiteSpace(source))
+                return Task.FromResult<byte[]?>(null);
+
+            try
+            {
+                // data:image/png;base64,<data>
+                if (source.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+                {
+                    var commaIndex = source.IndexOf(',');
+                    if (commaIndex >= 0)
+                        return Task.FromResult<byte[]?>(Convert.FromBase64String(source[(commaIndex + 1)..]));
+                }
+
+                // plain base64
+                return Task.FromResult<byte[]?>(Convert.FromBase64String(source));
+            }
+            catch
+            {
+                return Task.FromResult<byte[]?>(null);
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────────────────────────
+        // Draws a red border rectangle on every page
+        // ─────────────────────────────────────────────────────────────────────────────
+        private sealed class PageBorderEventHandler : AbstractPdfDocumentEventHandler
+        {
+            protected override void OnAcceptedEvent(AbstractPdfDocumentEvent @event)
+            {
+                if (@event is not PdfDocumentEvent docEvent) return;
+                var page = docEvent.GetPage();
+                var rect = page.GetPageSize();
+                var canvas = new PdfCanvas(page);
+                canvas
+                    .SetStrokeColor(new DeviceRgb(20, 57, 92))
+                    .SetLineWidth(1.5f)
+                    .Rectangle(25, 25, rect.GetWidth() - 50, rect.GetHeight() - 50)
+                    .Stroke();
+                canvas.Release();
+            }
+        }
     }
 }

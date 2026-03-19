@@ -3345,7 +3345,7 @@ namespace RajFabAPI.Services
                 .SetFont(boldFont).SetFontSize(13)
                 .SetTextAlignment(TextAlignment.CENTER));
 
-            _ = document.Add(new Paragraph("(See clause (i) of sub-rule (1) of rule 5)")
+            _ = document.Add(new Paragraph("(See rule 5(1)(a), 5(6) & 6(1))")
                 .SetFont(regularFont).SetFontSize(10)
                 .SetTextAlignment(TextAlignment.CENTER));
 
@@ -3374,6 +3374,7 @@ namespace RajFabAPI.Services
                                                                         dto.EstablishmentDetail.TehsilName,
                                                                         dto.EstablishmentDetail.DistrictName,
                                                                         dto.EstablishmentDetail.Pincode)),
+                ("   PAN :",                        dto.EstablishmentDetail.PanNumber ?? "-"),
             };
             foreach (var (label, value) in estItems)
             {
@@ -3770,13 +3771,15 @@ namespace RajFabAPI.Services
             // ═════════════════════════════════════════════════════════════════════════
             // HEADER
             // ═════════════════════════════════════════════════════════════════════════
+            document.Add(new Cell().Add(new PdfImage(ImageDataFactory.Create("wwwroot/Emblem_of_India.png"))
+            .ScaleToFit(40, 40)).SetTextAlignment(TextAlignment.CENTER).SetBorder(Border.NO_BORDER));
             _ = document.Add(new Paragraph("Form-2")
                 .SetFont(boldFont).SetFontSize(12)
                 .SetTextAlignment(TextAlignment.CENTER)
                 .SetUnderline()
                 .SetMarginBottom(2f));
 
-            _ = document.Add(new Paragraph("(See clause (d) of sub-rule (1) of rule 5)")
+            _ = document.Add(new Paragraph("(See rule 5(1)(d))")
                 .SetFont(regularFont).SetFontSize(10)
                 .SetTextAlignment(TextAlignment.CENTER)
                 .SetMarginBottom(2f));

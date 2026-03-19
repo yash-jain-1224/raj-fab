@@ -364,6 +364,9 @@ namespace RajFabAPI.Controllers
                     return NotFound("USER_NOT_FOUND");
                 }
 
+                var isInspector = await _context.UserRoles
+                .AnyAsync(ur => ur.UserId == user.Id && ur.IsInspector);
+
                 var userData = new UserWithOfficeDto
                 {
                     Id = user.Id,
@@ -377,6 +380,7 @@ namespace RajFabAPI.Controllers
                     OfficePostName = "",
                     UserType = user.UserType,
                     IsActive = user.IsActive,
+                    IsInspector = isInspector,
                     token = "",
                 };
 

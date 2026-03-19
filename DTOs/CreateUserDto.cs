@@ -44,6 +44,8 @@ namespace RajFabAPI.DTOs
         public string RoleId { get; set; } = "";
 
         public string? token { get; set; } = "";
+
+        public bool IsInspector { get; set; } = false;
     }
 
     public class UserDetailsDto { 

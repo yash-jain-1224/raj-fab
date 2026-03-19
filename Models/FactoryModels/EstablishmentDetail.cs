@@ -15,7 +15,7 @@ namespace RajFabAPI.Models
         public string BrnNumber { get; set; }
 
         [MaxLength(20)]
-        public string? PanNumber { get; set; }
+        public string? PanNumber { get; set; } = "";
 
         [Required]
         public Guid? FactoryTypeId { get; set; }

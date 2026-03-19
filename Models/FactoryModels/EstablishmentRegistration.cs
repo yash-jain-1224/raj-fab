@@ -50,7 +50,7 @@ namespace RajFabAPI.Models
         public bool IsESignCompleted { get; set; } = false;
         public bool IsPaymentCompleted { get; set; } = false;
         public string? ApplicationPDFUrl { get; set; }
-        public string? ObjectionLetterUrl { get; set; }
+        public string? ObjectionLetterUrl { get; set; } = string.Empty;
 
         [StringLength(100)]
         public string? ESignPrnNumber { get; set; }

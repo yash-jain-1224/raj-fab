@@ -1861,3 +1861,16 @@ ADD AutoRenewal BIT NOT NULL DEFAULT 0;
 
 ALTER TABLE EstablishmentDetails
 ADD PanNumber NVARCHAR(20) NOT NULL DEFAULT '';
+
+ALTER TABLE FactoryDetails
+ADD ManufacturingType NVARCHAR(50) NOT NULL DEFAULT '';
+
+ALTER TABLE BeediCigarWorks
+ADD ManufacturingType NVARCHAR(50) NOT NULL DEFAULT '';
+
+ALTER TABLE ContractorDetails
+ADD MaxContractWorkerCountTransgender INT NULL;
+
+ALTER TABLE EstablishmentUserDetails
+ADD RelationType NVARCHAR(50) NULL,
+    RelativeName NVARCHAR(50) NULL;

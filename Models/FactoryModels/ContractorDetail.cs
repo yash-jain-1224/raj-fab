@@ -14,8 +14,8 @@ namespace RajFabAPI.Models.FactoryModels
         public string? NameOfWork { get; set; }
 
         public int? MaxContractWorkerCountMale { get; set; }
-
         public int? MaxContractWorkerCountFemale { get; set; }
+        public int? MaxContractWorkerCountTransgender { get; set; }
 
         public DateTime? DateOfCommencement { get; set; }
 

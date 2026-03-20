@@ -137,7 +137,7 @@ namespace RajFabAPI.Services
             //     + (dto?.EstablishmentDetails.TotalNumberOfInterstateWorker ?? 0);
             int totalWorkers = dto?.Factory.NumberOfWorker ?? 0;
 
-            var manuType = (dto.Factory?.ManuacturingDetail ?? "manufacture").ToLower().Replace(" ", "");
+            var manuType = (dto.Factory?.ManufacturingType ?? "manufacture").ToLower().Replace(" ", "");
             bool isElectricGen = manuType == "electricgeneration";
             bool isElectricTrans = manuType == "electrictransforming";
             bool isBoth = manuType == "both";
@@ -235,6 +235,7 @@ namespace RajFabAPI.Services
                     {
                         BrnNumber = dto.EstablishmentDetails.BrnNumber,
                         LinNumber = dto.EstablishmentDetails.LinNumber != null ? dto.EstablishmentDetails.LinNumber : "",
+                        PanNumber = dto.EstablishmentDetails.PanNumber,
                         EstablishmentName = dto.EstablishmentDetails.Name,
                         AddressLine1 = dto.EstablishmentDetails.AddressLine1,
                         AddressLine2 = dto.EstablishmentDetails.AddressLine2,
@@ -274,6 +275,8 @@ namespace RajFabAPI.Services
                         RoleType = "Employer",
                         Designation = dto.Factory.EmployerDetail.Designation,
                         Name = dto.Factory.EmployerDetail?.Name,
+                        RelationType = dto.Factory.EmployerDetail?.RelationType,
+                        RelativeName = dto.Factory.EmployerDetail?.RelativeName,
                         AddressLine1 = dto.Factory.EmployerDetail?.AddressLine1,
                         AddressLine2 = dto.Factory.EmployerDetail?.AddressLine2,
                         District = dto.Factory.EmployerDetail?.District,
@@ -294,6 +297,8 @@ namespace RajFabAPI.Services
                         RoleType = "Manager",
                         Designation = dto.Factory.ManagerDetail.Designation,
                         Name = dto.Factory.ManagerDetail?.Name,
+                        RelationType = dto.Factory.ManagerDetail?.RelationType,
+                        RelativeName = dto.Factory.ManagerDetail?.RelativeName,
                         AddressLine1 = dto.Factory.ManagerDetail?.AddressLine1,
                         AddressLine2 = dto.Factory.ManagerDetail?.AddressLine2,
                         District = dto.Factory.ManagerDetail?.District,
@@ -311,7 +316,8 @@ namespace RajFabAPI.Services
                     var factory = new FactoryDetail
                     {
                         Id = Guid.NewGuid(),
-                        ManufacturingDetail = dto.Factory.ManuacturingDetail,
+                        ManufacturingType = dto.Factory.ManufacturingType,
+                        ManufacturingDetail = dto.Factory.ManufacturingDetail,
                         Situation = dto.Factory.Situation,
                         SubDivisionId = dto.Factory.SubDivisionId,
                         TehsilId = dto.Factory.TehsilId,
@@ -401,7 +407,8 @@ namespace RajFabAPI.Services
                     var beedi = new BeediCigarWork
                     {
                         Id = Guid.NewGuid(),
-                        ManufacturingDetail = dto.BeediCigarWorks.ManuacturingDetail,
+                        ManufacturingType = dto.BeediCigarWorks.ManufacturingType,
+                        ManufacturingDetail = dto.BeediCigarWorks.ManufacturingDetail,
                         Situation = dto.BeediCigarWorks.Situation,
                         SubDivisionId = dto.BeediCigarWorks.SubDivisionId,
                         TehsilId = dto.BeediCigarWorks.TehsilId,
@@ -870,6 +877,7 @@ namespace RajFabAPI.Services
                             NameOfWork = contractor.NameOfWork,
                             MaxContractWorkerCountMale = contractor.MaxContractWorkerCountMale,
                             MaxContractWorkerCountFemale = contractor.MaxContractWorkerCountFemale,
+                            MaxContractWorkerCountTransgender = contractor.MaxContractWorkerCountTransgender,
                             DateOfCommencement = contractor.DateOfCommencement,
                             DateOfCompletion = contractor.DateOfCompletion
                         };
@@ -991,6 +999,7 @@ namespace RajFabAPI.Services
                            Id = estDetail != null ? estDetail.Id.ToString() : null,
                            LinNumber = estDetail != null ? estDetail.LinNumber : null,
                            BrnNumber = estDetail != null ? estDetail.BrnNumber : null,
+                           PanNumber = estDetail != null ? estDetail.PanNumber : null,
                            Name = estDetail != null ? estDetail.EstablishmentName : null,
                            SubDivisionId = estDetail != null ? estDetail.SubDivisionId : null,
                            AreaName = areaDetail != null ? areaDetail.Name : null,
@@ -1069,7 +1078,8 @@ namespace RajFabAPI.Services
 
                                 select new FactoryDetailsDto
                                 {
-                                    ManuacturingDetail = f.ManufacturingDetail,
+                                    ManufacturingType = f.ManufacturingType,
+                                    ManufacturingDetail = f.ManufacturingDetail,
                                     Situation = f.Situation,
 
                                     SubDivisionId = f.SubDivisionId,
@@ -1108,7 +1118,8 @@ namespace RajFabAPI.Services
                             {
                                 result.Factory = new FactoryDto
                                 {
-                                    ManuacturingDetail = factory.ManuacturingDetail,
+                                    ManufacturingType = factory.ManufacturingType,
+                                    ManufacturingDetail = factory.ManufacturingDetail,
                                     DistrictId = factory.DistrictId,
                                     DistrictName = factory.DistrictName,
                                     SubDivisionId = factory.SubDivisionId,
@@ -1141,6 +1152,8 @@ namespace RajFabAPI.Services
                                             Role = employer.RoleType,
                                             Name = employer.Name,
                                             Designation = employer.Designation,
+                                            RelationType = employer.RelationType,
+                                            RelativeName = employer.RelativeName,
                                             AddressLine1 = employer.AddressLine1,
                                             AddressLine2 = employer.AddressLine2,
                                             District = employer.District,
@@ -1163,6 +1176,8 @@ namespace RajFabAPI.Services
                                             Role = manager.RoleType,
                                             Name = manager.Name,
                                             Designation = manager.Designation,
+                                            RelationType = manager.RelationType,
+                                            RelativeName = manager.RelativeName,
                                             Tehsil = manager.Tehsil,
                                             Area = manager.Area,
                                             Pincode = manager.Pincode,
@@ -1510,6 +1525,7 @@ namespace RajFabAPI.Services
                             NameOfWork = cd.NameOfWork,
                             MaxContractWorkerCountMale = cd.MaxContractWorkerCountMale,
                             MaxContractWorkerCountFemale = cd.MaxContractWorkerCountFemale,
+                            MaxContractWorkerCountTransgender = cd.MaxContractWorkerCountTransgender,
                             DateOfCommencement = cd.DateOfCommencement,
                             DateOfCompletion = cd.DateOfCompletion
                         }
@@ -1542,7 +1558,8 @@ namespace RajFabAPI.Services
 
                                 select new FactoryDetailsDto
                                 {
-                                    ManuacturingDetail = f.ManufacturingDetail,
+                                    ManufacturingType = f.ManufacturingType,
+                                    ManufacturingDetail = f.ManufacturingDetail,
                                     Situation = f.Situation,
 
                                     SubDivisionId = f.SubDivisionId,
@@ -1577,7 +1594,8 @@ namespace RajFabAPI.Services
                             {
                                 dto.Factory = new FactoryDto
                                 {
-                                    ManuacturingDetail = factory.ManuacturingDetail,
+                                    ManufacturingType = factory.ManufacturingType,
+                                    ManufacturingDetail = factory.ManufacturingDetail,
                                     SubDivisionId = factory.SubDivisionId,
                                     AddressLine1 = factory.AddressLine1,
                                     AddressLine2 = factory.AddressLine2,
@@ -1606,6 +1624,8 @@ namespace RajFabAPI.Services
                                             Role = employer.RoleType,
                                             Name = employer.Name,
                                             Designation = employer?.Designation ?? "",
+                                            RelationType = employer.RelationType,
+                                            RelativeName = employer.RelativeName,
                                             AddressLine1 = employer.AddressLine1,
                                             AddressLine2 = employer.AddressLine2,
                                             District = employer.District,
@@ -1628,6 +1648,8 @@ namespace RajFabAPI.Services
                                             Role = manager.RoleType,
                                             Name = manager.Name,
                                             Designation = manager?.Designation ?? "",
+                                            RelationType = manager.RelationType,
+                                            RelativeName = manager.RelativeName,
                                             AddressLine1 = manager.AddressLine1,
                                             AddressLine2 = manager.AddressLine2,
                                             District = manager.District,
@@ -1651,7 +1673,8 @@ namespace RajFabAPI.Services
                             {
                                 dto.BeediCigarWork = new BeediCigarWorksDto
                                 {
-                                    ManuacturingDetail = beedi.ManufacturingDetail,
+                                    ManufacturingType = beedi.ManufacturingType,
+                                    ManufacturingDetail = beedi.ManufacturingDetail,
                                     Situation = beedi.Situation,
                                     AddressLine1 = beedi.AddressLine1,
                                     AddressLine2 = beedi.AddressLine2,
@@ -1899,6 +1922,7 @@ namespace RajFabAPI.Services
                     Id = reg.EstablishmentRegistrationId,
                     LinNumber = est.LinNumber,
                     BrnNumber = est.BrnNumber,
+                    PanNumber = est.PanNumber,
                     Name = est.EstablishmentName,
                     AddressLine1 = est.AddressLine1,
                     AddressLine2 = est.AddressLine2,
@@ -2227,6 +2251,8 @@ namespace RajFabAPI.Services
                         RoleType = "Employer",
                         Name = dto.Factory.EmployerDetail?.Name,
                         Designation = dto.Factory.EmployerDetail?.Designation,
+                        RelationType = dto.Factory.EmployerDetail?.RelationType,
+                        RelativeName = dto.Factory.EmployerDetail?.RelativeName,
                         AddressLine1 = dto.Factory.EmployerDetail?.AddressLine1,
                         AddressLine2 = dto.Factory.EmployerDetail?.AddressLine2,
                         District = dto.Factory.EmployerDetail?.District,
@@ -2247,6 +2273,8 @@ namespace RajFabAPI.Services
                         RoleType = "Manager",
                         Name = dto.Factory.ManagerDetail?.Name,
                         Designation = dto.Factory.ManagerDetail?.Designation,
+                        RelationType = dto.Factory.ManagerDetail?.RelationType,
+                        RelativeName = dto.Factory.ManagerDetail?.RelativeName,
                         AddressLine1 = dto.Factory.ManagerDetail?.AddressLine1,
                         AddressLine2 = dto.Factory.ManagerDetail?.AddressLine2,
                         District = dto.Factory.ManagerDetail?.District,
@@ -2264,7 +2292,8 @@ namespace RajFabAPI.Services
                     var factory = new FactoryDetail
                     {
                         Id = Guid.NewGuid(),
-                        ManufacturingDetail = dto.Factory.ManuacturingDetail,
+                        ManufacturingType = dto.Factory.ManufacturingType,
+                        ManufacturingDetail = dto.Factory.ManufacturingDetail,
                         AddressLine1 = dto.Factory.AddressLine1,
                         AddressLine2 = dto.Factory.AddressLine2,
                         SubDivisionId = dto.Factory.SubDivisionId,
@@ -2352,7 +2381,8 @@ namespace RajFabAPI.Services
                     var beedi = new BeediCigarWork
                     {
                         Id = Guid.NewGuid(),
-                        ManufacturingDetail = dto.BeediCigarWorks.ManuacturingDetail,
+                        ManufacturingType = dto.BeediCigarWorks.ManufacturingType,
+                        ManufacturingDetail = dto.BeediCigarWorks.ManufacturingDetail,
                         Situation = dto.BeediCigarWorks.Situation,
                         AddressLine1 = dto.BeediCigarWorks.AddressLine1,
                         AddressLine2 = dto.BeediCigarWorks.AddressLine2,
@@ -2846,6 +2876,7 @@ namespace RajFabAPI.Services
                             NameOfWork = contractor.NameOfWork,
                             MaxContractWorkerCountMale = contractor.MaxContractWorkerCountMale,
                             MaxContractWorkerCountFemale = contractor.MaxContractWorkerCountFemale,
+                            MaxContractWorkerCountTransgender = contractor.MaxContractWorkerCountTransgender,
                             DateOfCommencement = contractor.DateOfCommencement,
                             DateOfCompletion = contractor.DateOfCompletion
                         });
@@ -3132,7 +3163,7 @@ namespace RajFabAPI.Services
 
                 // Establishment info
                 EstablishmentName = dtoDetails.EstablishmentDetail?.Name,
-                NatureOfWork = dtoDetails.Factory.ManuacturingDetail,
+                NatureOfWork = dtoDetails.Factory.ManufacturingType,
                 // EstablishmentType = dtoDetails.EstablishmentTypes.FirstOrDefault() ?? "Factory",
 
                 // Employees / contractors
@@ -3142,7 +3173,7 @@ namespace RajFabAPI.Services
                 InterStateWorkers = dtoDetails.EstablishmentDetail.TotalNumberOfInterstateWorker,
 
                 // Factory details
-                FactoryManufacturingDetail = dtoDetails.Factory?.ManuacturingDetail,
+                FactoryManufacturingDetail = dtoDetails.Factory?.ManufacturingType,
                 FactorySituation = dtoDetails.Factory?.Situation,
                 FactoryAddress = string.Join(", ", new[]
                 {
@@ -3448,7 +3479,7 @@ namespace RajFabAPI.Services
                     _ = factoryTable.AddCell(BuildCenterCell(i.ToString(), regularFont));
 
                 // Data row
-                _ = factoryTable.AddCell(BuildDataCell(dto.Factory.ManuacturingDetail ?? "-", regularFont));
+                _ = factoryTable.AddCell(BuildDataCell(dto.Factory.ManufacturingType ?? "-", regularFont));
                 _ = factoryTable.AddCell(BuildDataCell(FormatAddress(
                     dto.Factory.AddressLine1, dto.Factory.AddressLine2, dto.Factory.DistrictName,
                     dto.Factory.SubDivisionName, dto.Factory.TehsilName, dto.Factory.Area,
@@ -3637,7 +3668,7 @@ namespace RajFabAPI.Services
                         $"{contractor.Email ?? "-"}\n{contractor.Mobile ?? "-"}", regularFont));
                     _ = contractorTable.AddCell(BuildDataCell(contractor.NameOfWork ?? "-", regularFont));
                     _ = contractorTable.AddCell(BuildDataCell(
-                        $"Male: {contractor.MaxContractWorkerCountMale?.ToString() ?? "-"}\nFemale: {contractor.MaxContractWorkerCountFemale?.ToString() ?? "-"}", regularFont));
+                        $"Male: {contractor.MaxContractWorkerCountMale?.ToString() ?? "-"}\nFemale: {contractor.MaxContractWorkerCountFemale?.ToString() ?? "-"}\nTransgender: {contractor.MaxContractWorkerCountTransgender?.ToString() ?? "-"}", regularFont));
                     _ = contractorTable.AddCell(BuildDataCell(
                         $"{contractor.DateOfCommencement:dd/MM/yyyy}-\n{contractor.DateOfCompletion:dd/MM/yyyy}", regularFont));
                 }

@@ -7,6 +7,7 @@ namespace RajFabAPI.Models
     {
         [Key]
         public Guid Id { get; set; } = Guid.NewGuid();
+        public string? ManufacturingType { get; set; }
         public string? ManufacturingDetail { get; set; }
         public string? Situation { get; set; }
         public string? AddressLine1 { get; set; }

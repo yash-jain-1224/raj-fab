@@ -22,6 +22,8 @@ namespace RajFabAPI.DTOs
         public string? Place { get; set; }
         public DateTime? Date { get; set; }         // use string for payload dates to match incoming JSON
         public bool AutoRenewal { get; set; } = false;
+        public bool SameAsFactoryManager { get; set; } = false;
+        public bool SameAsFactoryEmployer { get; set; } = false;
         public string? Signature { get; set; }    // file reference or base64 string depending on client
         
         [Required]
@@ -101,6 +103,8 @@ namespace RajFabAPI.DTOs
         public string? Role { get; set; }
         public string Name { get; set; }
         public string Designation { get; set; }
+        public string? RelationType { get; set; }
+        public string? RelativeName { get; set; }
         public string AddressLine1 { get; set; }
         public string AddressLine2 { get; set; }
         public string District { get; set; }
@@ -114,7 +118,8 @@ namespace RajFabAPI.DTOs
 
     public class FactoryDto
     {
-        public string? ManuacturingDetail { get; set; }
+        public string? ManufacturingType { get; set; }
+        public string? ManufacturingDetail { get; set; }
         public string? Situation { get; set; }
         public string DistrictId { get; set; }
         public string? DistrictName { get; set; }
@@ -143,7 +148,8 @@ namespace RajFabAPI.DTOs
 
     public class FactoryDetailsDto
     {
-        public string? ManuacturingDetail { get; set; }
+        public string? ManufacturingType { get; set; }
+        public string? ManufacturingDetail { get; set; }
         public string? FactorySituation { get; set; }
 
         public Guid EmployerId { get; set; }
@@ -178,7 +184,8 @@ namespace RajFabAPI.DTOs
 
     public class BeediCigarWorksDto
     {
-        public string? ManuacturingDetail { get; set; }
+        public string? ManufacturingType { get; set; }
+        public string? ManufacturingDetail { get; set; }
         public string? Situation { get; set; }
         public string? AddressLine1 { get; set; }
         public string? AddressLine2 { get; set; }
@@ -321,6 +328,7 @@ namespace RajFabAPI.DTOs
         public string? NameOfWork { get; set; }
         public int? MaxContractWorkerCountMale { get; set; }
         public int? MaxContractWorkerCountFemale { get; set; }
+        public int? MaxContractWorkerCountTransgender { get; set; }
         public DateTime? DateOfCommencement { get; set; }
         public DateTime? DateOfCompletion { get; set; }
     }

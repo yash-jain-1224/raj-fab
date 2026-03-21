@@ -3362,12 +3362,13 @@ namespace RajFabAPI.Services
             // Create PDF
             using var writer = new PdfWriter(filePath);
             using var pdf = new PdfDocument(writer);
-            using var document = new PdfDoc(pdf);
-
-            document.SetMargins(40, 40, 40, 40);
-
             var boldFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA_BOLD);
             var regularFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA);
+            var footerDate = dto.StartDate.ToString("dd/MM/yyyy");
+            var footerPlace = dto.EstablishmentDetail?.SubDivisionName ?? dto.EstablishmentDetail?.DistrictName ?? "-";
+            pdf.AddEventHandler(PdfDocumentEvent.END_PAGE, new PageBorderAndFooterEventHandler(boldFont, regularFont, footerDate, footerPlace));
+            using var document = new PdfDoc(pdf);
+            document.SetMargins(40, 40, 75, 40); // extra bottom margin for footer
 
             // ─────────────────────────────────────────────
             // HEADER  (centered, no borders)
@@ -3393,10 +3394,14 @@ namespace RajFabAPI.Services
             var estTableTop = new PdfTable(new float[] { 260f, 260f }).UseAllAvailableWidth()
                 .SetBorder(Border.NO_BORDER);
 
+            _ = document.Add(new Paragraph("A.   Establishment Details")
+                .SetFont(boldFont).SetFontSize(10).SetMarginBottom(4));
+
             // 1, 2, 3
             var estItems = new[]
             {
-                ("1. Retrieve details of Establishment through LIN:", dto.EstablishmentDetail.LinNumber ?? "-"),
+                ("Application Number:", dto.RegistrationDetail?.EstablishmentRegistrationId ?? "-"),
+                ("1. Retrieve details of Establishment through LIN:", dto.EstablishmentDetail?.LinNumber ?? "-"),
                 ("2. Name of Establishment:",                        dto.EstablishmentDetail.Name ?? "-"),
                 ("3. Location and Address of the Establishment:",    FormatAddress(
                                                                         dto.EstablishmentDetail.AddressLine1,
@@ -3405,7 +3410,7 @@ namespace RajFabAPI.Services
                                                                         dto.EstablishmentDetail.TehsilName,
                                                                         dto.EstablishmentDetail.DistrictName,
                                                                         dto.EstablishmentDetail.Pincode)),
-                ("   PAN :",                        dto.EstablishmentDetail.PanNumber ?? "-"),
+                ("4. PAN :",                        dto.EstablishmentDetail.PanNumber ?? "-"),
             };
             foreach (var (label, value) in estItems)
             {
@@ -3419,7 +3424,7 @@ namespace RajFabAPI.Services
 
             // 4. Others details — full-width heading
             _ = estTableTop.AddCell(new PdfCell(1, 2)
-                .Add(new Paragraph("4. Others details of Establishment:").SetFont(boldFont).SetFontSize(9))
+                .Add(new Paragraph("5. Others details of Establishment:").SetFont(boldFont).SetFontSize(9))
                 .SetBorder(Border.NO_BORDER).SetPaddingLeft(4));
 
             // Sub-items a, b, c
@@ -3447,69 +3452,178 @@ namespace RajFabAPI.Services
 
             // add space for visual separation before next section
             // _ = document.Add(new Paragraph("\n").SetFontSize(4));
+            document.Add(new Paragraph("5(a). For Factories:")
+                .SetFont(boldFont).SetFontSize(9));
 
-            // ─────────────────────────────────────────────
-            // 5(a). For Factories
-            // ─────────────────────────────────────────────
-            if (dto.Factory != null)
+            var loadUnit = dto.Factory?.SanctionedLoadUnit ?? "HP";
+
+            var headers5a = new[]
             {
-                _ = document.Add(new Paragraph("5(a). For Factories:")
-                    .SetFont(boldFont).SetFontSize(9));
-                // .SetMarginLeft(24)
-                // .SetMarginBottom(2));
+    "Details of the\nmanufacturing\nprocess",
+    "Full postal address and\nsituation of the factory\nalong with plan\napproval details",
+    "Name and address\nof the occupier and\nmanager",
+    "Maximum\nnumber of\nworkers to be\nemployed on any\nday",
+    $"Sanctioned\nLoad\n({loadUnit})"
+};
 
-                var factoryHeaders = new[]
-                {
-                    "Details of the\nmanufacturing\nprocess",
-                    "Full postal address and\nsituation of the factory\nalong with plan\napproval details",
-                    "Name and address\nof the occupier and\nmanager",
-                    "Maximum\nnumber of\nworkers to be\nemployed on any\nday",
-                    "Sanctioned\nLoad\n(HP)"
-                };
-
-                var factoryTable = new PdfTable(new float[] { 80f, 120f, 110f, 90f, 70f })
-                    .UseAllAvailableWidth().SetMarginLeft(24);
-
-                // Header row
-                foreach (var h in factoryHeaders)
-                    _ = factoryTable.AddCell(BuildHeaderCell(h, boldFont));
-
-                // Number row
-                for (int i = 1; i <= 5; i++)
-                    _ = factoryTable.AddCell(BuildCenterCell(i.ToString(), regularFont));
-
-                // Data row
-                _ = factoryTable.AddCell(BuildDataCell(dto.Factory.ManufacturingType ?? "-", regularFont));
-                _ = factoryTable.AddCell(BuildDataCell(FormatAddress(
-                    dto.Factory.AddressLine1, dto.Factory.AddressLine2, dto.Factory.DistrictName,
-                    dto.Factory.SubDivisionName, dto.Factory.TehsilName, dto.Factory.Area,
-                    dto.Factory.Pincode), regularFont));
-                _ = factoryTable.AddCell(BuildDataCell(
-                    FormatNameAddress(dto.MainOwnerDetail?.Name, dto.ManagerOrAgentDetail?.Name,
-                        dto.MainOwnerDetail == null ? null : FormatAddress(
-                            dto.MainOwnerDetail.AddressLine1, dto.MainOwnerDetail.AddressLine2,
-                            dto.MainOwnerDetail.Area, dto.MainOwnerDetail.Tehsil,
-                            dto.MainOwnerDetail.District, dto.MainOwnerDetail.Pincode)), regularFont));
-                _ = factoryTable.AddCell(BuildDataCell(dto.Factory.NumberOfWorker.ToString() ?? "-", regularFont));
-                _ = factoryTable.AddCell(BuildDataCell(dto.Factory.SanctionedLoad?.ToString("0.##") ?? "-", regularFont));
-
-                _ = document.Add(factoryTable);
-                _ = document.Add(new Paragraph("\n").SetFontSize(4));
+            var values5a = dto.Factory != null
+            ? new[]
+            {
+    $"Type: {dto.Factory.ManufacturingType}\nDetails: {dto.Factory.ManufacturingDetail}",
+    $"Name: {dto.EstablishmentDetail?.Name}\nAddress: {FormatAddress(dto.Factory.AddressLine1, dto.Factory.AddressLine2, dto.Factory.Area, dto.Factory.TehsilName, dto.Factory.SubDivisionName, dto.Factory.DistrictName, dto.Factory.Pincode)}\nSituation: {dto.Factory.Situation ?? "-"}",
+    $"Occupier: {dto.MainOwnerDetail?.Name}\nManager: {dto.ManagerOrAgentDetail?.Name}",
+    dto.Factory.NumberOfWorker?.ToString(),
+    dto.Factory.SanctionedLoad?.ToString("0.##")
             }
+            : null;
+
+            document.Add(BuildSectionTable(headers5a, new float[] { 90, 120, 100, 90, 70 }, values5a, boldFont, regularFont));
+            document.Add(new Paragraph("\n").SetFontSize(4));
+
+            document.Add(new Paragraph("5(b). For Beedi and Cigar Works:")
+                .SetFont(boldFont).SetFontSize(9));
+
+            var headers5b = new[]
+            {
+    "Details of the\nmanufacturing\nprocess",
+    "Full postal address and\nsituation of the establishment",
+    "Name and address\nof the employer and\nmanager",
+    "Maximum number of workers to be employed on any day in the establishment",
+    "Number of home workers"
+};
+
+            var values5b = dto.BeediCigarWork != null
+            ? new[]
+            {
+    $"Type: {dto.BeediCigarWork.ManufacturingType}\nDetails: {dto.BeediCigarWork.ManufacturingDetail}",
+    $"{FormatAddress(dto.BeediCigarWork.AddressLine1, dto.BeediCigarWork.AddressLine2, dto.BeediCigarWork.Area, null, null, dto.BeediCigarWork.Pincode)}\nSituation: {dto.BeediCigarWork.Situation ?? "-"}",
+    $"Employer: {dto.MainOwnerDetail?.Name}\nManager: {dto.ManagerOrAgentDetail?.Name}",
+    dto.BeediCigarWork.MaxNumberOfWorkerAnyDay?.ToString(),
+    dto.BeediCigarWork.NumberOfHomeWorker?.ToString()
+            }
+            : null;
+
+            document.Add(BuildSectionTable(headers5b, new float[] { 90, 120, 100, 90, 70 }, values5b, boldFont, regularFont));
+            document.Add(new Paragraph("\n").SetFontSize(4));
+
+            document.Add(new Paragraph("5(c). For Motor Transport undertaking:")
+                .SetFont(boldFont).SetFontSize(9));
+
+            var headers5c = new[]
+            {
+    "Nature of motor transport service e.g City service, long distance passanger service and long distance freight service etc.",
+    "Full postal address and situation",
+    "Name address of theEmployer and manager",
+    "Maximum number of workers to be employed or proposed to be employed during period of registration",
+    "Total No. of Motor transport vehicles on the date of application"
+};
+
+            var values5c = dto.MotorTransportService != null
+            ? new[]
+            {
+    dto.MotorTransportService.NatureOfService,
+    $"{FormatAddress(dto.MotorTransportService.AddressLine1, dto.MotorTransportService.AddressLine2, dto.MotorTransportService.Area, null, null, dto.MotorTransportService.Pincode)}\nSituation: {dto.MotorTransportService.Situation ?? "-"}",
+    $"Employer: {dto.MainOwnerDetail?.Name}\nManager: {dto.ManagerOrAgentDetail?.Name}",
+    dto.MotorTransportService.MaxNumberOfWorkerDuringRegistation?.ToString(),
+    dto.MotorTransportService.TotalNumberOfVehicles?.ToString()
+            }
+            : null;
+
+            document.Add(BuildSectionTable(headers5c, new float[] { 100, 120, 100, 100, 80 }, values5c, boldFont, regularFont));
+            document.Add(new Paragraph("\n").SetFontSize(4));
+
+            document.Add(new Paragraph("5(d). For building and other construction work:")
+                .SetFont(boldFont).SetFontSize(9));
+
+            var headers5d = new[]
+            {
+    "Type of Construction work",
+    "Probable period of commencement of work",
+    "Expected period for completion of work",
+    "Details of approval of the local authority",
+    "Date of Commencement / Probable date of Completion of work"
+};
+
+            var values5d = dto.BuildingAndConstructionWork != null
+            ? new[]
+            {
+    dto.BuildingAndConstructionWork.WorkType,
+    dto.BuildingAndConstructionWork.ProbablePeriodOfCommencementOfWork,
+    dto.BuildingAndConstructionWork.ExpectedPeriodOfCommencementOfWork,
+    dto.BuildingAndConstructionWork.LocalAuthorityApprovalDetail,
+    dto.BuildingAndConstructionWork.DateOfCompletion ?? "-"
+            }
+            : null;
+
+            document.Add(BuildSectionTable(headers5d, new float[] { 100, 100, 100, 100, 100 }, values5d, boldFont, regularFont));
+            document.Add(new Paragraph("\n").SetFontSize(4));
+
+
+            document.Add(new Paragraph("5(e). For News Paper Establishments:")
+                .SetFont(boldFont).SetFontSize(9));
+
+            var headers5e = new[]
+            {
+    "Name of Establishments",
+    "Full postal address and situation of the establishment",
+    "Name and address of the employer and manager",
+    "Maximum number of workers to be employed on any day in the establishment",
+    "Date of Commencement / Probable date of Completion of work"
+};
+
+            var values5e = dto.NewsPaperEstablishment != null
+            ? new[]
+            {
+    dto.NewsPaperEstablishment.Name,
+    FormatAddress(dto.NewsPaperEstablishment.AddressLine1, dto.NewsPaperEstablishment.AddressLine2, dto.NewsPaperEstablishment.Area, null, null, dto.NewsPaperEstablishment.Pincode),
+    $"Employer: {dto.MainOwnerDetail?.Name}\nManager: {dto.ManagerOrAgentDetail?.Name}",
+    dto.NewsPaperEstablishment.MaxNumberOfWorkerAnyDay?.ToString(),
+    dto.NewsPaperEstablishment.DateOfCompletion
+            }
+            : null;
+
+            document.Add(BuildSectionTable(headers5e, new float[] { 100, 120, 100, 100, 100 }, values5e, boldFont, regularFont));
+            document.Add(new Paragraph("\n").SetFontSize(4));
+
+            document.Add(new Paragraph("5(f). For Audio-Visual Workers:")
+                .SetFont(boldFont).SetFontSize(9));
+
+            var headers5f = new[]
+            {
+    "Name of Establishments",
+    "Full postal address and situation of the establishment",
+    "Name and address of the employer and manager",
+    "Maximum number of workers to be employed on any day in the establishment",
+    "Date of Commencement / Probable date of Completion of work"
+};
+
+            var values5f = dto.AudioVisualWork != null
+            ? new[]
+            {
+    dto.AudioVisualWork.Name,
+    FormatAddress(dto.AudioVisualWork.AddressLine1, dto.AudioVisualWork.AddressLine2, dto.AudioVisualWork.Area, null, null, dto.AudioVisualWork.Pincode),
+    $"Employer: {dto.MainOwnerDetail?.Name}\nManager: {dto.ManagerOrAgentDetail?.Name}",
+    dto.AudioVisualWork.MaxNumberOfWorkerAnyDay?.ToString(),
+    dto.AudioVisualWork.DateOfCompletion
+            }
+            : null;
+
+            document.Add(BuildSectionTable(headers5f, new float[] { 100, 120, 100, 100, 100 }, values5f, boldFont, regularFont));
 
             // ─────────────────────────────────────────────
             // Items 6, 7, 8, 9  (new table, added AFTER 5(a))
             // ─────────────────────────────────────────────
             var estTableBottom = new PdfTable(new float[] { 260f, 260f }).UseAllAvailableWidth()
-                .SetBorder(Border.NO_BORDER);
+                .SetBorder(Border.NO_BORDER)
+                .SetMarginTop(12);
 
             var estItems2 = new[]
             {
-                ("6. Ownership Type/Sector:",                              dto.Factory.OwnershipTypeSector ?? "-"),
-                ("7. Activity as per National Industrial Classification:", dto.Factory.ActivityAsPerNIC ?? "-"),
-                ("8. Details of Selected NIC Code:",                       dto.Factory.NICCodeDetail ?? "-"),
+                ("6. Ownership Type/Sector:",                              dto.Factory?.OwnershipTypeSector ?? "-"),
+                ("7. Activity as per National Industrial Classification:", dto.Factory?.ActivityAsPerNIC ?? "-"),
+                ("8. Details of Selected NIC Code:",                       dto.Factory?.NICCodeDetail ?? "-"),
                 ("9. Identification of the establishment e-sign/ digital sign of employer/ representative:",
-                    dto.Factory.IdentificationOfEstablishment ?? "-"),
+                    dto.Factory?.IdentificationOfEstablishment ?? "-"),
             };
             foreach (var (label, value) in estItems2)
             {
@@ -3565,27 +3679,27 @@ namespace RajFabAPI.Services
 
 
             // Signature on right
-            var sigOuterTable1 = new PdfTable(new float[] { 300f, 220f })
-                .UseAllAvailableWidth().SetBorder(Border.NO_BORDER);
+            // var sigOuterTable1 = new PdfTable(new float[] { 300f, 220f })
+            //     .UseAllAvailableWidth().SetBorder(Border.NO_BORDER);
 
-            // Left: Date & Place
-            var leftCell1 = new PdfCell().SetBorder(Border.NO_BORDER).SetPaddingTop(20);
-            _ = leftCell1.Add(new Paragraph($"Dated: {dto.StartDate:dd/MM/yyyy}")
-                .SetFont(regularFont).SetFontSize(9));
-            _ = sigOuterTable1.AddCell(leftCell1);
+            // // Left: Date & Place
+            // var leftCell1 = new PdfCell().SetBorder(Border.NO_BORDER).SetPaddingTop(20);
+            // _ = leftCell1.Add(new Paragraph($"Dated: {dto.StartDate:dd/MM/yyyy}")
+            //     .SetFont(regularFont).SetFontSize(9));
+            // _ = sigOuterTable1.AddCell(leftCell1);
 
-            // Right: Signature block
-            var sigCell1 = new PdfCell()
-                .SetBorder(Border.NO_BORDER)
-                .SetPaddingTop(20);
-            // .SetTextAlignment(TextAlignment.CENTER);
+            // // Right: Signature block
+            // var sigCell1 = new PdfCell()
+            //     .SetBorder(Border.NO_BORDER)
+            //     .SetPaddingTop(20);
+            // // .SetTextAlignment(TextAlignment.CENTER);
 
-            _ = sigCell1.Add(new Paragraph("Signature/ E-sign/digital sign of employer")
-                .SetFont(regularFont).SetFontSize(8)
-                .SetTextAlignment(TextAlignment.RIGHT));
+            // _ = sigCell1.Add(new Paragraph("Signature/ E-sign/digital sign of employer")
+            //     .SetFont(regularFont).SetFontSize(8)
+            //     .SetTextAlignment(TextAlignment.RIGHT));
 
-            _ = sigOuterTable1.AddCell(sigCell1);
-            _ = document.Add(sigOuterTable1);
+            // _ = sigOuterTable1.AddCell(sigCell1);
+            // _ = document.Add(sigOuterTable1);
 
             // ─────────────────────────────────────────────
             // SECTION C – Manager/Agent Details
@@ -3638,7 +3752,7 @@ namespace RajFabAPI.Services
                 "Name and\nAddress\nContractor",
                 "Email address &\nMobile of\nContractor",
                 "Name of Work",
-                "Maximum No. of\nContract labour\nengaged",
+                "Maximum No. of Contract\nlabour engaged\n(Male / Female / Transgender)",
                 "Date of\nCommencement\n-Probable date\nof Completion\nof work"
             };
 
@@ -3654,7 +3768,7 @@ namespace RajFabAPI.Services
                 foreach (var contractor in dto.ContractorDetail)
                 {
                     _ = contractorTable.AddCell(BuildDataCell(
-                        $"{contractor?.Name ?? "-"}\n{FormatAddress(
+                        $"Name: {contractor?.Name ?? "-"}\nAddress: {FormatAddress(
                             contractor?.AddressLine1,
                             contractor?.AddressLine2,
                             contractor?.Area,
@@ -3663,52 +3777,64 @@ namespace RajFabAPI.Services
                             contractor?.Pincode
                         ) ?? ""}",
                         regularFont
-                    ));
+                    ).SetTextAlignment(TextAlignment.CENTER)
+                    );
                     _ = contractorTable.AddCell(BuildDataCell(
-                        $"{contractor.Email ?? "-"}\n{contractor.Mobile ?? "-"}", regularFont));
-                    _ = contractorTable.AddCell(BuildDataCell(contractor.NameOfWork ?? "-", regularFont));
+                        $"Email: {contractor.Email ?? "-"}\nMobile: {contractor.Mobile ?? "-"}", regularFont).SetTextAlignment(TextAlignment.CENTER)
+                        );
+                    _ = contractorTable.AddCell(BuildDataCell(contractor.NameOfWork ?? "-", regularFont).SetTextAlignment(TextAlignment.CENTER)
+                    );
                     _ = contractorTable.AddCell(BuildDataCell(
-                        $"Male: {contractor.MaxContractWorkerCountMale?.ToString() ?? "-"}\nFemale: {contractor.MaxContractWorkerCountFemale?.ToString() ?? "-"}\nTransgender: {contractor.MaxContractWorkerCountTransgender?.ToString() ?? "-"}", regularFont));
+                        $"Male: {contractor.MaxContractWorkerCountMale?.ToString() ?? "-"}\nFemale: {contractor.MaxContractWorkerCountFemale?.ToString() ?? "-"}\nTransgender: {contractor.MaxContractWorkerCountTransgender?.ToString() ?? "-"}", regularFont).SetTextAlignment(TextAlignment.CENTER)
+                        );
                     _ = contractorTable.AddCell(BuildDataCell(
-                        $"{contractor.DateOfCommencement:dd/MM/yyyy}-\n{contractor.DateOfCompletion:dd/MM/yyyy}", regularFont));
+                        $"Start: {contractor.DateOfCommencement:dd/MM/yyyy}\nEnd: {contractor.DateOfCompletion:dd/MM/yyyy}", regularFont).SetTextAlignment(TextAlignment.CENTER)
+                        );
                 }
 
                 _ = document.Add(contractorTable);
                 _ = document.Add(new Paragraph("\n").SetFontSize(4));
             }
 
-            _ = document.Add(new Paragraph("\n").SetFontSize(225)); // add vertical space before signature section
+            // ─────────────────────────────────────────────
+            // Declaration  (checkbox + heading row)
+            // ─────────────────────────────────────────────
+            var zapfFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.ZAPFDINGBATS);
+            var isChecked = dto.AutoRenewal;
 
-            // Signature on right
-            var sigOuterTable = new PdfTable(new float[] { 300f, 220f })
-                .UseAllAvailableWidth().SetBorder(Border.NO_BORDER);
-
-            // Left: Date & Place
-            var leftCell = new PdfCell().SetBorder(Border.NO_BORDER).SetPaddingTop(20);
-            _ = leftCell.Add(new Paragraph($"Dated: {dto.StartDate:dd/MM/yyyy}")
-                .SetFont(regularFont).SetFontSize(9));
-            _ = leftCell.Add(new Paragraph($"Place: {dto.EstablishmentDetail.SubDivisionName ?? "-"}")
-                .SetFont(regularFont).SetFontSize(9));
-            _ = sigOuterTable.AddCell(leftCell);
-
-            // Right: Signature block
-            var sigCell = new PdfCell()
+            var declHeadTable = new PdfTable(new float[] { 16f, 464f })
+                .UseAllAvailableWidth()
                 .SetBorder(Border.NO_BORDER)
-                .SetPaddingTop(20);
-            // .SetTextAlignment(TextAlignment.CENTER);
+                .SetMarginTop(10)
+                .SetMarginBottom(4);
 
-            _ = sigCell.Add(new Paragraph("Signature/ E-sign/digital sign of employer")
-                .SetFont(regularFont).SetFontSize(8)
-                .SetTextAlignment(TextAlignment.RIGHT));
+            var checkCell = new PdfCell()
+                .SetBorder(new SolidBorder(ColorConstants.BLACK, 0.8f))
+                .SetPadding(1f)
+                .SetVerticalAlignment(VerticalAlignment.MIDDLE)
+                .SetTextAlignment(TextAlignment.CENTER);
+            checkCell.Add(new Paragraph(isChecked ? "4" : " ")
+                .SetFont(isChecked ? zapfFont : regularFont)
+                .SetFontSize(8)
+                .SetTextAlignment(TextAlignment.CENTER)
+                .SetMargin(0));
+            _ = declHeadTable.AddCell(checkCell);
 
-            _ = sigOuterTable.AddCell(sigCell);
-            _ = document.Add(sigOuterTable);
+            _ = declHeadTable.AddCell(new PdfCell()
+                .Add(new Paragraph("Declaration by the Occupier/Employer for Auto-Registration of Factory")
+                    .SetFont(boldFont).SetFontSize(9).SetMargin(0))
+                .SetBorder(Border.NO_BORDER)
+                .SetPaddingLeft(6)
+                .SetVerticalAlignment(VerticalAlignment.MIDDLE));
 
-            // _ = document.Add(new Paragraph(
-            //         "This is a computer generated certificate and bears scanned signature. No physical signature is required.")
-            //     .SetFont(regularFont).SetFontSize(7)
-            //     .SetFontColor(ColorConstants.GRAY)
-            //     .SetMarginTop(10));
+            _ = document.Add(declHeadTable);
+
+            _ = document.Add(new Paragraph(
+                    "I hereby declare that the information furnished above, including the address of the factory, is true and " +
+                    "correct to the best of my knowledge and belief. I further declare that I have ensured that the use of the " +
+                    "above-mentioned premises is duly approved for the purpose of carrying out the manufacturing process " +
+                    "specified in column (1) of the Table under clause 5(a) of Form-1.")
+                .SetFont(regularFont).SetFontSize(9).SetTextAlignment(TextAlignment.JUSTIFIED));
 
             document.Close();
 
@@ -3723,6 +3849,28 @@ namespace RajFabAPI.Services
             }
 
             return filePath;
+        }
+
+        private Table BuildSectionTable(string[] headers, float[] widths, string[]? values, PdfFont boldFont, PdfFont regularFont)
+        {
+            var table = new Table(widths)
+                .UseAllAvailableWidth()
+                .SetMarginLeft(24);
+
+            // Header
+            foreach (var h in headers)
+                table.AddCell(BuildHeaderCell(h, boldFont));
+
+            // Number row
+            for (int i = 1; i <= headers.Length; i++)
+                table.AddCell(BuildCenterCell(i.ToString(), regularFont));
+
+            // Data row — omitted when section is not applicable (values == null)
+            if (values != null)
+                foreach (var val in values)
+                    table.AddCell(BuildDataCell(string.IsNullOrWhiteSpace(val) ? "-" : val, regularFont).SetTextAlignment(TextAlignment.CENTER));
+
+            return table;
         }
 
         // ─────────────────────────────────────────────
@@ -3764,8 +3912,8 @@ namespace RajFabAPI.Services
                 parts.Add($"Occupier: {occupierName}");
             if (!string.IsNullOrWhiteSpace(managerName))
                 parts.Add($"Manager: {managerName}");
-            if (!string.IsNullOrWhiteSpace(address))
-                parts.Add(address);
+            // if (!string.IsNullOrWhiteSpace(address))
+            //     parts.Add(address);
             return parts.Any() ? string.Join("\n", parts) : "-";
         }
 
@@ -4413,7 +4561,7 @@ namespace RajFabAPI.Services
         }
 
         // ─────────────────────────────────────────────────────────────────────────────
-        // Draws a red border rectangle on every page
+        // Draws a border rectangle on every page
         // ─────────────────────────────────────────────────────────────────────────────
         private sealed class PageBorderEventHandler : AbstractPdfDocumentEventHandler
         {
@@ -4429,6 +4577,88 @@ namespace RajFabAPI.Services
                     .Rectangle(25, 25, rect.GetWidth() - 50, rect.GetHeight() - 50)
                     .Stroke();
                 canvas.Release();
+            }
+        }
+
+        private sealed class PageBorderAndFooterEventHandler : AbstractPdfDocumentEventHandler
+        {
+            private readonly PdfFont _boldFont;
+            private readonly PdfFont _regularFont;
+            private readonly string _date;
+            private readonly string _place;
+
+            public PageBorderAndFooterEventHandler(PdfFont boldFont, PdfFont regularFont, string date, string place)
+            {
+                _boldFont = boldFont;
+                _regularFont = regularFont;
+                _date = date;
+                _place = place;
+            }
+
+            protected override void OnAcceptedEvent(AbstractPdfDocumentEvent @event)
+            {
+                if (@event is not PdfDocumentEvent docEvent) return;
+                var pdfDoc = docEvent.GetDocument();
+                var page = docEvent.GetPage();
+                var rect = page.GetPageSize();
+                var canvas = new PdfCanvas(page);
+
+                // Border arround page 
+                // canvas
+                //     .SetStrokeColor(new DeviceRgb(20, 57, 92))
+                //     .SetLineWidth(1.5f)
+                //     .Rectangle(25, 25, rect.GetWidth() - 50, rect.GetHeight() - 50)
+                //     .Stroke();
+
+                // ───── Separator Line (properly spaced ABOVE text)
+                float lineY = 70f;
+
+                canvas
+                    .SetStrokeColor(new DeviceRgb(180, 180, 180))
+                    .SetLineWidth(0.5f)
+                    .MoveTo(30, lineY)
+                    .LineTo(rect.GetWidth() - 30, lineY)
+                    .Stroke();
+
+                canvas.Release();
+
+                // ───── Footer Layout
+                float footerY = 40f;
+                float pageWidth = rect.GetWidth();
+
+                // ───── Left: Date & Place
+                using (var leftCanvas = new Canvas(new PdfCanvas(page),
+                    new iText.Kernel.Geom.Rectangle(30, footerY, 250, 20)))
+                {
+                    leftCanvas.Add(new Paragraph($"Dated: {_date}\nPlace: {_place}")
+                        .SetFont(_regularFont)
+                        .SetFontSize(9)
+                        .SetMargin(0));
+                }
+
+                // ───── Center: Page Number
+                int pageNumber = pdfDoc.GetPageNumber(page);
+
+                using (var centerCanvas = new Canvas(new PdfCanvas(page),
+                    new iText.Kernel.Geom.Rectangle(0, footerY, pageWidth, 20)))
+                {
+                    centerCanvas.Add(new Paragraph($"Page {pageNumber}")
+                        .SetFont(_regularFont)
+                        .SetFontSize(9)
+                        .SetTextAlignment(TextAlignment.CENTER)
+                        .SetMargin(0));
+                }
+
+                // ───── Right: Signature
+                using (var rightCanvas = new Canvas(new PdfCanvas(page),
+                    new iText.Kernel.Geom.Rectangle(pageWidth - 280, footerY, 250, 20)))
+                {
+                    rightCanvas.Add(new Paragraph("Signature / E-sign / Digital sign of employer")
+                        .SetFont(_regularFont)
+                        .SetFontSize(9)
+                        .SetTextAlignment(TextAlignment.RIGHT)
+                        .SetMargin(0));
+                }
             }
         }
     }

@@ -6,6 +6,8 @@ namespace RajFabAPI.DTOs
 {
     public class EstablishmentRegistrationEntitiesDto
     {
+        public bool AutoRenewal { get; set; }
+        public string EstablishmentRegistrationId { get; set; }
         public EstablishmentDetailsDto? EstablishmentDetail { get; set; }
         public int? ApplicationApprovalRequestId { get; set; }
         public string? Status { get; set; }

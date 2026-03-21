@@ -189,8 +189,12 @@ namespace RajFabAPI.DTOs
         public string? Situation { get; set; }
         public string? AddressLine1 { get; set; }
         public string? AddressLine2 { get; set; }
+        public string DistrictId { get; set; }
+        public string DistrictName { get; set; }
         public string SubDivisionId { get; set; }
+        public string SubDivisionName { get; set; }
         public string TehsilId { get; set; }
+        public string TehsilName { get; set; }
         public string? Area { get; set; }
         public string? Pincode { get; set; }
         public string? Email { get; set; }

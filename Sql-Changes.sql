@@ -1874,3 +1874,6 @@ ADD MaxContractWorkerCountTransgender INT NULL;
 ALTER TABLE EstablishmentUserDetails
 ADD RelationType NVARCHAR(50) NULL,
     RelativeName NVARCHAR(50) NULL;
+
+ALTER TABLE FactoryMapApprovals
+    ADD ObjectionLetterUrl NVARCHAR(500) NULL;

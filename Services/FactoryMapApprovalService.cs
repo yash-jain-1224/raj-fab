@@ -1018,9 +1018,11 @@ namespace RajFabAPI.Services
                 using var writer = new PdfWriter(filePath);
                 using var pdf = new PdfDocument(writer);
                 using var document = new Document(pdf);
+                document.SetMargins(40, 40, 50, 40);
 
-                var boldFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA_BOLD);
+                var boldFont    = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA_BOLD);
                 var regularFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA);
+                var italicFont  = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA_OBLIQUE);
 
                 var occupier = string.IsNullOrWhiteSpace(dto.OccupierDetails)
                     ? null
@@ -1030,148 +1032,212 @@ namespace RajFabAPI.Services
                     ? null
                     : JsonSerializer.Deserialize<FactoryDetailsModel>(dto.FactoryDetails);
 
-                if (dto == null) throw new ArgumentNullException(nameof(dto));
-
-                // ================= HEADER =================
-                var headerTable = new Table(UnitValue.CreatePercentArray(new float[] { 1, 4 })).UseAllAvailableWidth();
-                headerTable.AddCell(new Cell().Add(new PdfImage(ImageDataFactory.Create("wwwroot/Emblem_of_India.png")).ScaleToFit(40, 40)).SetBorder(Border.NO_BORDER));
-                headerTable.AddCell(new Cell()
-                    .Add(new Paragraph("Form - 6").SetFont(boldFont).SetFontSize(18))
-                    .Add(new Paragraph("(See clause (d) of sub rule (1) of rule 5)").SetFont(regularFont).SetFontSize(12))
-                    .Add(new Paragraph("FACTORY MAP APPROVAL FORM").SetFontColor(ColorConstants.BLUE).SetFontSize(12))
-                    .SetBorder(Border.NO_BORDER));
-                document.Add(headerTable);
-                document.Add(new Paragraph().SetMarginBottom(10));
-
-                // ================= ACKNOWLEDGEMENT =================
-                document.Add(new Paragraph($"Acknowledgement No: {dto.AcknowledgementNumber}").SetFont(regularFont));
-                document.Add(new Paragraph($"Date: {(dto.Date?.ToString("dd/MM/yyyy") ?? "-")}").SetMarginBottom(10));
-
-                // ================= FACTORY + OCCUPIER DETAILS =================
-                var sectionDiv = new Div().SetKeepTogether(true);
-                var factoryTable = new Table(UnitValue.CreatePercentArray(new float[] { 1, 2 })).UseAllAvailableWidth().SetMarginBottom(5);
-
-                if (factory != null)
+                // ── helpers ──────────────────────────────────────────────────────────
+                // 2-column borderless row: label | value
+                void AddRow(Table t, string label, string value, bool labelBold = false)
                 {
-                    factoryTable.AddCell(new Cell().Add(new Paragraph("Factory Name").SetFont(boldFont)));
-                    factoryTable.AddCell(new Cell().Add(new Paragraph(factory.name ?? "-")));
+                    t.AddCell(new Cell().Add(new Paragraph(label)
+                            .SetFont(labelBold ? boldFont : regularFont).SetFontSize(9))
+                        .SetBorder(Border.NO_BORDER).SetPaddingLeft(4));
+                    t.AddCell(new Cell().Add(new Paragraph(value ?? "-")
+                            .SetFont(regularFont).SetFontSize(9))
+                        .SetBorder(Border.NO_BORDER));
+                }
+                // 3-column sub-item: indent | (x) label | value
+                void AddSubRow(Table t, string code, string label, string value)
+                {
+                    t.AddCell(new Cell().Add(new Paragraph("")).SetBorder(Border.NO_BORDER).SetWidth(20));
+                    t.AddCell(new Cell().Add(new Paragraph($"{code} {label}")
+                            .SetFont(regularFont).SetFontSize(9))
+                        .SetBorder(Border.NO_BORDER));
+                    t.AddCell(new Cell().Add(new Paragraph(value ?? "-")
+                            .SetFont(regularFont).SetFontSize(9))
+                        .SetBorder(Border.NO_BORDER));
+                }
+                Table TwoCol()  => new Table(new float[] { 200f, 320f }).UseAllAvailableWidth().SetBorder(Border.NO_BORDER);
+                Table ThreeCol()=> new Table(new float[] { 20f,  180f, 320f }).UseAllAvailableWidth().SetBorder(Border.NO_BORDER);
 
-                    factoryTable.AddCell(new Cell().Add(new Paragraph("Situation").SetFont(boldFont)));
-                    factoryTable.AddCell(new Cell().Add(new Paragraph(factory.situation ?? "-")));
+                // ── HEADER ───────────────────────────────────────────────────────────
+                document.Add(new Paragraph("Form-6")
+                    .SetFont(boldFont).SetFontSize(13).SetTextAlignment(TextAlignment.CENTER).SetMarginBottom(1));
+                document.Add(new Paragraph("(see rule 8(2) & (4) & rule 106)")
+                    .SetFont(regularFont).SetFontSize(10).SetTextAlignment(TextAlignment.CENTER).SetMarginBottom(1));
+                document.Add(new Paragraph("Submission and approval of plans")
+                    .SetFont(boldFont).SetFontSize(10).SetTextAlignment(TextAlignment.CENTER).SetMarginBottom(4));
+                document.Add(new Paragraph(
+                        "Application for permission for the site on which the factory is to be situated and for the construction or extension thereof")
+                    .SetFont(regularFont).SetFontSize(9).SetMarginBottom(6));
 
-                    factoryTable.AddCell(new Cell().Add(new Paragraph("Address").SetFont(boldFont)));
-                    factoryTable.AddCell(new Cell().Add(new Paragraph($"{factory.addressLine1}, {factory.addressLine2}, {factory.area} - {factory.pincode}")));
+                // Acknowledgement No + Date (right-aligned pair)
+                var ackTable = new Table(new float[] { 1f, 1f }).UseAllAvailableWidth().SetBorder(Border.NO_BORDER).SetMarginBottom(8);
+                ackTable.AddCell(new Cell().Add(new Paragraph($"Acknowledgement No: {dto.AcknowledgementNumber}")
+                        .SetFont(regularFont).SetFontSize(9)).SetBorder(Border.NO_BORDER));
+                ackTable.AddCell(new Cell().Add(new Paragraph($"Date: {dto.Date?.ToString("dd/MM/yyyy") ?? "-"}")
+                        .SetFont(regularFont).SetFontSize(9).SetTextAlignment(TextAlignment.RIGHT)).SetBorder(Border.NO_BORDER));
+                document.Add(ackTable);
 
-                    factoryTable.AddCell(new Cell().Add(new Paragraph("Email").SetFont(boldFont)));
-                    factoryTable.AddCell(new Cell().Add(new Paragraph(factory.email ?? "-")));
+                // ── SECTION 1: Details of Occupier ───────────────────────────────────
+                document.Add(new Paragraph("1.   Details of Occupier")
+                    .SetFont(boldFont).SetFontSize(10).SetMarginBottom(3));
 
-                    factoryTable.AddCell(new Cell().Add(new Paragraph("Mobile").SetFont(boldFont)));
-                    factoryTable.AddCell(new Cell().Add(new Paragraph(factory.mobile ?? "-")));
+                var occTable = ThreeCol();
+                AddSubRow(occTable, "(a)", "Name:",                           occupier?.name ?? "-");
+                AddSubRow(occTable, "(b)", "Father's/Mother's/Husband's Name:",
+                    string.IsNullOrWhiteSpace(occupier?.relationType) && string.IsNullOrWhiteSpace(occupier?.relativeName)
+                        ? "-" : $"{occupier?.relationType} {occupier?.relativeName}".Trim());
+                AddSubRow(occTable, "(c)", "Address (office):",
+                    string.Join(", ", new[] { occupier?.addressLine1, occupier?.addressLine2, occupier?.area, occupier?.tehsil, occupier?.district, occupier?.pincode }
+                        .Where(s => !string.IsNullOrWhiteSpace(s))));
+                AddSubRow(occTable, "(d)", "Address (residential):", "-");
+                AddSubRow(occTable, "(e)", "Mobile number:",                  occupier?.mobile ?? "-");
+                AddSubRow(occTable, "(f)", "Email:",                          occupier?.email  ?? "-");
+                document.Add(occTable.SetMarginBottom(6));
 
-                    factoryTable.AddCell(new Cell().Add(new Paragraph("Telephone").SetFont(boldFont)));
-                    factoryTable.AddCell(new Cell().Add(new Paragraph(factory.telephone ?? "-")));
+                // ── SECTION 2: Details of factory ────────────────────────────────────
+                document.Add(new Paragraph("2.   Details of factory")
+                    .SetFont(boldFont).SetFontSize(10).SetMarginBottom(3));
 
-                    factoryTable.AddCell(new Cell().Add(new Paragraph("Website").SetFont(boldFont)));
-                    factoryTable.AddCell(new Cell().Add(new Paragraph(factory.website ?? "-")));
+                var facTable = ThreeCol();
+                AddSubRow(facTable, "(a)", "Name of Factory:",                factory?.name ?? "-");
+                AddSubRow(facTable, "(b)", "Situation of factory:",            factory?.situation ?? "-");
+                AddSubRow(facTable, "(c)", "Address with PIN code:",
+                    string.Join(", ", new[] { factory?.addressLine1, factory?.addressLine2, factory?.area, factory?.pincode }
+                        .Where(s => !string.IsNullOrWhiteSpace(s))));
+                AddSubRow(facTable, "(d)", "District:",                        factory?.area ?? "-");
+                AddSubRow(facTable, "(e)", "Contact number:",                  factory?.mobile   ?? factory?.telephone ?? "-");
+                AddSubRow(facTable, "(f)", "Email:",                           factory?.email    ?? "-");
+                AddSubRow(facTable, "(g)", "Website:",                         factory?.website  ?? "-");
+                document.Add(facTable.SetMarginBottom(6));
+
+                // ── SECTION 3: Plant particulars ─────────────────────────────────────
+                document.Add(new Paragraph("3.   Particulars of plant to be installed")
+                    .SetFont(boldFont).SetFontSize(10).SetMarginBottom(2));
+                var plantT = TwoCol();
+                AddRow(plantT, "", dto.PlantParticulars ?? "-");
+                document.Add(plantT.SetMarginBottom(6));
+
+                // ── SECTION 4: Manufacturing process ─────────────────────────────────
+                document.Add(new Paragraph("4.   Name of Manufacturing process")
+                    .SetFont(boldFont).SetFontSize(10).SetMarginBottom(2));
+                var mfgT = TwoCol();
+                AddRow(mfgT, "", dto.ManufacturingProcess ?? "-");
+                document.Add(mfgT.SetMarginBottom(6));
+
+                // ── SECTION 5: Maximum number of workers ─────────────────────────────
+                document.Add(new Paragraph("5.   Maximum number of Workers")
+                    .SetFont(boldFont).SetFontSize(10).SetMarginBottom(1));
+                document.Add(new Paragraph("     (Proposed to employ)")
+                    .SetFont(italicFont).SetFontSize(9).SetMarginBottom(3));
+
+                var wrkT = new Table(new float[] { 160f, 120f, 120f, 120f }).UseAllAvailableWidth().SetBorder(Border.NO_BORDER);
+                // header row
+                foreach (var h in new[] { "", "Male", "Female", "Transgender" })
+                    wrkT.AddCell(new Cell().Add(new Paragraph(h).SetFont(boldFont).SetFontSize(9)
+                        .SetTextAlignment(TextAlignment.CENTER)).SetBorder(Border.NO_BORDER));
+                // value row
+                wrkT.AddCell(new Cell().SetBorder(Border.NO_BORDER));
+                foreach (var v in new[] { dto.MaxWorkerMale.ToString(), dto.MaxWorkerFemale.ToString(), "-" })
+                    wrkT.AddCell(new Cell().Add(new Paragraph(v).SetFont(regularFont).SetFontSize(9)
+                        .SetTextAlignment(TextAlignment.CENTER)).SetBorder(Border.NO_BORDER));
+                document.Add(wrkT.SetMarginBottom(6));
+
+                // ── SECTION 6: Raw / Intermediate / Final ────────────────────────────
+                document.Add(new Paragraph("6.   Details of")
+                    .SetFont(boldFont).SetFontSize(10).SetMarginBottom(3));
+
+                void AddProductSubSection(string code, string label, IEnumerable<string> names)
+                {
+                    var t = ThreeCol();
+                    var nameList = names.Where(n => !string.IsNullOrWhiteSpace(n)).ToList();
+                    AddSubRow(t, code, label, nameList.Count > 0 ? string.Join(", ", nameList) : "-");
+                    document.Add(t);
                 }
 
-                if (occupier != null)
+                AddProductSubSection("(a)", "Raw material:",
+                    dto.RawMaterials?.Select(r => r.MaterialName) ?? Enumerable.Empty<string>());
+                AddProductSubSection("(b)", "Intermediate product by product:",
+                    dto.IntermediateProducts?.Select(p => p.ProductName) ?? Enumerable.Empty<string>());
+                AddProductSubSection("(c)", "Findal Product:",
+                    dto.FinishGoods?.Select(f => f.ProductName) ?? Enumerable.Empty<string>());
+                document.Add(new Paragraph("").SetMarginBottom(4));
+
+                // ── SECTION 7: Chemicals table ───────────────────────────────────────
+                document.Add(new Paragraph("7.   Name of Chemicals for use in the manufacturing process, if any")
+                    .SetFont(boldFont).SetFontSize(10).SetMarginBottom(4));
+
+                var chemT = new Table(new float[] { 50f, 130f, 170f, 170f }).UseAllAvailableWidth().SetMarginBottom(8);
+                foreach (var h in new[] { "S. No.", "Trade name:", "Chemical name:", "Maximum storage quantity\nat any time:" })
+                    chemT.AddHeaderCell(new Cell().Add(new Paragraph(h).SetFont(boldFont).SetFontSize(8))
+                        .SetTextAlignment(TextAlignment.CENTER).SetPadding(4));
+
+                if (dto.Chemicals?.Count > 0)
                 {
-                    factoryTable.AddCell(new Cell().Add(new Paragraph("Occupier Name").SetFont(boldFont)));
-                    factoryTable.AddCell(new Cell().Add(new Paragraph(occupier.name ?? "-")));
-
-                    factoryTable.AddCell(new Cell().Add(new Paragraph("Designation").SetFont(boldFont)));
-                    factoryTable.AddCell(new Cell().Add(new Paragraph(occupier.designation ?? "-")));
-
-                    factoryTable.AddCell(new Cell().Add(new Paragraph("Relation").SetFont(boldFont)));
-                    factoryTable.AddCell(new Cell().Add(new Paragraph($"{occupier.relationType} {occupier.relativeName}")));
-
-                    factoryTable.AddCell(new Cell().Add(new Paragraph("Address").SetFont(boldFont)));
-                    factoryTable.AddCell(new Cell().Add(new Paragraph($"{occupier.addressLine1}, {occupier.addressLine2}, {occupier.area}, {occupier.tehsil}, {occupier.district} - {occupier.pincode}")));
-
-                    factoryTable.AddCell(new Cell().Add(new Paragraph("Email").SetFont(boldFont)));
-                    factoryTable.AddCell(new Cell().Add(new Paragraph(occupier.email ?? "-")));
-
-                    factoryTable.AddCell(new Cell().Add(new Paragraph("Mobile").SetFont(boldFont)));
-                    factoryTable.AddCell(new Cell().Add(new Paragraph(occupier.mobile ?? "-")));
-
-                    factoryTable.AddCell(new Cell().Add(new Paragraph("Telephone").SetFont(boldFont)));
-                    factoryTable.AddCell(new Cell().Add(new Paragraph(occupier.telephone ?? "-")));
-                }
-
-                factoryTable.AddCell(new Cell().Add(new Paragraph("Plant Particulars").SetFont(boldFont)));
-                factoryTable.AddCell(new Cell().Add(new Paragraph(dto.PlantParticulars ?? "-")));
-
-                factoryTable.AddCell(new Cell().Add(new Paragraph("Product Name").SetFont(boldFont)));
-                factoryTable.AddCell(new Cell().Add(new Paragraph(dto.ProductName ?? "-")));
-
-                factoryTable.AddCell(new Cell().Add(new Paragraph("Manufacturing Process").SetFont(boldFont)));
-                factoryTable.AddCell(new Cell().Add(new Paragraph(dto.ManufacturingProcess ?? "-")));
-
-                factoryTable.AddCell(new Cell().Add(new Paragraph("Max Workers (Male)").SetFont(boldFont)));
-                factoryTable.AddCell(new Cell().Add(new Paragraph(dto.MaxWorkerMale.ToString())));
-
-                factoryTable.AddCell(new Cell().Add(new Paragraph("Max Workers (Female)").SetFont(boldFont)));
-                factoryTable.AddCell(new Cell().Add(new Paragraph(dto.MaxWorkerFemale.ToString())));
-
-                factoryTable.AddCell(new Cell().Add(new Paragraph("Factory Area (Sq. Mtr)").SetFont(boldFont)));
-                factoryTable.AddCell(new Cell().Add(new Paragraph(dto.AreaFactoryPremise.ToString())));
-
-                sectionDiv.Add(factoryTable);
-                document.Add(sectionDiv);
-
-                // ================= PREMISE OWNER =================
-                if (dto.NoOfFactoriesIfCommonPremise.HasValue)
-                {
-                    var premiseTable = new Table(UnitValue.CreatePercentArray(new float[] { 1, 2 })).UseAllAvailableWidth().SetKeepTogether(true).SetMarginBottom(5);
-                    premiseTable.AddCell(new Cell().Add(new Paragraph("No. of Factories (Common Premise)").SetFont(boldFont)));
-                    premiseTable.AddCell(new Cell().Add(new Paragraph(dto.NoOfFactoriesIfCommonPremise.ToString())));
-
-                    premiseTable.AddCell(new Cell().Add(new Paragraph("Premise Owner Name").SetFont(boldFont)));
-                    premiseTable.AddCell(new Cell().Add(new Paragraph(dto.PremiseOwnerName ?? "-")));
-
-                    premiseTable.AddCell(new Cell().Add(new Paragraph("Owner Contact").SetFont(boldFont)));
-                    premiseTable.AddCell(new Cell().Add(new Paragraph(dto.PremiseOwnerContactNo ?? "-")));
-
-                    premiseTable.AddCell(new Cell().Add(new Paragraph("Owner Address").SetFont(boldFont)));
-                    premiseTable.AddCell(new Cell().Add(new Paragraph(
-                        $"{dto.PremiseOwnerAddressPlotNo}, {dto.PremiseOwnerAddressStreet}, {dto.PremiseOwnerAddressCity}, {dto.PremiseOwnerAddressDistrict}, {dto.PremiseOwnerAddressState} - {dto.PremiseOwnerAddressPinCode}"
-                    )));
-                    document.Add(premiseTable);
-                }
-
-                // ================= DYNAMIC TABLES =================
-                void AddItemTable<T>(string title, List<T> items, Func<T, string> nameSelector, Func<T, string> qtySelector)
-                {
-                    if (!items.Any()) return;
-
-                    document.Add(new Paragraph(title).SetFont(boldFont).SetMarginBottom(3));
-                    var table = new Table(UnitValue.CreatePercentArray(new float[] { 3, 1 })).UseAllAvailableWidth().SetKeepTogether(true);
-
-                    table.AddHeaderCell(new Cell().Add(new Paragraph(title).SetFont(boldFont)));
-                    table.AddHeaderCell(new Cell().Add(new Paragraph("Quantity/Capacity").SetFont(boldFont)));
-
-                    foreach (var item in items)
+                    int sno = 1;
+                    foreach (var chem in dto.Chemicals)
                     {
-                        table.AddCell(new Cell().Add(new Paragraph(nameSelector(item))));
-                        table.AddCell(new Cell().Add(new Paragraph(qtySelector(item))));
+                        chemT.AddCell(new Cell().Add(new Paragraph(sno++.ToString()).SetFont(regularFont).SetFontSize(9))
+                            .SetTextAlignment(TextAlignment.CENTER).SetPadding(4));
+                        chemT.AddCell(new Cell().Add(new Paragraph(chem.TradeName   ?? "-").SetFont(regularFont).SetFontSize(9)).SetPadding(4));
+                        chemT.AddCell(new Cell().Add(new Paragraph(chem.ChemicalName ?? "-").SetFont(regularFont).SetFontSize(9)).SetPadding(4));
+                        chemT.AddCell(new Cell().Add(new Paragraph(chem.MaxStorageQuantity ?? "-").SetFont(regularFont).SetFontSize(9))
+                            .SetTextAlignment(TextAlignment.CENTER).SetPadding(4));
                     }
-
-                    document.Add(table.SetMarginBottom(5));
                 }
+                else
+                {
+                    // empty row so table is visible
+                    for (int i = 0; i < 4; i++)
+                        chemT.AddCell(new Cell().Add(new Paragraph("").SetFontSize(9)).SetMinHeight(20).SetPadding(4));
+                }
+                document.Add(chemT);
 
-                AddItemTable("Raw Materials", dto.RawMaterials, x => x.MaterialName, x => (x.MaxStorageQuantity ?? "-").ToString());
-                AddItemTable("Intermediate Products", dto.IntermediateProducts, x => x.ProductName, x => (x.MaxStorageQuantity ?? "-").ToString());
-                AddItemTable("Finished Goods", dto.FinishGoods, x => x.ProductName, x => (x.MaxStorageCapacity ?? 0).ToString());
-                AddItemTable("Chemicals Used", dto.Chemicals, x => x.ChemicalName, x => (x.MaxStorageQuantity ?? "-").ToString());
+                // ── SECTION 8–10: Premises ────────────────────────────────────────────
+                var premT = TwoCol();
+                AddRow(premT, "8.   Area of the factory premises:",
+                    dto.AreaFactoryPremise > 0 ? dto.AreaFactoryPremise.ToString() : "-");
+                AddRow(premT, "9.   If common premises, then no. of factories working in premises:",
+                    dto.NoOfFactoriesIfCommonPremise.HasValue ? dto.NoOfFactoriesIfCommonPremise.Value.ToString() : "-");
+                AddRow(premT, "10.  Name, address, contact number of owner of premises;",
+                    string.Join(", ", new[]
+                    {
+                        dto.PremiseOwnerName,
+                        dto.PremiseOwnerContactNo,
+                        dto.PremiseOwnerAddressPlotNo,
+                        dto.PremiseOwnerAddressStreet,
+                        dto.PremiseOwnerAddressCity,
+                        dto.PremiseOwnerAddressDistrict,
+                        dto.PremiseOwnerAddressState,
+                        dto.PremiseOwnerAddressPinCode
+                    }.Where(s => !string.IsNullOrWhiteSpace(s))) is { Length: > 0 } addr ? addr : "-");
+                document.Add(premT.SetMarginBottom(10));
 
-                // ================= DECLARATION =================
-                document.Add(new Paragraph("Declaration").SetFont(boldFont).SetMarginTop(10));
-                document.Add(new Paragraph($"Place: {dto.Place ?? "-"}"));
-                document.Add(new Paragraph($"Status: {dto.Status}"));
-                document.Add(new Paragraph("This is a system generated Factory Map Approval document.")
-                    .SetFontSize(8)
+                // ── SECTION 11: NOTE ─────────────────────────────────────────────────
+                document.Add(new Paragraph("11.  NOTE").SetFont(boldFont).SetFontSize(10).SetMarginBottom(3));
+                document.Add(new Paragraph("     a.  In case of any change in the above information, Department shall be informed in writing within 30 days.")
+                    .SetFont(regularFont).SetFontSize(9).SetMarginBottom(2));
+                document.Add(new Paragraph("     b.  Seal bearing \"Authorised Signatory\" shall not be used on any document")
+                    .SetFont(regularFont).SetFontSize(9).SetMarginBottom(12));
+
+                // ── PLACE / DATE / SIGNATURE ─────────────────────────────────────────
+                document.Add(new Paragraph($"Place: {dto.Place ?? "________________"}")
+                    .SetFont(regularFont).SetFontSize(9).SetMarginBottom(2));
+                document.Add(new Paragraph($"Date:  {dto.Date?.ToString("dd/MM/yyyy") ?? "________________"}")
+                    .SetFont(regularFont).SetFontSize(9).SetMarginBottom(14));
+
+                var sigT = new Table(new float[] { 1f, 1f }).UseAllAvailableWidth().SetBorder(Border.NO_BORDER);
+                sigT.AddCell(new Cell().SetBorder(Border.NO_BORDER));
+                var sigRight = new Cell().SetBorder(Border.NO_BORDER);
+                sigRight.Add(new Paragraph("e-sign/Signature of occupier with seal: ________________")
+                    .SetFont(regularFont).SetFontSize(9).SetTextAlignment(TextAlignment.RIGHT));
+                sigRight.Add(new Paragraph("(Name of occupier)")
+                    .SetFont(regularFont).SetFontSize(8).SetTextAlignment(TextAlignment.RIGHT)
                     .SetFontColor(ColorConstants.GRAY));
+                sigT.AddCell(sigRight);
+                document.Add(sigT.SetMarginBottom(10));
+
+                document.Add(new Paragraph(
+                        "This is a computer generated document. No physical signature is required.")
+                    .SetFont(regularFont).SetFontSize(7).SetFontColor(ColorConstants.GRAY));
 
                 document.Close();
 

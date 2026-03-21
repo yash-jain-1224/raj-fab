@@ -3648,21 +3648,33 @@ namespace RajFabAPI.Services
                 var empTable = new PdfTable(new float[] { 260f, 260f })
                     .UseAllAvailableWidth().SetBorder(Border.NO_BORDER);
 
+                // ✅ dynamic relation
+                var relation = dto.MainOwnerDetail.RelationType?.Trim().ToLower();
+
+                var relationLabel = relation switch
+                {
+                    "father" => "3. Father's Name of the Employer:",
+                    "husband" => "3. Husband's Name of the Employer:",
+                    _ => "3. Relative's Name of the Employer:"
+                };
+
                 var empItems = new[]
                 {
-                ("1. Name & Address of Employer / Occupier / Owner/Agent/ Chief Executive/ port authority etc.:",
-                    dto.MainOwnerDetail.Name ?? "-"),
-                ("   Address:", FormatAddress(
-                    dto.MainOwnerDetail.AddressLine1,
-                    dto.MainOwnerDetail.AddressLine2,
-                    dto.MainOwnerDetail.Area,
-                    dto.MainOwnerDetail.Tehsil,
-                    dto.MainOwnerDetail.District,
-                    dto.MainOwnerDetail.Pincode)),
-                ("2. Designation:", dto.MainOwnerDetail.Designation ?? "-"),
-                ("3. Father 's/ Husband 's Name of the Employer:", $"{dto.MainOwnerDetail.RelativeName ?? "-"} ({dto.MainOwnerDetail.RelationType ?? "-"})"),
-                ("4. Email Address, Telephone & Mobile No:", $"{dto.MainOwnerDetail.Email ?? "-"}  , {dto.MainOwnerDetail.Telephone ?? "-"} , {dto.MainOwnerDetail.Mobile ?? "-"}"),
-            };
+                    ("1. Name & Address of Employer / Occupier / Owner/Agent/ Chief Executive/ port authority etc.:",
+                        dto.MainOwnerDetail.Name ?? "-"),
+                    ("   Address:", FormatAddress(
+                        dto.MainOwnerDetail.AddressLine1,
+                        dto.MainOwnerDetail.AddressLine2,
+                        dto.MainOwnerDetail.Area,
+                        dto.MainOwnerDetail.Tehsil,
+                        dto.MainOwnerDetail.District,
+                        dto.MainOwnerDetail.Pincode)),
+                    ("2. Designation:", dto.MainOwnerDetail.Designation ?? "-"),
+                    (relationLabel,
+                        dto.MainOwnerDetail.RelativeName ?? "-"),
+                    ("4. Email Address, Telephone & Mobile No:",
+                        $"{dto.MainOwnerDetail.Email ?? "-"} , {dto.MainOwnerDetail.Telephone ?? "-"} , {dto.MainOwnerDetail.Mobile ?? "-"}"),
+                };
 
                 foreach (var (label, value) in empItems)
                 {
@@ -3944,29 +3956,58 @@ namespace RajFabAPI.Services
             // ── PDF setup ─────────────────────────────────────────────────────────────
             using var writer = new PdfWriter(filePath);
             using var pdf = new PdfDocument(writer);
+            pdf.AddEventHandler(PdfDocumentEvent.END_PAGE,
+                new CertSideTextEventHandler(boldFont, "Factories and Boilers Inspection Department, Rajasthan"));
             using var document = new PdfDoc(pdf);
-            document.SetMargins(50, 50, 50, 50);
+            document.SetMargins(50, 70, 50, 50); // extra right margin for side text
 
             // ═════════════════════════════════════════════════════════════════════════
-            // HEADER
+            // HEADER  — 3-column layout: [QR spacer] [Emblem + Titles] [QR code]
             // ═════════════════════════════════════════════════════════════════════════
-            document.Add(new Cell().Add(new PdfImage(ImageDataFactory.Create("wwwroot/Emblem_of_India.png"))
-            .ScaleToFit(40, 40)).SetTextAlignment(TextAlignment.CENTER).SetBorder(Border.NO_BORDER));
-            _ = document.Add(new Paragraph("Form-2")
+            var qrBytes = GenerateQrCodePng(fileUrl);
+
+            var headerTable = new PdfTable(new float[] { 90f, 320f, 90f })
+                .UseAllAvailableWidth()
+                .SetBorder(Border.NO_BORDER)
+                .SetMarginBottom(6f);
+
+            // Left: empty balance cell
+            _ = headerTable.AddCell(new PdfCell().SetBorder(Border.NO_BORDER));
+
+            // Center: emblem + title lines
+            var centerCell = new PdfCell()
+                .SetBorder(Border.NO_BORDER)
+                .SetTextAlignment(TextAlignment.CENTER);
+            _ = centerCell.Add(new PdfImage(ImageDataFactory.Create("wwwroot/Emblem_of_India.png"))
+                .ScaleToFit(70, 70)
+                .SetHorizontalAlignment(HorizontalAlignment.CENTER));
+            _ = centerCell.Add(new Paragraph("Form-2 (See rule 5(1)(d))")
                 .SetFont(boldFont).SetFontSize(12)
                 .SetTextAlignment(TextAlignment.CENTER)
                 .SetUnderline()
-                .SetMarginBottom(2f));
-
-            _ = document.Add(new Paragraph("(See rule 5(1)(d))")
-                .SetFont(regularFont).SetFontSize(10)
-                .SetTextAlignment(TextAlignment.CENTER)
-                .SetMarginBottom(2f));
-
-            _ = document.Add(new Paragraph("Certificate of Registration of Establishment")
+                .SetMarginTop(4f).SetMarginBottom(2f));
+            _ = centerCell.Add(new Paragraph("Certificate of Registration of Establishment")
                 .SetFont(boldFont).SetFontSize(11)
                 .SetTextAlignment(TextAlignment.CENTER)
-                .SetMarginBottom(10f));
+                .SetMarginBottom(2f));
+            _ = headerTable.AddCell(centerCell);
+
+            // Right: QR code — vertically centered, no padding
+            var qrCell = new PdfCell()
+                .SetBorder(Border.NO_BORDER)
+                .SetVerticalAlignment(VerticalAlignment.MIDDLE)
+                .SetTextAlignment(TextAlignment.CENTER)
+                .SetPadding(0f);
+            _ = qrCell.Add(new PdfImage(ImageDataFactory.Create(qrBytes))
+                .ScaleToFit(75, 75)
+                .SetHorizontalAlignment(HorizontalAlignment.CENTER));
+            _ = qrCell.Add(new Paragraph("Scan to verify")
+                .SetFont(regularFont).SetFontSize(7)
+                .SetTextAlignment(TextAlignment.CENTER)
+                .SetMarginTop(2f));
+            _ = headerTable.AddCell(qrCell);
+
+            _ = document.Add(headerTable);
 
             // ═════════════════════════════════════════════════════════════════════════
             // Registration No.  +  Date  (left / right, no border)
@@ -3986,17 +4027,21 @@ namespace RajFabAPI.Services
             // ═════════════════════════════════════════════════════════════════════════
             // Certificate opening paragraph
             // ═════════════════════════════════════════════════════════════════════════
-            _ = document.Add(new Paragraph(
+            _ = document.Add(new Paragraph()
+                .Add(new Text(
                     "A Certificate of registration containing the following particulars is hereby granted under sub-section (2) of " +
-                    "section 3 of the Occupational Safety, Health and Working Conditions Code, 2020 (Central Act No 37 of 2020) " +
-                    $"to {dto.EstablishmentName ?? "-"} (Name of the establishment)")
-                .SetFont(regularFont).SetFontSize(9)
+                    "section 3 of the Occupational Safety, Health and Working Conditions Code, 2020 (Central Act No 37 of 2020) to ")
+                    .SetFont(regularFont).SetFontSize(9))
+                .Add(new Text($"M/s {dto.EstablishmentName ?? "-"}")
+                    .SetFont(boldFont).SetFontSize(9))
+                .Add(new Text(" (Name of the establishment)")
+                    .SetFont(regularFont).SetFontSize(9))
                 .SetMarginBottom(6f));
 
             // ═════════════════════════════════════════════════════════════════════════
             // 1. Nature of work — tick-mark options (two columns)
             // ═════════════════════════════════════════════════════════════════════════
-            _ = document.Add(new Paragraph("1.Nature of work carried on in the establishment")
+            _ = document.Add(new Paragraph("1. Nature of work carried on in the establishment")
                 .SetFont(regularFont).SetFontSize(9)
                 .SetMarginBottom(3f));
 
@@ -4007,32 +4052,35 @@ namespace RajFabAPI.Services
                 .SetBorder(Border.NO_BORDER)
                 .SetMarginBottom(4f);
 
+            PdfCell BuildNatureCell(string code, string label, bool isSelected)
+            {
+                Paragraph para;
+                if (isSelected)
+                {
+                    para = new Paragraph($"\u2611 {code} {label}")  // ☑ prefix when selected
+                        .SetFont(boldFont).SetFontSize(9);
+                }
+                else
+                {
+                    // strikethrough: underline offset at mid-height (approx 3pt for size 9)
+                    para = new Paragraph()
+                        .Add(new Text($"{code} {label}")
+                            .SetFont(regularFont).SetFontSize(9)
+                            .SetUnderline(0.5f, 3f));  // 3pt above baseline ≈ line-through for size 9
+                }
+
+                return new PdfCell()
+                    .Add(para)
+                    .SetBorder(Border.NO_BORDER)
+                    .SetPaddingLeft(20f);
+            }
+
             void AddNatureRow(string leftCode, string leftLabel, string rightCode, string rightLabel)
             {
-                // Check if the left/right option is selected
                 bool lSel = selectedType.IndexOf(leftLabel, StringComparison.OrdinalIgnoreCase) >= 0;
                 bool rSel = selectedType.IndexOf(rightLabel, StringComparison.OrdinalIgnoreCase) >= 0;
-
-                // Only add checkbox for (a) Factory when selected
-                string leftPrefix = (leftCode == "(a)" && leftLabel == "Factory" && lSel)
-                    ? "\u2611 "  // ☑
-                    : "";
-
-                // LEFT CELL
-                _ = natureTable.AddCell(new PdfCell()
-                    .Add(new Paragraph($"{leftPrefix}{leftCode} {leftLabel}{(lSel ? " \u2713" : "")}")
-                        .SetFont(lSel ? boldFont : regularFont)
-                        .SetFontSize(9))
-                    .SetBorder(Border.NO_BORDER)
-                    .SetPaddingLeft(20f));
-
-                // RIGHT CELL
-                _ = natureTable.AddCell(new PdfCell()
-                    .Add(new Paragraph($" {rightCode} {rightLabel}{(rSel ? " \u2713" : "")}")
-                        .SetFont(rSel ? boldFont : regularFont)
-                        .SetFontSize(9))
-                    .SetBorder(Border.NO_BORDER)
-                    .SetPaddingLeft(20f));
+                _ = natureTable.AddCell(BuildNatureCell(leftCode, leftLabel, lSel));
+                _ = natureTable.AddCell(BuildNatureCell(rightCode, rightLabel, rSel));
             }
 
             // Add rows
@@ -4056,6 +4104,8 @@ namespace RajFabAPI.Services
                 ("b.", "Total Number of the employees engaged through contractor:",             dto.ContractorEmployees?.ToString() ?? ""),
                 ("c.", "Total Number of Contractors and their details:",                        dto.NumberOfContractors?.ToString() ?? ""),
                 ("d.", "Number of inter-state migrant workers engaged:",                        dto.InterStateWorkers?.ToString() ?? ""),
+                ("e.", "Total Employees:",
+                    ((dto.DirectEmployees ?? 0) + (dto.ContractorEmployees ?? 0) + (dto.InterStateWorkers ?? 0)).ToString()),
             };
 
             foreach (var (letter, label, value) in detRows)
@@ -4076,130 +4126,123 @@ namespace RajFabAPI.Services
             _ = document.Add(new Paragraph("").SetMarginBottom(6f));
 
             // ═════════════════════════════════════════════════════════════════════════
-            // 3(a). For factories — 4-column bordered table
+            // SECTION 3 — Show only the table that matches the establishment type.
+            // Other sections are rendered header+number-row only (no empty data row).
             // ═════════════════════════════════════════════════════════════════════════
+            bool isFactory  = selectedType.IndexOf("Factory",  StringComparison.OrdinalIgnoreCase) >= 0;
+            bool isMining   = selectedType.IndexOf("Mining",   StringComparison.OrdinalIgnoreCase) >= 0
+                           || selectedType.IndexOf("Mine",     StringComparison.OrdinalIgnoreCase) >= 0;
+            bool isDock     = selectedType.IndexOf("Dock",     StringComparison.OrdinalIgnoreCase) >= 0;
+            bool isBuilding = selectedType.IndexOf("Building", StringComparison.OrdinalIgnoreCase) >= 0
+                           || selectedType.IndexOf("Construction", StringComparison.OrdinalIgnoreCase) >= 0;
+
+            // 3(a) — Factories
             _ = document.Add(new Paragraph("3. (a) For factories")
                 .SetFont(regularFont).SetFontSize(9)
                 .SetMarginLeft(10f).SetMarginBottom(3f));
 
-            var factTable = new PdfTable(new float[] { 1f, 1.4f, 1.3f, 1f })
+            // wider col 3 so occupier/manager names don't word-split
+            var factTable = new PdfTable(new float[] { 100f, 160f, 180f, 80f })
                 .UseAllAvailableWidth().SetMarginBottom(10f);
 
             foreach (var h in new[]
             {
-                "Details of the\nmanufacturing process",
-                "Full postal address and\nsituation of the factory\nalong with plan approval\ndetails",
-                "Name and address of the\noccupier and manager",
-                "Maximum number\nof workers to be\nemployed on\nany day"
+                "Details of the\nmanufacturing process\n(Type / Details)",
+                "Factory Name and Full postal\naddress and situation of the\nfactory along with plan\napproval details",
+                "Name of the occupier\nand manager",
+                "Maximum\nnumber of\nworkers"
             })
                 _ = factTable.AddCell(CertHeaderCell(h, boldFont));
 
             for (int i = 1; i <= 4; i++)
                 _ = factTable.AddCell(CertIndexCell(i.ToString(), regularFont));
 
-            _ = factTable.AddCell(CertDataCell(dto.FactoryManufacturingDetail ?? "", regularFont));
-            _ = factTable.AddCell(CertDataCell(dto.FactoryAddress ?? "", regularFont));
-            _ = factTable.AddCell(CertDataCell(
-                string.Join("\n", new[] { dto.EmployerName, dto.EmployerAddress, dto.ManagerName, dto.ManagerAddress }
-                    .Where(s => !string.IsNullOrWhiteSpace(s))), regularFont));
-            _ = factTable.AddCell(CertDataCell(dto.MaxWorkers?.ToString() ?? "", regularFont));
+            if (isFactory)
+            {
+                // Col 1: Type + Details
+                string factTypeVal = string.IsNullOrWhiteSpace(dto.FactoryManufacturingType) && string.IsNullOrWhiteSpace(dto.FactoryManufacturingDetail)
+                    ? "－－－－－"
+                    : $"Type: {(string.IsNullOrWhiteSpace(dto.FactoryManufacturingType) ? "-" : dto.FactoryManufacturingType)}\nDetails: {(string.IsNullOrWhiteSpace(dto.FactoryManufacturingDetail) ? "-" : dto.FactoryManufacturingDetail)}";
+                _ = factTable.AddCell(CertDataCell(factTypeVal, regularFont));
+
+                // Col 2: Name + Address
+                string factAddrVal = string.IsNullOrWhiteSpace(dto.EstablishmentName) && string.IsNullOrWhiteSpace(dto.FactoryAddress)
+                    ? "－－－－－"
+                    : string.Join("\n", new[]
+                    {
+                        string.IsNullOrWhiteSpace(dto.EstablishmentName) ? null : $"Name: {dto.EstablishmentName}",
+                        string.IsNullOrWhiteSpace(dto.FactoryAddress)    ? null : $"Address: {dto.FactoryAddress}"
+                    }.Where(s => s != null)!);
+                _ = factTable.AddCell(CertDataCell(factAddrVal, regularFont).SetTextAlignment(TextAlignment.CENTER));
+
+                // Col 3: Occupier + Manager names (no address)
+                string occupierManagerVal = string.IsNullOrWhiteSpace(dto.EmployerName) && string.IsNullOrWhiteSpace(dto.ManagerName)
+                    ? "－－－－－"
+                    : string.Join("\n", new[]
+                    {
+                        string.IsNullOrWhiteSpace(dto.EmployerName) ? null : $"Occupier: {dto.EmployerName}",
+                        string.IsNullOrWhiteSpace(dto.ManagerName)  ? null : $"Manager: {dto.ManagerName}"
+                    }.Where(s => s != null)!);
+                _ = factTable.AddCell(CertDataCell(occupierManagerVal, regularFont));
+
+                // Col 4: Max workers
+                _ = factTable.AddCell(CertDataCell(dto.MaxWorkers.HasValue ? dto.MaxWorkers.Value.ToString() : "－－－－－", regularFont)
+                    .SetTextAlignment(TextAlignment.CENTER));
+            }
             _ = document.Add(factTable);
 
-            // ═════════════════════════════════════════════════════════════════════════
-            // 3(b). For mines — 5-column bordered table
-            // ═════════════════════════════════════════════════════════════════════════
+            // 3(b) — Mines
             _ = document.Add(new Paragraph("3. (b) For mines")
                 .SetFont(regularFont).SetFontSize(9)
                 .SetMarginLeft(10f).SetMarginBottom(3f));
 
             var mineTable = new PdfTable(new float[] { 1f, 1.2f, 1.1f, 1.2f, 1.1f })
                 .UseAllAvailableWidth().SetMarginBottom(10f);
-
-            foreach (var h in new[]
-            {
-                "Name of\nMineral(s)",
-                "Lease extent of the\nmine (in Acres)",
-                "Name and address\nof the owner",
-                "Average Monthly\noutput, targeted\n(Tonne)",
-                "Maximum number\nof persons to be\nemployed on any\nday"
-            })
+            foreach (var h in new[] { "Name of\nMineral(s)", "Lease extent of the\nmine (in Acres)", "Name and address\nof the owner", "Average Monthly\noutput, targeted\n(Tonne)", "Maximum number\nof persons to be\nemployed on any\nday" })
                 _ = mineTable.AddCell(CertHeaderCell(h, boldFont));
-
             for (int i = 1; i <= 5; i++)
                 _ = mineTable.AddCell(CertIndexCell(i.ToString(), regularFont));
-
-            for (int i = 0; i < 5; i++)
-                _ = mineTable.AddCell(CertDataCell("-", regularFont).SetTextAlignment(TextAlignment.CENTER));
-
+            if (isMining)
+                for (int i = 0; i < 5; i++)
+                    _ = mineTable.AddCell(CertDataCell("－－－－－", regularFont).SetTextAlignment(TextAlignment.CENTER));
             _ = document.Add(mineTable);
 
-            _ = document.Add(new Paragraph("\n").SetFontSize(10));
-
-            // ═════════════════════════════════════════════════════════════════════════
-            // 3(c). For Dock work — 5-column bordered table
-            // ═════════════════════════════════════════════════════════════════════════
+            // 3(c) — Dock work
             _ = document.Add(new Paragraph("3. (c) For Dock work")
                 .SetFont(regularFont).SetFontSize(9)
                 .SetMarginLeft(10f).SetMarginBottom(3f));
 
             var dockTable = new PdfTable(new float[] { 1f, 1f, 1.2f, 1.2f, 1.2f })
                 .UseAllAvailableWidth().SetMarginBottom(10f);
-
-            foreach (var h in new[]
-            {
-                "Name of Dock\nWork / Major\nPort",
-                "Types of Dock\nWorks",
-                "Name of the Cargo\nhandled and stored\nalong with quantity",
-                "Name of the\nchemicals handled\nand stored along\nwith quantity",
-                "Name of the\nhazardous\nchemicals\nhandled and\nstored along with\nquantity"
-            })
+            foreach (var h in new[] { "Name of Dock\nWork / Major\nPort", "Types of Dock\nWorks", "Name of the Cargo\nhandled and stored\nalong with quantity", "Name of the\nchemicals handled\nand stored along\nwith quantity", "Name of the\nhazardous\nchemicals\nhandled and\nstored along with\nquantity" })
                 _ = dockTable.AddCell(CertHeaderCell(h, boldFont));
-
             for (int i = 1; i <= 5; i++)
                 _ = dockTable.AddCell(CertIndexCell(i.ToString(), regularFont));
-
-            for (int i = 0; i < 5; i++)
-                _ = dockTable.AddCell(CertDataCell("-", regularFont).SetTextAlignment(TextAlignment.CENTER));
-
+            if (isDock)
+                for (int i = 0; i < 5; i++)
+                    _ = dockTable.AddCell(CertDataCell("－－－－－", regularFont).SetTextAlignment(TextAlignment.CENTER));
             _ = document.Add(dockTable);
 
-            // ═════════════════════════════════════════════════════════════════════════
-            // 3(d). For Building and other construction work — 4-column bordered table
-            // ═════════════════════════════════════════════════════════════════════════
+            // 3(d) — Building and construction
             _ = document.Add(new Paragraph("3. (d) For building and other construction work")
                 .SetFont(regularFont).SetFontSize(9)
                 .SetMarginLeft(10f).SetMarginBottom(3f));
 
             var buildTable = new PdfTable(new float[] { 1f, 1.3f, 1.3f, 1.2f })
                 .UseAllAvailableWidth().SetMarginBottom(10f);
-
-            foreach (var h in new[]
-            {
-                "Type of\nConstruction\nwork",
-                "Probable period of\ncommencement of work",
-                "Expected period for\ncompletion of work",
-                "Details of approval\nof the local\nauthority"
-            })
+            foreach (var h in new[] { "Type of\nConstruction\nwork", "Probable period of\ncommencement of work", "Expected period for\ncompletion of work", "Details of approval\nof the local\nauthority" })
                 _ = buildTable.AddCell(CertHeaderCell(h, boldFont));
-
             for (int i = 1; i <= 4; i++)
                 _ = buildTable.AddCell(CertIndexCell(i.ToString(), regularFont));
-
-            for (int i = 0; i < 4; i++)
-                _ = buildTable.AddCell(CertDataCell("-", regularFont).SetTextAlignment(TextAlignment.CENTER));
-
+            if (isBuilding)
+                for (int i = 0; i < 4; i++)
+                    _ = buildTable.AddCell(CertDataCell("－－－－－", regularFont).SetTextAlignment(TextAlignment.CENTER));
             _ = document.Add(buildTable);
 
             // ═════════════════════════════════════════════════════════════════════════
             // 4. Amount of fees  +  5. Remarks
             // ═════════════════════════════════════════════════════════════════════════
-            _ = document.Add(new Paragraph(
-                    $"4. Amount of registration fee paid: " +
-                    $"{(dto.RegistrationFeesPaid.HasValue ? dto.RegistrationFeesPaid.Value.ToString("F2") : "")}")
-                .SetFont(regularFont).SetFontSize(9)
-                .SetMarginBottom(3f));
-
-            _ = document.Add(new Paragraph("5. Remarks of registering officers:" +
+            _ = document.Add(new Paragraph("4. Remarks of registering officers:" +
                     $" {dto.Remarks}")
                 .SetFont(regularFont).SetFontSize(9)
                 .SetMarginBottom(16f));
@@ -4217,7 +4260,7 @@ namespace RajFabAPI.Services
 
             // Right: signature label + image
             var sigCell = new PdfCell().SetBorder(Border.NO_BORDER);
-            _ = sigCell.Add(new Paragraph("Signature E -Sign/DSC of Registering Officer along with designation")
+            _ = sigCell.Add(new Paragraph("Signature / E-Sign / DSC of Registering Officer along with designation")
                 .SetFont(regularFont).SetFontSize(8)
                 .SetTextAlignment(TextAlignment.RIGHT));
 
@@ -4288,6 +4331,14 @@ namespace RajFabAPI.Services
         // ─────────────────────────────────────────────────────────────────────────────
         // Certificate helper cells  (add alongside your existing BuildHeaderCell etc.)
         // ─────────────────────────────────────────────────────────────────────────────
+        private static byte[] GenerateQrCodePng(string url)
+        {
+            using var qrGenerator = new QRCoder.QRCodeGenerator();
+            using var qrData = qrGenerator.CreateQrCode(url, QRCoder.QRCodeGenerator.ECCLevel.Q);
+            using var qrCode = new QRCoder.PngByteQRCode(qrData);
+            return qrCode.GetGraphic(5);
+        }
+
         private static PdfCell CertHeaderCell(string text, PdfFont boldFont)
             => new PdfCell()
                 .Add(new Paragraph(text).SetFont(boldFont).SetFontSize(8))
@@ -4659,6 +4710,42 @@ namespace RajFabAPI.Services
                         .SetTextAlignment(TextAlignment.RIGHT)
                         .SetMargin(0));
                 }
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────────────────────────
+        // Certificate: vertical side-text on every page
+        // ─────────────────────────────────────────────────────────────────────────────
+        private sealed class CertSideTextEventHandler : AbstractPdfDocumentEventHandler
+        {
+            private readonly PdfFont _font;
+            private readonly string _text;
+
+            public CertSideTextEventHandler(PdfFont font, string text)
+            {
+                _font = font;
+                _text = text;
+            }
+
+            protected override void OnAcceptedEvent(AbstractPdfDocumentEvent @event)
+            {
+                if (@event is not PdfDocumentEvent docEvent) return;
+                var page = docEvent.GetPage();
+                var rect = page.GetPageSize();
+                var canvas = new PdfCanvas(page);
+
+                // Vertical text: rotated 90° CCW, positioned on the right edge
+                canvas.SaveState();
+                canvas.BeginText();
+                canvas.SetFontAndSize(_font, 9);
+                // 90° CCW rotation matrix: [cos90, sin90, -sin90, cos90, tx, ty] = [0, 1, -1, 0, tx, ty]
+                float tx = rect.GetWidth() - 18f;
+                float ty = (rect.GetHeight() / 2f) - 80f; // vertically centered
+                canvas.SetTextMatrix(0, 1, -1, 0, tx, ty);
+                canvas.ShowText(_text);
+                canvas.EndText();
+                canvas.RestoreState();
+                canvas.Release();
             }
         }
     }

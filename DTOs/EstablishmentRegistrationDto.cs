@@ -54,6 +54,7 @@ namespace RajFabAPI.DTOs
         public ContractorDetailDto? ContractorDetails { get; set; }
         public int? InterStateWorkers { get; set; }
 
+        public string FactoryManufacturingType { get; set; }
         public string FactoryManufacturingDetail { get; set; }
         public string FactorySituation { get; set; }
         public string FactoryAddress { get; set; }

@@ -1443,6 +1443,7 @@ namespace RajFabAPI.Services
                         Status = reg.Status,
                         Signature = reg.Signature,
                         AutoRenewal = reg.AutoRenewal,
+                        ApplicationId = reg.ApplicationId,
                         Amount = reg.Amount,
                         ApplicationPDFUrl = reg.ApplicationPDFUrl,
                         ApplicationRegistrationNumber = reg.RegistrationNumber,
@@ -3107,76 +3108,78 @@ namespace RajFabAPI.Services
             Guid userId,
             string registrationId)
         {
-            if (dto == null)
-                throw new ArgumentNullException(nameof(dto));
+            try
+            {
+                if (dto == null)
+                    throw new ArgumentNullException(nameof(dto));
 
-            if (dto.StartDate == default)
-                throw new ArgumentException("StartDate and EndDate are required");
+                //if (dto.StartDate == default)
+                //    throw new ArgumentException("StartDate and EndDate are required");
 
-            var appReg = await _db.ApplicationRegistrations
-                .FirstOrDefaultAsync(r => r.ApplicationId == registrationId);
+                var appReg = await _db.ApplicationRegistrations
+                    .FirstOrDefaultAsync(r => r.ApplicationId == registrationId);
 
-            if (appReg == null)
-                throw new KeyNotFoundException("Application registration not found");
+                if (appReg == null)
+                    throw new KeyNotFoundException("Application registration not found");
 
-            var estReg = await _db.EstablishmentRegistrations
-                .FirstOrDefaultAsync(r => r.EstablishmentRegistrationId == registrationId);
+                var estReg = await _db.EstablishmentRegistrations
+                    .FirstOrDefaultAsync(r => r.EstablishmentRegistrationId == registrationId);
 
-            if (estReg == null)
-                throw new KeyNotFoundException("Establishment registration not found");
+                if (estReg == null)
+                    throw new KeyNotFoundException("Establishment registration not found");
 
-            // Get user details (Approval Authority - the signer)
-            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
-            if (user == null)
-                throw new KeyNotFoundException("User not found");
+                // Get user details (Approval Authority - the signer)
+                var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+                if (user == null)
+                    throw new KeyNotFoundException("User not found");
 
-            var officePost = await (
-                from ur in _db.UserRoles
-                join r in _db.Roles on ur.RoleId equals r.Id
-                join p in _db.Posts on r.PostId equals p.Id
-                join o in _db.Offices on r.OfficeId equals o.Id
-                join c in _db.Cities on o.CityId equals c.Id
-                where ur.UserId == userId
-                select new
+                var officePost = await (
+                    from ur in _db.UserRoles
+                    join r in _db.Roles on ur.RoleId equals r.Id
+                    join p in _db.Posts on r.PostId equals p.Id
+                    join o in _db.Offices on r.OfficeId equals o.Id
+                    join c in _db.Cities on o.CityId equals c.Id
+                    where ur.UserId == userId
+                    select new
+                    {
+                        OfficeName = o.Name,
+                        PostName = p.Name,
+                        CityName = c.Name,
+                        PostId = p.Id
+                    }
+                ).FirstOrDefaultAsync();
+
+                if (officePost == null)
                 {
-                    OfficeName = o.Name,
-                    PostName = p.Name,
-                    CityName = c.Name,
-                    PostId = p.Id
+                    throw new Exception("No office post found for this user");
                 }
-            ).FirstOrDefaultAsync();
 
-            if (officePost == null)
-            {
-                throw new Exception("No office post found for this user");
-            }
+                var allDetails = await GetAllEntitiesByRegistrationIdAsync(registrationId);
+                var dtoDetails = allDetails.ApplicationDetails;
 
-            var allDetails = await GetAllEntitiesByRegistrationIdAsync(registrationId);
-            var dtoDetails = allDetails.ApplicationDetails;
-
-            var dtoPaylod = new EstablishmentCertificatePdfRequestDto
-            {
-                // Top-level registration info
-                ApplicationRegistrationNumber = dtoDetails.RegistrationDetail?.ApplicationRegistrationNumber,
-                StartDate = dto?.StartDate ?? DateTime.Now,
-                DeclarationPlace = officePost.CityName,
-
-                // Establishment info
-                EstablishmentName = dtoDetails.EstablishmentDetail?.Name,
-                NatureOfWork = dtoDetails.Factory.ManufacturingType,
-                // EstablishmentType = dtoDetails.EstablishmentTypes.FirstOrDefault() ?? "Factory",
-
-                // Employees / contractors
-                DirectEmployees = dtoDetails.EstablishmentDetail?.TotalNumberOfEmployee,
-                ContractorEmployees = dtoDetails.EstablishmentDetail?.TotalNumberOfContractEmployee,
-                ContractorDetails = dtoDetails.ContractorDetail?.FirstOrDefault(),
-                InterStateWorkers = dtoDetails.EstablishmentDetail.TotalNumberOfInterstateWorker,
-
-                // Factory details
-                FactoryManufacturingDetail = dtoDetails.Factory?.ManufacturingType,
-                FactorySituation = dtoDetails.Factory?.Situation,
-                FactoryAddress = string.Join(", ", new[]
+                var dtoPaylod = new EstablishmentCertificatePdfRequestDto
                 {
+                    // Top-level registration info
+                    ApplicationRegistrationNumber = dtoDetails.RegistrationDetail?.ApplicationRegistrationNumber,
+                    //StartDate = dto?.StartDate ?? DateTime.Now,
+                    DeclarationPlace = officePost.CityName,
+
+                    // Establishment info
+                    EstablishmentName = dtoDetails.EstablishmentDetail?.Name,
+                    // EstablishmentType = dtoDetails.EstablishmentTypes.FirstOrDefault() ?? "Factory",
+
+                    // Employees / contractors
+                    DirectEmployees = dtoDetails.EstablishmentDetail?.TotalNumberOfEmployee,
+                    ContractorEmployees = dtoDetails.EstablishmentDetail?.TotalNumberOfContractEmployee,
+                    ContractorDetails = dtoDetails.ContractorDetail?.FirstOrDefault(),
+                    InterStateWorkers = dtoDetails.EstablishmentDetail.TotalNumberOfInterstateWorker,
+
+                    // Factory details
+                    FactoryManufacturingDetail = dtoDetails.Factory?.ManufacturingDetail,
+                    FactoryManufacturingType = dtoDetails.Factory?.ManufacturingType,
+                    FactorySituation = dtoDetails.Factory?.Situation,
+                    FactoryAddress = string.Join(", ", new[]
+                    {
                     dtoDetails.Factory?.AddressLine1,
                     dtoDetails.Factory?.AddressLine2,
                     dtoDetails.Factory?.DistrictName,
@@ -3184,11 +3187,11 @@ namespace RajFabAPI.Services
                     dtoDetails.Factory?.Pincode
                 }.Where(s => !string.IsNullOrWhiteSpace(s))),
 
-                // Employer / occupier details
-                EmployerName = dtoDetails.Factory?.EmployerDetail?.Name,
-                EmployerDesignation = dtoDetails.Factory?.EmployerDetail?.Designation,
-                EmployerAddress = string.Join(", ", new[]
-                {
+                    // Employer / occupier details
+                    EmployerName = dtoDetails.Factory?.EmployerDetail?.Name,
+                    EmployerDesignation = dtoDetails.Factory?.EmployerDetail?.Designation,
+                    EmployerAddress = string.Join(", ", new[]
+                    {
                     dtoDetails.Factory?.EmployerDetail?.AddressLine1,
                     dtoDetails.Factory?.EmployerDetail?.AddressLine2,
                     dtoDetails.Factory?.EmployerDetail?.Area,
@@ -3197,11 +3200,11 @@ namespace RajFabAPI.Services
                     dtoDetails.Factory?.EmployerDetail?.Pincode
                 }.Where(s => !string.IsNullOrWhiteSpace(s))),
 
-                // Manager / Agent details
-                ManagerName = dtoDetails.Factory?.ManagerDetail?.Name,
-                ManagerDesignation = dtoDetails.Factory?.ManagerDetail?.Designation,
-                ManagerAddress = string.Join(", ", new[]
-                {
+                    // Manager / Agent details
+                    ManagerName = dtoDetails.Factory?.ManagerDetail?.Name,
+                    ManagerDesignation = dtoDetails.Factory?.ManagerDetail?.Designation,
+                    ManagerAddress = string.Join(", ", new[]
+                    {
                     dtoDetails.Factory?.ManagerDetail?.AddressLine1,
                     dtoDetails.Factory?.ManagerDetail?.AddressLine2,
                     dtoDetails.Factory?.ManagerDetail?.Area,
@@ -3210,73 +3213,78 @@ namespace RajFabAPI.Services
                     dtoDetails.Factory?.ManagerDetail?.Pincode
                 }.Where(s => !string.IsNullOrWhiteSpace(s))),
 
-                // Other info
-                MaxWorkers = dtoDetails.Factory?.NumberOfWorker ?? 0,
-                RegistrationFeesPaid = dtoDetails.RegistrationDetail?.Amount,
-                NumberOfContractors = dtoDetails.ContractorDetail?.Count() ?? 0,
-                Remarks = dto.Remarks ?? "-"
-            };
+                    // Other info
+                    MaxWorkers = dtoDetails.Factory?.NumberOfWorker ?? 0,
+                    RegistrationFeesPaid = dtoDetails.RegistrationDetail?.Amount,
+                    NumberOfContractors = dtoDetails.ContractorDetail?.Count() ?? 0,
+                    Remarks = dto.Remarks ?? "-"
+                };
 
-            if (dtoDetails == null)
-                throw new KeyNotFoundException("No establishment data found for this registration ID.");
+                if (dtoDetails == null)
+                    throw new KeyNotFoundException("No establishment data found for this registration ID.");
 
-            var module = await _db.Modules
-            .Where(m => m.Name == ApplicationTypeNames.NewEstablishment)
-            .FirstOrDefaultAsync();
+                var module = await _db.Modules
+                .Where(m => m.Name == ApplicationTypeNames.NewEstablishment)
+                .FirstOrDefaultAsync();
 
-            if (module == null || module.Id == Guid.Empty)
-            {
-                throw new Exception("Module not found");
+                if (module == null || module.Id == Guid.Empty)
+                {
+                    throw new Exception("Module not found");
+                }
+
+                var pdfUrl = await GenerateCertificate(dtoPaylod, registrationId);
+
+                var maxVersion = await _db.Certificates
+                    .Where(c => c.RegistrationNumber == estReg.RegistrationNumber)
+                    .Select(c => (decimal?)c.CertificateVersion)
+                    .MaxAsync();
+
+                decimal newVersion = maxVersion == null
+                    ? 1.0m
+                    : Math.Round(maxVersion.Value + 0.1m, 1);
+
+                var certificate = new Certificate
+                {
+                    Id = Guid.NewGuid(),
+                    RegistrationNumber = estReg.RegistrationNumber,
+                    ApplicationId = appReg.ApplicationId,
+                    CertificateVersion = newVersion,
+                    CertificateUrl = pdfUrl,
+                    IssuedAt = DateTime.Now,
+                    IssuedByUserId = userId,
+                    Status = "PendingESign",
+                    ModuleId = module.Id,
+                    StartDate = DateTime.Today,
+                    EndDate = null, // Certificates can be evergreen or have fixed validity based on requirements
+                    Remarks = dto.Remarks
+                };
+
+                _ = _db.Certificates.Add(certificate);
+
+                // Create application history with dynamic ActionBy
+                var history = new ApplicationHistory
+                {
+                    ApplicationId = estReg.EstablishmentRegistrationId,
+                    ApplicationType = module.Name,
+                    Action = "Certificate Generated",
+                    PreviousStatus = null,
+                    NewStatus = "",
+                    Comments = $"Certificate Generated by {officePost.PostName}, {officePost.CityName}",
+                    ActionBy = officePost.PostId.ToString(),
+                    ActionByName = $"{officePost.PostName}, {officePost.CityName}",
+                    ActionDate = DateTime.Now
+                };
+
+                _db.ApplicationHistories.Add(history);
+
+                _ = await _db.SaveChangesAsync();
+
+                return certificate.Id.ToString();
             }
-
-            var pdfUrl = await GenerateCertificate(dtoPaylod, registrationId);
-
-            var maxVersion = await _db.Certificates
-                .Where(c => c.RegistrationNumber == estReg.RegistrationNumber)
-                .Select(c => (decimal?)c.CertificateVersion)
-                .MaxAsync();
-
-            decimal newVersion = maxVersion == null
-                ? 1.0m
-                : Math.Round(maxVersion.Value + 0.1m, 1);
-
-            var certificate = new Certificate
+            catch
             {
-                Id = Guid.NewGuid(),
-                RegistrationNumber = estReg.RegistrationNumber,
-                ApplicationId = appReg.ApplicationId,
-                CertificateVersion = newVersion,
-                CertificateUrl = pdfUrl,
-                IssuedAt = DateTime.Now,
-                IssuedByUserId = userId,
-                Status = "PendingESign",
-                ModuleId = module.Id,
-                StartDate = dto.StartDate,
-                EndDate = null, // Certificates can be evergreen or have fixed validity based on requirements
-                Remarks = dto.Remarks
-            };
-
-            _ = _db.Certificates.Add(certificate);
-
-            // Create application history with dynamic ActionBy
-            var history = new ApplicationHistory
-            {
-                ApplicationId = estReg.EstablishmentRegistrationId,
-                ApplicationType = module.Name,
-                Action = "Certificate Generated",
-                PreviousStatus = null,
-                NewStatus = "",
-                Comments = $"Certificate Generated by {officePost.PostName}, {officePost.CityName}",
-                ActionBy = officePost.PostId.ToString(),
-                ActionByName = $"{officePost.PostName}, {officePost.CityName}",
-                ActionDate = DateTime.Now
-            };
-
-            _db.ApplicationHistories.Add(history);
-
-            _ = await _db.SaveChangesAsync();
-
-            return certificate.Id.ToString();
+                throw;
+            }
         }
 
         private string FormatAddress(params string[] parts)
@@ -3364,11 +3372,11 @@ namespace RajFabAPI.Services
             using var pdf = new PdfDocument(writer);
             var boldFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA_BOLD);
             var regularFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA);
-            var footerDate = dto.StartDate.ToString("dd/MM/yyyy");
+            DateOnly footerDate = DateOnly.FromDateTime(DateTime.Today);
             var footerPlace = dto.EstablishmentDetail?.SubDivisionName ?? dto.EstablishmentDetail?.DistrictName ?? "-";
             pdf.AddEventHandler(PdfDocumentEvent.END_PAGE, new PageBorderAndFooterEventHandler(boldFont, regularFont, footerDate, footerPlace));
             using var document = new PdfDoc(pdf);
-            document.SetMargins(40, 40, 75, 40); // extra bottom margin for footer
+            document.SetMargins(40, 40, 130, 40); // large bottom margin: footer(~65pt) + e-sign space(~65pt)
 
             // ─────────────────────────────────────────────
             // HEADER  (centered, no borders)
@@ -3388,6 +3396,22 @@ namespace RajFabAPI.Services
                 .SetMarginBottom(8));
 
             // ─────────────────────────────────────────────
+            // Application Number (left) + Date (right) — above section heading
+            // ─────────────────────────────────────────────
+            var appNoRow = new PdfTable(new float[] { 1f, 1f }).UseAllAvailableWidth()
+                .SetBorder(Border.NO_BORDER).SetMarginBottom(4);
+            _ = appNoRow.AddCell(new PdfCell()
+                .Add(new Paragraph($"Application Number:  {dto.RegistrationDetail?.ApplicationId ?? "-"}")
+                    .SetFont(boldFont).SetFontSize(9))
+                .SetBorder(Border.NO_BORDER).SetPaddingLeft(4));
+            _ = appNoRow.AddCell(new PdfCell()
+                .Add(new Paragraph($"Date:  {dto.StartDate:dd/MM/yyyy}")
+                    .SetFont(regularFont).SetFontSize(9)
+                    .SetTextAlignment(TextAlignment.RIGHT))
+                .SetBorder(Border.NO_BORDER));
+            _ = document.Add(appNoRow);
+
+            // ─────────────────────────────────────────────
             // SECTION A – Establishment Details
             // Items 1, 2, 3, 4 (with sub-items a,b,c)
             // ─────────────────────────────────────────────
@@ -3400,8 +3424,7 @@ namespace RajFabAPI.Services
             // 1, 2, 3
             var estItems = new[]
             {
-                ("Application Number:", dto.RegistrationDetail?.EstablishmentRegistrationId ?? "-"),
-                ("1. Retrieve details of Establishment through LIN:", dto.EstablishmentDetail?.LinNumber ?? "-"),
+                ("1. Retrieve details of Establishment through LIN:", dto.EstablishmentDetail?.LinNumber != "" ? dto.EstablishmentDetail?.LinNumber : "-"),
                 ("2. Name of Establishment:",                        dto.EstablishmentDetail.Name ?? "-"),
                 ("3. Location and Address of the Establishment:",    FormatAddress(
                                                                         dto.EstablishmentDetail.AddressLine1,
@@ -3877,10 +3900,10 @@ namespace RajFabAPI.Services
             for (int i = 1; i <= headers.Length; i++)
                 table.AddCell(BuildCenterCell(i.ToString(), regularFont));
 
-            // Data row — omitted when section is not applicable (values == null)
-            if (values != null)
-                foreach (var val in values)
-                    table.AddCell(BuildDataCell(string.IsNullOrWhiteSpace(val) ? "-" : val, regularFont).SetTextAlignment(TextAlignment.CENTER));
+            // Data row — "-----" placeholder when section is not applicable
+            var dataValues = values ?? Enumerable.Repeat("-----", headers.Length).ToArray();
+            foreach (var val in dataValues)
+                table.AddCell(BuildDataCell(string.IsNullOrWhiteSpace(val) ? "-" : val, regularFont).SetTextAlignment(TextAlignment.CENTER));
 
             return table;
         }
@@ -3949,17 +3972,22 @@ namespace RajFabAPI.Services
             var baseUrl = _config["BaseUrl"] ?? $"{request.Scheme}://{request.Host}";
             var fileUrl = $"{baseUrl}/certificates/{fileName}";
 
-            // ── Fonts ─────────────────────────────────────────────────────────────────
             var boldFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA_BOLD);
             var regularFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA);
-
-            // ── PDF setup ─────────────────────────────────────────────────────────────
             using var writer = new PdfWriter(filePath);
             using var pdf = new PdfDocument(writer);
             pdf.AddEventHandler(PdfDocumentEvent.END_PAGE,
-                new CertSideTextEventHandler(boldFont, "Factories and Boilers Inspection Department, Rajasthan"));
+                new CertSideTextEventHandler(boldFont, "Factories and Boilers Department, Rajasthan"));
             using var document = new PdfDoc(pdf);
-            document.SetMargins(50, 70, 50, 50); // extra right margin for side text
+            // document.SetMargins(50, 70, 50, 50); // extra right margin for side text
+
+            // ── Fonts ─────────────────────────────────────────────────────────────────
+            DateOnly footerDate = DateOnly.FromDateTime(DateTime.Today);
+            var footerPlace = dto.DeclarationPlace ?? "-";
+            pdf.AddEventHandler(PdfDocumentEvent.END_PAGE, new PageBorderAndFooterEventHandler(boldFont, regularFont, footerDate, footerPlace));
+            document.SetMargins(40, 40, 130, 40); // large bottom margin: footer(~65pt) + e-sign space(~65pt)
+
+            // ── PDF setup ─────────────────────────────────────────────────────────────
 
             // ═════════════════════════════════════════════════════════════════════════
             // HEADER  — 3-column layout: [QR spacer] [Emblem + Titles] [QR code]
@@ -3981,11 +4009,13 @@ namespace RajFabAPI.Services
             _ = centerCell.Add(new PdfImage(ImageDataFactory.Create("wwwroot/Emblem_of_India.png"))
                 .ScaleToFit(70, 70)
                 .SetHorizontalAlignment(HorizontalAlignment.CENTER));
-            _ = centerCell.Add(new Paragraph("Form-2 (See rule 5(1)(d))")
-                .SetFont(boldFont).SetFontSize(12)
-                .SetTextAlignment(TextAlignment.CENTER)
-                .SetUnderline()
-                .SetMarginTop(4f).SetMarginBottom(2f));
+            _ = centerCell.Add(new Paragraph("Form-2")
+                      .SetFont(boldFont).SetFontSize(13)
+                .SetTextAlignment(TextAlignment.CENTER));
+
+            _ = centerCell.Add(new Paragraph("(See Rule 5(1)(d))")
+              .SetFont(regularFont).SetFontSize(10)
+                .SetTextAlignment(TextAlignment.CENTER));
             _ = centerCell.Add(new Paragraph("Certificate of Registration of Establishment")
                 .SetFont(boldFont).SetFontSize(11)
                 .SetTextAlignment(TextAlignment.CENTER)
@@ -4001,10 +4031,6 @@ namespace RajFabAPI.Services
             _ = qrCell.Add(new PdfImage(ImageDataFactory.Create(qrBytes))
                 .ScaleToFit(75, 75)
                 .SetHorizontalAlignment(HorizontalAlignment.CENTER));
-            _ = qrCell.Add(new Paragraph("Scan to verify")
-                .SetFont(regularFont).SetFontSize(7)
-                .SetTextAlignment(TextAlignment.CENTER)
-                .SetMarginTop(2f));
             _ = headerTable.AddCell(qrCell);
 
             _ = document.Add(headerTable);
@@ -4019,7 +4045,7 @@ namespace RajFabAPI.Services
                 .Add(new Paragraph($"Registration No.  {dto.ApplicationRegistrationNumber ?? ""}").SetFont(regularFont).SetFontSize(9))
                 .SetBorder(Border.NO_BORDER));
             _ = regTable.AddCell(new PdfCell()
-                .Add(new Paragraph($"Date  {dto.StartDate:dd/MM/yyyy}").SetFont(regularFont).SetFontSize(9)
+                .Add(new Paragraph($"Date  {footerDate}").SetFont(regularFont).SetFontSize(9)
                     .SetTextAlignment(TextAlignment.RIGHT))
                 .SetBorder(Border.NO_BORDER));
             _ = document.Add(regTable);
@@ -4034,8 +4060,6 @@ namespace RajFabAPI.Services
                     .SetFont(regularFont).SetFontSize(9))
                 .Add(new Text($"M/s {dto.EstablishmentName ?? "-"}")
                     .SetFont(boldFont).SetFontSize(9))
-                .Add(new Text(" (Name of the establishment)")
-                    .SetFont(regularFont).SetFontSize(9))
                 .SetMarginBottom(6f));
 
             // ═════════════════════════════════════════════════════════════════════════
@@ -4129,10 +4153,10 @@ namespace RajFabAPI.Services
             // SECTION 3 — Show only the table that matches the establishment type.
             // Other sections are rendered header+number-row only (no empty data row).
             // ═════════════════════════════════════════════════════════════════════════
-            bool isFactory  = selectedType.IndexOf("Factory",  StringComparison.OrdinalIgnoreCase) >= 0;
-            bool isMining   = selectedType.IndexOf("Mining",   StringComparison.OrdinalIgnoreCase) >= 0
-                           || selectedType.IndexOf("Mine",     StringComparison.OrdinalIgnoreCase) >= 0;
-            bool isDock     = selectedType.IndexOf("Dock",     StringComparison.OrdinalIgnoreCase) >= 0;
+            bool isFactory = selectedType.IndexOf("Factory", StringComparison.OrdinalIgnoreCase) >= 0;
+            bool isMining = selectedType.IndexOf("Mining", StringComparison.OrdinalIgnoreCase) >= 0
+                           || selectedType.IndexOf("Mine", StringComparison.OrdinalIgnoreCase) >= 0;
+            bool isDock = selectedType.IndexOf("Dock", StringComparison.OrdinalIgnoreCase) >= 0;
             bool isBuilding = selectedType.IndexOf("Building", StringComparison.OrdinalIgnoreCase) >= 0
                            || selectedType.IndexOf("Construction", StringComparison.OrdinalIgnoreCase) >= 0;
 
@@ -4161,13 +4185,13 @@ namespace RajFabAPI.Services
             {
                 // Col 1: Type + Details
                 string factTypeVal = string.IsNullOrWhiteSpace(dto.FactoryManufacturingType) && string.IsNullOrWhiteSpace(dto.FactoryManufacturingDetail)
-                    ? "－－－－－"
+                    ? "-----"
                     : $"Type: {(string.IsNullOrWhiteSpace(dto.FactoryManufacturingType) ? "-" : dto.FactoryManufacturingType)}\nDetails: {(string.IsNullOrWhiteSpace(dto.FactoryManufacturingDetail) ? "-" : dto.FactoryManufacturingDetail)}";
                 _ = factTable.AddCell(CertDataCell(factTypeVal, regularFont));
 
                 // Col 2: Name + Address
                 string factAddrVal = string.IsNullOrWhiteSpace(dto.EstablishmentName) && string.IsNullOrWhiteSpace(dto.FactoryAddress)
-                    ? "－－－－－"
+                    ? "-----"
                     : string.Join("\n", new[]
                     {
                         string.IsNullOrWhiteSpace(dto.EstablishmentName) ? null : $"Name: {dto.EstablishmentName}",
@@ -4177,7 +4201,7 @@ namespace RajFabAPI.Services
 
                 // Col 3: Occupier + Manager names (no address)
                 string occupierManagerVal = string.IsNullOrWhiteSpace(dto.EmployerName) && string.IsNullOrWhiteSpace(dto.ManagerName)
-                    ? "－－－－－"
+                    ? "-----"
                     : string.Join("\n", new[]
                     {
                         string.IsNullOrWhiteSpace(dto.EmployerName) ? null : $"Occupier: {dto.EmployerName}",
@@ -4186,7 +4210,7 @@ namespace RajFabAPI.Services
                 _ = factTable.AddCell(CertDataCell(occupierManagerVal, regularFont));
 
                 // Col 4: Max workers
-                _ = factTable.AddCell(CertDataCell(dto.MaxWorkers.HasValue ? dto.MaxWorkers.Value.ToString() : "－－－－－", regularFont)
+                _ = factTable.AddCell(CertDataCell(dto.MaxWorkers.HasValue ? dto.MaxWorkers.Value.ToString() : "-----", regularFont)
                     .SetTextAlignment(TextAlignment.CENTER));
             }
             _ = document.Add(factTable);
@@ -4202,9 +4226,10 @@ namespace RajFabAPI.Services
                 _ = mineTable.AddCell(CertHeaderCell(h, boldFont));
             for (int i = 1; i <= 5; i++)
                 _ = mineTable.AddCell(CertIndexCell(i.ToString(), regularFont));
-            if (isMining)
-                for (int i = 0; i < 5; i++)
-                    _ = mineTable.AddCell(CertDataCell("－－－－－", regularFont).SetTextAlignment(TextAlignment.CENTER));
+
+            // if (isMining)
+            for (int i = 0; i < 5; i++)
+                _ = mineTable.AddCell(CertDataCell("-----", regularFont).SetTextAlignment(TextAlignment.CENTER).SetHeight(12));
             _ = document.Add(mineTable);
 
             // 3(c) — Dock work
@@ -4218,9 +4243,10 @@ namespace RajFabAPI.Services
                 _ = dockTable.AddCell(CertHeaderCell(h, boldFont));
             for (int i = 1; i <= 5; i++)
                 _ = dockTable.AddCell(CertIndexCell(i.ToString(), regularFont));
-            if (isDock)
-                for (int i = 0; i < 5; i++)
-                    _ = dockTable.AddCell(CertDataCell("－－－－－", regularFont).SetTextAlignment(TextAlignment.CENTER));
+
+            // if (isDock)
+            for (int i = 0; i < 5; i++)
+                _ = dockTable.AddCell(CertDataCell("-----", regularFont).SetTextAlignment(TextAlignment.CENTER).SetHeight(12));
             _ = document.Add(dockTable);
 
             // 3(d) — Building and construction
@@ -4234,9 +4260,10 @@ namespace RajFabAPI.Services
                 _ = buildTable.AddCell(CertHeaderCell(h, boldFont));
             for (int i = 1; i <= 4; i++)
                 _ = buildTable.AddCell(CertIndexCell(i.ToString(), regularFont));
-            if (isBuilding)
-                for (int i = 0; i < 4; i++)
-                    _ = buildTable.AddCell(CertDataCell("－－－－－", regularFont).SetTextAlignment(TextAlignment.CENTER));
+
+            // if (isBuilding)
+            for (int i = 0; i < 4; i++)
+                _ = buildTable.AddCell(CertDataCell("-----", regularFont).SetTextAlignment(TextAlignment.CENTER).SetHeight(12));
             _ = document.Add(buildTable);
 
             // ═════════════════════════════════════════════════════════════════════════
@@ -4258,21 +4285,6 @@ namespace RajFabAPI.Services
                 .Add(new Paragraph(""))
                 .SetBorder(Border.NO_BORDER));
 
-            // Right: signature label + image
-            var sigCell = new PdfCell().SetBorder(Border.NO_BORDER);
-            _ = sigCell.Add(new Paragraph("Signature / E-Sign / DSC of Registering Officer along with designation")
-                .SetFont(regularFont).SetFontSize(8)
-                .SetTextAlignment(TextAlignment.RIGHT));
-
-            _ = sigOuterTable.AddCell(sigCell);
-            _ = document.Add(sigOuterTable);
-
-            // Place & Date
-            _ = document.Add(new Paragraph($"Place: {dto.DeclarationPlace ?? ""}")
-                .SetFont(regularFont).SetFontSize(9).SetMarginBottom(2f));
-            _ = document.Add(new Paragraph($"Date:  {dto.StartDate:dd/MM/yyyy}")
-                .SetFont(regularFont).SetFontSize(9).SetMarginBottom(14f));
-
             // ═════════════════════════════════════════════════════════════════════════
             // Conditions of Registration
             // ═════════════════════════════════════════════════════════════════════════
@@ -4292,11 +4304,11 @@ namespace RajFabAPI.Services
                 ("(c)", "Save as provided in these rules, the fees paid for the grant of registration certificate shall be nonrefundable."),
             })
             {
-                var subRow = new PdfTable(new float[] { 30f, 1f })
+                var subRow = new PdfTable(new float[] { 10f, 1f })
                     .UseAllAvailableWidth().SetBorder(Border.NO_BORDER).SetMarginBottom(2f);
                 _ = subRow.AddCell(new PdfCell()
                     .Add(new Paragraph(code).SetFont(regularFont).SetFontSize(9))
-                    .SetBorder(Border.NO_BORDER).SetPaddingLeft(30f));
+                    .SetBorder(Border.NO_BORDER));
                 _ = subRow.AddCell(new PdfCell()
                     .Add(new Paragraph(text).SetFont(regularFont).SetFontSize(9))
                     .SetBorder(Border.NO_BORDER));
@@ -4395,17 +4407,17 @@ namespace RajFabAPI.Services
             // HEADER — Government of Rajasthan (centered, bold)
             // ═════════════════════════════════════════════════════════════════════════
             _ = document.Add(new Paragraph("Government of Rajasthan")
+                .SetFont(boldFont).SetFontSize(14)
+                .SetTextAlignment(TextAlignment.CENTER)
+                .SetMarginBottom(1f));
+
+            _ = document.Add(new Paragraph("Factories and Boilers Department")
                 .SetFont(boldFont).SetFontSize(13)
                 .SetTextAlignment(TextAlignment.CENTER)
                 .SetMarginBottom(1f));
 
-            _ = document.Add(new Paragraph("Factories and Boilers Inspection Department")
-                .SetFont(boldFont).SetFontSize(11)
-                .SetTextAlignment(TextAlignment.CENTER)
-                .SetMarginBottom(1f));
-
             _ = document.Add(new Paragraph("6-C, Jhalana Institutional Area, Jaipur, 302004")
-                .SetFont(regularFont).SetFontSize(9)
+                .SetFont(regularFont).SetFontSize(12)
                 .SetTextAlignment(TextAlignment.CENTER)
                 .SetMarginBottom(10f));
 
@@ -4417,12 +4429,12 @@ namespace RajFabAPI.Services
 
             _ = topRow.AddCell(new PdfCell()
                 .Add(new Paragraph($"Application Id:-  {dto.ApplicationId ?? "-"}")
-                    .SetFont(boldFont).SetFontSize(10))
+                    .SetFont(boldFont).SetFontSize(12))
                 .SetBorder(Border.NO_BORDER));
 
             _ = topRow.AddCell(new PdfCell()
                 .Add(new Paragraph($"Dated:-  {dto.Date:dd/MM/yyyy}")
-                    .SetFont(boldFont).SetFontSize(10)
+                    .SetFont(boldFont).SetFontSize(12)
                     .SetTextAlignment(TextAlignment.RIGHT))
                 .SetBorder(Border.NO_BORDER));
 
@@ -4432,14 +4444,14 @@ namespace RajFabAPI.Services
             // Establishment name + address (left-aligned, plain)
             // ═════════════════════════════════════════════════════════════════════════
             _ = document.Add(new Paragraph(dto.EstablishmentName ?? "-")
-                .SetFont(regularFont).SetFontSize(10)
+                .SetFont(regularFont).SetFontSize(12)
                 .SetMarginBottom(1f));
 
             var addressLines = (dto.EstablishmentAddress ?? "-").Split('\n', StringSplitOptions.RemoveEmptyEntries);
             for (int i = 0; i < addressLines.Length; i++)
             {
                 _ = document.Add(new Paragraph(addressLines[i].Trim())
-                    .SetFont(regularFont).SetFontSize(10)
+                    .SetFont(regularFont).SetFontSize(12)
                     .SetMarginBottom(i == addressLines.Length - 1 ? 10f : 1f));
             }
 
@@ -4447,8 +4459,8 @@ namespace RajFabAPI.Services
             // Sub:- line
             // ═════════════════════════════════════════════════════════════════════════
             var subPara = new Paragraph();
-            subPara.Add(new Text("Sub:- ").SetFont(boldFont).SetFontSize(10));
-            subPara.Add(new Text("Regarding approval of Factory Registration").SetFont(regularFont).SetFontSize(10));
+            subPara.Add(new Text("Sub:- ").SetFont(boldFont).SetFontSize(12));
+            subPara.Add(new Text("Registration/Renewal of your Factory").SetFont(regularFont).SetFontSize(12));
             _ = document.Add(subPara.SetMarginBottom(4f));
 
             // ═════════════════════════════════════════════════════════════════════════
@@ -4456,7 +4468,7 @@ namespace RajFabAPI.Services
             // ═════════════════════════════════════════════════════════════════════════
             _ = document.Add(new Paragraph(
                     "The details of your factory as per application, drawings and documents are shown below:-")
-                .SetFont(regularFont).SetFontSize(10)
+                .SetFont(regularFont).SetFontSize(12)
                 .SetMarginBottom(4f));
 
             // ═════════════════════════════════════════════════════════════════════════
@@ -4466,9 +4478,9 @@ namespace RajFabAPI.Services
                 .UseAllAvailableWidth().SetMarginBottom(12f);
 
             // helper — red-bordered cell
-            PdfCell RedCell(string text, PdfFont font, float fontSize = 10f, bool isHeader = false)
+            PdfCell RedCell(string text, PdfFont font, float fontSize = 12f, bool isHeader = false)
             {
-                var border = new iText.Layout.Borders.SolidBorder(new DeviceRgb(220, 0, 0), 0.75f);
+                var border = new iText.Layout.Borders.SolidBorder(new DeviceRgb(220, 0, 0), 1.5f);
                 return new PdfCell()
                     .Add(new Paragraph(text ?? "-").SetFont(font).SetFontSize(fontSize))
                     .SetBorderTop(border).SetBorderBottom(border)
@@ -4477,13 +4489,15 @@ namespace RajFabAPI.Services
             }
 
             _ = detailsTable.AddCell(RedCell("Manufacturing Process", boldFont));
-            _ = detailsTable.AddCell(RedCell(dto.ManufacturingProcess ?? "-", regularFont));
+            _ = detailsTable.AddCell(RedCell(dto.ManufacturingType == "manufacture" ? "Yes" : "No", regularFont));
 
             _ = detailsTable.AddCell(RedCell("Type", boldFont));
-            _ = detailsTable.AddCell(RedCell(dto.FactoryType ?? "-", regularFont));
+            _ = detailsTable.AddCell(RedCell("-", regularFont));
+            // _ = detailsTable.AddCell(RedCell(dto.FactoryType ?? "-", regularFont));
 
             _ = detailsTable.AddCell(RedCell("Category", boldFont));
-            _ = detailsTable.AddCell(RedCell(dto.Category ?? "-", regularFont));
+            // _ = detailsTable.AddCell(RedCell(dto.Category ?? "-", regularFont));
+            _ = detailsTable.AddCell(RedCell("-", regularFont));
 
             _ = detailsTable.AddCell(RedCell("Workers", boldFont));
             _ = detailsTable.AddCell(RedCell(dto.WorkerCount?.ToString() ?? "-", regularFont));
@@ -4494,7 +4508,7 @@ namespace RajFabAPI.Services
             // "Following objections are need to be removed..." heading
             // ═════════════════════════════════════════════════════════════════════════
             _ = document.Add(new Paragraph("Following objections are need to be removed related to your factory")
-                .SetFont(regularFont).SetFontSize(10)
+                .SetFont(regularFont).SetFontSize(12)
                 .SetMarginBottom(12f));
 
             // ═════════════════════════════════════════════════════════════════════════
@@ -4505,7 +4519,7 @@ namespace RajFabAPI.Services
                 for (int i = 0; i < dto.Objections.Count; i++)
                 {
                     _ = document.Add(new Paragraph($"{i + 1}.{dto.Objections[i]}")
-                        .SetFont(regularFont).SetFontSize(10)
+                        .SetFont(regularFont).SetFontSize(12)
                         .SetMarginBottom(6f));
                 }
             }
@@ -4517,45 +4531,64 @@ namespace RajFabAPI.Services
             // ═════════════════════════════════════════════════════════════════════════
             _ = document.Add(new Paragraph(
                     "Please comply with the above observations and submit relevant details/documents")
-                .SetFont(regularFont).SetFontSize(10)
+                .SetFont(regularFont).SetFontSize(12)
                 .SetMarginBottom(30f));
 
-            // ═════════════════════════════════════════════════════════════════════════
-            // Signature block — right side
-            // ═════════════════════════════════════════════════════════════════════════
+            var imageData = ImageDataFactory.Create("https://img.freepik.com/premium-vector/fake-autograph-samples-handdrawn-signature_721791-5968.jpg?w=1480");
+
+            // Outer table (push content to right side)
             var sigOuterTable = new PdfTable(new float[] { 1f, 1f })
-                .UseAllAvailableWidth().SetBorder(Border.NO_BORDER).SetMarginBottom(8f);
+                .UseAllAvailableWidth()
+                .SetBorder(Border.NO_BORDER)
+                .SetMarginBottom(8f);
 
-            // Left: empty
-            _ = sigOuterTable.AddCell(new PdfCell()
-                .Add(new Paragraph("")).SetBorder(Border.NO_BORDER));
+            // Left empty
+            sigOuterTable.AddCell(new PdfCell().SetBorder(Border.NO_BORDER));
 
-            // Right: signature image + name + designation + location
-            var sigCell = new PdfCell().SetBorder(Border.NO_BORDER);
+            // Right cell
+            var sigCell = new PdfCell()
+                .SetBorder(Border.NO_BORDER)
+                .SetTextAlignment(TextAlignment.RIGHT); // push block to right
 
-            var signatureBytes = await DownloadImageAsync(dto.SignatureBase64);
-            if (signatureBytes != null)
-            {
-                var sigImg = new PdfImage(ImageDataFactory.Create(signatureBytes)).ScaleToFit(80, 40);
-                sigImg.SetHorizontalAlignment(HorizontalAlignment.RIGHT);
-                _ = sigCell.Add(sigImg);
-            }
+            // Inner container (this creates centered block)
+            var innerDiv = new Div()
+                .SetWidth(250) // control block width
+                .SetTextAlignment(TextAlignment.CENTER) // center everything inside
+                .SetHorizontalAlignment(HorizontalAlignment.RIGHT); // move block to right
 
-            _ = sigCell.Add(new Paragraph($"( {dto.SignatoryName ?? "Inspector"} )")
-                .SetFont(regularFont).SetFontSize(9)
-                .SetTextAlignment(TextAlignment.RIGHT)
+            // Image
+            var signatureImage = new PdfImage(imageData)
+                .ScaleToFit(150, 50)
+                .SetHorizontalAlignment(HorizontalAlignment.CENTER);
+
+            innerDiv.Add(signatureImage);
+
+            // Name
+            innerDiv.Add(new Paragraph($"( {dto.SignatoryName} )")
+                .SetFont(regularFont)
+                .SetFontSize(12)
                 .SetMarginTop(2f));
 
-            _ = sigCell.Add(new Paragraph(dto.SignatoryDesignation ?? "Inspector")
-                .SetFont(regularFont).SetFontSize(9)
-                .SetTextAlignment(TextAlignment.RIGHT));
+            // Designation
+            innerDiv.Add(new Paragraph(dto.SignatoryDesignation)
+                .SetFont(regularFont)
+                .SetFontSize(12)
+                .SetMarginTop(2f));
 
-            _ = sigCell.Add(new Paragraph(dto.SignatoryLocation ?? "Jaipur, Rajasthan")
-                .SetFont(regularFont).SetFontSize(9)
-                .SetTextAlignment(TextAlignment.RIGHT));
+            // Location
+            innerDiv.Add(new Paragraph(dto.SignatoryLocation)
+                .SetFont(regularFont)
+                .SetFontSize(12)
+                .SetMarginTop(0f));
 
-            _ = sigOuterTable.AddCell(sigCell);
-            _ = document.Add(sigOuterTable);
+            // Add inner block to cell
+            sigCell.Add(innerDiv);
+
+            // Add to table
+            sigOuterTable.AddCell(sigCell);
+
+            // Add to document
+            document.Add(sigOuterTable);
 
             // ═════════════════════════════════════════════════════════════════════════
             // Footer disclaimer — fixed at page bottom
@@ -4635,10 +4668,10 @@ namespace RajFabAPI.Services
         {
             private readonly PdfFont _boldFont;
             private readonly PdfFont _regularFont;
-            private readonly string _date;
+            private readonly DateOnly _date;
             private readonly string _place;
 
-            public PageBorderAndFooterEventHandler(PdfFont boldFont, PdfFont regularFont, string date, string place)
+            public PageBorderAndFooterEventHandler(PdfFont boldFont, PdfFont regularFont, DateOnly date, string place)
             {
                 _boldFont = boldFont;
                 _regularFont = regularFont;
@@ -4654,12 +4687,12 @@ namespace RajFabAPI.Services
                 var rect = page.GetPageSize();
                 var canvas = new PdfCanvas(page);
 
-                // Border arround page 
-                // canvas
-                //     .SetStrokeColor(new DeviceRgb(20, 57, 92))
-                //     .SetLineWidth(1.5f)
-                //     .Rectangle(25, 25, rect.GetWidth() - 50, rect.GetHeight() - 50)
-                //     .Stroke();
+                // Border around page
+                canvas
+                    .SetStrokeColor(ColorConstants.BLACK)
+                    .SetLineWidth(1.5f)
+                    .Rectangle(25, 25, rect.GetWidth() - 50, rect.GetHeight() - 50)
+                    .Stroke();
 
                 // ───── Separator Line (properly spaced ABOVE text)
                 float lineY = 70f;
@@ -4737,9 +4770,9 @@ namespace RajFabAPI.Services
                 // Vertical text: rotated 90° CCW, positioned on the right edge
                 canvas.SaveState();
                 canvas.BeginText();
-                canvas.SetFontAndSize(_font, 9);
+                canvas.SetFontAndSize(_font, 15);
                 // 90° CCW rotation matrix: [cos90, sin90, -sin90, cos90, tx, ty] = [0, 1, -1, 0, tx, ty]
-                float tx = rect.GetWidth() - 18f;
+                float tx = rect.GetWidth() - 10f;
                 float ty = (rect.GetHeight() / 2f) - 80f; // vertically centered
                 canvas.SetTextMatrix(0, 1, -1, 0, tx, ty);
                 canvas.ShowText(_text);

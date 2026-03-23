@@ -15,6 +15,7 @@ namespace RajFabAPI.DTOs
 
         // Workflow / processing status (e.g. "Pending", "Approved", "Rejected")
         public string? Status { get; set; } 
+        public string? ApplicationId { get; set; }
 
         public bool AutoRenewal { get; set; }
 
@@ -37,8 +38,6 @@ namespace RajFabAPI.DTOs
     public class EstablishmentCertificateRequestDto
     {
         public string Remarks { get; set; }
-        public DateTime StartDate { get; set; }
-        public string Place { get; set; }
     }
     public class EstablishmentCertificatePdfRequestDto : CreateEstablishmentRegistrationDto
     {

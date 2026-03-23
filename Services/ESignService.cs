@@ -689,7 +689,7 @@ namespace RajFabAPI.Services
             public string applicationCode { get; set; } = "RAJFABUAT";
             public string aspId { get; set; } = "RISL";
             public string xcord { get; set; } = "400";
-            public string ycord { get; set; } = "40";
+            public string ycord { get; set; } = "60";
             public string prn { get; set; }
             public string signatureOnPageNumber { get; set; } = "ALL";
             public string personName { get; set; }

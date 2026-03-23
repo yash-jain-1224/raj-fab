@@ -572,6 +572,17 @@ namespace RajFabAPI.Services
                     ? await _db.EstablishmentDetails.FindAsync(reg.EstablishmentDetailId.Value)
                     : null;
 
+                var factory = await (
+                    from map in _db.EstablishmentEntityMapping
+                    where map.EstablishmentRegistrationId == applicationId
+                        && map.EntityType == "Factory"
+
+                    join f in _db.Set<FactoryDetail>()
+                        on map.EntityId equals f.Id
+
+                    select f
+                ).FirstOrDefaultAsync();
+                    
                 string? factoryTypeName = null;
                 if (detail?.FactoryTypeId.HasValue == true)
                 {
@@ -593,6 +604,7 @@ namespace RajFabAPI.Services
                 fileUrl = await _establishmentRegistrationService.GenerateObjectionLetter(
                     new EstablishmentObjectionLetterDto
                     {
+                        ManufacturingType =  factory.ManufacturingType,
                         ApplicationId = reg.ApplicationId,
                         Date = DateTime.Today,
                         EstablishmentName = detail?.EstablishmentName ?? "",

@@ -11,6 +11,7 @@ namespace RajFabAPI.DTOs
 
         public string? Subject { get; set; }
 
+        public string? ManufacturingType { get; set; }
         public string? ManufacturingProcess { get; set; }
         public string? FactoryType { get; set; }
         public string? Category { get; set; }

@@ -1451,7 +1451,8 @@ namespace RajFabAPI.Services
                         PartnershipDeed = reg.PartnershipDeed,
                         ManagerIdProof = reg.ManagerIdProof,
                         LoadSanctionCopy = reg.LoadSanctionCopy,
-                        CertificatePDFUrl = activeCertificate?.CertificateUrl
+                        CertificatePDFUrl = activeCertificate?.CertificateUrl,
+                        ObjectionLetterUrl = reg.ObjectionLetterUrl
                     };
                 }
                 if (reg.MainOwnerDetailId != null)

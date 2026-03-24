@@ -49,6 +49,24 @@ namespace RajFabAPI.DTOs
         public List<FactoryMapIntermediateProductDto> IntermediateProducts { get; set; } = new List<FactoryMapIntermediateProductDto>();
         public List<FactoryMapFinishGoodDto> FinishGoods { get; set; } = new List<FactoryMapFinishGoodDto>();
         public List<ChemicalDto> Chemicals { get; set; } = new List<ChemicalDto>();
+        public FactoryMapApprovalFileDto? File { get; set; }
+        // public List<FactoryMapDocumentDto> FactoryMapDocuments { get; set; } = new List<FactoryMapDocumentDto>();
+    }
+
+    public class FactoryMapApprovalFileDto
+    {
+        public string? LandOwnershipDocumentUrl { get; set; }
+        public string? ApprovedLandPlanUrl { get; set; }
+        public string? ManufacturingProcessDescriptionUrl { get; set; }
+        public string? ProcessFlowChartUrl { get; set; }
+        public string? RawMaterialsListUrl { get; set; }
+        public string? HazardousProcessesListUrl { get; set; }
+        public string? EmergencyPlanUrl { get; set; }
+        public string? SafetyHealthPolicyUrl { get; set; }
+        public string? FactoryPlanDrawingUrl { get; set; }
+        public string? SafetyPolicyApplicableUrl { get; set; }
+        public string? OccupierPhotoIdProofUrl { get; set; }
+        public string? OccupierAddressProofUrl { get; set; }
     }
 
     public class FactoryMapDocumentDto
@@ -102,6 +120,10 @@ namespace RajFabAPI.DTOs
         public List<CreateFinishGoodRequest>? FinishGoods { get; set; }
         //public List<CreateDangerousOperationRequest>? DangerousOperations { get; set; }
         public List<CreateChemicalRequest>? Chemicals { get; set; }
+
+        public CreateFactoryMapApprovalFileRequest? File { get; set; }
+
+        //public List<FactoryMapDocumentDto> FactoryMapDocuments { get; set; } = new List<FactoryMapDocumentDto>();
     }
 
     public class OccupierDetailsRequest
@@ -247,6 +269,22 @@ namespace RajFabAPI.DTOs
         public FactoryMapApprovalDto? Data { get; set; }
     }
 
+
+    public class CreateFactoryMapApprovalFileRequest
+    {
+        public string? LandOwnershipDocumentUrl { get; set; }
+        public string? ApprovedLandPlanUrl { get; set; }
+        public string? ManufacturingProcessDescriptionUrl { get; set; }
+        public string? ProcessFlowChartUrl { get; set; }
+        public string? RawMaterialsListUrl { get; set; }
+        public string? HazardousProcessesListUrl { get; set; }
+        public string? EmergencyPlanUrl { get; set; }
+        public string? SafetyHealthPolicyUrl { get; set; }
+        public string? FactoryPlanDrawingUrl { get; set; }
+        public string? SafetyPolicyApplicableUrl { get; set; }
+        public string? OccupierPhotoIdProofUrl { get; set; }
+        public string? OccupierAddressProofUrl { get; set; }
+    }
     public class FactoryMapRawMaterialDto
     {
         public string Id { get; set; } = string.Empty;

@@ -53,6 +53,8 @@ namespace RajFabAPI.Models
         public DateTime UpdatedAt { get; set; } = DateTime.Now;
 
         //public List<FactoryMapDocument> Documents { get; set; } = new List<FactoryMapDocument>();
+
+        public FactoryMapApprovalFile File { get; set; }
         public List<FactoryMapRawMaterial> RawMaterials { get; set; } = new List<FactoryMapRawMaterial>();
         public List<FactoryMapIntermediateProduct> IntermediateProducts { get; set; } = new List<FactoryMapIntermediateProduct>();
         public List<FactoryMapFinishGood> FinishGoods { get; set; } = new List<FactoryMapFinishGood>();
@@ -221,5 +223,54 @@ namespace RajFabAPI.Models
 
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         public DateTime UpdatedAt { get; set; } = DateTime.Now;
+    }
+
+    public class FactoryMapApprovalFile
+    {
+        public string Id { get; set; } = Guid.NewGuid().ToString();
+
+        [Required]
+        public string FactoryMapApprovalId { get; set; }
+
+        [StringLength(500)]
+        public string? LandOwnershipDocumentUrl { get; set; }
+
+        [StringLength(500)]
+        public string? ApprovedLandPlanUrl { get; set; }
+
+        [StringLength(500)]
+        public string? ManufacturingProcessDescriptionUrl { get; set; }
+
+        [StringLength(500)]
+        public string? ProcessFlowChartUrl { get; set; }
+
+        [StringLength(500)]
+        public string? RawMaterialsListUrl { get; set; }
+
+        [StringLength(500)]
+        public string? HazardousProcessesListUrl { get; set; }
+
+        [StringLength(500)]
+        public string? EmergencyPlanUrl { get; set; }
+
+        [StringLength(500)]
+        public string? SafetyHealthPolicyUrl { get; set; }
+
+        [StringLength(500)]
+        public string? FactoryPlanDrawingUrl { get; set; }
+
+        [StringLength(500)]
+        public string? SafetyPolicyApplicableUrl { get; set; }
+
+        [StringLength(500)]
+        public string? OccupierPhotoIdProofUrl { get; set; }
+
+        [StringLength(500)]
+        public string? OccupierAddressProofUrl { get; set; }
+
+        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime? UpdatedAt { get; set; }
+
+        public FactoryMapApproval FactoryMapApproval { get; set; }
     }
 }

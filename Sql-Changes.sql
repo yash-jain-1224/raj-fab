@@ -1877,3 +1877,121 @@ ADD RelationType NVARCHAR(50) NULL,
 
 ALTER TABLE FactoryMapApprovals
     ADD ObjectionLetterUrl NVARCHAR(500) NULL;
+
+--------------------------------------------------------------------
+18-03-2026
+CREATE TABLE [dbo].[FactoryMapApprovalFiles] (
+    [Id] NVARCHAR(50) NOT NULL PRIMARY KEY,
+
+    [FactoryMapApprovalId] NVARCHAR(50) NOT NULL,  -- Reference to main table
+
+    LandOwnershipDocumentUrl NVARCHAR(500) NULL,
+    ApprovedLandPlanUrl NVARCHAR(500) NULL,
+    ManufacturingProcessDescriptionUrl NVARCHAR(500) NULL,
+    ProcessFlowChartUrl NVARCHAR(500) NULL,
+    RawMaterialsListUrl NVARCHAR(500) NULL,
+    HazardousProcessesListUrl NVARCHAR(500) NULL,
+    EmergencyPlanUrl NVARCHAR(500) NULL,
+    SafetyHealthPolicyUrl NVARCHAR(500) NULL,
+    FactoryPlanDrawingUrl NVARCHAR(500) NULL,
+    SafetyPolicyApplicableUrl NVARCHAR(500) NULL,
+    OccupierPhotoIdProofUrl NVARCHAR(500) NULL,
+    OccupierAddressProofUrl NVARCHAR(500) NULL,
+
+    CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+    UpdatedAt DATETIME NULL,
+
+   
+);
+
+---------------
+23-03-26
+ALTER TABLE BoilerManufactureRegistrations
+ADD 
+    Amount DECIMAL(18,2),
+    IsPaymentCompleted BIT DEFAULT 0,
+    IsESignCompleted BIT DEFAULT 0,
+    ApplicationPDFUrl NVARCHAR(500);
+  ----------------------------------------------
+    alter table  SteamPipeLineApplications 
+ADD     Amount DECIMAL(18,2)
+
+-----------------------
+alter table  BoilerRepairerRegistrations 
+ADD 
+    Amount DECIMAL(18,2)
+
+    ----------------------------------
+
+    alter table  EconomiserRegistrations 
+ADD 
+    Amount DECIMAL(18,2)
+
+    -------------------------------
+
+    	ALTER TABLE WelderApplications
+add  Amount DECIMAL(18,2);
+
+
+CREATE TABLE BoilerDrawingRegistrations (
+    Id UNIQUEIDENTIFIER PRIMARY KEY,
+
+    ApplicationId NVARCHAR(100) NULL,
+    BoilerDrawingRegistrationNo NVARCHAR(100) NULL,
+
+    Amount DECIMAL(18,2) NOT NULL,
+
+    /* ================= FACTORY ================= */
+    FactoryRegistrationNumber NVARCHAR(100) NULL,
+    FactoryDetailjson NVARCHAR(MAX) NULL,
+
+    /* ================= BOILER DRAWING ================= */
+    MakerNumber NVARCHAR(100) NULL,
+    MakerNameAndAddress NVARCHAR(500) NULL,
+    HeatingSurfaceArea NVARCHAR(100) NULL,
+    EvaporationCapacity NVARCHAR(100) NULL,
+    IntendedWorkingPressure NVARCHAR(100) NULL,
+    BoilerType NVARCHAR(100) NULL,
+    DrawingNo NVARCHAR(100) NULL,
+
+    /* ================= DOCUMENTS ================= */
+    BoilerDrawing NVARCHAR(500) NULL,
+    FeedPipelineDrawing NVARCHAR(500) NULL,
+    PressurePartCalculation NVARCHAR(500) NULL,
+
+    /* ================= VALIDITY ================= */
+    ValidFrom DATETIME NULL,
+    ValidUpto DATETIME NULL,
+
+    /* ================= WORKFLOW ================= */
+    Type NVARCHAR(50) NULL,
+    Version DECIMAL(10,2) NOT NULL,
+    Status NVARCHAR(50) NULL,
+
+    CreatedDate DATETIME NOT NULL,
+    UpdatedDate DATETIME NOT NULL,
+
+    IsActive BIT NOT NULL
+);
+
+
+CREATE TABLE BoilerDrawingClosures (
+    Id UNIQUEIDENTIFIER PRIMARY KEY,
+
+    ApplicationId NVARCHAR(100) NULL,
+    BoilerDrawingRegistrationNo NVARCHAR(100) NULL,
+
+    ClosureReason NVARCHAR(500) NULL,
+    ClosureDate DATETIME NULL,
+    Remarks NVARCHAR(1000) NULL,
+
+    DocumentPath NVARCHAR(500) NULL,
+
+    Type NVARCHAR(50) NULL,
+    Status NVARCHAR(50) NULL,
+
+    CreatedDate DATETIME NOT NULL,
+    UpdatedDate DATETIME NOT NULL,
+
+    IsActive BIT NOT NULL
+);

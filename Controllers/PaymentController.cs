@@ -6,6 +6,7 @@ using RajFabAPI.Models;
 using RajFabAPI.Services.Interface;
 using System.Text;
 using System.Text.Json;
+using System.Net;
 
 namespace RajFabAPI.Controllers
 {
@@ -31,7 +32,7 @@ namespace RajFabAPI.Controllers
             _applicationRegistrationService = applicationRegistrationService;
         }
 
-        [HttpGet("{applicationId}")]
+        [HttpGet("{*applicationId}")]
         public async Task<IActionResult> PaymentByApplicationId(string applicationId)
         {
             try

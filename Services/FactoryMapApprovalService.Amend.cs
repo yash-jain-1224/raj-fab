@@ -92,6 +92,7 @@ namespace RajFabAPI.Services
                         {
                             MaterialName = rawMaterial.MaterialName,
                             MaxStorageQuantity = rawMaterial.MaxStorageQuantity,
+                            Unit = rawMaterial.Unit
                         });
                     }
                 }
@@ -106,6 +107,7 @@ namespace RajFabAPI.Services
                         {
                             ProductName = product.ProductName,
                             MaxStorageQuantity = product.MaxStorageQuantity,
+                            Unit = product.Unit
                         });
                     }
                 }

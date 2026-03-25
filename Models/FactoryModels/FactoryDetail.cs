@@ -25,7 +25,8 @@ namespace RajFabAPI.Models
         public Guid EmployerId { get; set; }
         public Guid ManagerId { get; set; }
 
-        public string? OwnershipTypeSector { get; internal set; }
+        public string? OwnershipType { get; internal set; }
+        public string? OwnershipSector { get; internal set; }
         public string? ActivityAsPerNIC { get; internal set; }
         public string? NICCodeDetail { get; internal set; }
         public string? IdentificationOfEstablishment { get; internal set; }

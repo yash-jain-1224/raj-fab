@@ -637,6 +637,7 @@ namespace RajFabAPI.Services
                     {
                         ApplicationId = app.AcknowledgementNumber,
                         Date = DateTime.Today,
+                        FactoryDetails = app.FactoryDetails,
                         EstablishmentName = mapDetail?.FactoryName ?? "",
                         EstablishmentAddress = address,
                         Subject = subject,

@@ -27,22 +27,15 @@ namespace RajFabAPI.DTOs
 
         [Required]
         public int MaxWorkerFemale { get; set; }
+        public int MaxWorkerTransgender { get; set; }
         public decimal AreaFactoryPremise { get; set; }
         public int? NoOfFactoriesIfCommonPremise { get; set; }
-        public string? PremiseOwnerName { get; set; }
-        public string? PremiseOwnerContactNo { get; set; }
-        public string? PremiseOwnerAddressPlotNo { get; set; }
-        public string? PremiseOwnerAddressStreet { get; set; }
-        public string? PremiseOwnerAddressCity { get; set; }
-        public string? PremiseOwnerAddressDistrict { get; set; }
-        public string? PremiseOwnerAddressState { get; set; }
-        public string? PremiseOwnerAddressPinCode { get; set; }
-        public string? Place { get; set; }
+        public string? PremiseOwnerDetails { get; set; }
         public string Status { get; set; }
         public decimal Version { get; set; }
         public string ApplicationPDFUrl { get; set; }
+        public string? ObjectionLetterUrl { get; set; }
         public bool IsNew { get; set; }
-        public DateTime? Date { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
         public List<FactoryMapRawMaterialDto> RawMaterials { get; set; } = new List<FactoryMapRawMaterialDto>();
@@ -85,18 +78,10 @@ namespace RajFabAPI.DTOs
 
         [Required]
         public int MaxWorkerFemale { get; set; }
+        public int MaxWorkerTransgender { get; set; }
         public decimal AreaFactoryPremise { get; set; }
         public int? NoOfFactoriesIfCommonPremise { get; set; }
-        public string? PremiseOwnerName { get; set; }
-        public string? PremiseOwnerContactNo { get; set; }
-        public string? PremiseOwnerAddressPlotNo { get; set; }
-        public string? PremiseOwnerAddressStreet { get; set; }
-        public string? PremiseOwnerAddressCity { get; set; }
-        public string? PremiseOwnerAddressDistrict { get; set; }
-        public string? PremiseOwnerAddressState { get; set; }
-        public string? PremiseOwnerAddressPinCode { get; set; }
-        public string? Place { get; set; }
-        public DateTime? Date { get; set; }
+        public string? PremiseOwnerDetails { get; set; }
         public List<CreateRawMaterialRequest>? RawMaterials { get; set; }
         public List<CreateIntermediateProductRequest>? IntermediateProducts { get; set; }
         public List<CreateFinishGoodRequest>? FinishGoods { get; set; }
@@ -252,13 +237,15 @@ namespace RajFabAPI.DTOs
         public string Id { get; set; } = string.Empty;
         public string MaterialName { get; set; } = string.Empty;
         public string? MaxStorageQuantity { get; set; }
+        public string? Unit { get; set; }
     }
 
     public class FactoryMapIntermediateProductDto
     {
         public string Id { get; set; } = string.Empty;
         public string ProductName { get; set; } = string.Empty;
-        public string MaxStorageQuantity { get; set; }
+        public string? MaxStorageQuantity { get; set; }
+        public string? Unit { get; set; }
     }
 
     public class CreateRawMaterialRequest
@@ -269,6 +256,9 @@ namespace RajFabAPI.DTOs
 
         [StringLength(100)]
         public string? MaxStorageQuantity { get; set; }
+
+        [StringLength(50)]
+        public string? Unit { get; set; }
     }
 
     public class CreateIntermediateProductRequest
@@ -277,9 +267,10 @@ namespace RajFabAPI.DTOs
         [StringLength(200)]
         public string ProductName { get; set; } = string.Empty;
 
-        [Required]
         public string? MaxStorageQuantity { get; set; }
 
+        [StringLength(50)]
+        public string? Unit { get; set; }
     }
 
     public class OccupierDetailsModel
@@ -306,7 +297,11 @@ namespace RajFabAPI.DTOs
         public string? addressLine1 { get; set; }
         public string? addressLine2 { get; set; }
         public string? subDivisionId { get; set; }
+        public string? subDivisionName { get; set; }
+        public string? tehsilId { get; set; }
+        public string? tehsilName { get; set; }
         public string? area { get; set; }
+        public string? districtName { get; set; }
         public string? pincode { get; set; }
         public string? email { get; set; }
         public string? mobile { get; set; }

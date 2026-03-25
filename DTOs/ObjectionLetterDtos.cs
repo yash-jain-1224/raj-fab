@@ -32,6 +32,7 @@ namespace RajFabAPI.DTOs
         public DateTime Date { get; set; } = DateTime.Today;
 
         public string? EstablishmentName { get; set; }
+        public string? FactoryDetails { get; set; }
         public string? EstablishmentAddress { get; set; }
 
         public string? Subject { get; set; }

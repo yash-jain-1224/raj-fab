@@ -31,8 +31,10 @@ namespace RajFabAPI.Models
 
         [Required]
         public int MaxWorkerFemale { get; set; }
+        public int MaxWorkerTransgender { get; set; }
         public decimal AreaFactoryPremise { get; set; }
         public int? NoOfFactoriesIfCommonPremise { get; set; }
+        public string? PremiseOwnerDetails { get; set; }
         public string? PremiseOwnerName { get; set; }
         public string? PremiseOwnerContactNo { get; set; }
         public string? PremiseOwnerAddressPlotNo { get; set; }
@@ -183,6 +185,9 @@ namespace RajFabAPI.Models
         [StringLength(100)]
         public string? MaxStorageQuantity { get; set; }
 
+        [StringLength(50)]
+        public string? Unit { get; set; }
+
         public DateTime CreatedAt { get; set; } = DateTime.Now;
     }
 
@@ -196,6 +201,9 @@ namespace RajFabAPI.Models
         public string ProductName { get; set; } = string.Empty;
 
         public string? MaxStorageQuantity { get; set; }
+
+        [StringLength(50)]
+        public string? Unit { get; set; }
 
         
         public DateTime CreatedAt { get; set; } = DateTime.Now;
@@ -218,6 +226,9 @@ namespace RajFabAPI.Models
         [Required]
         [StringLength(200)]
         public string MaxStorageQuantity { get; set; }
+
+        [StringLength(50)]
+        public string? Unit { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         public DateTime UpdatedAt { get; set; } = DateTime.Now;

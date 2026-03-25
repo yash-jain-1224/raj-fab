@@ -1877,3 +1877,25 @@ ADD RelationType NVARCHAR(50) NULL,
 
 ALTER TABLE FactoryMapApprovals
     ADD ObjectionLetterUrl NVARCHAR(500) NULL;
+
+-- Remove old column
+ALTER TABLE FactoryDetails
+    DROP COLUMN OwnershipTypeSector;
+
+-- Add new columns
+ALTER TABLE FactoryDetails
+    ADD OwnershipType NVARCHAR(255) NULL,
+        OwnershipSector NVARCHAR(255) NULL;
+
+ALTER TABLE FactoryMapApprovals
+    ADD MaxWorkerTransgender INT NOT NULL DEFAULT 0,
+        PremiseOwnerDetails NVARCHAR(MAX) NULL;
+
+ALTER TABLE FactoryMapRawMaterials
+    ADD Unit NVARCHAR(50) NULL;
+
+ALTER TABLE FactoryMapIntermediateProducts
+    ADD Unit NVARCHAR(50) NULL;
+
+ALTER TABLE FactoryMapApprovalChemicals
+    ADD Unit NVARCHAR(50) NULL;

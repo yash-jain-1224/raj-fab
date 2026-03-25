@@ -140,7 +140,8 @@ namespace RajFabAPI.DTOs
         public int? NumberOfWorker { get; set; }
         public decimal? SanctionedLoad { get; set; }
         public string? SanctionedLoadUnit { get; set; }
-        public string? OwnershipTypeSector { get; set; }
+        public string? OwnershipType { get; set; }
+        public string? OwnershipSector { get; set; }
         public string? ActivityAsPerNIC { get; set; }
         public string? NICCodeDetail { get; set; }
         public string? IdentificationOfEstablishment { get; set; }
@@ -176,7 +177,8 @@ namespace RajFabAPI.DTOs
         public string? SanctionedLoadUnit { get; set; }
         public DateTime? CreatedAt { get; set; }
 
-        public string? OwnershipTypeSector { get; set; }
+        public string? OwnershipType { get; set; }
+        public string? OwnershipSector { get; set; }
         public string? ActivityAsPerNIC { get; set; }
         public string? NICCodeDetail { get; set; }
         public string? IdentificationOfEstablishment { get; set; }
@@ -291,7 +293,8 @@ namespace RajFabAPI.DTOs
 
     public class AdditionalEstablishmentDetailsDto
     {
-        public string? OwnershipTypeSector { get; set; }
+        public string? OwnershipType { get; set; }
+        public string? OwnershipSector { get; set; }
         public string? ActivityAsPerNIC { get; set; }
         public string? NICCodeDetail { get; set; }
         public string? IdentificationOfEstablishment { get; set; }

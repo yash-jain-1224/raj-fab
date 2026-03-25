@@ -190,6 +190,7 @@ namespace RajFabAPI.Data
         public DbSet<InspectionFormSubmission> InspectionFormSubmissions { get; set; } = null!;
         public DbSet<ChiefInspectionScrutinyRemark> ChiefInspectionScrutinyRemarks { get; set; } = null!;
         public DbSet<BoilerWorkflowLog> BoilerWorkflowLogs { get; set; } = null!;
+        public DbSet<FactoryMapApprovalFile> FactoryMapApprovalFiles { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

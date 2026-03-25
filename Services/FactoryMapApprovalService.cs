@@ -168,6 +168,7 @@ namespace RajFabAPI.Services
             try
             {
                 var application = await _context.FactoryMapApprovals
+                    .Include(f => f.File)
                     .Include(f => f.RawMaterials)
                     .Include(f => f.IntermediateProducts)
                     .Include(f => f.FinishGoods)
@@ -225,6 +226,7 @@ namespace RajFabAPI.Services
             try
             {
                 var application = await _context.FactoryMapApprovals
+                    .Include(f => f.File)
                     .Include(f => f.RawMaterials)
                     .Include(f => f.IntermediateProducts)
                     .Include(f => f.Chemicals)
@@ -363,6 +365,30 @@ namespace RajFabAPI.Services
                             Unit = chemical.Unit
                         });
                     }
+                }
+                
+                if (request.File != null)
+                {
+                    application.File = new FactoryMapApprovalFile
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        FactoryMapApprovalId = application.Id, // important
+
+                        LandOwnershipDocumentUrl = request.File.LandOwnershipDocumentUrl,
+                        ApprovedLandPlanUrl = request.File.ApprovedLandPlanUrl,
+                        ManufacturingProcessDescriptionUrl = request.File.ManufacturingProcessDescriptionUrl,
+                        ProcessFlowChartUrl = request.File.ProcessFlowChartUrl,
+                        RawMaterialsListUrl = request.File.RawMaterialsListUrl,
+                        HazardousProcessesListUrl = request.File.HazardousProcessesListUrl,
+                        EmergencyPlanUrl = request.File.EmergencyPlanUrl,
+                        SafetyHealthPolicyUrl = request.File.SafetyHealthPolicyUrl,
+                        FactoryPlanDrawingUrl = request.File.FactoryPlanDrawingUrl,
+                        SafetyPolicyApplicableUrl = request.File.SafetyPolicyApplicableUrl,
+                        OccupierPhotoIdProofUrl = request.File.OccupierPhotoIdProofUrl,
+                        OccupierAddressProofUrl = request.File.OccupierAddressProofUrl,
+
+                        CreatedAt = DateTime.Now
+                    };
                 }
 
                 _context.FactoryMapApprovals.Add(application);
@@ -799,6 +825,22 @@ namespace RajFabAPI.Services
                     MaxStorageQuantity = h.MaxStorageQuantity,
                     Unit = h.Unit
                 }).ToList(),
+
+                File = application.File == null ? null : new FactoryMapApprovalFileDto
+                {
+                    LandOwnershipDocumentUrl = application.File.LandOwnershipDocumentUrl,
+                    ApprovedLandPlanUrl = application.File.ApprovedLandPlanUrl,
+                    ManufacturingProcessDescriptionUrl = application.File.ManufacturingProcessDescriptionUrl,
+                    ProcessFlowChartUrl = application.File.ProcessFlowChartUrl,
+                    RawMaterialsListUrl = application.File.RawMaterialsListUrl,
+                    HazardousProcessesListUrl = application.File.HazardousProcessesListUrl,
+                    EmergencyPlanUrl = application.File.EmergencyPlanUrl,
+                    SafetyHealthPolicyUrl = application.File.SafetyHealthPolicyUrl,
+                    FactoryPlanDrawingUrl = application.File.FactoryPlanDrawingUrl,
+                    SafetyPolicyApplicableUrl = application.File.SafetyPolicyApplicableUrl,
+                    OccupierPhotoIdProofUrl = application.File.OccupierPhotoIdProofUrl,
+                    OccupierAddressProofUrl = application.File.OccupierAddressProofUrl
+                },
             };
             return res;
         }

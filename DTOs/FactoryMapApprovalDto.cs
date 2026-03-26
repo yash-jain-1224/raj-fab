@@ -16,8 +16,8 @@ namespace RajFabAPI.DTOs
         [StringLength(200)]
         public string PlantParticulars { get; set; }
 
-        [Required]
-        public string ProductName { get; set; }
+        public string? FactoryTypeId { get; set; }
+        public string? FactoryTypeName { get; set; }
 
         [Required]
         public string ManufacturingProcess { get; set; }
@@ -85,8 +85,7 @@ namespace RajFabAPI.DTOs
         [StringLength(200)]
         public string PlantParticulars { get; set; }
 
-        [Required]
-        public string ProductName { get; set; }
+        public string? FactoryTypeId { get; set; }
 
         [Required]
         public string ManufacturingProcess { get; set; }

@@ -150,7 +150,7 @@ namespace RajFabAPI.Services
                 {
                     Success = true,
                     Message = "Application amended and resubmitted successfully",
-                    Data = MapToDto(application)
+                    Data = await MapToDto(application)
                 };
             }
             catch (Exception ex)

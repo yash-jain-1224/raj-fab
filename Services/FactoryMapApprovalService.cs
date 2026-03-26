@@ -126,7 +126,7 @@ namespace RajFabAPI.Services
                      AcknowledgementNumber = f.AcknowledgementNumber,
                      //  Date = f.Date,
                      PlantParticulars = f.PlantParticulars,
-                     ProductName = f.ProductName,
+                     FactoryTypeId = f.ProductName,
                      ManufacturingProcess = f.ManufacturingProcess,
                      MaxWorkerMale = f.MaxWorkerMale,
                      MaxWorkerFemale = f.MaxWorkerFemale,
@@ -184,7 +184,7 @@ namespace RajFabAPI.Services
                     };
                 }
 
-                var dto = MapToDto(application);
+                var dto = await MapToDto(application);
 
                 dto.ApplicationHistory = await _context.Set<ApplicationHistory>()
                     .AsNoTracking()
@@ -245,7 +245,7 @@ namespace RajFabAPI.Services
                 {
                     Success = true,
                     Message = "Application retrieved successfully",
-                    Data = MapToDto(application)
+                    Data = await MapToDto(application)
                 };
             }
             catch (Exception ex)
@@ -290,7 +290,7 @@ namespace RajFabAPI.Services
                     Id = Guid.NewGuid().ToString(),
                     AcknowledgementNumber = acknowledgementNumber,
                     PlantParticulars = request.PlantParticulars,
-                    ProductName = request.ProductName,
+                    ProductName = request.FactoryTypeId,
                     ManufacturingProcess = request.ManufacturingProcess,
                     MaxWorkerMale = request.MaxWorkerMale,
                     MaxWorkerFemale = request.MaxWorkerFemale,
@@ -366,7 +366,7 @@ namespace RajFabAPI.Services
                         });
                     }
                 }
-                
+
                 if (request.File != null)
                 {
                     application.File = new FactoryMapApprovalFile
@@ -487,7 +487,7 @@ namespace RajFabAPI.Services
                 {
                     Success = true,
                     Message = "Application status updated successfully",
-                    Data = MapToDto(application)
+                    Data = await MapToDto(application)
                 };
             }
             catch (Exception ex)
@@ -772,9 +772,17 @@ namespace RajFabAPI.Services
                 .ToDictionary(g => g.Key!, g => g.First().Name ?? string.Empty);
         }
 
-        private static FactoryMapApprovalDto MapToDto(
+        private async Task<FactoryMapApprovalDto> MapToDto(
             FactoryMapApproval application)
         {
+            string? factoryTypeName = null;
+            if (!string.IsNullOrWhiteSpace(application.ProductName) &&
+                Guid.TryParse(application.ProductName, out var ftGuid))
+            {
+                var ft = await _context.FactoryTypes.FindAsync(ftGuid);
+                factoryTypeName = ft?.Name;
+            }
+
             var res = new FactoryMapApprovalDto
             {
                 Id = application.Id,
@@ -782,7 +790,8 @@ namespace RajFabAPI.Services
                 FactoryDetails = application.FactoryDetails != null ? application?.FactoryDetails : null,
                 OccupierDetails = application.OccupierDetails != null ? application.OccupierDetails : null,
                 PlantParticulars = application.PlantParticulars,
-                ProductName = application.ProductName,
+                FactoryTypeId = application.ProductName,
+                FactoryTypeName = factoryTypeName,
                 ManufacturingProcess = application.ManufacturingProcess,
                 MaxWorkerMale = application.MaxWorkerMale,
                 MaxWorkerFemale = application.MaxWorkerFemale,
@@ -928,7 +937,7 @@ namespace RajFabAPI.Services
                 throw new InvalidOperationException("wwwroot is not configured.");
 
             var uploadPath = Path.Combine(webRootPath, "certificates");
-            Directory.CreateDirectory(uploadPath);
+            _ = Directory.CreateDirectory(uploadPath);
             var filePath = Path.Combine(uploadPath, fileName);
 
             var httpContext = _httpContextAccessor.HttpContext
@@ -942,10 +951,14 @@ namespace RajFabAPI.Services
 
             using var writer = new PdfWriter(filePath);
             using var pdf = new PdfDocument(writer);
+
+            DateOnly footerDate = DateOnly.FromDateTime(DateTime.Today);
+            var footerPlace = dto.Place ?? "-";
             pdf.AddEventHandler(PdfDocumentEvent.END_PAGE,
-                new MapApprovalCertSideTextEventHandler(regularFont, "Factories and Boilers Inspection Department, Rajasthan"));
+                new PageBorderAndFooterEventHandler(boldFont, regularFont, footerDate, footerPlace, "https://img.freepik.com/premium-vector/fake-autograph-samples-handdrawn-signature_721791-5968.jpg?w=1480"));
+
             using var document = new Document(pdf);
-            document.SetMargins(50, 70, 65, 50); // extra right margin for side text
+            document.SetMargins(40, 40, 130, 40); // large bottom margin: footer + e-sign space
 
             var occupier = string.IsNullOrWhiteSpace(application.OccupierDetails)
                 ? null
@@ -955,11 +968,8 @@ namespace RajFabAPI.Services
                 ? null
                 : JsonSerializer.Deserialize<FactoryDetailsModel>(application.FactoryDetails);
 
-            // ─── QR code ─────────────────────────────────────────────────────────────
-            var qrBytes = GenerateMapApprovalQrPng(fileUrl);
-
-            // ─── HEADER: [empty | emblem+titles | QR] ────────────────────────────────
-            var headerTable = new Table(new float[] { 80f, 340f, 80f })
+            // ─── HEADER: [empty | emblem + titles | QR] ──────────────────────────────
+            var headerTable = new Table(new float[] { 90f, 320f, 90f })
                 .UseAllAvailableWidth().SetBorder(Border.NO_BORDER).SetMarginBottom(6f);
 
             _ = headerTable.AddCell(new Cell().SetBorder(Border.NO_BORDER)); // left spacer
@@ -971,81 +981,94 @@ namespace RajFabAPI.Services
                 .SetFont(boldFont).SetFontSize(11).SetTextAlignment(TextAlignment.CENTER).SetMarginBottom(1f));
             _ = centerCell.Add(new Paragraph("6-C, Jhalana Institutional Area, Jaipur, 302004")
                 .SetFont(regularFont).SetFontSize(9).SetTextAlignment(TextAlignment.CENTER).SetMarginBottom(4f));
-            _ = centerCell.Add(new PdfImage(ImageDataFactory.Create("wwwroot/Emblem_of_India.png"))
-                .ScaleToFit(60, 60).SetHorizontalAlignment(HorizontalAlignment.CENTER));
             _ = headerTable.AddCell(centerCell);
-
-            var qrCell = new Cell().SetBorder(Border.NO_BORDER)
-                .SetVerticalAlignment(VerticalAlignment.MIDDLE).SetTextAlignment(TextAlignment.CENTER).SetPadding(0f);
-            _ = qrCell.Add(new PdfImage(ImageDataFactory.Create(qrBytes))
-                .ScaleToFit(75, 75).SetHorizontalAlignment(HorizontalAlignment.CENTER));
-            _ = qrCell.Add(new Paragraph("Scan to verify")
-                .SetFont(regularFont).SetFontSize(7).SetTextAlignment(TextAlignment.CENTER).SetMarginTop(2f));
-            _ = headerTable.AddCell(qrCell);
 
             document.Add(headerTable);
 
             // ─── Application Id + Date ────────────────────────────────────────────────
             var topRow = new Table(new float[] { 1f, 1f })
                 .UseAllAvailableWidth().SetBorder(Border.NO_BORDER).SetMarginBottom(2f);
-            topRow.AddCell(new Cell()
+            _ = topRow.AddCell(new Cell()
                 .Add(new Paragraph($"Application Id:-  {application.AcknowledgementNumber}")
                     .SetFont(boldFont).SetFontSize(10)).SetBorder(Border.NO_BORDER));
-            topRow.AddCell(new Cell()
+            _ = topRow.AddCell(new Cell()
                 .Add(new Paragraph($"Dated:-  {(application.Date.HasValue ? application.Date.Value.ToString("dd/MM/yyyy") : DateTime.Now.ToString("dd/MM/yyyy"))}")
                     .SetFont(boldFont).SetFontSize(10).SetTextAlignment(TextAlignment.RIGHT)).SetBorder(Border.NO_BORDER));
             document.Add(topRow);
 
             document.Add(new Paragraph($"Plan No.:-  P- {application.AcknowledgementNumber}")
-                .SetFont(regularFont).SetFontSize(10).SetMarginBottom(6f));
+                .SetFont(boldFont).SetFontSize(10).SetMarginBottom(6f));
 
             // ─── Factory name + address ───────────────────────────────────────────────
             if (factory != null)
             {
                 document.Add(new Paragraph(factory.name ?? "-")
                     .SetFont(boldFont).SetFontSize(11).SetMarginBottom(1f));
-                var addr = string.Join(", ", new[] { factory.addressLine1, factory.addressLine2, factory.area, factory.pincode }
+
+                var line1 = string.Join(", ", new[]
+                {
+                    factory.addressLine1,
+                    factory.addressLine2
+                }.Where(s => !string.IsNullOrWhiteSpace(s)));
+
+                var line2 = string.Join(", ", new[]
+                {
+                    factory.area,
+                    factory.tehsilName,
+                    factory.subDivisionName
+                }.Where(s => !string.IsNullOrWhiteSpace(s)));
+
+                var line3 = string.Join(", ", new[]
+                {
+                    factory.districtName,
+                    factory.pincode
+                }.Where(s => !string.IsNullOrWhiteSpace(s)));
+
+                var fullAddress = string.Join("\n", new[] { line1, line2, line3 }
                     .Where(s => !string.IsNullOrWhiteSpace(s)));
-                document.Add(new Paragraph(addr)
-                    .SetFont(regularFont).SetFontSize(10).SetMarginBottom(1f));
-                document.Add(new Paragraph($"{factory.area ?? "-"}, {factory.area ?? "-"}")
-                    .SetFont(regularFont).SetFontSize(10).SetMarginBottom(8f));
+
+                document.Add(new Paragraph(fullAddress)
+                    .SetFont(regularFont).SetFontSize(11).SetMarginBottom(8f));
             }
 
             // ─── Sub heading ─────────────────────────────────────────────────────────
             document.Add(new Paragraph("Sub:-  Approval of Factory Building drawings")
-                .SetFont(boldFont).SetFontSize(10).SetMarginBottom(2f));
+                .SetFont(boldFont).SetFontSize(11).SetMarginBottom(2f));
             document.Add(new Paragraph("The details of your factory as per application, drawings and documents are shown below:-")
-                .SetFont(regularFont).SetFontSize(10).SetMarginBottom(6f));
+                .SetFont(regularFont).SetFontSize(11).SetMarginBottom(6f));
 
-            // ─── Details table (red border, as in PDF image) ─────────────────────────
-            int totalWorkers = application.MaxWorkerMale + application.MaxWorkerFemale;
+            // ─── Details table (red border) ───────────────────────────────────────────
+            int totalWorkers = application.MaxWorkerMale + application.MaxWorkerFemale + application.MaxWorkerTransgender;
 
-            var redBorder = new iText.Layout.Borders.SolidBorder(new DeviceRgb(220, 0, 0), 0.75f);
-            Cell RedCell(string text, PdfFont font, float size = 10f)
+            var blackBorder = new iText.Layout.Borders.SolidBorder(new DeviceRgb(0, 0, 0), 0.75f);
+
+            Cell BlackCell(string text, PdfFont font, float size = 10f)
                 => new Cell()
                     .Add(new Paragraph(text ?? "-").SetFont(font).SetFontSize(size))
-                    .SetBorderTop(redBorder).SetBorderBottom(redBorder)
-                    .SetBorderLeft(redBorder).SetBorderRight(redBorder)
+                    .SetBorderTop(blackBorder)
+                    .SetBorderBottom(blackBorder)
+                    .SetBorderLeft(blackBorder)
+                    .SetBorderRight(blackBorder)
                     .SetPadding(5f);
 
             var detailsTable = new Table(new float[] { 150f, 350f })
                 .UseAllAvailableWidth().SetMarginBottom(10f);
 
-            detailsTable.AddCell(RedCell("Manufacturing Process", boldFont));
-            detailsTable.AddCell(RedCell(application.ManufacturingProcess ?? "-", regularFont));
-            detailsTable.AddCell(RedCell("Type", boldFont));
-            detailsTable.AddCell(RedCell("-", regularFont));
-            detailsTable.AddCell(RedCell("Category", boldFont));
-            detailsTable.AddCell(RedCell("-", regularFont));
-            detailsTable.AddCell(RedCell("Workers", boldFont));
-            detailsTable.AddCell(RedCell(totalWorkers.ToString(), regularFont));
+            detailsTable.AddCell(BlackCell("Manufacturing Process", boldFont));
+            detailsTable.AddCell(BlackCell(application.ManufacturingProcess ?? "-", regularFont));
+            detailsTable.AddCell(BlackCell("Type", boldFont));
+            detailsTable.AddCell(BlackCell(application.ProductName ?? "-", regularFont));
+            detailsTable.AddCell(BlackCell("Category", boldFont));
+            detailsTable.AddCell(BlackCell("-", regularFont));
+            detailsTable.AddCell(BlackCell("Workers", boldFont));
+            detailsTable.AddCell(BlackCell(totalWorkers.ToString(), regularFont));
+
             document.Add(detailsTable);
 
             // ─── Conditions ───────────────────────────────────────────────────────────
             document.Add(new Paragraph(
                     "Drawings of your factory are approved under Section 6 of The Factories Act, 1948 with the following conditions:-")
-                .SetFont(regularFont).SetFontSize(10).SetMarginBottom(4f));
+                .SetFont(regularFont).SetFontSize(11).SetMarginBottom(4f));
 
             var conditions = new[]
             {
@@ -1058,57 +1081,33 @@ namespace RajFabAPI.Services
 
             for (int i = 0; i < conditions.Length; i++)
                 document.Add(new Paragraph($"{i + 1}. {conditions[i]}")
-                    .SetFont(regularFont).SetFontSize(9).SetMarginBottom(2f));
+                    .SetFont(regularFont).SetFontSize(11).SetMarginBottom(0f));
 
-            // Condition 6 — worker counts inline
+           // Condition 6 — worker counts inline
             document.Add(new Paragraph()
-                .Add(new Text("6. Drawings are approved for   ").SetFont(regularFont).SetFontSize(9))
-                .Add(new Text($"{application.MaxWorkerMale}").SetFont(boldFont).SetFontSize(9))
-                .Add(new Text("   male and   ").SetFont(regularFont).SetFontSize(9))
-                .Add(new Text($"{application.MaxWorkerFemale}").SetFont(boldFont).SetFontSize(9))
-                .Add(new Text("   female (Total -   ").SetFont(regularFont).SetFontSize(9))
-                .Add(new Text($"{totalWorkers}").SetFont(boldFont).SetFontSize(9))
-                .Add(new Text(") workers only.").SetFont(regularFont).SetFontSize(9))
+                .Add(new Text("6. Drawings are approved for   ").SetFont(regularFont).SetFontSize(11))
+                .Add(new Text($"{application.MaxWorkerMale}").SetFont(boldFont).SetFontSize(11))
+                .Add(new Text("   male,   ").SetFont(regularFont).SetFontSize(11))
+                .Add(new Text($"{application.MaxWorkerFemale}").SetFont(boldFont).SetFontSize(11))
+                .Add(new Text("   female,   ").SetFont(regularFont).SetFontSize(11))
+                .Add(new Text($"{application.MaxWorkerTransgender}").SetFont(boldFont).SetFontSize(11))
+                .Add(new Text("   transgender (Total -   ").SetFont(regularFont).SetFontSize(11))
+                .Add(new Text($"{totalWorkers}").SetFont(boldFont).SetFontSize(11))
+                .Add(new Text(") workers only.").SetFont(regularFont).SetFontSize(11))
                 .SetMarginBottom(20f));
 
-            // ─── Bottom: [ONLY LAYOUT APPROVED box] + [Signature block] ─────────────
-            var bottomTable = new Table(new float[] { 1f, 1f })
-                .UseAllAvailableWidth().SetBorder(Border.NO_BORDER).SetMarginBottom(10f);
 
-            // Left: stamped box
-            var stampCell = new Cell().SetBorder(Border.NO_BORDER).SetVerticalAlignment(VerticalAlignment.BOTTOM);
-            var stampBox = new Table(new float[] { 1f }).UseAllAvailableWidth()
-                .SetBorder(new iText.Layout.Borders.SolidBorder(ColorConstants.BLACK, 1f));
-            stampBox.AddCell(new Cell()
-                .Add(new Paragraph("ONLY LAYOUT APPROVED").SetFont(boldFont).SetFontSize(9)
-                    .SetTextAlignment(TextAlignment.CENTER))
-                .Add(new Paragraph("NOTE : STRUCTURAL DESIGN/STABILITY NOT VERIFIED")
-                    .SetFont(regularFont).SetFontSize(7).SetTextAlignment(TextAlignment.CENTER))
-                .SetBorder(Border.NO_BORDER).SetPadding(6f));
-            stampCell.Add(stampBox);
-            bottomTable.AddCell(stampCell);
-
-            // Right: signature block — blank space for e-sign
-            var sigCell = new Cell().SetBorder(Border.NO_BORDER).SetTextAlignment(TextAlignment.RIGHT);
-            sigCell.Add(new Paragraph("\n\n")   // space for e-sign image
-                .SetFont(regularFont).SetFontSize(9));
-            sigCell.Add(new Paragraph("Chief Inspector of Factories and Boilers")
-                .SetFont(regularFont).SetFontSize(9).SetTextAlignment(TextAlignment.RIGHT));
-            sigCell.Add(new Paragraph("Rajasthan, Jaipur")
-                .SetFont(regularFont).SetFontSize(9).SetTextAlignment(TextAlignment.RIGHT));
-            bottomTable.AddCell(sigCell);
-            document.Add(bottomTable);
-
-            // ─── Footer disclaimer ────────────────────────────────────────────────────
+            // ─── Footer disclaimer (below bottom border, fixed position) ─────────────
             var pageWidth = pdf.GetDefaultPageSize().GetWidth();
             document.Add(new Paragraph(
                     "This is a computer generated certificate and bears scanned signature. No physical signature is required on this approval. You " +
                     "can verify this approval by visiting www.rajfab.rajasthan.gov.in and entering Application No./ID after clicking the link for " +
                     "verification on the page.")
-                .SetFont(regularFont).SetFontSize(7)
+                .SetFont(regularFont).SetFontSize(6.5f)
                 .SetFontColor(ColorConstants.GRAY)
                 .SetTextAlignment(TextAlignment.JUSTIFIED)
-                .SetFixedPosition(35, 33, pageWidth - 70));
+                .SetMultipliedLeading(1.1f)
+                .SetFixedPosition(35, 8, pageWidth - 70));
 
             document.Close();
             return fileUrl;
@@ -1506,7 +1505,7 @@ namespace RajFabAPI.Services
 
                 // Update scalar fields
                 application.PlantParticulars = request.PlantParticulars;
-                application.ProductName = request.ProductName;
+                application.ProductName = request.FactoryTypeId;
                 application.ManufacturingProcess = request.ManufacturingProcess;
                 application.MaxWorkerMale = request.MaxWorkerMale;
                 application.MaxWorkerFemale = request.MaxWorkerFemale;
@@ -1634,7 +1633,7 @@ namespace RajFabAPI.Services
                     }
                 }
 
-                var dto = MapToDto(application);
+                var dto = await MapToDto(application);
                 return new ApiResponseDto<FactoryMapApprovalDto> { Success = true, Message = "Application updated successfully.", Data = dto };
             }
             catch (Exception ex)
@@ -1937,13 +1936,15 @@ namespace RajFabAPI.Services
             private readonly PdfFont _regularFont;
             private readonly DateOnly _date;
             private readonly string _place;
+            private readonly string? _signatureUrl;
 
-            public PageBorderAndFooterEventHandler(PdfFont boldFont, PdfFont regularFont, DateOnly date, string place)
+            public PageBorderAndFooterEventHandler(PdfFont boldFont, PdfFont regularFont, DateOnly date, string place, string? signatureUrl = null)
             {
                 _boldFont = boldFont;
                 _regularFont = regularFont;
                 _date = date;
                 _place = place;
+                _signatureUrl = signatureUrl;
             }
 
             protected override void OnAcceptedEvent(AbstractPdfDocumentEvent @event)
@@ -1954,16 +1955,15 @@ namespace RajFabAPI.Services
                 var rect = page.GetPageSize();
                 var canvas = new PdfCanvas(page);
 
-                // Border around page
+                // ───── Page Border
                 canvas
                     .SetStrokeColor(ColorConstants.BLACK)
                     .SetLineWidth(1.5f)
                     .Rectangle(25, 25, rect.GetWidth() - 50, rect.GetHeight() - 50)
                     .Stroke();
 
-                // ───── Separator Line (properly spaced ABOVE text)
+                // ───── Separator Line (above footer)
                 float lineY = 70f;
-
                 canvas
                     .SetStrokeColor(new DeviceRgb(180, 180, 180))
                     .SetLineWidth(0.5f)
@@ -1973,42 +1973,75 @@ namespace RajFabAPI.Services
 
                 canvas.Release();
 
-                // ───── Footer Layout
-                float footerY = 40f;
+                // ─────────────────────────────────────────────────────────────────────
+                // ABOVE SEPARATOR: [ONLY LAYOUT APPROVED box (left)] | [Signature image (right)]
+                // ─────────────────────────────────────────────────────────────────────
+                float zoneHeight = 65f;
+                float zoneY = lineY + 4f;
                 float pageWidth = rect.GetWidth();
+                float signColWidth = 180f;
+                float stampBoxWidth = 220f;
 
-                // ───── Left: Date & Place
-                using (var leftCanvas = new Canvas(new PdfCanvas(page),
-                    new iText.Kernel.Geom.Rectangle(30, footerY, 250, 20)))
+                // Left: ONLY LAYOUT APPROVED stamp box
+                using (var stampCanvas = new Canvas(new PdfCanvas(page),
+                    new iText.Kernel.Geom.Rectangle(30f, zoneY, stampBoxWidth, zoneHeight)))
                 {
-                    leftCanvas.Add(new Paragraph($"Dated: {_date}\nPlace: {_place}")
-                        .SetFont(_regularFont)
-                        .SetFontSize(9)
-                        .SetMargin(0));
+                    var stampTable = new Table(new float[] { 1f }).UseAllAvailableWidth()
+                        .SetBorder(new iText.Layout.Borders.SolidBorder(ColorConstants.BLACK, 1f));
+                    stampTable.AddCell(new Cell()
+                        .Add(new Paragraph("ONLY LAYOUT APPROVED")
+                            .SetFont(_boldFont).SetFontSize(9).SetTextAlignment(TextAlignment.CENTER))
+                        .Add(new Paragraph("NOTE : STRUCTURAL DESIGN/STABILITY NOT VERIFIED")
+                            .SetFont(_regularFont).SetFontSize(7).SetTextAlignment(TextAlignment.CENTER))
+                        .SetBorder(Border.NO_BORDER).SetPadding(6f));
+                    stampCanvas.Add(stampTable);
                 }
 
-                // ───── Center: Page Number
+                // Right: Signature image
+                if (!string.IsNullOrWhiteSpace(_signatureUrl))
+                {
+                    float sigX = pageWidth - 30f - signColWidth;
+                    using var sigCanvas = new Canvas(new PdfCanvas(page),
+                        new iText.Kernel.Geom.Rectangle(sigX, zoneY, signColWidth, zoneHeight));
+                    sigCanvas.Add(new PdfImage(ImageDataFactory.Create(_signatureUrl))
+                        .ScaleToFit(signColWidth, zoneHeight - 10f)
+                        .SetHorizontalAlignment(HorizontalAlignment.CENTER));
+                }
+
+                // ─────────────────────────────────────────────────────────────────────
+                // BELOW SEPARATOR: Dated (left) | Page N (center) | Signature label (right)
+                // ─────────────────────────────────────────────────────────────────────
+                float belowY = lineY - 4f - zoneHeight;
+                float signBoxX = pageWidth - 30f - signColWidth;
                 int pageNumber = pdfDoc.GetPageNumber(page);
 
-                using (var centerCanvas = new Canvas(new PdfCanvas(page),
-                    new iText.Kernel.Geom.Rectangle(0, footerY, pageWidth, 20)))
+                // Left: Dated
+                using (var leftCanvas = new Canvas(new PdfCanvas(page),
+                    new iText.Kernel.Geom.Rectangle(30f, belowY, stampBoxWidth / 2f, zoneHeight)))
                 {
-                    centerCanvas.Add(new Paragraph($"Page {pageNumber}")
-                        .SetFont(_regularFont)
-                        .SetFontSize(9)
-                        .SetTextAlignment(TextAlignment.CENTER)
-                        .SetMargin(0));
+                    leftCanvas.Add(new Paragraph($"Dated: {_date}")
+                        .SetFont(_regularFont).SetFontSize(7.5f).SetMargin(0f).SetPaddingTop(6f));
                 }
 
-                // ───── Right: Signature
-                using (var rightCanvas = new Canvas(new PdfCanvas(page),
-                    new iText.Kernel.Geom.Rectangle(pageWidth - 280, footerY, 250, 20)))
+                // Center: Page N
+                using (var centerCanvas = new Canvas(new PdfCanvas(page),
+                    new iText.Kernel.Geom.Rectangle(0f, belowY, pageWidth, zoneHeight)))
                 {
-                    rightCanvas.Add(new Paragraph("Signature / E-sign / Digital sign of employer")
+                    centerCanvas.Add(new Paragraph($"Page {pageNumber}")
+                        .SetFont(_regularFont).SetFontSize(7.5f)
+                        .SetTextAlignment(TextAlignment.CENTER)
+                        .SetMargin(0f).SetPaddingTop(6f));
+                }
+
+                // Right: signature label
+                using (var signLabelCanvas = new Canvas(new PdfCanvas(page),
+                    new iText.Kernel.Geom.Rectangle(signBoxX, belowY, signColWidth, zoneHeight)))
+                {
+                    signLabelCanvas.Add(new Paragraph("Chief Inspector of Factories and Boilers\nRajasthan, Jaipur")
                         .SetFont(_regularFont)
-                        .SetFontSize(9)
-                        .SetTextAlignment(TextAlignment.RIGHT)
-                        .SetMargin(0));
+                        .SetFontSize(6.5f)
+                        .SetTextAlignment(TextAlignment.CENTER)
+                        .SetMargin(0f).SetPaddingTop(6f));
                 }
             }
         }

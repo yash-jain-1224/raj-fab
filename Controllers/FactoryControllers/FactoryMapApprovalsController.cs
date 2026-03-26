@@ -226,8 +226,13 @@ namespace RajFabAPI.Controllers.FactoryControllers
             try
             {
                 var certificateId = await _factoryMapApprovalService.GenerateCertificateAsync(dto, userIdGuid, id);
-                var html = await _eSignService.GenerateCertificateESignHtmlAsync(certificateId);
-                return Ok(new { html });
+                //var html = await _eSignService.GenerateCertificateESignHtmlAsync(certificateId);
+                // return Ok(new { html });
+                return Ok(new ApiResponseDto<FactoryMapDocumentDto>
+                {
+                    Success = true,
+                    Message = "Certificate Generated successfully"
+                });
             }
             catch (KeyNotFoundException ex) { return NotFound(ex.Message); }
             catch (Exception) { return StatusCode(500, "An error occurred while generating the certificate."); }

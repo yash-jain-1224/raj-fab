@@ -2093,7 +2093,7 @@ namespace RajFabAPI.Services
         {
             var year = DateTime.Now.Year;
             var sequence = DateTime.Now.Ticks.ToString().Substring(8, 6);
-            return $"FNE{year}{sequence}";
+            return $"RJ-{year}{sequence}";
         }
 
         public async Task<bool> UpdateStatusAndRemark(string registrationId, string status)
@@ -3167,6 +3167,7 @@ namespace RajFabAPI.Services
                 {
                     // Top-level registration info
                     ApplicationRegistrationNumber = dtoDetails.RegistrationDetail?.ApplicationRegistrationNumber,
+                    ApplicationId = dtoDetails.RegistrationDetail?.ApplicationId,
                     //StartDate = dto?.StartDate ?? DateTime.Now,
                     DeclarationPlace = officePost.CityName,
 
@@ -4120,7 +4121,7 @@ namespace RajFabAPI.Services
 
             _ = regTable.AddCell(new PdfCell()
                 .Add(new Paragraph($"Registration No.  {dto.ApplicationRegistrationNumber ?? ""}\n")
-                 .Add($"Registration Application Id  {registrationId ?? ""}").SetFont(regularFont).SetFontSize(9))
+                 .Add($"Registration Application No.  {dto.ApplicationId ?? ""}").SetFont(regularFont).SetFontSize(9))
                 .SetBorder(Border.NO_BORDER));
             _ = regTable.AddCell(new PdfCell()
                 .Add(new Paragraph($"Date  {footerDate}").SetFont(regularFont).SetFontSize(9)

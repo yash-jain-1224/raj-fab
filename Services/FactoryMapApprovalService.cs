@@ -955,7 +955,7 @@ namespace RajFabAPI.Services
             DateOnly footerDate = DateOnly.FromDateTime(DateTime.Today);
             var footerPlace = dto.Place ?? "-";
             pdf.AddEventHandler(PdfDocumentEvent.END_PAGE,
-                new PageBorderAndFooterEventHandler(boldFont, regularFont, footerDate, footerPlace, "https://img.freepik.com/premium-vector/fake-autograph-samples-handdrawn-signature_721791-5968.jpg?w=1480"));
+                new PageBorderAndFooterEventHandler(boldFont, regularFont, footerDate, footerPlace, "wwwroot/chief_signature.jpg"));
 
             using var document = new Document(pdf);
             document.SetMargins(40, 40, 130, 40); // large bottom margin: footer + e-sign space
@@ -1812,7 +1812,7 @@ namespace RajFabAPI.Services
             // ═════════════════════════════════════════════════════════════════════════
             // Signature block (right-aligned)
             // ═════════════════════════════════════════════════════════════════════════
-            var imageData = ImageDataFactory.Create("https://img.freepik.com/premium-vector/fake-autograph-samples-handdrawn-signature_721791-5968.jpg?w=1480");
+            var imageData = ImageDataFactory.Create("wwwroot/chief_signature.jpg");
 
             var sigOuterTable = new PdfTable(new float[] { 1f, 1f })
                 .UseAllAvailableWidth().SetBorder(Border.NO_BORDER).SetMarginBottom(8f);

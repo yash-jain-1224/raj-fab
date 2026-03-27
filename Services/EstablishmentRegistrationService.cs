@@ -4613,7 +4613,7 @@ namespace RajFabAPI.Services
                 .SetFont(regularFont).SetFontSize(12)
                 .SetMarginBottom(30f));
 
-            var imageData = ImageDataFactory.Create("https://img.freepik.com/premium-vector/fake-autograph-samples-handdrawn-signature_721791-5968.jpg?w=1480");
+            var imageData = ImageDataFactory.Create("wwwroot/chief_signature.jpg");
 
             // Outer table (push content to right side)
             var sigOuterTable = new PdfTable(new float[] { 1f, 1f })

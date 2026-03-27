@@ -2017,3 +2017,9 @@ CREATE TABLE BoilerDrawingClosures (
 
     IsActive BIT NOT NULL
 );
+
+ALTER TABLE Posts
+ADD SeniorityOrder INT NOT NULL DEFAULT 0;
+
+ALTER TABLE ApplicationApprovalRequests
+ADD Direction NVARCHAR(20) NOT NULL DEFAULT 'Forward';

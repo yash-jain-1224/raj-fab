@@ -14,6 +14,7 @@ namespace RajFabAPI.Services.Interface
         Task<bool> IsLastWorkflowLevelAsync(int applicationApprovalRequestId);
         Task<RemarkDetailsDto> GetRemarksByApplicationId(string registrationId);
         Task<List<ObjectionLetterHistoryDto>> GetObjectionLettersByApplicationIdAsync(string applicationId);
+        Task<List<WorkflowLevelInfoDto>> GetPreviousLevelsAsync(int approvalRequestId);
     }
 
 }

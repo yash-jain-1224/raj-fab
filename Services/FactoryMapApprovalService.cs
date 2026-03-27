@@ -989,14 +989,14 @@ namespace RajFabAPI.Services
             var topRow = new Table(new float[] { 1f, 1f })
                 .UseAllAvailableWidth().SetBorder(Border.NO_BORDER).SetMarginBottom(2f);
             _ = topRow.AddCell(new Cell()
-                .Add(new Paragraph($"Application Id:-  {application.AcknowledgementNumber}")
+                .Add(new Paragraph($"Plan Application No.:-  P-{application.AcknowledgementNumber}")
                     .SetFont(boldFont).SetFontSize(10)).SetBorder(Border.NO_BORDER));
             _ = topRow.AddCell(new Cell()
                 .Add(new Paragraph($"Dated:-  {(application.Date.HasValue ? application.Date.Value.ToString("dd/MM/yyyy") : DateTime.Now.ToString("dd/MM/yyyy"))}")
                     .SetFont(boldFont).SetFontSize(10).SetTextAlignment(TextAlignment.RIGHT)).SetBorder(Border.NO_BORDER));
             document.Add(topRow);
 
-            document.Add(new Paragraph($"Plan No.:-  P- {application.AcknowledgementNumber}")
+            document.Add(new Paragraph($"Plan No.:-  P-{application.AcknowledgementNumber}")
                 .SetFont(boldFont).SetFontSize(10).SetMarginBottom(6f));
 
             // ─── Factory name + address ───────────────────────────────────────────────
@@ -1039,6 +1039,13 @@ namespace RajFabAPI.Services
 
             // ─── Details table (red border) ───────────────────────────────────────────
             int totalWorkers = application.MaxWorkerMale + application.MaxWorkerFemale + application.MaxWorkerTransgender;
+            string? factoryTypeName = null;
+                if (!string.IsNullOrWhiteSpace(application.ProductName) &&
+                    Guid.TryParse(application.ProductName, out var ftGuid))
+                {
+                    var ft = await _context.FactoryTypes.FindAsync(ftGuid);
+                    factoryTypeName = ft?.Name;
+                }
 
             var blackBorder = new iText.Layout.Borders.SolidBorder(new DeviceRgb(0, 0, 0), 0.75f);
 
@@ -1057,9 +1064,9 @@ namespace RajFabAPI.Services
             detailsTable.AddCell(BlackCell("Manufacturing Process", boldFont));
             detailsTable.AddCell(BlackCell(application.ManufacturingProcess ?? "-", regularFont));
             detailsTable.AddCell(BlackCell("Type", boldFont));
-            detailsTable.AddCell(BlackCell(application.ProductName ?? "-", regularFont));
-            detailsTable.AddCell(BlackCell("Category", boldFont));
             detailsTable.AddCell(BlackCell("-", regularFont));
+            detailsTable.AddCell(BlackCell("Category", boldFont));
+            detailsTable.AddCell(BlackCell(factoryTypeName ?? "-", regularFont));
             detailsTable.AddCell(BlackCell("Workers", boldFont));
             detailsTable.AddCell(BlackCell(totalWorkers.ToString(), regularFont));
 
@@ -1213,7 +1220,7 @@ namespace RajFabAPI.Services
 
                 // Acknowledgement No + Date (right-aligned pair)
                 var ackTable = new Table(new float[] { 1f, 1f }).UseAllAvailableWidth().SetBorder(Border.NO_BORDER).SetMarginBottom(8);
-                ackTable.AddCell(new Cell().Add(new Paragraph($"Plan Application No: {dto.AcknowledgementNumber}")
+                ackTable.AddCell(new Cell().Add(new Paragraph($"Plan Application No: P-{dto.AcknowledgementNumber}")
                         .SetFont(boldFont).SetFontSize(9)).SetBorder(Border.NO_BORDER));
                 ackTable.AddCell(new Cell().Add(new Paragraph($"Date: {dto.CreatedAt.ToString("dd/MM/yyyy")}")
                         .SetFont(boldFont).SetFontSize(9).SetTextAlignment(TextAlignment.RIGHT)).SetBorder(Border.NO_BORDER));
@@ -1582,16 +1589,17 @@ namespace RajFabAPI.Services
                 // Add ApplicationApprovalRequest at Level 1 (resubmission pattern)
                 var module = await _context.Set<FormModule>().FirstOrDefaultAsync(m => m.Name == applicationTypeName);
 
-
                 if (module != null && appReg != null)
                 {
-                    int totalWorkers = application.MaxWorkerMale + application.MaxWorkerFemale;
+                    int totalWorkers = application.MaxWorkerMale + application.MaxWorkerFemale + application.MaxWorkerTransgender;
                     var workerRange = await _context.Set<WorkerRange>()
                         .FirstOrDefaultAsync(wr => totalWorkers >= wr.MinWorkers && totalWorkers <= wr.MaxWorkers);
 
                     var factoryType = await _context.FactoryTypes.FirstOrDefaultAsync(x => x.Name == "Not Applicable");
                     Guid? workerRangeId = workerRange?.Id;
-                    Guid? factoryTypeId = factoryType?.Id;
+                    Guid? factoryTypeId = Guid.TryParse(request.FactoryTypeId, out var factoryTypeGuid)
+                     ? factoryTypeGuid
+                     : (Guid?)null;
                     var factoryCategory = await _context.Set<FactoryCategory>()
                         .FirstOrDefaultAsync(fc => fc.WorkerRangeId == workerRangeId && fc.FactoryTypeId == factoryTypeId);
                     Guid? factoryCategoryId = factoryCategory?.Id;
@@ -1704,7 +1712,7 @@ namespace RajFabAPI.Services
                 .UseAllAvailableWidth().SetBorder(Border.NO_BORDER).SetMarginBottom(12f);
 
             _ = topRow.AddCell(new PdfCell()
-                .Add(new Paragraph($"Plan Application No.:-  {dto.ApplicationId ?? "-"}")
+                .Add(new Paragraph($"Plan Application No.:-  P-{dto.ApplicationId ?? "-"}")
                     .SetFont(boldFont).SetFontSize(12))
                 .SetBorder(Border.NO_BORDER));
 
@@ -1730,7 +1738,7 @@ namespace RajFabAPI.Services
             // ═════════════════════════════════════════════════════════════════════════
             var subPara = new Paragraph();
             subPara.Add(new Text("Sub:- ").SetFont(boldFont).SetFontSize(12));
-            subPara.Add(new Text("Map Approval of your Factory").SetFont(regularFont).SetFontSize(12));
+            subPara.Add(new Text("Regarding approval of your Maps").SetFont(regularFont).SetFontSize(12));
             _ = document.Add(subPara.SetMarginBottom(4f));
 
             // ═════════════════════════════════════════════════════════════════════════
@@ -1760,13 +1768,13 @@ namespace RajFabAPI.Services
             _ = detailsTable.AddCell(RedCell("Manufacturing Process", boldFont));
             _ = detailsTable.AddCell(RedCell(dto.ManufacturingProcess ?? "-", regularFont));
 
-            _ = detailsTable.AddCell(RedCell("Plant Particulars", boldFont));
-            _ = detailsTable.AddCell(RedCell(dto.PlantParticulars ?? "-", regularFont));
+            _ = detailsTable.AddCell(RedCell("Type", boldFont));
+            _ = detailsTable.AddCell(RedCell("-", regularFont));
 
-            _ = detailsTable.AddCell(RedCell("Product Name", boldFont));
+            _ = detailsTable.AddCell(RedCell("Category", boldFont));
             _ = detailsTable.AddCell(RedCell(dto.ProductName ?? "-", regularFont));
 
-            _ = detailsTable.AddCell(RedCell("Max Workers", boldFont));
+            _ = detailsTable.AddCell(RedCell("Workers", boldFont));
             _ = detailsTable.AddCell(RedCell(dto.MaxWorkers?.ToString() ?? "-", regularFont));
 
             _ = document.Add(detailsTable);
@@ -1833,7 +1841,7 @@ namespace RajFabAPI.Services
             var pageWidth = pdf.GetDefaultPageSize().GetWidth();
             _ = document.Add(new Paragraph(
                     "This is a computer generated certificate and bears scanned signature. No physical signature is required on this document. You " +
-                    "can verify this document by visiting www.rajfab.rajasthan.gov.in and entering Application No./ID after clicking the link for " +
+                    "can verify this document by visiting rajnivesh.rajasthan.gov.in or rajfab.rajasthan.gov.in and entering Application No./ID after clicking the link for " +
                     "verification on the page.")
                 .SetFont(regularFont).SetFontSize(7)
                 .SetFontColor(ColorConstants.GRAY)

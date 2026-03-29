@@ -3239,7 +3239,7 @@ namespace RajFabAPI.Services
                     throw new Exception("Module not found");
                 }
 
-                var pdfUrl = await GenerateCertificate(dtoPaylod, registrationId);
+                var pdfUrl = await GenerateCertificate(dtoPaylod, registrationId, officePost.PostName + ", " + officePost.CityName, user.FullName);
 
                 var maxVersion = await _db.Certificates
                     .Where(c => c.RegistrationNumber == estReg.RegistrationNumber)
@@ -3380,8 +3380,7 @@ namespace RajFabAPI.Services
             var boldFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA_BOLD);
             var regularFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA);
             DateOnly footerDate = DateOnly.FromDateTime(DateTime.Today);
-            var footerPlace = dto.EstablishmentDetail?.SubDivisionName ?? dto.EstablishmentDetail?.DistrictName ?? "-";
-            pdf.AddEventHandler(PdfDocumentEvent.END_PAGE, new PageBorderAndFooterEventHandler(boldFont, regularFont, footerDate, footerPlace));
+            pdf.AddEventHandler(PdfDocumentEvent.END_PAGE, new PageBorderAndFooterEventHandler(boldFont, regularFont, footerDate));
             using var document = new PdfDoc(pdf);
             document.SetMargins(40, 40, 130, 40); // large bottom margin: footer(~65pt) + e-sign space(~65pt)
 
@@ -4030,7 +4029,7 @@ namespace RajFabAPI.Services
             return parts.Any() ? string.Join("\n", parts) : "-";
         }
 
-        public async Task<string> GenerateCertificate(EstablishmentCertificatePdfRequestDto dto, string registrationId)
+        public async Task<string> GenerateCertificate(EstablishmentCertificatePdfRequestDto dto, string registrationId, string postName, string userName)
         {
             if (dto == null) throw new ArgumentNullException(nameof(dto));
 
@@ -4062,8 +4061,7 @@ namespace RajFabAPI.Services
 
             // ── Fonts ─────────────────────────────────────────────────────────────────
             DateOnly footerDate = DateOnly.FromDateTime(DateTime.Today);
-            var footerPlace = dto.DeclarationPlace ?? "-";
-            pdf.AddEventHandler(PdfDocumentEvent.END_PAGE, new PageBorderAndFooterEventHandler(boldFont, regularFont, footerDate, footerPlace, qrBytes));
+            pdf.AddEventHandler(PdfDocumentEvent.END_PAGE, new PageBorderAndFooterEventHandler(boldFont, regularFont, footerDate, qrBytes, postName, userName));
             document.SetMargins(40, 40, 130, 40); // large bottom margin: footer(~65pt) + e-sign space(~65pt)
 
             // ── PDF setup ─────────────────────────────────────────────────────────────
@@ -4586,7 +4584,7 @@ namespace RajFabAPI.Services
             // ═════════════════════════════════════════════════════════════════════════
             // "Following objections are need to be removed..." heading
             // ═════════════════════════════════════════════════════════════════════════
-            _ = document.Add(new Paragraph("Following objections are need to be removed related to your factory")
+            _ = document.Add(new Paragraph("Following objections are need to be removed related to your factory - ")
                 .SetFont(regularFont).SetFontSize(12)
                 .SetMarginBottom(12f));
 
@@ -4748,16 +4746,18 @@ namespace RajFabAPI.Services
             private readonly PdfFont _boldFont;
             private readonly PdfFont _regularFont;
             private readonly DateOnly _date;
-            private readonly string _place;
+            private readonly string _postName;
+            private readonly string _userName;
             private readonly byte[]? _qrBytes;
 
-            public PageBorderAndFooterEventHandler(PdfFont boldFont, PdfFont regularFont, DateOnly date, string place, byte[]? qrBytes = null)
+            public PageBorderAndFooterEventHandler(PdfFont boldFont, PdfFont regularFont, DateOnly date, byte[]? qrBytes = null, string postName = "", string userName = "")
             {
                 _boldFont = boldFont;
                 _regularFont = regularFont;
                 _date = date;
-                _place = place;
                 _qrBytes = qrBytes;
+                _postName = postName;
+                _userName = userName;
             }
 
             protected override void OnAcceptedEvent(AbstractPdfDocumentEvent @event)
@@ -4837,11 +4837,32 @@ namespace RajFabAPI.Services
                 using (var signLabelCanvas = new Canvas(new PdfCanvas(page),
                     new iText.Kernel.Geom.Rectangle(signBoxX, belowY, signColWidth, scannerHeight)))
                 {
-                    signLabelCanvas.Add(new Paragraph("Signature / E-sign / Digital sign of employer")
+                    if (!string.IsNullOrWhiteSpace(_userName))
+                    {
+                        // Name (top)
+                        signLabelCanvas.Add(new Paragraph($"({_userName ?? "-"})")
+                            .SetFont(_boldFont)
+                            .SetFontSize(7f)
+                            .SetTextAlignment(TextAlignment.CENTER)
+                            .SetMargin(0f)
+                            .SetPaddingTop(4f));
+                    }
+                    if (!string.IsNullOrWhiteSpace(_postName))
+                    {
+                        // Post name (middle)
+                        signLabelCanvas.Add(new Paragraph(_postName ?? "-")
+                            .SetFont(_regularFont)
+                            .SetFontSize(6.5f)
+                            .SetTextAlignment(TextAlignment.CENTER)
+                            .SetMargin(0f)
+                            .SetPaddingTop(1f));
+                    }
+                    // Signature label (bottom)
+                    signLabelCanvas.Add(new Paragraph("Signature / E-sign / Digital sign")
                         .SetFont(_regularFont)
                         .SetFontSize(6.5f)
                         .SetTextAlignment(TextAlignment.CENTER)
-                        .SetMargin(0f).SetPaddingTop(6f));
+                        .SetMargin(0f));
                 }
             }
         }

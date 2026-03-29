@@ -188,7 +188,7 @@ namespace RajFabAPI.Services
                         break;
 
                     case ApplicationStatus.ReturnedToApplicant:
-                        actionText = "Application Returned to Applicant";
+                        actionText = "Objection letter generated and Application returned to applicant";
                         commentText = entity.Remarks ?? "Application returned to applicant for correction.";
                         break;
 
@@ -713,11 +713,11 @@ namespace RajFabAPI.Services
             else if (moduleName == ApplicationTypeNames.MapApproval ||
                      moduleName == ApplicationTypeNames.MapApprovalAmendment)
             {
-                var app = await _db.FactoryMapApprovals.FindAsync(applicationId);
-                if (app == null) return;
+                var reg = await _db.FactoryMapApprovals.FindAsync(applicationId);
+                if (reg == null) return;
                 string? factoryTypeName = null;
-                if (!string.IsNullOrWhiteSpace(app.ProductName) &&
-                    Guid.TryParse(app.ProductName, out var ftGuid))
+                if (!string.IsNullOrWhiteSpace(reg.ProductName) &&
+                    Guid.TryParse(reg.ProductName, out var ftGuid))
                 {
                     var ft = await _db.FactoryTypes.FindAsync(ftGuid);
                     factoryTypeName = ft?.Name;
@@ -733,16 +733,16 @@ namespace RajFabAPI.Services
                 fileUrl = await _factoryMapApprovalService.GenerateObjectionLetter(
                     new MapApprovalObjectionLetterDto
                     {
-                        ApplicationId = app.AcknowledgementNumber,
+                        ApplicationId = reg.AcknowledgementNumber,
                         Date = DateTime.Today,
-                        FactoryDetails = app.FactoryDetails,
+                        FactoryDetails = reg.FactoryDetails,
                         EstablishmentName = mapDetail?.FactoryName ?? "",
                         EstablishmentAddress = address,
                         Subject = subject,
-                        PlantParticulars = app.PlantParticulars,
+                        PlantParticulars = reg.PlantParticulars,
                         ProductName = factoryTypeName,
-                        ManufacturingProcess = app.ManufacturingProcess,
-                        MaxWorkers = app.MaxWorkerMale + app.MaxWorkerFemale + app.MaxWorkerTransgender,
+                        ManufacturingProcess = reg.ManufacturingProcess,
+                        MaxWorkers = reg.MaxWorkerMale + reg.MaxWorkerFemale + reg.MaxWorkerTransgender,
                         Objections = objections,
                         SignatoryName = signatoryName,
                         SignatoryDesignation = signatoryDesignation,

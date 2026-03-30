@@ -29,11 +29,25 @@ namespace RajFabAPI.DTOs
     {
         public string Status { get; set; } = string.Empty;
         public string? Remarks { get; set; }
+        /// <summary>Used when Status = "Sent Back" to specify which level to route back to.</summary>
+        public int? TargetLevelNumber { get; set; }
     }
 
     public class ForwardApplicationRequestDto
     {
         public string? Remarks { get; set; }
+    }
+
+    public class SendBackApplicationRequestDto
+    {
+        public string? Remarks { get; set; }
+        public int? TargetLevelNumber { get; set; }
+    }
+
+    public class WorkflowLevelInfoDto
+    {
+        public int LevelNumber { get; set; }
+        public string RoleName { get; set; } = string.Empty;
     }
 
     public class ObjectionLetterHistoryDto

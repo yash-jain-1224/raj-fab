@@ -98,6 +98,49 @@ namespace RajFabAPI.Controllers.Common
             }
         }
 
+        // GET: api/applicationapprovalrequests/previouslevels/{id}
+        // Returns workflow levels that are before the current level — used to populate "Send Back" dropdown
+        [HttpGet("previouslevels/{id}")]
+        public async Task<IActionResult> GetPreviousLevels(int id)
+        {
+            try
+            {
+                var levels = await _service.GetPreviousLevelsAsync(id);
+                return Ok(new { success = true, data = levels });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving previous levels for request Id {Id}", id);
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+        }
+
+        // POST: api/applicationapprovalrequests/sendback/{id}
+        [HttpPost("sendback/{id}")]
+        public async Task<IActionResult> SendBack(int id, [FromBody] SendBackApplicationRequestDto dto)
+        {
+            _logger.LogInformation("Send back request received for Id {Id} to level {Level}", id, dto.TargetLevelNumber);
+            try
+            {
+                var updateDto = new UpdateApplicationApprovalRequestDto
+                {
+                    Status = ApplicationStatus.SentBack,
+                    Remarks = dto.Remarks,
+                    TargetLevelNumber = dto.TargetLevelNumber
+                };
+                var result = await _service.UpdateAsync(id, updateDto);
+                if (result == null)
+                    return NotFound(new { success = false, message = "Application approval request not found" });
+
+                return Ok(new { success = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending back application approval request with Id {Id}", id);
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+        }
+
         // api to get if current workflowlevel is the last one by applicationapprovalrequestId
         [HttpGet("ispending/{requestId}")]
         public async Task<IActionResult> IsLastWorkflowLevel(int requestId)

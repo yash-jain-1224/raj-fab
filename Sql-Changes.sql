@@ -2028,3 +2028,9 @@ CREATE TABLE BoilerCategorys (
     CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
     UpdatedAt DATETIME NOT NULL DEFAULT GETDATE()
 );
+
+ALTER TABLE Posts
+ADD SeniorityOrder INT NOT NULL DEFAULT 0;
+
+ALTER TABLE ApplicationApprovalRequests
+ADD Direction NVARCHAR(20) NOT NULL DEFAULT 'Forward';

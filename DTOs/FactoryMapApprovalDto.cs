@@ -344,6 +344,8 @@ namespace RajFabAPI.DTOs
         public string? mobile { get; set; }
         public string? telephone { get; set; }
         public string? website { get; set; }
+        public int? sanctionedLoad { get; set; }
+        public string? sanctionedLoadUnit { get; set; }
     }
 
     public class MapApprovalCertificateRequestDto

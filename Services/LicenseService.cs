@@ -713,7 +713,7 @@ namespace RajFabAPI.Services
             _ = document.Add(detailsTable);
 
             // Objections
-            _ = document.Add(new Paragraph("Following objections are need to be removed related to your factory license")
+            _ = document.Add(new Paragraph("Following objections are need to be removed related to your factory license - ")
                 .SetFont(regularFont).SetFontSize(10).SetMarginBottom(12f));
 
             if (dto.Objections != null && dto.Objections.Any())

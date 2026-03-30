@@ -596,8 +596,6 @@ namespace RajFabAPI.Services
                             options
                         );
 
-                        var factoryType = _db.FactoryTypes.FirstOrDefault(x => x.Name == "Not Applicable");
-
                         if (!Guid.TryParse(factoryDetails.subDivisionId, out Guid parsedSubDiv))
                         {
                             _logger.LogWarning("Invalid SubDivisionId from MapApproval");
@@ -606,9 +604,11 @@ namespace RajFabAPI.Services
 
                         totalWorkers =
                             (mapReg?.MaxWorkerMale ?? 0) +
-                            (mapReg?.MaxWorkerFemale ?? 0);
+                            (mapReg?.MaxWorkerFemale ?? 0) +
+                            (mapReg?.MaxWorkerTransgender ?? 0);
 
-                        factoryTypeId = factoryType?.Id;
+                        Guid.TryParse(mapReg?.ProductName, out Guid parsedFactoryTypeId);
+                        factoryTypeId = parsedFactoryTypeId;
                         subDivisionId = parsedSubDiv;
 
                         _logger.LogInformation(

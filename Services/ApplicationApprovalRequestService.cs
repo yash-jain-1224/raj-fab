@@ -189,8 +189,31 @@ namespace RajFabAPI.Services
                         break;
 
                     case ApplicationStatus.ReturnedToApplicant:
-                        actionText = "Application Returned to Applicant";
+                        actionText = "Objection letter generated and Application returned to applicant";
                         commentText = entity.Remarks ?? "Application returned to applicant for correction.";
+                        break;
+
+                    case ApplicationStatus.SentBack:
+                        string sentBackTarget = "Previous Level";
+                        if (dto.TargetLevelNumber.HasValue)
+                        {
+                            var targetLevelInfo = await _db.Set<ApplicationWorkFlowLevel>()
+                                .Where(wfl =>
+                                    wfl.ApplicationWorkFlowId == workflowLevel.ApplicationWorkFlowId &&
+                                    wfl.LevelNumber == dto.TargetLevelNumber.Value)
+                                .Select(wfl => new { wfl.RoleId })
+                                .FirstOrDefaultAsync();
+                            if (targetLevelInfo != null)
+                            {
+                                var targetRoleInfo = await _db.Set<Role>()
+                                    .Where(r => r.Id == targetLevelInfo.RoleId)
+                                    .Select(r => new { Name = r.Post.Name + ", " + r.Office.City.Name })
+                                    .FirstOrDefaultAsync();
+                                sentBackTarget = targetRoleInfo?.Name ?? sentBackTarget;
+                            }
+                        }
+                        actionText = $"Application Sent Back to {sentBackTarget}";
+                        commentText = entity.Remarks ?? $"Application sent back to {sentBackTarget} for review.";
                         break;
 
                     default:
@@ -253,6 +276,37 @@ namespace RajFabAPI.Services
                     await UpdateStatusInRespectiveApplications(entity, ApplicationStatus.ReturnedToApplicant);
                     var currentUserId = _httpContextAccessor.HttpContext?.User.FindFirst("userId")?.Value;
                     await GenerateObjectionLetterAsync(module.Name, appReg.ApplicationId, entity.Remarks, roleInfo?.PostName, roleInfo?.OfficeCityName, currentUserId);
+                }
+                else if (dto.Status == ApplicationStatus.SentBack)
+                {
+                    // Route to a previous level — TargetLevelNumber specifies which level
+                    var targetLevelNumber = dto.TargetLevelNumber ?? (workflowLevel.LevelNumber - 1);
+                    if (targetLevelNumber >= 1)
+                    {
+                        var targetLevel = await _db.Set<ApplicationWorkFlowLevel>()
+                            .Where(wfl =>
+                                wfl.ApplicationWorkFlowId == workflowLevel.ApplicationWorkFlowId &&
+                                wfl.LevelNumber == targetLevelNumber)
+                            .FirstOrDefaultAsync();
+
+                        if (targetLevel != null)
+                        {
+                            var sentBackRequest = new ApplicationApprovalRequest
+                            {
+                                ModuleId = entity.ModuleId,
+                                ApplicationRegistrationId = entity.ApplicationRegistrationId,
+                                ApplicationWorkFlowLevelId = targetLevel.Id,
+                                Status = ApplicationStatus.Pending,
+                                Direction = "Backward",
+                                CreatedBy = entity.CreatedBy,
+                                CreatedDate = DateTime.Now,
+                                UpdatedDate = DateTime.Now
+                            };
+                            _db.Set<ApplicationApprovalRequest>().Add(sentBackRequest);
+                            await _db.SaveChangesAsync();
+                            _logger.LogInformation("Created sent-back approval request at level {Level} for application registration {AppRegId}", targetLevelNumber, entity.ApplicationRegistrationId);
+                        }
+                    }
                 }
                 return new ApplicationApprovalRequestDto
                 {
@@ -533,6 +587,43 @@ namespace RajFabAPI.Services
         // ─────────────────────────────────────────────────────────────────────────────
         // Generate objection letter based on module name — called on ReturnedToApplicant
         // ─────────────────────────────────────────────────────────────────────────────
+        public async Task<List<WorkflowLevelInfoDto>> GetPreviousLevelsAsync(int approvalRequestId)
+        {
+            var request = await _db.Set<ApplicationApprovalRequest>()
+                .FirstOrDefaultAsync(a => a.Id == approvalRequestId);
+
+            if (request == null) return new List<WorkflowLevelInfoDto>();
+
+            var currentLevel = await _db.Set<ApplicationWorkFlowLevel>()
+                .FirstOrDefaultAsync(l => l.Id == request.ApplicationWorkFlowLevelId);
+
+            if (currentLevel == null || currentLevel.LevelNumber <= 1)
+                return new List<WorkflowLevelInfoDto>();
+
+            var previousLevels = await _db.Set<ApplicationWorkFlowLevel>()
+                .Where(l => l.ApplicationWorkFlowId == currentLevel.ApplicationWorkFlowId
+                         && l.LevelNumber < currentLevel.LevelNumber)
+                .OrderBy(l => l.LevelNumber)
+                .ToListAsync();
+
+            var result = new List<WorkflowLevelInfoDto>();
+            foreach (var level in previousLevels)
+            {
+                var roleName = await _db.Set<Role>()
+                    .Where(r => r.Id == level.RoleId)
+                    .Select(r => r.Post.Name + ", " + r.Office.City.Name)
+                    .FirstOrDefaultAsync() ?? $"Level {level.LevelNumber}";
+
+                result.Add(new WorkflowLevelInfoDto
+                {
+                    LevelNumber = level.LevelNumber,
+                    RoleName = roleName
+                });
+            }
+
+            return result;
+        }
+
         private async Task GenerateObjectionLetterAsync(
             string moduleName,
             string applicationId,
@@ -623,8 +714,15 @@ namespace RajFabAPI.Services
             else if (moduleName == ApplicationTypeNames.MapApproval ||
                      moduleName == ApplicationTypeNames.MapApprovalAmendment)
             {
-                var app = await _db.FactoryMapApprovals.FindAsync(applicationId);
-                if (app == null) return;
+                var reg = await _db.FactoryMapApprovals.FindAsync(applicationId);
+                if (reg == null) return;
+                string? factoryTypeName = null;
+                if (!string.IsNullOrWhiteSpace(reg.ProductName) &&
+                    Guid.TryParse(reg.ProductName, out var ftGuid))
+                {
+                    var ft = await _db.FactoryTypes.FindAsync(ftGuid);
+                    factoryTypeName = ft?.Name;
+                }
 
                 var mapDetail = await _db.MapApprovalFactoryDetails
                     .FirstOrDefaultAsync(d => d.FactoryMapApprovalId == applicationId);
@@ -636,16 +734,16 @@ namespace RajFabAPI.Services
                 fileUrl = await _factoryMapApprovalService.GenerateObjectionLetter(
                     new MapApprovalObjectionLetterDto
                     {
-                        ApplicationId = app.AcknowledgementNumber,
+                        ApplicationId = reg.AcknowledgementNumber,
                         Date = DateTime.Today,
-                        FactoryDetails = app.FactoryDetails,
+                        FactoryDetails = reg.FactoryDetails,
                         EstablishmentName = mapDetail?.FactoryName ?? "",
                         EstablishmentAddress = address,
                         Subject = subject,
-                        PlantParticulars = app.PlantParticulars,
-                        ProductName = app.ProductName,
-                        ManufacturingProcess = app.ManufacturingProcess,
-                        MaxWorkers = app.MaxWorkerMale + app.MaxWorkerFemale,
+                        PlantParticulars = reg.PlantParticulars,
+                        ProductName = factoryTypeName,
+                        ManufacturingProcess = reg.ManufacturingProcess,
+                        MaxWorkers = reg.MaxWorkerMale + reg.MaxWorkerFemale + reg.MaxWorkerTransgender,
                         Objections = objections,
                         SignatoryName = signatoryName,
                         SignatoryDesignation = signatoryDesignation,

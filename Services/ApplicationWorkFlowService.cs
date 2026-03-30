@@ -308,6 +308,42 @@ namespace RajFabAPI.Services
             };
         }
 
+        /// <summary>
+        /// Finds the workflow level belonging to the highest-seniority role (highest SeniorityOrder)
+        /// in any active workflow for the given module + office. Used as a last-resort fallback
+        /// when no specific workflow matches the application's factory category.
+        /// </summary>
+        private async Task<ApplicationWorkFlowLevel?> GetFallbackLevelAsync(Guid moduleId, Guid officeId)
+        {
+            // Find all active workflow levels for this module + office
+            var levels = await _context.Set<ApplicationWorkFlowLevel>()
+                .Where(wfl => wfl.IsActive &&
+                              _context.Set<ApplicationWorkFlow>().Any(wf =>
+                                  wf.Id == wfl.ApplicationWorkFlowId &&
+                                  wf.ModuleId == moduleId &&
+                                  wf.OfficeId == officeId &&
+                                  wf.IsActive))
+                .ToListAsync();
+
+            if (!levels.Any())
+                return null;
+
+            // Pick the level whose Role has the highest Post.SeniorityOrder (most senior)
+            var roleIds = levels.Select(l => l.RoleId).Distinct().ToList();
+
+            var highestSeniorityRoleId = await _context.Set<Role>()
+                .Where(r => roleIds.Contains(r.Id))
+                .OrderByDescending(r => r.Post.SeniorityOrder)
+                .Select(r => (Guid?)r.Id)
+                .FirstOrDefaultAsync();
+
+            if (highestSeniorityRoleId == null)
+                return null;
+
+            // Return the first level that matches the highest-seniority role
+            return levels.FirstOrDefault(l => l.RoleId == highestSeniorityRoleId.Value);
+        }
+
         private static void ValidateLevels(int levelCount, List<int> levelNumbers)
         {
             if (levelCount != levelNumbers.Count)
@@ -408,8 +444,36 @@ namespace RajFabAPI.Services
                           && wf.OfficeId == officeApplicationArea.OfficeId)
                 .FirstOrDefaultAsync();
 
+            // Fallback 1: same office + module, ignore factory category
+            if (workflow == null && factoryCategoryId.HasValue)
+            {
+                workflow = await _context.Set<ApplicationWorkFlow>()
+                    .Where(wf => wf.ModuleId == appReg.ModuleId
+                              && wf.OfficeId == officeApplicationArea.OfficeId
+                              && wf.IsActive)
+                    .FirstOrDefaultAsync();
+            }
+
+            // Fallback 2: any active workflow for the module — route to highest-seniority role in the office
             if (workflow == null)
-                return false;
+            {
+                var fallbackLevel = await GetFallbackLevelAsync(appReg.ModuleId, officeApplicationArea.OfficeId);
+                if (fallbackLevel == null)
+                    return false;
+
+                var fallbackRequest = new ApplicationApprovalRequest
+                {
+                    ModuleId = appReg.ModuleId,
+                    ApplicationRegistrationId = appReg.Id,
+                    ApplicationWorkFlowLevelId = fallbackLevel.Id,
+                    Status = "Pending",
+                    Direction = "Forward",
+                    CreatedDate = DateTime.Now,
+                    UpdatedDate = DateTime.Now
+                };
+                _context.Set<ApplicationApprovalRequest>().Add(fallbackRequest);
+                return true;
+            }
 
             var workflowLevel = await _context.Set<ApplicationWorkFlowLevel>()
                 .Where(wfl => wfl.ApplicationWorkFlowId == workflow.Id)
@@ -426,6 +490,7 @@ namespace RajFabAPI.Services
                 ApplicationRegistrationId = appReg.Id,
                 ApplicationWorkFlowLevelId = workflowLevel.Id,
                 Status = "Pending",
+                Direction = "Forward",
                 CreatedDate = DateTime.Now,
                 UpdatedDate = DateTime.Now
             };

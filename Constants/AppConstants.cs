@@ -13,6 +13,7 @@ namespace RajFabAPI.Constants
             public const string Forwarded = "Forwarded";
             public const string ReturnedToApplicant = "Returned to applicant";
             public const string PendingInspection = "Pending Inspection";
+            public const string SentBack = "Sent Back";
 
         }
 

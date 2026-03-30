@@ -42,6 +42,7 @@ namespace RajFabAPI.DTOs
     }
     public class EstablishmentCertificatePdfRequestDto : CreateEstablishmentRegistrationDto
     {
+        public string ApplicationId { get; set; }
         public string ApplicationRegistrationNumber { get; set; }
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }

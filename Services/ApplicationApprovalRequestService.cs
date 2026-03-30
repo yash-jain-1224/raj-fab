@@ -18,6 +18,7 @@ namespace RajFabAPI.Services
         private readonly ICommencementCessationService _commencementCessationService;
         private readonly IFactoryMapApprovalService _factoryMapApprovalService;
         private readonly IFactoryLicenseService _factoryLicenseService;
+        private readonly IBoilerRegistartionService _boilerRegistrationService;
         private readonly IHttpContextAccessor _httpContextAccessor;
 
         public ApplicationApprovalRequestService(ApplicationDbContext db, ILogger<ApplicationApprovalRequestService> logger,
@@ -872,6 +873,41 @@ namespace RajFabAPI.Services
                         SignatoryDesignation = signatoryDesignation,
                         SignatoryLocation = signatoryLocation
                     }, applicationId);
+            }
+            else if (moduleName == ApplicationTypeNames.BoilerRegistration)
+            {
+                var app = await _db.BoilerRegistrations.FindAsync(applicationId);
+                if (app == null) return;
+
+                var boiler = await _db.BoilerDetails
+                    .FirstOrDefaultAsync(b => b.BoilerRegistrationId == app.Id);
+                var address = string.Join(", ", new string[] {     boiler?.AddressLine1 ,  boiler?.AddressLine2,  boiler?.Area,  boiler?.PinCode?.ToString() }.Where(x => !string.IsNullOrWhiteSpace(x)));
+
+                fileUrl = await _boilerRegistrationService.GenerateObjectionLetter(
+                    new BoilerObjectionLetterDto
+                    {
+                        ApplicationId = app.ApplicationId, // e.g. BR2026/CIFB/0003
+                        Date = DateTime.Today,
+
+                        BoilerRegistrationNo = app.BoilerRegistrationNo,
+                        OwnerName = "", // optional if you have
+                        Address = address,
+
+                        BoilerType = boiler?.BoilerType.ToString(),
+                        BoilerCategory = boiler?.BoilerCategory.ToString(),
+                        HeatingSurfaceArea = boiler?.HeatingSurfaceArea,
+                        EvaporationCapacity = boiler?.EvaporationCapacity,
+                        WorkingPressure = boiler?.IntendedWorkingPressure,
+                        YearOfMake = boiler?.YearOfMake,
+
+                        Objections = objections,
+
+                        SignatoryName = signatoryName,
+                        SignatoryDesignation = signatoryDesignation,
+                        SignatoryLocation = signatoryLocation
+                    },
+                    applicationId.ToString()
+                );
             }
             // Boiler and other modules — no objection letter
 

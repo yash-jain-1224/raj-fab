@@ -801,7 +801,9 @@ namespace RajFabAPI.Services
                         _logger.LogInformation("Appeal ESign completed for ApplicationId: {ApplicationId}", appReg.ApplicationId);
                     }
 
-                    else if (module.Name == ApplicationTypeNames.BoilerRegistration)
+                    else if (module.Name == ApplicationTypeNames.BoilerRegistration ||
+                         module.Name == ApplicationTypeNames.BoilerAmendment ||
+                        module.Name == ApplicationTypeNames.BoilerRenew)
                     {
                         _logger.LogInformation("Processing BoilerRegistration workflow for ApplicationId: {ApplicationId}", appReg.ApplicationId);
 

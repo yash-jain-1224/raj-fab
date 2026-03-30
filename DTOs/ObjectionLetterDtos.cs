@@ -75,4 +75,31 @@ namespace RajFabAPI.DTOs
         public string? SignatoryDesignation { get; set; }
         public string? SignatoryLocation { get; set; }
     }
+
+    public class BoilerObjectionLetterDto
+    {
+        public string? ApplicationId { get; set; }
+        public DateTime Date { get; set; } = DateTime.Today;
+
+        public string? OwnerName { get; set; }   // optional (if available)
+        public string? Address { get; set; }
+
+        public string? BoilerRegistrationNo { get; set; }
+
+        // Boiler details
+        public string? BoilerType { get; set; }
+        public string? BoilerCategory { get; set; }
+        public decimal? HeatingSurfaceArea { get; set; }
+        public decimal? EvaporationCapacity { get; set; }
+        public decimal? WorkingPressure { get; set; }
+        public int? YearOfMake { get; set; }
+
+        public List<string> Objections { get; set; } = new();
+
+        // Signature
+        public string? SignatureBase64 { get; set; }
+        public string? SignatoryName { get; set; }
+        public string? SignatoryDesignation { get; set; }
+        public string? SignatoryLocation { get; set; }
+    }
 }

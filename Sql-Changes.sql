@@ -2017,3 +2017,14 @@ CREATE TABLE BoilerDrawingClosures (
 
     IsActive BIT NOT NULL
 );
+--------------------------------------
+30-03-2026
+
+CREATE TABLE BoilerCategorys (
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+    Name NVARCHAR(200) NOT NULL,
+    HeatingSurfaceArea DECIMAL(10,2) NOT NULL,
+    IsActive BIT NOT NULL DEFAULT 1,
+    CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+    UpdatedAt DATETIME NOT NULL DEFAULT GETDATE()
+);

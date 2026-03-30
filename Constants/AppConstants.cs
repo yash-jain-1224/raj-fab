@@ -37,6 +37,22 @@ namespace RajFabAPI.Constants
             public const string FactoryCommencementCessation = "Factory Commencement And Cessation";
             public const string Appeal = "Appeal";
             public const string BoilerRegistration = "Boiler Registration";
+            public const string BoilerAmendment = "Boiler Amendment";
+            public const string BoilerRenew = "Boiler Renewal";
+            public const string BoilerManufactureRegistration = "Boiler Manufacture Registration";
+            public const string BoilerManufactureAmend= "Boiler Manufacture Amendment";
+            public const string BoilerManufactureRenew = "Boiler Manufacture Renewal";
+            public const string Stplregistration = "Stpl Registration";
+            public const string StplAmendment = "Stpl Amendment";
+            public const string Stplrenew = "Stpl Renewal";
+            public const string EconomiserRegistration = "Economiser Registration";
+            public const string Economiserrenew = "Economiser Renewal";
+            public const string BoilerRepairerRegistration = "Boiler Repairer Registration";
+            public const string BoilerRepairerRenew = "Boiler Repairer Renewal";
+            public const string WelderRegistration = "Welder Registration";
+            public const string WelderRenew = "Welder Renewal";
+            public const string BoilerDrawingRegistration = "Boiler Drawing Registration";
+            public const string BoierDrawingRenewal = "Boier Drawing Renewal";
             public const string BoilerInspection = "Boiler Inspection";
         }
 

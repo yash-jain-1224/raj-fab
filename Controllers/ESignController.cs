@@ -17,7 +17,7 @@ namespace RajFabAPI.Controllers
         }
 
         [Authorize]
-        [HttpGet("/api/esign/{applicationId}")]
+        [HttpGet("/api/esign/{*applicationId}")]
         public async Task<IActionResult> ESign(string applicationId)
         {
             try
@@ -45,7 +45,7 @@ namespace RajFabAPI.Controllers
             }
         }
 
-        [HttpGet("/api/esign/verify/{applicationId}")]
+        [HttpGet("/api/esign/verify/{*applicationId}")]
         public async Task<IActionResult> ManualESignVerify(string applicationId)
         {
             try

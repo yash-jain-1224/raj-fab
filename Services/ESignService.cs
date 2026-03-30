@@ -247,7 +247,7 @@ namespace RajFabAPI.Services
                                 pdfBytes = await File.ReadAllBytesAsync(filePath);
                             }
 
-                            else if (applicationData.ModuleName == ApplicationTypeNames.BoilerRegistration)
+                            else if (applicationData.ModuleName == ApplicationTypeNames.BoilerRegistration || applicationData.ModuleName == ApplicationTypeNames.BoilerAmendment || applicationData.ModuleName == ApplicationTypeNames.BoilerRenewal)
                             {
                                 _logger.LogInformation("Processing Boiler Registration PDF generation");
 

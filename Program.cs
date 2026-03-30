@@ -184,6 +184,7 @@ builder.Services.AddScoped<ICompetantPersonEquipmentRegistartionService, Competa
 builder.Services.AddScoped<ISMTCRegistrationService,SMTCRegistrationService>();
 
 builder.Services.AddScoped<IBoilerWorkflowService, BoilerWorkflowService>();
+builder.Services.AddScoped<IBoilerCategoryService, BoilerCategoryService>();
 
 builder.Services.AddScoped<IDynamicPDFGenerationFormService, DynamicPDFGenerationFormService>();
 builder.Services.AddHttpContextAccessor();

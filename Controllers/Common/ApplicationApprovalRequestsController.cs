@@ -118,7 +118,7 @@ namespace RajFabAPI.Controllers.Common
         // GET: api/applicationapprovalrequests/objectionletters/{applicationId}
         // Returns all objection letters issued for this application — accessible by both authority and citizen
         [Authorize]
-        [HttpGet("objectionletters/{applicationId}")]
+        [HttpGet("objectionletters/{*applicationId}")]
         public async Task<IActionResult> GetObjectionLetters(string applicationId)
         {
             try

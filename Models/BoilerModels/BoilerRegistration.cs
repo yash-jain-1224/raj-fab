@@ -11,8 +11,8 @@ namespace RajFabAPI.Models.BoilerModels
         public Guid Id { get; set; }
 
         public Guid? FactoryId { get; set; }
-       
-        
+
+        public string? ObjectionLetterUrl { get; set; }
         public string? ApplicationId { get; set; }
         public string? BoilerRegistrationNo { get; set; }
 

@@ -2,6 +2,8 @@ using iText.IO.Font.Constants;
 using iText.Kernel.Colors;
 using iText.Kernel.Font;
 using iText.Kernel.Pdf;
+using iText.Kernel.Pdf.Canvas;
+using iText.Kernel.Pdf.Event;
 using iText.Layout;
 using iText.Layout.Borders;
 using iText.Layout.Element;
@@ -14,6 +16,7 @@ using RajFabAPI.Models.BoilerModels;
 using RajFabAPI.Services.Interface;
 using System.Text.Json;
 using static RajFabAPI.Constants.AppConstants;
+using static RajFabAPI.Services.EstablishmentRegistrationService;
 using PdfCell = iText.Layout.Element.Cell;
 using PdfDoc = iText.Layout.Document;
 using PdfTable = iText.Layout.Element.Table;
@@ -471,6 +474,11 @@ namespace RajFabAPI.Services
                 ===================================================== */
 
                 var applicationNumber = await GenerateApplicationNumberAsync("renew");
+                const decimal boilerRegistrationFee = 10000m;
+
+                var module = await _dbcontext.Set<FormModule>()
+                        .FirstOrDefaultAsync(m => m.Name == ApplicationTypeNames.BoilerRenew)
+                        ?? throw new Exception("Boiler Renew module not found in FormModules. Please ensure the module is seeded.");
 
                 var renewed = new BoilerRegistration
                 {
@@ -479,6 +487,7 @@ namespace RajFabAPI.Services
                     BoilerRegistrationNo = lastApproved.BoilerRegistrationNo,
                     Type = "renew",
                     Status = "Pending",
+                    Amount = boilerRegistrationFee,
                     Version = Math.Round(lastApproved.Version + 0.1m, 1),
                     CreatedAt = DateTime.Now,
                     UpdatedAt = DateTime.Now
@@ -590,8 +599,26 @@ namespace RajFabAPI.Services
 
                 await _dbcontext.SaveChangesAsync();
                 await tx.CommitAsync();
+                var user = await _dbcontext.Users
+                      .AsNoTracking()
+                      .FirstOrDefaultAsync(u => u.Id == userId)
+                      ?? throw new Exception("User not found.");
 
-                return renewed.ApplicationId!;
+                var html=   await _paymentService.ActionRequestPaymentRPP(
+                    renewed.Amount,
+                    user.FullName,
+                    user.Mobile,
+                    user.Email,
+                    user.Username,
+                    "4157FE34BBAE3A958D8F58CCBFAD7",
+                    "UWf6a7cDCP",
+                    renewed.ApplicationId!,
+                    module.Id.ToString(),
+                    userId.ToString()
+                );
+
+                return html;
+                //return renewed.ApplicationId!;
             }
             catch
             {
@@ -1758,5 +1785,177 @@ namespace RajFabAPI.Services
 
             return filePath;
         }
+   
+   
+    public async Task<string> GenerateObjectionLetter(BoilerObjectionLetterDto dto, string registrationId)
+        {
+            if (dto == null) throw new ArgumentNullException(nameof(dto));
+
+            var fileName = $"boiler_objection_{registrationId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+            var webRootPath = _environment.WebRootPath
+                ?? throw new InvalidOperationException("wwwroot is not configured.");
+
+            var uploadPath = Path.Combine(webRootPath, "boiler-objection-letters");
+            Directory.CreateDirectory(uploadPath);
+
+            var filePath = Path.Combine(uploadPath, fileName);
+
+            var httpContext = _httpContextAccessor.HttpContext
+                ?? throw new InvalidOperationException("HTTP context unavailable");
+
+            var request = httpContext.Request;
+            var baseUrl = _config["BaseUrl"] ?? $"{request.Scheme}://{request.Host}";
+            var fileUrl = $"{baseUrl}/boiler-objection-letters/{fileName}";
+
+            // Fonts
+            var boldFont = PdfFontFactory.CreateFont(StandardFonts.HELVETICA_BOLD);
+            var regularFont = PdfFontFactory.CreateFont(StandardFonts.HELVETICA);
+
+            using var writer = new PdfWriter(filePath);
+            using var pdf = new PdfDocument(writer);
+            pdf.AddEventHandler(PdfDocumentEvent.END_PAGE, new PageBorderEventHandler());
+            using var document = new Document(pdf);
+            document.SetMargins(50, 50, 65, 50);
+
+            // ================= HEADER =================
+            document.Add(new Paragraph("Government of Rajasthan")
+                .SetFont(boldFont).SetFontSize(14)
+                .SetTextAlignment(TextAlignment.CENTER));
+
+            document.Add(new Paragraph("Factories and Boilers Inspection Department")
+                .SetFont(boldFont).SetFontSize(13)
+                .SetTextAlignment(TextAlignment.CENTER));
+
+            document.Add(new Paragraph("6-C, Jhalana Institutional Area, Jaipur, 302004")
+                .SetFont(regularFont).SetFontSize(12)
+                .SetTextAlignment(TextAlignment.CENTER)
+                .SetMarginBottom(10));
+
+            // ================= TOP ROW =================
+            var topTable = new Table(new float[] { 1, 1 }).UseAllAvailableWidth();
+
+            topTable.AddCell(new Cell().Add(new Paragraph($"Application Id:- {dto.ApplicationId}")
+                .SetFont(boldFont)).SetBorder(Border.NO_BORDER));
+
+            topTable.AddCell(new Cell().Add(new Paragraph($"Dated:- {dto.Date:dd/MM/yyyy}")
+                .SetFont(boldFont).SetTextAlignment(TextAlignment.RIGHT))
+                .SetBorder(Border.NO_BORDER));
+
+            document.Add(topTable);
+
+            // ================= ADDRESS =================
+            document.Add(new Paragraph(dto.OwnerName ?? "-").SetFont(regularFont));
+            document.Add(new Paragraph(dto.Address ?? "-").SetFont(regularFont).SetMarginBottom(10));
+
+            // ================= SUBJECT =================
+            var subject = new Paragraph();
+            subject.Add(new Text("Sub:- ").SetFont(boldFont));
+            subject.Add(new Text("Registration of Boiler").SetFont(regularFont));
+            document.Add(subject);
+
+            // ================= INTRO =================
+            document.Add(new Paragraph(
+                "The details of your boiler as per application and submitted documents are shown below:-")
+                .SetFont(regularFont).SetMarginBottom(5));
+
+            // ================= DETAILS TABLE =================
+            var table = new Table(new float[] { 150, 1 }).UseAllAvailableWidth();
+
+            PdfCell CellFormat(string text, PdfFont font)
+            {
+                return new Cell()
+                    .Add(new Paragraph(text ?? "-").SetFont(font).SetFontSize(12))
+                    .SetPadding(5);
+            }
+
+            table.AddCell(CellFormat("Boiler Registration No", boldFont));
+            table.AddCell(CellFormat(dto.BoilerRegistrationNo, regularFont));
+
+            table.AddCell(CellFormat("Boiler Type", boldFont));
+            table.AddCell(CellFormat(dto.BoilerType, regularFont));
+
+            table.AddCell(CellFormat("Boiler Category", boldFont));
+            table.AddCell(CellFormat(dto.BoilerCategory, regularFont));
+
+            table.AddCell(CellFormat("Heating Surface Area", boldFont));
+            table.AddCell(CellFormat(dto.HeatingSurfaceArea?.ToString(), regularFont));
+
+            table.AddCell(CellFormat("Evaporation Capacity", boldFont));
+            table.AddCell(CellFormat(dto.EvaporationCapacity?.ToString(), regularFont));
+
+            table.AddCell(CellFormat("Working Pressure", boldFont));
+            table.AddCell(CellFormat(dto.WorkingPressure?.ToString(), regularFont));
+
+            table.AddCell(CellFormat("Year Of Make", boldFont));
+            table.AddCell(CellFormat(dto.YearOfMake?.ToString(), regularFont));
+
+            document.Add(table);
+
+            // ================= OBJECTIONS =================
+            document.Add(new Paragraph("Following objections are need to be removed related to your boiler")
+                .SetFont(regularFont).SetMarginTop(10));
+
+            if (dto.Objections != null && dto.Objections.Any())
+            {
+                for (int i = 0; i < dto.Objections.Count; i++)
+                {
+                    document.Add(new Paragraph($"{i + 1}. {dto.Objections[i]}")
+                        .SetFont(regularFont));
+                }
+            }
+
+            // ================= CLOSING =================
+            document.Add(new Paragraph(
+                "Please comply with the above observations and submit relevant documents")
+                .SetFont(regularFont).SetMarginTop(15));
+
+            // ================= SIGNATURE =================
+            document.Add(new Paragraph("\n\n"));
+
+            document.Add(new Paragraph($"({dto.SignatoryName})").SetTextAlignment(TextAlignment.RIGHT));
+            document.Add(new Paragraph(dto.SignatoryDesignation).SetTextAlignment(TextAlignment.RIGHT));
+            document.Add(new Paragraph(dto.SignatoryLocation).SetTextAlignment(TextAlignment.RIGHT));
+
+            // ================= FOOTER =================
+            var pageWidth = pdf.GetDefaultPageSize().GetWidth();
+
+            document.Add(new Paragraph(
+                "This is a computer generated document. No physical signature is required.")
+                .SetFontSize(8)
+                .SetFixedPosition(35, 30, pageWidth - 70));
+
+            document.Close();
+
+            // Save URL in DB (Boiler table)
+            var reg = await _dbcontext.BoilerRegistrations
+                .FirstOrDefaultAsync(x => x.Id.ToString() == registrationId);
+
+            if (reg != null)
+            {
+                reg.ObjectionLetterUrl = fileUrl;
+                await _dbcontext.SaveChangesAsync();
+            }
+
+            return fileUrl;
+        }
+
+        private sealed class PageBorderEventHandler : AbstractPdfDocumentEventHandler
+        {
+            protected override void OnAcceptedEvent(AbstractPdfDocumentEvent @event)
+            {
+                if (@event is not PdfDocumentEvent docEvent) return;
+                var page = docEvent.GetPage();
+                var rect = page.GetPageSize();
+                var canvas = new PdfCanvas(page);
+                canvas
+                    .SetStrokeColor(new DeviceRgb(20, 57, 92))
+                    .SetLineWidth(1.5f)
+                    .Rectangle(25, 25, rect.GetWidth() - 50, rect.GetHeight() - 50)
+                    .Stroke();
+                canvas.Release();
+            }
+        }
+
     }
+
 }

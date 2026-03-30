@@ -28,5 +28,6 @@ namespace RajFabAPI.Services.Interface
         Task<bool> UpdateRepairAsync(string applicationId, UpdateBoilerRepairDto dto, Guid userId);
         Task<string> GenerateBoilerApplicationPdfAsync(string applicationId);
         Task<string> GenerateBoilerRegistrationNoAsync();
+        Task<string> GenerateObjectionLetter(BoilerObjectionLetterDto dto, string registrationId);
     }
 }

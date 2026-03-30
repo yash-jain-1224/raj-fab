@@ -31,6 +31,7 @@ namespace RajFabAPI.DTOs
     {
         public FactoryLicense FactoryLicense { get; set; }
         public EstablishmentRegistrationDetailsDto EstFullDetails { get; set; }
+        public FactoryMapApproval MapApprovalDetails { get; set; }
         public List<ApplicationHistoryDto> ApplicationHistory { get; set; } = new();
         public string? CertificatePDFUrl { get; set; }
     }

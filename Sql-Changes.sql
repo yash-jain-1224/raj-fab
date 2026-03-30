@@ -2023,3 +2023,16 @@ ADD SeniorityOrder INT NOT NULL DEFAULT 0;
 
 ALTER TABLE ApplicationApprovalRequests
 ADD Direction NVARCHAR(20) NOT NULL DEFAULT 'Forward';
+
+ALTER TABLE FactoryMapApprovals
+ADD FactoryRegistrationNumber VARCHAR(100) NULL;
+
+ALTER TABLE FactoryLicenses
+ADD ObjectionLetterUrl NVARCHAR(500) NOT NULL DEFAULT '';
+
+ALTER TABLE FactoryMapApprovals
+ADD NoOfShifts INT NOT NULL DEFAULT 1;
+
+ALTER TABLE FactoryMapApprovals
+ADD CONSTRAINT CK_FactoryMapApprovals_NoOfShifts
+CHECK (NoOfShifts BETWEEN 1 AND 5);

@@ -3996,6 +3996,10 @@ namespace RajFabAPI.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("FactoryRegistrationNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<bool>("IsESignCompleted")
                         .HasColumnType("bit");
 

@@ -24,6 +24,8 @@ namespace RajFabAPI.DTOs
 
         [Required]
         public int MaxWorkerMale { get; set; }
+        
+        public int NoOfShifts { get; set; }
 
         [Required]
         public int MaxWorkerFemale { get; set; }
@@ -32,6 +34,7 @@ namespace RajFabAPI.DTOs
         public int? NoOfFactoriesIfCommonPremise { get; set; }
         public string? PremiseOwnerDetails { get; set; }
         public string Status { get; set; }
+        public string? FactoryRegistrationNumber { get; set; }
         public decimal Version { get; set; }
         public string ApplicationPDFUrl { get; set; }
         public string? ObjectionLetterUrl { get; set; }
@@ -92,6 +95,10 @@ namespace RajFabAPI.DTOs
 
         [Required]
         public int MaxWorkerMale { get; set; }
+        
+        [Required]
+        [Range(1, 5, ErrorMessage = "No of shifts must be at least 1")]
+        public int NoOfShifts { get; set; } = 1;
 
         [Required]
         public int MaxWorkerFemale { get; set; }

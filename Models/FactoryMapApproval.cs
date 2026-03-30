@@ -25,6 +25,10 @@ namespace RajFabAPI.Models
         [Required]
         public int MaxWorkerMale { get; set; }
 
+        [Required]
+        [Range(1, 10, ErrorMessage = "No of shifts must be at least 1")]
+        public int NoOfShifts { get; set; } = 1;
+
         [Column(TypeName = "decimal(3,1)")]
         public decimal Version { get; set; } = 1.0m;
         public bool IsNew { get; set; } = true;
@@ -51,6 +55,11 @@ namespace RajFabAPI.Models
 
         [StringLength(20)]
         public string Status { get; set; } = "Pending"; // Pending, Approved, Rejected
+
+        // Set when a FactoryRegistration is created against this map approval
+        [StringLength(100)]
+        public string? FactoryRegistrationNumber { get; set; }
+
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         public DateTime UpdatedAt { get; set; } = DateTime.Now;
 

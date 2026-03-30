@@ -58,7 +58,7 @@ namespace RajFabAPI.DTOs
         public DateTime Date { get; set; } = DateTime.Today;
 
         public string? EstablishmentName { get; set; }
-        public string? EstablishmentAddress { get; set; }
+        public string? FactoryAddress { get; set; }
 
         public string? Subject { get; set; }
 
@@ -67,6 +67,13 @@ namespace RajFabAPI.DTOs
         public DateTime? ValidFrom { get; set; }
         public DateTime? ValidTo { get; set; }
         public int? NoOfYears { get; set; }
+        public decimal? SanctionLoad { get; set; }
+        public string? SanctionLoadUnit { get; set; }
+
+        // Factory details
+        public string? ManufacturingProcess { get; set; }   // from FactoryDetail table
+        public int? MaxWorkers { get; set; }                // from FactoryMapApproval table
+        public string? FactoryTypeName { get; set; }        // from FactoryMapApproval table
 
         public List<string> Objections { get; set; } = new();
 

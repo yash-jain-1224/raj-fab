@@ -4,6 +4,7 @@ using RajFabAPI.Data;
 using RajFabAPI.DTOs;
 using RajFabAPI.Models;
 using RajFabAPI.Models.BoilerModels;
+using RajFabAPI.Models.FactoryModels;
 using RajFabAPI.Services.Interface;
 using static RajFabAPI.Constants.AppConstants;
 
@@ -756,32 +757,116 @@ namespace RajFabAPI.Services
                 var license = await _db.FactoryLicenses.FirstOrDefaultAsync(f => f.Id == applicationId);
                 if (license == null) return;
 
+                EstablishmentRegistration? estReg = null;
                 EstablishmentDetail? estDetail = null;
+                FactoryDetail? factoryDetail = null;
+                FactoryMapApproval? mapApprovalDetail = null;
+                string? factoryTypeName = null;
+
                 if (!string.IsNullOrWhiteSpace(license.FactoryRegistrationNumber))
                 {
-                    var estReg = await _db.EstablishmentRegistrations
-                        .FirstOrDefaultAsync(e => e.RegistrationNumber == license.FactoryRegistrationNumber);
-                    if (estReg?.EstablishmentDetailId.HasValue == true)
-                        estDetail = await _db.EstablishmentDetails.FindAsync(estReg.EstablishmentDetailId.Value);
+                    estReg = await _db.EstablishmentRegistrations
+                        .FirstOrDefaultAsync(e => e.RegistrationNumber == license.FactoryRegistrationNumber && e.Status == ApplicationStatus.Approved);
+
+                    if (estReg != null)
+                    {
+                        if (estReg.EstablishmentDetailId.HasValue)
+                            estDetail = await _db.EstablishmentDetails.FindAsync(estReg.EstablishmentDetailId.Value);
+
+                        // Get FactoryDetail via EstablishmentEntityMapping
+                        factoryDetail = await (
+                            from map in _db.EstablishmentEntityMapping
+                            where map.EstablishmentRegistrationId == estReg.EstablishmentRegistrationId
+                                && map.EntityType == "Factory"
+
+                            join f in _db.Set<FactoryDetail>()
+                                on map.EntityId equals f.Id
+
+                            join area in _db.Set<Models.City>().AsNoTracking()
+                                on f.SubDivisionId.ToString() equals area.Id.ToString() into areaJoin
+                            from areaDetail in areaJoin.DefaultIfEmpty()
+
+                            join district in _db.Set<District>().AsNoTracking()
+                                on areaDetail.DistrictId equals district.Id into districtJoin
+                            from districtDetail in districtJoin.DefaultIfEmpty()
+
+                            join division in _db.Set<Division>().AsNoTracking()
+                                on districtDetail.DivisionId equals division.Id into divisionJoin
+                            from divisionDetail in divisionJoin.DefaultIfEmpty()
+
+                            select new FactoryDetail
+                            {
+                                Id = f.Id,
+                                ManufacturingType = f.ManufacturingType,
+                                ManufacturingDetail = f.ManufacturingDetail,
+                                Situation = f.Situation,
+                                AddressLine1 = f.AddressLine1,
+                                AddressLine2 = f.AddressLine2,
+                                SubDivisionId = f.SubDivisionId,
+
+                                SubDivisionName = areaDetail != null ? areaDetail.Name : null,
+                                TehsilName = areaDetail != null ? areaDetail.Name : null,
+                                DistrictName = districtDetail != null ? districtDetail.Name : null,
+                                TehsilId = f.TehsilId,
+                                Area = f.Area,
+                                Pincode = f.Pincode,
+                                Email = f.Email,
+                                Telephone = f.Telephone,
+                                Mobile = f.Mobile,
+                                NumberOfWorker = f.NumberOfWorker,
+                                SanctionedLoad = f.SanctionedLoad,
+                                SanctionedLoadUnit = f.SanctionedLoadUnit,
+                                EmployerId = f.EmployerId,
+                                ManagerId = f.ManagerId,
+
+                                OwnershipType = f.OwnershipType,
+                                OwnershipSector = f.OwnershipSector,
+                                ActivityAsPerNIC = f.ActivityAsPerNIC,
+                                NICCodeDetail = f.NICCodeDetail,
+                                IdentificationOfEstablishment = f.IdentificationOfEstablishment,
+
+                                CreatedAt = f.CreatedAt,
+                                UpdatedAt = f.UpdatedAt
+                            }
+                        ).FirstOrDefaultAsync();
+                    }
+
+                    mapApprovalDetail = await _db.FactoryMapApprovals
+                        .FirstOrDefaultAsync(m => m.FactoryRegistrationNumber == license.FactoryRegistrationNumber);
                 }
 
-                var address = string.Join(", ", new[]
-                    { estDetail?.AddressLine1, estDetail?.AddressLine2, estDetail?.Area, estDetail?.Pincode }
-                    .Where(x => !string.IsNullOrWhiteSpace(x)));
+                if (mapApprovalDetail != null &&
+                    !string.IsNullOrWhiteSpace(mapApprovalDetail.ProductName) &&
+                    Guid.TryParse(mapApprovalDetail.ProductName, out var ftGuid))
+                {
+                    var ft = await _db.FactoryTypes.FindAsync(ftGuid);
+                    factoryTypeName = ft?.Name;
+                }
+
+                var factoryAddress = $"{factoryDetail?.AddressLine1}, {factoryDetail?.AddressLine2},\n{factoryDetail?.Area}, {factoryDetail?.TehsilName},\n{factoryDetail?.SubDivisionName}, {factoryDetail?.DistrictName}, {factoryDetail?.Pincode}";
+
+                var mapTotalWorkers = mapApprovalDetail != null
+                    ? mapApprovalDetail.MaxWorkerMale + mapApprovalDetail.MaxWorkerFemale + mapApprovalDetail.MaxWorkerTransgender
+                    : (int?)null;
 
                 fileUrl = await _factoryLicenseService.GenerateObjectionLetter(
                     new LicenseObjectionLetterDto
                     {
                         ApplicationId = license.Id,
                         Date = DateTime.Today,
-                        EstablishmentName = estDetail?.EstablishmentName ?? "",
-                        EstablishmentAddress = address,
+                        EstablishmentName = estDetail.EstablishmentName ?? "",
+                        FactoryAddress = factoryAddress,
+                        SanctionLoad = factoryDetail?.SanctionedLoad ?? 0,
+                        SanctionLoadUnit = factoryDetail?.SanctionedLoadUnit ?? "",
                         Subject = subject,
                         LicenseNumber = license.FactoryLicenseNumber,
                         RegistrationNumber = license.FactoryRegistrationNumber,
                         ValidFrom = license.ValidFrom,
                         ValidTo = license.ValidTo,
                         NoOfYears = license.NoOfYears,
+                        ManufacturingProcess = factoryDetail?.ManufacturingDetail ?? mapApprovalDetail?.ManufacturingProcess,
+                        MaxWorkers = mapTotalWorkers,
+                        FactoryTypeName = factoryTypeName,
                         Objections = objections,
                         SignatoryName = signatoryName,
                         SignatoryDesignation = signatoryDesignation,

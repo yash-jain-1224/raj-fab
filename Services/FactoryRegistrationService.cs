@@ -261,7 +261,20 @@ namespace RajFabAPI.Services
 
                 _context.FactoryRegistrations.Add(registration);
                 await _context.SaveChangesAsync();
-                
+
+                // Link RegistrationNumber back to the FactoryMapApproval
+                if (!string.IsNullOrWhiteSpace(registration.MapApprovalAcknowledgementNumber))
+                {
+                    var mapApproval = await _context.FactoryMapApprovals
+                        .FirstOrDefaultAsync(m => m.AcknowledgementNumber == registration.MapApprovalAcknowledgementNumber);
+                    if (mapApproval != null)
+                    {
+                        mapApproval.FactoryRegistrationNumber = registration.RegistrationNumber;
+                        mapApproval.UpdatedAt = DateTime.Now;
+                        await _context.SaveChangesAsync();
+                    }
+                }
+
                 // Create initial history entry
                 var history = new Models.ApplicationHistory
                 {

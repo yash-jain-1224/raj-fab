@@ -301,6 +301,7 @@ namespace RajFabAPI.Services
                     PremiseOwnerDetails = request.PremiseOwnerDetails,
                     OccupierDetails = request.OccupierDetails,
                     FactoryDetails = request.FactoryDetails,
+                    NoOfShifts = request.NoOfShifts,
                     IsNew = isNew ?? true,
                     Version = newVersion
                 };
@@ -1368,7 +1369,7 @@ namespace RajFabAPI.Services
                 document.Add(wrkT.SetMarginBottom(6));
 
                 var premTTT = TwoCol();
-                AddRow(premTTT, "6.   Number of shifts:", "2");
+                AddRow(premTTT, "6.   Number of shifts:", dto?.NoOfShifts.ToString() ?? "-");
                 document.Add(premTTT.SetMarginBottom(4));
 
                 // ── SECTION 7 ───────────────────────────────────────────────────────

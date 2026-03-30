@@ -1137,6 +1137,7 @@ namespace RajFabAPI.Services
                                     Mobile = factory.Mobile ?? "",
                                     NumberOfWorker = factory.NumberOfWorker,
                                     SanctionedLoad = factory.SanctionedLoad,
+                                    SanctionedLoadUnit = factory.SanctionedLoadUnit,
                                     Situation = factory.Situation,
                                     OwnershipType = factory.OwnershipType,
                                     OwnershipSector = factory.OwnershipSector,

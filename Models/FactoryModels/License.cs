@@ -64,7 +64,7 @@ namespace RajFabAPI.Models
         [Column(TypeName = "decimal(18,2)")]
         public decimal Amount { get; set; }
         public string? ApplicationPDFUrl { get; set; }
-        public string? ObjectionLetterUrl { get; set; }
+        public string? ObjectionLetterUrl { get; set; } = "";
 
         [StringLength(100)]
         public string? ESignPrnNumber { get; set; }

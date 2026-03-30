@@ -803,7 +803,7 @@ namespace RajFabAPI.Services
 
                     else if (module.Name == ApplicationTypeNames.BoilerRegistration ||
                          module.Name == ApplicationTypeNames.BoilerAmendment ||
-                        module.Name == ApplicationTypeNames.BoilerRenew)
+                        module.Name == ApplicationTypeNames.BoilerRenewal)
                     {
                         _logger.LogInformation("Processing BoilerRegistration workflow for ApplicationId: {ApplicationId}", appReg.ApplicationId);
 

@@ -477,7 +477,7 @@ namespace RajFabAPI.Services
                 const decimal boilerRegistrationFee = 10000m;
 
                 var module = await _dbcontext.Set<FormModule>()
-                        .FirstOrDefaultAsync(m => m.Name == ApplicationTypeNames.BoilerRenew)
+                        .FirstOrDefaultAsync(m => m.Name == ApplicationTypeNames.BoilerRenewal)
                         ?? throw new Exception("Boiler Renew module not found in FormModules. Please ensure the module is seeded.");
 
                 var renewed = new BoilerRegistration

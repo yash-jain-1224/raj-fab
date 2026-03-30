@@ -39,10 +39,10 @@ namespace RajFabAPI.Constants
             public const string Appeal = "Appeal";
             public const string BoilerRegistration = "Boiler Registration";
             public const string BoilerAmendment = "Boiler Amendment";
-            public const string BoilerRenew = "Boiler Renewal";
+            public const string BoilerRenewal = "Boiler Renewal";
             public const string BoilerManufactureRegistration = "Boiler Manufacture Registration";
             public const string BoilerManufactureAmend= "Boiler Manufacture Amendment";
-            public const string BoilerManufactureRenew = "Boiler Manufacture Renewal";
+            public const string BoilerManufactureRenewal = "Boiler Manufacture Renewal";
             public const string Stplregistration = "Stpl Registration";
             public const string StplAmendment = "Stpl Amendment";
             public const string Stplrenew = "Stpl Renewal";

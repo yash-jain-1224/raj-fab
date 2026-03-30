@@ -17,7 +17,7 @@ namespace RajFabAPI.Services
         public async Task<BoilerCategoryDto> CreateAsync(CreateBoilerCategoryDto dto)
         {
            
-            var exists = await _context.BoilerCategorys.AnyAsync(bc =>
+            var exists = await _context.BoilerCategories.AnyAsync(bc =>
                 bc.IsActive &&
                 bc.Name == dto.Name
             );
@@ -35,7 +35,7 @@ namespace RajFabAPI.Services
                 UpdatedAt = DateTime.Now
             };
 
-            _context.BoilerCategorys.Add(entity);
+            _context.BoilerCategories.Add(entity);
             await _context.SaveChangesAsync();
 
             return await GetByIdAsync(entity.Id)
@@ -45,7 +45,7 @@ namespace RajFabAPI.Services
 
         public async Task<BoilerCategoryDto?> GetByIdAsync(int id)
         {
-            return await _context.BoilerCategorys
+            return await _context.BoilerCategories
                 .Where(b => b.Id == id && b.IsActive)
                 .Select(b => new BoilerCategoryDto
                 {
@@ -58,11 +58,11 @@ namespace RajFabAPI.Services
 
         public async Task<BoilerCategoryDto?> UpdateAsync(int id, CreateBoilerCategoryDto dto)
         {
-            var entity = await _context.BoilerCategorys.FindAsync(id);
+            var entity = await _context.BoilerCategories.FindAsync(id);
             if (entity == null || !entity.IsActive)
                 return null;
 
-            var exists = await _context.BoilerCategorys.AnyAsync(b =>
+            var exists = await _context.BoilerCategories.AnyAsync(b =>
                 b.Id != id &&
                 b.IsActive &&
                 b.Name == dto.Name
@@ -82,11 +82,11 @@ namespace RajFabAPI.Services
 
         public async Task<bool> DeleteAsync(int id)
         {
-            var entity = await _context.BoilerCategorys.FindAsync(id);
+            var entity = await _context.BoilerCategories.FindAsync(id);
             if (entity == null)
                 return false;
 
-            _context.BoilerCategorys.Remove(entity);
+            _context.BoilerCategories.Remove(entity);
             await _context.SaveChangesAsync();
 
             return true;
@@ -94,7 +94,7 @@ namespace RajFabAPI.Services
 
         public async Task<IEnumerable<BoilerCategoryDto>> GetAllAsync()
         {
-            return await _context.BoilerCategorys
+            return await _context.BoilerCategories
                 .Where(b => b.IsActive)
                 .OrderBy(b => b.Id)
                 .Select(b => new BoilerCategoryDto

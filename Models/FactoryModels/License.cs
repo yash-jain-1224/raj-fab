@@ -90,5 +90,10 @@ namespace RajFabAPI.Models
         public string? ManufacturingProcessLast12Months { get; set; }
         public string? ManufacturingProcessNext12Months { get; set; }
         public string? DateOfStartProduction { get; set; }
+
+        // JSON snapshot of factory + map approval data at submission time
+        // Used to back-propagate changes to source tables on approval
+        public string? FactoryData { get; set; }      // { factoryName, managerDetail, employerDetail }
+        public string? MapApprovalData { get; set; }  // { premiseOwnerDetails }
     }
 }

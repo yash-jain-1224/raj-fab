@@ -61,6 +61,10 @@ namespace RajFabAPI.Services
         {
             var factoryLicense = await _context.FactoryLicenses
                 .FirstOrDefaultAsync(x => x.Id == id);
+
+            if (factoryLicense == null)
+                return null;
+
             var estFullDetails = await _establishmentRegistrationService
                 .GetFactoryDetailsByFactoryRegistrationNumberAsync(factoryLicense.FactoryRegistrationNumber);
             var applicationHistory = await _context.ApplicationHistories
@@ -166,6 +170,8 @@ namespace RajFabAPI.Services
                     ManufacturingProcessLast12Months = dto.ManufacturingProcessLast12Months,
                     ManufacturingProcessNext12Months = dto.ManufacturingProcessNext12Months,
                     DateOfStartProduction = dto.DateOfStartProduction,
+                    FactoryData = dto.FactoryData,
+                    MapApprovalData = dto.MapApprovalData,
                 };
                 _context.FactoryLicenses.Add(license);
 
@@ -311,6 +317,8 @@ namespace RajFabAPI.Services
             license.ManufacturingProcessLast12Months = dto.ManufacturingProcessLast12Months;
             license.ManufacturingProcessNext12Months = dto.ManufacturingProcessNext12Months;
             license.DateOfStartProduction = dto.DateOfStartProduction;
+            if (!string.IsNullOrEmpty(dto.FactoryData)) license.FactoryData = dto.FactoryData;
+            if (!string.IsNullOrEmpty(dto.MapApprovalData)) license.MapApprovalData = dto.MapApprovalData;
             license.UpdatedAt = DateTime.Now;
 
             await _context.SaveChangesAsync();
@@ -318,7 +326,7 @@ namespace RajFabAPI.Services
             {
                 "new" => ApplicationTypeNames.FactoryLicense,
                 "amendment" => ApplicationTypeNames.FactoryLicenseAmendment,
-                "renew" => ApplicationTypeNames.FactoryLicenseRenewal,
+                "renewal" => ApplicationTypeNames.FactoryLicenseRenewal,
                 _ => throw new ArgumentException($"Invalid registration type: {license.Type}")
             };
 
@@ -435,8 +443,124 @@ namespace RajFabAPI.Services
                 return false;
             license.Status = status;
             license.UpdatedAt = DateTime.Now;
+            if (status == ApplicationStatus.Approved)
+            {
+                await _ApplyFactoryDataAsync(license);
+                await _ApplyMapApprovalDataAsync(license);
+            }
+
             await _context.SaveChangesAsync();
             return true;
+        }
+
+        /// <summary>
+        /// Parses FactoryLicense.FactoryData JSON and updates EstablishmentDetail +
+        /// PersonDetail records (manager + employer) in the source EstablishmentRegistration.
+        /// </summary>
+        private async Task _ApplyFactoryDataAsync(FactoryLicense license)
+        {
+            if (string.IsNullOrEmpty(license.FactoryData) ||
+                string.IsNullOrEmpty(license.FactoryRegistrationNumber))
+                return;
+
+            FactoryDataJson? factoryData;
+            try
+            {
+                factoryData = System.Text.Json.JsonSerializer.Deserialize<FactoryDataJson>(
+                    license.FactoryData,
+                    new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            }
+            catch { return; }
+
+            if (factoryData == null) return;
+
+            // Find the latest approved EstablishmentRegistration for this factory
+            var estReg = await _context.Set<EstablishmentRegistration>()
+                .Where(r => r.RegistrationNumber == license.FactoryRegistrationNumber
+                         && r.Status == ApplicationStatus.Approved)
+                .OrderByDescending(r => r.Version)
+                .FirstOrDefaultAsync();
+
+            if (estReg == null) return;
+
+            // ── Update EstablishmentDetail.EstablishmentName ──
+            if (!string.IsNullOrEmpty(factoryData.FactoryName) && estReg.EstablishmentDetailId.HasValue)
+            {
+                var estDetail = await _context.Set<EstablishmentDetail>()
+                    .FirstOrDefaultAsync(e => e.Id == estReg.EstablishmentDetailId.Value);
+                if (estDetail != null)
+                {
+                    estDetail.EstablishmentName = factoryData.FactoryName;
+                    estDetail.UpdatedAt = DateTime.Now;
+                }
+            }
+
+            // ── Update manager PersonDetail ──
+            if (factoryData.ManagerDetail != null && estReg.ManagerOrAgentDetailId.HasValue)
+            {
+                var manager = await _context.Set<PersonDetail>()
+                    .FirstOrDefaultAsync(p => p.Id == estReg.ManagerOrAgentDetailId.Value);
+                if (manager != null)
+                    _ApplyPersonData(manager, factoryData.ManagerDetail);
+            }
+
+            // ── Update employer/occupier PersonDetail ──
+            if (factoryData.EmployerDetail != null && estReg.MainOwnerDetailId.HasValue)
+            {
+                var employer = await _context.Set<PersonDetail>()
+                    .FirstOrDefaultAsync(p => p.Id == estReg.MainOwnerDetailId.Value);
+                if (employer != null)
+                    _ApplyPersonData(employer, factoryData.EmployerDetail);
+            }
+        }
+
+        private static void _ApplyPersonData(PersonDetail person, PersonShortJson data)
+        {
+            if (!string.IsNullOrEmpty(data.Name)) person.Name = data.Name;
+            if (!string.IsNullOrEmpty(data.Designation)) person.Designation = data.Designation;
+            if (!string.IsNullOrEmpty(data.AddressLine1)) person.AddressLine1 = data.AddressLine1;
+            if (!string.IsNullOrEmpty(data.AddressLine2)) person.AddressLine2 = data.AddressLine2;
+            if (!string.IsNullOrEmpty(data.District)) person.District = data.District;
+            if (!string.IsNullOrEmpty(data.Tehsil)) person.Tehsil = data.Tehsil;
+            if (!string.IsNullOrEmpty(data.Area)) person.Area = data.Area;
+            if (!string.IsNullOrEmpty(data.Pincode)) person.Pincode = data.Pincode;
+            if (!string.IsNullOrEmpty(data.Email)) person.Email = data.Email;
+            if (!string.IsNullOrEmpty(data.Telephone)) person.Telephone = data.Telephone;
+            if (!string.IsNullOrEmpty(data.Mobile)) person.Mobile = data.Mobile;
+            person.UpdatedAt = DateTime.Now;
+        }
+
+        /// <summary>
+        /// Parses FactoryLicense.MapApprovalData JSON and updates
+        /// FactoryMapApproval.PremiseOwnerDetails in the source table.
+        /// </summary>
+        private async Task _ApplyMapApprovalDataAsync(FactoryLicense license)
+        {
+            if (string.IsNullOrEmpty(license.MapApprovalData) ||
+                string.IsNullOrEmpty(license.FactoryRegistrationNumber))
+                return;
+
+            MapApprovalDataJson? mapData;
+            try
+            {
+                mapData = System.Text.Json.JsonSerializer.Deserialize<MapApprovalDataJson>(
+                    license.MapApprovalData,
+                    new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            }
+            catch { return; }
+
+            if (mapData?.PremiseOwnerDetails == null) return;
+
+            var mapApproval = await _context.FactoryMapApprovals
+                .Where(m => m.FactoryRegistrationNumber == license.FactoryRegistrationNumber
+                         && m.Status == ApplicationStatus.Approved)
+                .OrderByDescending(m => m.Version)
+                .FirstOrDefaultAsync();
+
+            if (mapApproval == null) return;
+
+            mapApproval.PremiseOwnerDetails = mapData.PremiseOwnerDetails.Value.GetRawText();
+            mapApproval.UpdatedAt = DateTime.Now;
         }
 
         // public async Task<bool> DeleteAsync(Guid id)

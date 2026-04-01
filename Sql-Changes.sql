@@ -2047,3 +2047,28 @@ ADD NoOfShifts INT NOT NULL DEFAULT 1;
 ALTER TABLE FactoryMapApprovals
 ADD CONSTRAINT CK_FactoryMapApprovals_NoOfShifts
 CHECK (NoOfShifts BETWEEN 1 AND 5);
+
+
+ALTER TABLE FactoryLicenses
+ADD 
+    WorkersProposedMale INT NULL,
+    WorkersProposedFemale INT NULL,
+    WorkersProposedTransgender INT NULL,
+
+    WorkersLastYearMale INT NULL,
+    WorkersLastYearFemale INT NULL,
+    WorkersLastYearTransgender INT NULL,
+
+    WorkersOrdinaryMale INT NULL,
+    WorkersOrdinaryFemale INT NULL,
+    WorkersOrdinaryTransgender INT NULL,
+
+    SanctionedLoad DECIMAL(18,2) NULL,
+    SanctionedLoadUnit NVARCHAR(50) NULL,
+
+    ManufacturingProcessLast12Months NVARCHAR(MAX) NULL,
+    ManufacturingProcessNext12Months NVARCHAR(MAX) NULL,
+    DateOfStartProduction NVARCHAR(50) NULL,
+
+    FactoryData NVARCHAR(MAX) NULL,
+    MapApprovalData NVARCHAR(MAX) NULL;

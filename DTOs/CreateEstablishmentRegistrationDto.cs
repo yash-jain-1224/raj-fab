@@ -61,6 +61,14 @@ namespace RajFabAPI.DTOs
         public DateTime? CreatedAt { get; set; }
         public FactoryDto? Factory { get; set; }
         public List<string> EstablishmentTypes { get; set; } = new List<string>();
+        public FactoryMapApprovalDetailsDto? MapApprovalDetails { get; set; }
+    }
+
+    public class FactoryMapApprovalDetailsDto
+    {
+        public string AcknowledgementNumber { get; set; } = string.Empty;
+        public DateTime UpdatedAt { get; set; }
+        public string? PremiseOwnerDetails { get; set; }
     }
 
     public class EstablishmentDetailsDto

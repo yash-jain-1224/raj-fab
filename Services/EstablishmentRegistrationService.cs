@@ -25,6 +25,7 @@ using PdfDoc = iText.Layout.Document;
 using PdfImage = iText.Layout.Element.Image;
 using PdfTable = iText.Layout.Element.Table;
 using Text = iText.Layout.Element.Text;
+using RajFabAPI.Constants;
 
 namespace RajFabAPI.Services
 {
@@ -1229,6 +1230,20 @@ namespace RajFabAPI.Services
 
                     result.ContractorDetail = contractors;
                 }
+
+                var mapDetails = await _db.FactoryMapApprovals
+                     .Where(x => x.FactoryRegistrationNumber == factoryRegistrationNumber
+                              && x.Status == ApplicationStatus.Approved)
+                     .OrderByDescending(x => x.Version)
+                     .Select(x => new FactoryMapApprovalDetailsDto
+                     {
+                         AcknowledgementNumber = x.AcknowledgementNumber,
+                         UpdatedAt = x.UpdatedAt,
+                         PremiseOwnerDetails = x.PremiseOwnerDetails
+                     })
+                     .FirstOrDefaultAsync();
+
+                result.MapApprovalDetails = mapDetails;
 
                 return result;
             }

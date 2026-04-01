@@ -3,6 +3,7 @@ using RajFabAPI.Data;
 using RajFabAPI.DTOs;
 using RajFabAPI.Models;
 using RajFabAPI.Models.BoilerModels;
+using RajFabAPI.Models.FactoryModels;
 using RajFabAPI.Services.Interface;
 
 namespace RajFabAPI.Services
@@ -698,6 +699,41 @@ namespace RajFabAPI.Services
                 };
 
                 _context.ApplicationHistories.Add(history);
+
+                // Sync workers/power/manufacturing data to FactoryDetail
+                if (!string.IsNullOrEmpty(application.FactoryRegistrationNumber))
+                {
+                    var estReg = await _context.Set<EstablishmentRegistration>()
+                        .Where(er => er.RegistrationNumber == application.FactoryRegistrationNumber && er.Status == "Approved")
+                        .OrderByDescending(er => er.Version)
+                        .FirstOrDefaultAsync();
+
+                    if (estReg != null)
+                    {
+                        var entityData = await _context.Set<EstablishmentEntityMapping>()
+                            .FirstOrDefaultAsync(ed => ed.EstablishmentRegistrationId == estReg.EstablishmentRegistrationId);
+
+                        if (entityData != null && entityData.EntityType == "Factory")
+                        {
+                            var factoryDetail = await _context.Set<FactoryDetail>()
+                                .FirstOrDefaultAsync(f => f.Id == entityData.EntityId);
+
+                            if (factoryDetail != null)
+                            {
+                                factoryDetail.NumberOfWorker = (application.WorkersOrdinaryMale ?? 0)
+                                    + (application.WorkersOrdinaryFemale ?? 0)
+                                    + (application.WorkersOrdinaryTransgender ?? 0);
+                                if (application.SanctionedLoad.HasValue)
+                                    factoryDetail.SanctionedLoad = application.SanctionedLoad;
+                                if (!string.IsNullOrEmpty(application.SanctionedLoadUnit))
+                                    factoryDetail.SanctionedLoadUnit = application.SanctionedLoadUnit;
+                                if (!string.IsNullOrEmpty(application.ManufacturingProcessLast12Months))
+                                    factoryDetail.ManufacturingDetail = application.ManufacturingProcessLast12Months;
+                                factoryDetail.UpdatedAt = DateTime.Now;
+                            }
+                        }
+                    }
+                }
             }
             else if (applicationType.ToLower().Contains("map"))
             {

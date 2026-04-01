@@ -69,5 +69,26 @@ namespace RajFabAPI.Models
         [StringLength(100)]
         public string? ESignPrnNumber { get; set; }
         public bool IsESignCompleted { get; set; } = false;
+
+        // Workers employed
+        public int? WorkersProposedMale { get; set; }
+        public int? WorkersProposedFemale { get; set; }
+        public int? WorkersProposedTransgender { get; set; }
+        public int? WorkersLastYearMale { get; set; }
+        public int? WorkersLastYearFemale { get; set; }
+        public int? WorkersLastYearTransgender { get; set; }
+        public int? WorkersOrdinaryMale { get; set; }
+        public int? WorkersOrdinaryFemale { get; set; }
+        public int? WorkersOrdinaryTransgender { get; set; }
+
+        // Power details
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal? SanctionedLoad { get; set; }
+        public string? SanctionedLoadUnit { get; set; }
+
+        // Manufacturing process
+        public string? ManufacturingProcessLast12Months { get; set; }
+        public string? ManufacturingProcessNext12Months { get; set; }
+        public string? DateOfStartProduction { get; set; }
     }
 }

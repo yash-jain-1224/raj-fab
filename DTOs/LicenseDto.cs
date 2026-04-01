@@ -26,6 +26,28 @@ namespace RajFabAPI.DTOs
         public string? ManagerSignature { get; set; }
         public string? OccupierSignature { get; set; }
         public string? AuthorisedSignature { get; set; }
+
+        public int? NoOfYears { get; set; }
+
+        // Workers employed
+        public int? WorkersProposedMale { get; set; }
+        public int? WorkersProposedFemale { get; set; }
+        public int? WorkersProposedTransgender { get; set; }
+        public int? WorkersLastYearMale { get; set; }
+        public int? WorkersLastYearFemale { get; set; }
+        public int? WorkersLastYearTransgender { get; set; }
+        public int? WorkersOrdinaryMale { get; set; }
+        public int? WorkersOrdinaryFemale { get; set; }
+        public int? WorkersOrdinaryTransgender { get; set; }
+
+        // Power details
+        public decimal? SanctionedLoad { get; set; }
+        public string? SanctionedLoadUnit { get; set; }
+
+        // Manufacturing process
+        public string? ManufacturingProcessLast12Months { get; set; }
+        public string? ManufacturingProcessNext12Months { get; set; }
+        public string? DateOfStartProduction { get; set; }
     }
     public class FactoryLicenseData
     {

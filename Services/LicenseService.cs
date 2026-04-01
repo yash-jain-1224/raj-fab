@@ -138,6 +138,7 @@ namespace RajFabAPI.Services
                     Id = Guid.NewGuid().ToString().ToUpper(),
                     FactoryRegistrationNumber = dto.FactoryRegistrationNumber.Trim(),
                     FactoryLicenseNumber = finalFactoryLicenseNumber,
+                    NoOfYears = dto.NoOfYears ?? 1,
                     ValidFrom = dto.ValidFrom,
                     ValidTo = dto.ValidTo,
                     Place = dto.Place.Trim(),
@@ -150,7 +151,21 @@ namespace RajFabAPI.Services
                     Version = newVersion,
                     Status = "Pending",
                     Amount = amount,
-                    Type = string.IsNullOrEmpty(type) ? "new" : type
+                    Type = string.IsNullOrEmpty(type) ? "new" : type,
+                    WorkersProposedMale = dto.WorkersProposedMale,
+                    WorkersProposedFemale = dto.WorkersProposedFemale,
+                    WorkersProposedTransgender = dto.WorkersProposedTransgender,
+                    WorkersLastYearMale = dto.WorkersLastYearMale,
+                    WorkersLastYearFemale = dto.WorkersLastYearFemale,
+                    WorkersLastYearTransgender = dto.WorkersLastYearTransgender,
+                    WorkersOrdinaryMale = dto.WorkersOrdinaryMale,
+                    WorkersOrdinaryFemale = dto.WorkersOrdinaryFemale,
+                    WorkersOrdinaryTransgender = dto.WorkersOrdinaryTransgender,
+                    SanctionedLoad = dto.SanctionedLoad,
+                    SanctionedLoadUnit = dto.SanctionedLoadUnit,
+                    ManufacturingProcessLast12Months = dto.ManufacturingProcessLast12Months,
+                    ManufacturingProcessNext12Months = dto.ManufacturingProcessNext12Months,
+                    DateOfStartProduction = dto.DateOfStartProduction,
                 };
                 _context.FactoryLicenses.Add(license);
 
@@ -273,6 +288,7 @@ namespace RajFabAPI.Services
                 return null;
 
             license.FactoryRegistrationNumber = dto.FactoryRegistrationNumber;
+            license.NoOfYears = dto.NoOfYears ?? license.NoOfYears;
             license.ValidFrom = dto.ValidFrom;
             license.ValidTo = dto.ValidTo;
             license.Place = dto.Place;
@@ -281,6 +297,20 @@ namespace RajFabAPI.Services
             license.ManagerSignature = dto.ManagerSignature;
             license.OccupierSignature = dto.OccupierSignature;
             license.AuthorisedSignature = dto.AuthorisedSignature;
+            license.WorkersProposedMale = dto.WorkersProposedMale;
+            license.WorkersProposedFemale = dto.WorkersProposedFemale;
+            license.WorkersProposedTransgender = dto.WorkersProposedTransgender;
+            license.WorkersLastYearMale = dto.WorkersLastYearMale;
+            license.WorkersLastYearFemale = dto.WorkersLastYearFemale;
+            license.WorkersLastYearTransgender = dto.WorkersLastYearTransgender;
+            license.WorkersOrdinaryMale = dto.WorkersOrdinaryMale;
+            license.WorkersOrdinaryFemale = dto.WorkersOrdinaryFemale;
+            license.WorkersOrdinaryTransgender = dto.WorkersOrdinaryTransgender;
+            license.SanctionedLoad = dto.SanctionedLoad;
+            license.SanctionedLoadUnit = dto.SanctionedLoadUnit;
+            license.ManufacturingProcessLast12Months = dto.ManufacturingProcessLast12Months;
+            license.ManufacturingProcessNext12Months = dto.ManufacturingProcessNext12Months;
+            license.DateOfStartProduction = dto.DateOfStartProduction;
             license.UpdatedAt = DateTime.Now;
 
             await _context.SaveChangesAsync();

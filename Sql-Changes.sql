@@ -2072,3 +2072,34 @@ ADD
 
     FactoryData NVARCHAR(MAX) NULL,
     MapApprovalData NVARCHAR(MAX) NULL;
+
+-- boiler fees table 
+CREATE TABLE BoilerFees (
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+    MaxHeatingSurfaceArea DECIMAL(10,2) NOT NULL,
+    Fees DECIMAL(10,2) NOT NULL
+);
+
+INSERT INTO BoilerFees (MaxHeatingSurfaceArea, Fees)
+VALUES
+(10, 1800),
+(30, 2400),
+(50, 2700),
+(70, 3300),
+(90, 3900),
+(110, 4500),
+(200, 5100),
+(400, 5700),
+(600, 6600),
+(800, 7200),
+(1000, 8100),
+(1200, 9600),
+(1400, 10800),
+(1600, 12600),
+(1800, 13500),
+(2000, 15000),
+(2200, 16200),
+(2400, 18000),
+(2600, 18900),
+(2800, 20400),
+(3000, 21600);

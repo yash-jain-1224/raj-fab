@@ -12,10 +12,12 @@ namespace RajFabAPI.Services
     {
         private readonly ApplicationDbContext _dbcontext;
         private readonly IWebHostEnvironment _environment;
+        private readonly IPaymentService _paymentService;
 
-        public SteamPipeLineApplicationService(ApplicationDbContext context)
+        public SteamPipeLineApplicationService(ApplicationDbContext context, IPaymentService paymentService)
         {
             _dbcontext = context;
+            _paymentService = paymentService;
         }
 
         private async Task<string> GenerateApplicationNumberAsync(string type)
@@ -68,12 +70,16 @@ namespace RajFabAPI.Services
             return $"STPL-{next:D5}";
         }
 
-        public async Task<string> SaveSteamPipeLineAsync(  CreateSteamPipeLineDto dto,    string? type,  string? steamPipeLineRegistrationNo)
+        public async Task<string> SaveSteamPipeLineAsync(  CreateSteamPipeLineDto dto, Guid userId, string? type,  string? steamPipeLineRegistrationNo)
         {
             if (dto == null)
                 throw new ArgumentNullException(nameof(dto));
 
             type = type?.ToLower() ?? "new";
+
+            var module = await _dbcontext.Set<FormModule>()
+                       .FirstOrDefaultAsync(m => m.Name == ApplicationTypeNames.Stplregistration)
+                       ?? throw new Exception("Stpl  Registration module not found in FormModules. Please ensure the module is seeded.");
 
             await using var tx = await _dbcontext.Database.BeginTransactionAsync();
 
@@ -144,7 +150,8 @@ namespace RajFabAPI.Services
                 }
                 var newApplicationId = await GenerateApplicationNumberAsync(type);
 
-                var version = type == "amend"  ? baseRecord!.Version + 0.1m : 1.0m;              
+                var version = type == "amend"  ? baseRecord!.Version + 0.1m : 1.0m;
+                const decimal stplRegistrationFee = 10000m;
 
                 var entity = new SteamPipeLineApplication
                 {
@@ -153,7 +160,7 @@ namespace RajFabAPI.Services
 
                     ApplicationId = newApplicationId,
                     SteamPipeLineRegistrationNo = registrationNo,
-
+                    Amount = stplRegistrationFee,
                     BoilerApplicationNo = dto.BoilerApplicationNo ?? baseRecord?.BoilerApplicationNo,
                     ProposedLayoutDescription = dto.ProposedLayout ?? baseRecord?.ProposedLayoutDescription,
                     ConsentLetterProvided = dto.ConsentLetterProvided ?? baseRecord?.ConsentLetterProvided,
@@ -198,8 +205,28 @@ namespace RajFabAPI.Services
                 await _dbcontext.SaveChangesAsync();
 
                 await tx.CommitAsync();
+                var user = await _dbcontext.Users
+                     .AsNoTracking()
+                     .FirstOrDefaultAsync(u => u.Id == userId)
+                     ?? throw new Exception("User not found.");
 
-                return entity.ApplicationId;
+                var html = await _paymentService.ActionRequestPaymentRPP(
+                    entity.Amount,
+                    user.FullName,
+                    user.Mobile,
+                    user.Email,
+                    user.Username,
+                    "4157FE34BBAE3A958D8F58CCBFAD7",
+                    "UWf6a7cDCP",
+                    entity.ApplicationId!,
+                    module.Id.ToString(),
+                    userId.ToString()
+                );
+
+                return html;
+
+
+                //return entity.ApplicationId;
             }
             catch
             {
@@ -209,10 +236,14 @@ namespace RajFabAPI.Services
         }
 
 
-        public async Task<string> RenewSteamPipeLineAsync(  RenewSteamPipeLineDto dto)
+        public async Task<string> RenewSteamPipeLineAsync(  RenewSteamPipeLineDto dto, Guid userId)
         {
             if (dto == null)
                 throw new ArgumentNullException(nameof(dto));
+
+            var module = await _dbcontext.Set<FormModule>()
+                       .FirstOrDefaultAsync(m => m.Name == ApplicationTypeNames.Stplrenewal)
+                       ?? throw new Exception("Stpl  Renew module not found in FormModules. Please ensure the module is seeded.");
 
             await using var tx = await _dbcontext.Database.BeginTransactionAsync();
 
@@ -316,7 +347,24 @@ namespace RajFabAPI.Services
                 await _dbcontext.SaveChangesAsync();
                 await tx.CommitAsync();
 
-                return entity.ApplicationId;
+                var user = await _dbcontext.Users
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(u => u.Id == userId)
+                    ?? throw new Exception("User not found.");
+
+                var html = await _paymentService.ActionRequestPaymentRPP(
+                    entity.Amount,
+                    user.FullName,
+                    user.Mobile,
+                    user.Email,
+                    user.Username,
+                    "4157FE34BBAE3A958D8F58CCBFAD7",
+                    "UWf6a7cDCP",
+                    entity.ApplicationId!,
+                    module.Id.ToString(),
+                    userId.ToString()
+                );
+                return html;
             }
             catch
             {

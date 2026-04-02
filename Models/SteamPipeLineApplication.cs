@@ -10,6 +10,7 @@ namespace RajFabAPI.Models
         public string ApplicationId { get; set; } = string.Empty; // 2026/47/STPL/41628
         public string? BoilerApplicationNo { get; set; }
         public string SteamPipeLineRegistrationNo { get; set; } = string.Empty;
+        public Decimal Amount { get; set; }
         public string? ProposedLayoutDescription { get; set; }
         public string? ConsentLetterProvided { get; set; }
         public string? SteamPipeLineDrawingNo { get; set; }

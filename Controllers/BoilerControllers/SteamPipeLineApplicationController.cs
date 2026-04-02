@@ -34,7 +34,7 @@ namespace RajFabAPI.Controllers.SteamPipeLineApplicationControllers
             if (userIdGuid == Guid.Empty)
                 return Unauthorized("Invalid user.");
 
-            var applicationId = await _service.SaveSteamPipeLineAsync(  dto,  "new",  null);
+            var applicationId = await _service.SaveSteamPipeLineAsync(  dto, userIdGuid, "new",  null);
 
             return Ok(new
             {
@@ -59,7 +59,7 @@ namespace RajFabAPI.Controllers.SteamPipeLineApplicationControllers
             if (userIdGuid == Guid.Empty)
                 return Unauthorized("Invalid user.");
 
-            var newAppId = await _service.SaveSteamPipeLineAsync(  dto,  "amend",  steamPipeLineRegistrationNo);
+            var newAppId = await _service.SaveSteamPipeLineAsync(  dto, userIdGuid,  "amend",   steamPipeLineRegistrationNo);
 
             return Ok(new
             {
@@ -71,7 +71,11 @@ namespace RajFabAPI.Controllers.SteamPipeLineApplicationControllers
         [HttpPost("renew")]
         public async Task<IActionResult> Renew( [FromBody] RenewSteamPipeLineDto dto)
         {
-            var appId = await _service.RenewSteamPipeLineAsync(dto);
+            var userId = User.FindFirst("userId")?.Value;
+            var userIdGuid = Guid.TryParse(userId, out var parsedGuid)
+                ? parsedGuid
+                : Guid.Empty;
+            var appId = await _service.RenewSteamPipeLineAsync(dto, userIdGuid);
 
             return Ok(new
             {

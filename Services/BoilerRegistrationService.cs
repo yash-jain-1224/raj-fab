@@ -210,7 +210,41 @@ namespace RajFabAPI.Services
                         ? baseRecord!.Version + 0.1m
                         : 1.0m;
 
-                const decimal boilerRegistrationFee = 10000m;
+                var bd = dto.BoilerDetail ?? new BoilerTechnicalDto();
+
+                decimal heatingSurface = bd.HeatingSurfaceArea ?? 0;
+
+                if (type == "new" && heatingSurface <= 0)
+                {
+                    throw new Exception("Heating Surface Area is required for fee calculation.");
+                }
+
+                decimal calculatedFee = 0;
+
+                if (type == "new")
+                {
+                    if (heatingSurface <= 3000)
+                    {
+                        calculatedFee = await _dbcontext.BoilerFees
+                            .Where(x => x.MaxHeatingSurfaceArea >= heatingSurface)
+                            .OrderBy(x => x.MaxHeatingSurfaceArea)
+                            .Select(x => x.Fees)
+                            .FirstOrDefaultAsync();
+                    }
+                    else
+                    {
+                        var baseFee = await _dbcontext.BoilerFees
+                            .Where(x => x.MaxHeatingSurfaceArea == 3000)
+                            .Select(x => x.Fees)
+                            .FirstOrDefaultAsync();
+
+                        var extraBlocks = Math.Ceiling((heatingSurface - 3000) / 200);
+
+                        calculatedFee = baseFee + (decimal)extraBlocks * 600;
+                    }
+                }
+
+                //const decimal boilerRegistrationFee = 10000m;
 
                 var registration = new BoilerRegistration
                 {
@@ -220,7 +254,8 @@ namespace RajFabAPI.Services
                     Type = type,
                     Status = "Pending",
                     Version = version,
-                    Amount = type == "new" ? boilerRegistrationFee : 100m,
+                    //Amount = type == "new" ? boilerRegistrationFee : 100m,
+                    Amount = type == "new" ? calculatedFee : 100m,
                     OldRegistrationNo = isTransferOtherState ? dto.OldRegistrationNo : null,
                     OldStateName = isTransferOtherState ? dto.OldStateName : null,
                     CreatedAt = DateTime.Now,
@@ -231,7 +266,7 @@ namespace RajFabAPI.Services
                 await _dbcontext.SaveChangesAsync();
 
 
-                var bd = dto.BoilerDetail ?? new BoilerTechnicalDto();
+               
 
                 var renewalYears =
                     type == "new"
@@ -263,6 +298,7 @@ namespace RajFabAPI.Services
                     MakerNumber = bd.MakerNumber ?? baseDetail?.MakerNumber,
                     YearOfMake = bd.YearOfMake ?? baseDetail?.YearOfMake,
                     HeatingSurfaceArea = bd.HeatingSurfaceArea ?? baseDetail?.HeatingSurfaceArea,
+
 
                     EvaporationCapacity = bd.EvaporationCapacity ?? baseDetail?.EvaporationCapacity,
                     EvaporationUnit = bd.EvaporationUnit ?? baseDetail?.EvaporationUnit,

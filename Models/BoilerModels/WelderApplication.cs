@@ -15,6 +15,7 @@ namespace RajFabAPI.Models.BoilerModels
         public string? WelderRegistrationNo { get; set; }
 
         public string? Type { get; set; }
+        public Decimal Amount { get; set; }
 
         public decimal Version { get; set; } = 1.0m;
 

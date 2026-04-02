@@ -8,6 +8,7 @@ using RajFabAPI.Models.BoilerModels;
 using RajFabAPI.Services.Interface;
 using System;
 using System.Text.Json;
+using static RajFabAPI.Constants.AppConstants;
 
 namespace RajFabAPI.Services
 {
@@ -15,11 +16,13 @@ namespace RajFabAPI.Services
     {
         private readonly ApplicationDbContext _dbcontext;
         private readonly IWebHostEnvironment _environment;
+        private readonly IPaymentService _paymentService;
 
-        public EconomiserService(ApplicationDbContext dbcontext, IWebHostEnvironment environment)
+        public EconomiserService(ApplicationDbContext dbcontext, IWebHostEnvironment environment, IPaymentService paymentService)
         {
             _dbcontext = dbcontext;
             _environment = environment;
+            _paymentService = paymentService;
         }
 
 
@@ -85,6 +88,10 @@ namespace RajFabAPI.Services
                 throw new ArgumentNullException(nameof(dto));
 
             type = type?.ToLower() ?? "new";
+
+            var module = await _dbcontext.Set<FormModule>()
+                        .FirstOrDefaultAsync(m => m.Name == ApplicationTypeNames.EconomiserRegistration)
+                        ?? throw new Exception("Economiser Registration module not found in FormModules. Please ensure the module is seeded.");
 
             await using var tx = await _dbcontext.Database.BeginTransactionAsync();
 
@@ -156,7 +163,7 @@ namespace RajFabAPI.Services
                     validUpto = baseRecord.ValidUpto;
                 }
 
-            
+                const decimal economiserRegistrationFee = 10000m;
 
                 var registration = new EconomiserRegistration
                 {
@@ -164,7 +171,7 @@ namespace RajFabAPI.Services
 
                     ApplicationId = applicationNo,
                     EconomiserRegistrationNo = regNo,
-
+                    Amount = economiserRegistrationFee,
                     FactoryRegistrationNumber = dto.FactoryRegistrationNumber ?? baseRecord?.FactoryRegistrationNumber,
                     FactoryDetailJson = dto.FactoryDetailJson ?? baseRecord?.FactoryDetailJson,
 
@@ -212,7 +219,25 @@ namespace RajFabAPI.Services
 
                 await tx.CommitAsync();
 
-                return registration.ApplicationId;
+                var user = await _dbcontext.Users
+                                       .AsNoTracking()
+                                       .FirstOrDefaultAsync(u => u.Id == userId)
+                                       ?? throw new Exception("User not found.");
+
+               var html= await _paymentService.ActionRequestPaymentRPP(
+                    registration.Amount,
+                    user.FullName,
+                    user.Mobile,
+                    user.Email,
+                    user.Username,
+                    "4157FE34BBAE3A958D8F58CCBFAD7",
+                    "UWf6a7cDCP",
+                    registration.ApplicationId!,
+                    module.Id.ToString(),
+                    userId.ToString()
+                );
+
+                return html;
             }
             catch
             {
@@ -225,6 +250,9 @@ namespace RajFabAPI.Services
         {
             if (dto == null)
                 throw new ArgumentNullException(nameof(dto));
+            var module = await _dbcontext.Set<FormModule>()
+                       .FirstOrDefaultAsync(m => m.Name == ApplicationTypeNames.Economiserrenewal)
+                       ?? throw new Exception("Economiser Registration module not found in FormModules. Please ensure the module is seeded.");
 
             if (string.IsNullOrWhiteSpace(dto.EconomiserRegistrationNo))
                 throw new ArgumentException("EconomiserRegistrationNo is required");
@@ -328,8 +356,25 @@ namespace RajFabAPI.Services
 
                 await _dbcontext.SaveChangesAsync();
                 await tx.CommitAsync();
+                var user = await _dbcontext.Users
+                                       .AsNoTracking()
+                                       .FirstOrDefaultAsync(u => u.Id == userId)
+                                       ?? throw new Exception("User not found.");
 
-                return applicationId;
+                var html = await _paymentService.ActionRequestPaymentRPP(
+                     renewed.Amount,
+                     user.FullName,
+                     user.Mobile,
+                     user.Email,
+                     user.Username,
+                     "4157FE34BBAE3A958D8F58CCBFAD7",
+                     "UWf6a7cDCP",
+                     renewed.ApplicationId!,
+                     module.Id.ToString(),
+                     userId.ToString()
+                 );
+
+                return html;
             }
             catch
             {

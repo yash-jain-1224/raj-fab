@@ -13,6 +13,7 @@ namespace RajFabAPI.Services
     {
         private readonly ApplicationDbContext _dbcontext;
         private readonly IWebHostEnvironment _environment;
+        private readonly IPaymentService _paymentService;
 
         public WelderApplicationService(ApplicationDbContext context)
         {
@@ -84,6 +85,10 @@ namespace RajFabAPI.Services
 
             type = type?.ToLower() ?? "new";
 
+            var module = await _dbcontext.Set<FormModule>()
+                        .FirstOrDefaultAsync(m => m.Name == ApplicationTypeNames.WelderRegistration)
+                        ?? throw new Exception("Welder Registration module not found in FormModules. Please ensure the module is seeded.");
+
             await using var tx = await _dbcontext.Database.BeginTransactionAsync();
 
             try
@@ -154,14 +159,14 @@ namespace RajFabAPI.Services
                     validUpto = null;
                 }
 
-               
+                const decimal welderRegistrationFee = 10000m;
 
                 var registration = new WelderApplication
                 {
                     Id = Guid.NewGuid(),
                     ApplicationId = applicationNumber,
                     WelderRegistrationNo = finalRegistrationNo,
-
+                    Amount = welderRegistrationFee,
                     Type = type,
                     Version = version,
                     Status = "Pending",
@@ -260,8 +265,24 @@ namespace RajFabAPI.Services
 
                 await _dbcontext.SaveChangesAsync();
                 await tx.CommitAsync();
+                var user = await _dbcontext.Users
+                                                     .AsNoTracking()
+                                                     .FirstOrDefaultAsync(u => u.Id == userId)
+                                                     ?? throw new Exception("User not found.");
+                var html = await _paymentService.ActionRequestPaymentRPP(
+                     registration.Amount,
+                     user.FullName,
+                     user.Mobile,
+                     user.Email,
+                     user.Username,
+                     "4157FE34BBAE3A958D8F58CCBFAD7",
+                     "UWf6a7cDCP",
+                     registration.ApplicationId!,
+                     module.Id.ToString(),
+                     userId.ToString()
+                 );
 
-                return registration.ApplicationId!;
+                return html;
             }
             catch
             {
@@ -275,6 +296,10 @@ namespace RajFabAPI.Services
         {
             if (dto == null)
                 throw new ArgumentNullException(nameof(dto));
+            var module = await _dbcontext.Set<FormModule>()
+                      .FirstOrDefaultAsync(m => m.Name == ApplicationTypeNames.WelderRenewal)
+                      ?? throw new Exception("Welder Registration module not found in FormModules. Please ensure the module is seeded.");
+
 
             await using var tx = await _dbcontext.Database.BeginTransactionAsync();
 
@@ -312,6 +337,8 @@ namespace RajFabAPI.Services
 
                 var applicationNumber = await GenerateApplicationNumberAsync("renew");
 
+                const decimal welderRenewFee = 10000m;
+
                 var renewed = new WelderApplication
                 {
                     Id = Guid.NewGuid(),
@@ -320,6 +347,7 @@ namespace RajFabAPI.Services
 
                     Type = "renew",
                     Status = "Pending",
+                    Amount = welderRenewFee,
 
                     Version = Math.Round(lastApproved.Version + 0.1m, 1),
 
@@ -420,7 +448,24 @@ namespace RajFabAPI.Services
                 await _dbcontext.SaveChangesAsync();
                 await tx.CommitAsync();
 
-                return renewed.ApplicationId!;
+                var user = await _dbcontext.Users
+                                                    .AsNoTracking()
+                                                    .FirstOrDefaultAsync(u => u.Id == userId)
+                                                    ?? throw new Exception("User not found.");
+                var html = await _paymentService.ActionRequestPaymentRPP(
+                     renewed.Amount,
+                     user.FullName,
+                     user.Mobile,
+                     user.Email,
+                     user.Username,
+                     "4157FE34BBAE3A958D8F58CCBFAD7",
+                     "UWf6a7cDCP",
+                     renewed.ApplicationId!,
+                     module.Id.ToString(),
+                     userId.ToString()
+                 );
+
+                return html;
             }
             catch
             {

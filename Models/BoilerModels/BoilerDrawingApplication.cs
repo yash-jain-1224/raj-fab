@@ -14,6 +14,8 @@ namespace RajFabAPI.Models.BoilerModels
 
         public string? BoilerDrawingRegistrationNo { get; set; }
 
+        public decimal Amount { get; set; }
+
         /* ================= FACTORY ================= */
 
         public string? FactoryRegistrationNumber { get; set; }

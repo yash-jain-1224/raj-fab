@@ -7,6 +7,7 @@ using RajFabAPI.Models.BoilerModels;
 using RajFabAPI.Services.Interface;
 using System;
 using System.Text.Json;
+using static RajFabAPI.Constants.AppConstants;
 
 namespace RajFabAPI.Services
 {
@@ -14,11 +15,13 @@ namespace RajFabAPI.Services
     {
         private readonly ApplicationDbContext _dbcontext;
         private readonly IWebHostEnvironment _environment;
+        private readonly IPaymentService _paymentService;
 
-        public BoilerDrawingService(ApplicationDbContext dbcontext, IWebHostEnvironment environment)
+        public BoilerDrawingService(ApplicationDbContext dbcontext, IWebHostEnvironment environment, IPaymentService paymentService)
         {
             _dbcontext = dbcontext;
             _environment = environment;
+            _paymentService = paymentService;
         }
 
         private async Task<string> GenerateBoilerDrawingRegistrationNoAsync()
@@ -82,6 +85,9 @@ namespace RajFabAPI.Services
                 throw new ArgumentNullException(nameof(dto));
 
             type = type?.ToLower() ?? "new";
+            var module = await _dbcontext.Set<FormModule>()
+                        .FirstOrDefaultAsync(m => m.Name == ApplicationTypeNames.BoilerDrawingRegistration)
+                        ?? throw new Exception("Boiler Drawing Registration module not found in FormModules. Please ensure the module is seeded.");
 
             await using var tx = await _dbcontext.Database.BeginTransactionAsync();
 
@@ -149,13 +155,17 @@ namespace RajFabAPI.Services
 
                 /* ================= INSERT ================= */
 
+
+                const decimal BoilerDrawingRegistrationFee = 10000m;
+
+
                 var registration = new BoilerDrawingApplication
                 {
                     Id = Guid.NewGuid(),
 
                     ApplicationId = applicationId,
                     BoilerDrawingRegistrationNo = regNo,
-
+                    Amount= BoilerDrawingRegistrationFee,
                     FactoryRegistrationNumber =
                         dto.FactoryRegistrationNumber ?? baseRecord?.FactoryRegistrationNumber,
 
@@ -195,8 +205,24 @@ namespace RajFabAPI.Services
 
                 await _dbcontext.SaveChangesAsync();
                 await tx.CommitAsync();
+                var user = await _dbcontext.Users
+                                                                    .AsNoTracking()
+                                                                    .FirstOrDefaultAsync(u => u.Id == userId)
+                                                                    ?? throw new Exception("User not found.");
+                var html = await _paymentService.ActionRequestPaymentRPP(
+                     registration.Amount,
+                     user.FullName,
+                     user.Mobile,
+                     user.Email,
+                     user.Username,
+                     "4157FE34BBAE3A958D8F58CCBFAD7",
+                     "UWf6a7cDCP",
+                     registration.ApplicationId!,
+                     module.Id.ToString(),
+                     userId.ToString()
+                 );
 
-                return applicationId;
+                return html;
             }
             catch
             {
@@ -216,6 +242,9 @@ namespace RajFabAPI.Services
 
             if (dto.RenewalYears <= 0)
                 throw new ArgumentException("RenewalYears must be greater than zero");
+            var module = await _dbcontext.Set<FormModule>()
+                       .FirstOrDefaultAsync(m => m.Name == ApplicationTypeNames.BoierDrawingRenewal)
+                       ?? throw new Exception("Boiler Drawing Renew module not found in FormModules. Please ensure the module is seeded.");
 
             await using var tx = await _dbcontext.Database.BeginTransactionAsync();
 
@@ -262,8 +291,9 @@ namespace RajFabAPI.Services
 
 
                 var applicationId = await GenerateApplicationNumberAsync("renew");
+                const decimal BoilerDrawingRenewFee = 10000m;
 
-               
+
 
                 var renewed = new BoilerDrawingApplication
                 {
@@ -271,6 +301,7 @@ namespace RajFabAPI.Services
 
                     ApplicationId = applicationId,
                     BoilerDrawingRegistrationNo = latest.BoilerDrawingRegistrationNo,
+                    Amount = BoilerDrawingRenewFee,
 
                     FactoryRegistrationNumber = latest.FactoryRegistrationNumber,
                     FactoryDetailjson = latest.FactoryDetailjson,
@@ -305,8 +336,24 @@ namespace RajFabAPI.Services
 
                 await _dbcontext.SaveChangesAsync();
                 await tx.CommitAsync();
+                var user = await _dbcontext.Users
+                                                                   .AsNoTracking()
+                                                                   .FirstOrDefaultAsync(u => u.Id == userId)
+                                                                   ?? throw new Exception("User not found.");
+                var html = await _paymentService.ActionRequestPaymentRPP(
+                     renewed.Amount,
+                     user.FullName,
+                     user.Mobile,
+                     user.Email,
+                     user.Username,
+                     "4157FE34BBAE3A958D8F58CCBFAD7",
+                     "UWf6a7cDCP",
+                     renewed.ApplicationId!,
+                     module.Id.ToString(),
+                     userId.ToString()
+                 );
 
-                return applicationId;
+                return html;
             }
             catch
             {

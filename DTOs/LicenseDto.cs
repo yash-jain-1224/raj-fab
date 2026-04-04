@@ -18,16 +18,6 @@ namespace RajFabAPI.DTOs
         [Required]
         public DateTime ValidTo { get; set; }
 
-        [Required]
-        [MaxLength(255)]
-        public string Place { get; set; } = string.Empty;
-
-        public DateTime Date { get; set; } = DateTime.Now;
-
-        public string? ManagerSignature { get; set; }
-        public string? OccupierSignature { get; set; }
-        public string? AuthorisedSignature { get; set; }
-
         public int? NoOfYears { get; set; }
 
         // Workers employed

@@ -850,7 +850,7 @@ namespace RajFabAPI.Services
                 if (application == null)
                     return BuildErrorRedirect("Application not found");
 
-                application.ESignPrnNumber = prn;
+                application.ESignPrnNumberOccupier = prn;
                 application.UpdatedDate = DateTime.Now;
 
                 var Module = await _db.Modules

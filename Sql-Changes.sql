@@ -2072,3 +2072,43 @@ ADD
 
     FactoryData NVARCHAR(MAX) NULL,
     MapApprovalData NVARCHAR(MAX) NULL;
+
+ALTER TABLE FactoryLicenses
+DROP COLUMN 
+    Place,
+    Date,
+    ManagerSignature,
+    OccupierSignature,
+    AuthorisedSignature,
+    ESignPrnNumber,
+    IsESignCompleted;
+
+ALTER TABLE FactoryLicenses
+    ADD ApplicationId NVARCHAR(50) NOT NULL DEFAULT '';
+
+ALTER TABLE BoilerRegistrations
+    ADD ObjectionLetterUrl NVARCHAR(500) NOT NULL DEFAULT '';
+
+ALTER TABLE FactoryMapApprovals
+    ADD ApplicationId NVARCHAR(50) NOT NULL DEFAULT '';
+
+ALTER TABLE EstablishmentRegistrations
+    ADD Form32 NVARCHAR(500) NOT NULL DEFAULT '';
+ALTER TABLE EstablishmentRegistrations
+    ADD ListOfPartners NVARCHAR(500) NOT NULL DEFAULT '';
+
+ALTER TABLE ApplicationRegistrations
+    DROP COLUMN ESignPrnNumber;
+
+ALTER TABLE ApplicationRegistrations
+ADD 
+    ESignPrnNumberOccupier NVARCHAR(50) NULL,
+    ESignPrnNumberManager NVARCHAR(50) NULL;
+
+    
+ALTER TABLE EstablishmentRegistrations
+DROP COLUMN 
+    Date,
+    Signature,
+    IsESignCompleted,
+    ESignPrnNumber;

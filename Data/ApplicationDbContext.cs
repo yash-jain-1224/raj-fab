@@ -794,18 +794,12 @@ namespace RajFabAPI.Data
                 entity.Property(e => e.Status)
                       .HasMaxLength(50);
 
-                entity.Property(e => e.Place)
-                      .HasMaxLength(200);
-
                 entity.Property(e => e.RegistrationNumber)
                       .HasMaxLength(100);
 
                 entity.Property(e => e.Type)
                       .HasMaxLength(50)
                       .IsRequired();
-
-                entity.Property(e => e.Signature)
-                      .HasMaxLength(200);
 
                 entity.Property(e => e.ApplicationPDFUrl)
                       .HasMaxLength(500);
@@ -817,9 +811,6 @@ namespace RajFabAPI.Data
                 entity.Property(e => e.UpdatedDate)
                       .HasColumnType("datetime2");
 
-                entity.Property(e => e.Date)
-                      .HasColumnType("datetime");
-
                 // decimal columns
                 entity.Property(e => e.Version)
                       .HasColumnType("decimal(3,1)")
@@ -830,9 +821,6 @@ namespace RajFabAPI.Data
 
                 // bit columns
                 entity.Property(e => e.IsPaymentCompleted)
-                      .HasColumnType("bit");
-
-                entity.Property(e => e.IsESignCompleted)
                       .HasColumnType("bit");
             });
 

@@ -19,12 +19,9 @@ namespace RajFabAPI.DTOs
         public PersonDetailDto? ManagerOrAgentDetail { get; set; }
         public List<ContractorDetailDto>? ContractorDetail { get; set; }
 
-        public string? Place { get; set; }
-        public DateTime? Date { get; set; }         // use string for payload dates to match incoming JSON
         public bool AutoRenewal { get; set; } = false;
         public bool SameAsFactoryManager { get; set; } = false;
         public bool SameAsFactoryEmployer { get; set; } = false;
-        public string? Signature { get; set; }    // file reference or base64 string depending on client
         
         [Required]
         [StringLength(500)]
@@ -43,6 +40,10 @@ namespace RajFabAPI.DTOs
         [Required]
         [StringLength(500)]
         public string LoadSanctionCopy { get; set; }
+
+        public string? Form32 { get; set; } = string.Empty;
+        
+        public string? ListOfPartners { get; set; } = string.Empty;
     }
 
     public class EstablishmentRegistrationDetailsDto
@@ -157,6 +158,7 @@ namespace RajFabAPI.DTOs
 
     public class FactoryDetailsDto
     {
+        public Guid? Id { get; set; }
         public string? ManufacturingType { get; set; }
         public string? ManufacturingDetail { get; set; }
         public string? FactorySituation { get; set; }
@@ -190,6 +192,7 @@ namespace RajFabAPI.DTOs
         public string? ActivityAsPerNIC { get; set; }
         public string? NICCodeDetail { get; set; }
         public string? IdentificationOfEstablishment { get; set; }
+        public DateTime? UpdatedAt { get; set; } = DateTime.Now;
     }
 
     public class BeediCigarWorksDto

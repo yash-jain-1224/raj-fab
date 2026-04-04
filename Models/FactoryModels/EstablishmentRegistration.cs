@@ -36,24 +36,18 @@ namespace RajFabAPI.Models
         [StringLength(500)]
 
         public string LoadSanctionCopy { get; set; } = string.Empty;
+        public string? ListOfPartners { get; set; } = string.Empty;
+        public string? Form32 { get; set; } = string.Empty;
 
         public string? RegistrationNumber { get; set; }
 
         [Required]
         [Column(TypeName = "decimal(3,1)")]
         public decimal Version { get; set; } = 1.0m;
-
-        public string? Place { get; set; }
-        public string? Signature { get; set; }
-        public DateTime? Date { get; set; }
         public bool AutoRenewal { get; set; } = false;
-        public bool IsESignCompleted { get; set; } = false;
         public bool IsPaymentCompleted { get; set; } = false;
         public string? ApplicationPDFUrl { get; set; }
         public string? ObjectionLetterUrl { get; set; } = string.Empty;
-
-        [StringLength(100)]
-        public string? ESignPrnNumber { get; set; }
 
         public DateTime CreatedDate { get; set; } = DateTime.Now;
         public DateTime UpdatedDate { get; set; } = DateTime.Now;

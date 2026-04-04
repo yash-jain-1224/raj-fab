@@ -17,6 +17,7 @@ namespace RajFabAPI.Models
 
         [MaxLength(100)]
         public string? FactoryRegistrationNumber { get; set; }
+        public string ApplicationNumber { get; set; }
 
         public int NoOfYears { get; set; } = 1;
 
@@ -26,16 +27,6 @@ namespace RajFabAPI.Models
         [Required]
         public DateTime ValidTo { get; set; }
 
-        [Required]
-        [MaxLength(255)]
-        public string Place { get; set; } = string.Empty;
-
-        [Required]
-        public DateTime Date { get; set; }
-
-        public string? ManagerSignature { get; set; }
-        public string? OccupierSignature { get; set; }
-        public string? AuthorisedSignature { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         public DateTime UpdatedAt { get; set; } = DateTime.Now;
@@ -66,9 +57,6 @@ namespace RajFabAPI.Models
         public string? ApplicationPDFUrl { get; set; }
         public string? ObjectionLetterUrl { get; set; } = "";
 
-        [StringLength(100)]
-        public string? ESignPrnNumber { get; set; }
-        public bool IsESignCompleted { get; set; } = false;
 
         // Workers employed
         public int? WorkersProposedMale { get; set; }

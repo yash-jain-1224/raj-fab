@@ -11,6 +11,7 @@ namespace RajFabAPI.Models
         [Required]
         [MaxLength(255)]
         public string AcknowledgementNumber { get; set; }
+        public string ApplicationNumber { get; set; }
 
         [Required]
         [StringLength(200)]

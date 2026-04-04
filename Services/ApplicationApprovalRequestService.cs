@@ -760,7 +760,7 @@ namespace RajFabAPI.Services
 
                 EstablishmentRegistration? estReg = null;
                 EstablishmentDetail? estDetail = null;
-                FactoryDetail? factoryDetail = null;
+                FactoryDetailsDto? factoryDetail = null;
                 FactoryMapApproval? mapApprovalDetail = null;
                 string? factoryTypeName = null;
 
@@ -795,7 +795,7 @@ namespace RajFabAPI.Services
                                 on districtDetail.DivisionId equals division.Id into divisionJoin
                             from divisionDetail in divisionJoin.DefaultIfEmpty()
 
-                            select new FactoryDetail
+                            select new FactoryDetailsDto
                             {
                                 Id = f.Id,
                                 ManufacturingType = f.ManufacturingType,

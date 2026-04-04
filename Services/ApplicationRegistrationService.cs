@@ -138,6 +138,7 @@ namespace RajFabAPI.Services
                                            appReg.ApplicationId,
                                            appReg.CreatedDate,
                                            appReg.ModuleId,
+                                           appReg.ESignPrnNumberOccupier,
                                        };
             var appRegistrations = await appRegistrationQuery.ToListAsync();
 
@@ -153,8 +154,9 @@ namespace RajFabAPI.Services
                                         estRegistration.Status,
                                         estRegistration.CreatedDate,
                                         establishmentDetail.EstablishmentName,
-                                        estRegistration.IsESignCompleted,
-                                        estRegistration.IsPaymentCompleted
+                                        appRegistration.ESignPrnNumberOccupier,
+                                        estRegistration.IsPaymentCompleted,
+                                        estRegistration.ApplicationId
                                     };
                     var estDetailSingle = await estDetail.FirstOrDefaultAsync();
                     var latestStatus = await _db.Transactions
@@ -170,9 +172,10 @@ namespace RajFabAPI.Services
                         Status = estDetailSingle.Status,
                         CreatedDate = appRegistration.CreatedDate,
                         ApplicationId = appRegistration.ApplicationId,
+                        ApplicationNumber = estDetailSingle.ApplicationId,
                         ApplicationTitle = estDetailSingle != null ? estDetailSingle.EstablishmentName : "",
                         IsPaymentCompleted = estDetailSingle.IsPaymentCompleted,
-                        IsESignCompleted = estDetailSingle.IsESignCompleted,
+                        IsESignCompleted = !string.IsNullOrEmpty(estDetailSingle.ESignPrnNumberOccupier),
                         IsPaymentPending = latestStatus == "PENDING"
                     });
                 }
@@ -197,6 +200,7 @@ namespace RajFabAPI.Services
                             ApplicationType = appRegistration.ApplicationTypeName,
                             Status = mapApproval.Status,
                             CreatedDate = appRegistration.CreatedDate,
+                            ApplicationNumber = mapApproval.AcknowledgementNumber,
                             ApplicationId = appRegistration.ApplicationId,
                             ApplicationTitle = factoryDetails != null ? factoryDetails.name : "",
                             IsESignCompleted = mapApproval.IsESignCompleted,
@@ -277,6 +281,7 @@ namespace RajFabAPI.Services
                         ApplicationType = appRegistration.ApplicationTypeName, // FactoryLicense / Amendment / Renewal
                         Status = factoryLicense.Status,
                         CreatedDate = appRegistration.CreatedDate,
+                        ApplicationNumber = factoryLicense.ApplicationNumber,
                         ApplicationId = factoryLicense.Id,
                         ApplicationTitle = estDetails?.EstablishmentName ?? "Factory License",
                         IsPaymentCompleted = factoryLicense.IsPaymentCompleted,
@@ -453,7 +458,7 @@ namespace RajFabAPI.Services
                     _logger.LogInformation("Fetching ApplicationRegistration for PRN: {PRN}", prnNumber);
 
                     var appReg = await _db.Set<ApplicationRegistration>()
-                        .FirstOrDefaultAsync(r => r.ESignPrnNumber == prnNumber);
+                        .FirstOrDefaultAsync(r => r.ESignPrnNumberOccupier == prnNumber);
 
                     if (appReg == null)
                     {
@@ -568,7 +573,6 @@ namespace RajFabAPI.Services
                             subDivisionId
                         );
 
-                        estReg.IsESignCompleted = true;
                         estReg.UpdatedDate = DateTime.Now;
                         applicationUrl = estReg.ApplicationPDFUrl;
                     }
@@ -996,7 +1000,7 @@ namespace RajFabAPI.Services
                 .FirstOrDefaultAsync(r => r.ApplicationId == registrationId);
             if (appReg == null)
                 return false;
-            appReg.ESignPrnNumber = prnNumber;
+            appReg.ESignPrnNumberOccupier = prnNumber;
             appReg.UpdatedDate = DateTime.Now;
             await _db.SaveChangesAsync();
             return true;

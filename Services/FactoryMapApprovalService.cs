@@ -284,12 +284,14 @@ namespace RajFabAPI.Services
                     acknowledgementNumber = GenerateAcknowledgementNumber();
                     newVersion = 1.0m;
                 }
+                var applicationNumber = await GenerateApplicationNumberAsync();
 
                 // Ensure Id is set before using as FK
                 var application = new FactoryMapApproval
                 {
                     Id = Guid.NewGuid().ToString(),
                     AcknowledgementNumber = acknowledgementNumber,
+                    ApplicationNumber = applicationNumber,
                     PlantParticulars = request.PlantParticulars,
                     ProductName = request.FactoryTypeId,
                     ManufacturingProcess = request.ManufacturingProcess,
@@ -697,6 +699,41 @@ namespace RajFabAPI.Services
             var year = DateTime.Now.Year;
             var sequence = DateTime.Now.Ticks.ToString().Substring(8, 6);
             return $"FMA{year}{sequence}";
+        }
+
+        private async Task<string> GenerateApplicationNumberAsync()
+        {
+            var year = DateTime.Now.Year;
+            string prefix = $"P-";
+
+            // Get latest application number
+            var lastApp = await _context.FactoryMapApprovals
+                .Where(x => x.AcknowledgementNumber.StartsWith(prefix)
+                        && x.AcknowledgementNumber.Contains($"/CIFB/{year}"))
+                .OrderByDescending(x => x.CreatedAt)
+                .Select(x => x.AcknowledgementNumber)
+                .FirstOrDefaultAsync();
+
+            int nextNumber = 1;
+
+            if (!string.IsNullOrEmpty(lastApp))
+            {
+                // Format: P-482193/CIFB/2026
+                int dashIndex = lastApp.IndexOf('-');
+                int slashIndex = lastApp.IndexOf("/CIFB");
+
+                if (dashIndex != -1 && slashIndex != -1)
+                {
+                    var numberPart = lastApp.Substring(dashIndex + 1, slashIndex - (dashIndex + 1));
+
+                    if (int.TryParse(numberPart, out int lastNumber))
+                    {
+                        nextNumber = lastNumber + 1;
+                    }
+                }
+            }
+
+            return $"{prefix}{nextNumber}/CIFB/{year}";
         }
 
         private async Task<Dictionary<string, string>> LoadDistricts(IEnumerable<string?> districtIds)

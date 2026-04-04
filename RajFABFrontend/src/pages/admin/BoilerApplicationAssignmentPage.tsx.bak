@@ -1,0 +1,272 @@
+import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { Search, Calendar, UserCheck } from "lucide-react";
+import {
+  useBoilerApplications,
+  useInspectorUsers,
+  useAssignToInspector,
+} from "@/hooks/api/useBoilerApplicationAssign";
+import { useOffices } from "@/hooks/api";
+import { useAuth } from "@/utils/AuthProvider";
+import { BoilerApplication } from "@/services/api/boilerApplicationAssignApi";
+import formatDate from "@/utils/formatDate";
+import getStatusColor from "@/utils/getStatusColor";
+
+const BOILER_APPLICATION_TYPES = [
+  "All",
+  "Boiler Registration",
+  "Boiler Renewal",
+  "Boiler Repair",
+  "Boiler Modification",
+  "Boiler Transfer",
+  "Boiler Closure",
+  "Boiler Manufacturer Registration",
+  "Boiler Erector Registration",
+  "Steam Pipeline",
+  "Welder Test",
+  "Economiser",
+];
+
+export default function BoilerApplicationAssignmentPage() {
+  const { user } = useAuth();
+  const [selectedOfficeId, setSelectedOfficeId] = useState<string>("");
+  const [selectedType, setSelectedType] = useState<string>("");
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const { applications, isLoading, refetch } = useBoilerApplications(
+    selectedOfficeId || undefined,
+    selectedType && selectedType !== "All" ? selectedType : undefined
+  );
+  const { inspectors } = useInspectorUsers();
+  const { offices } = useOffices();
+  const assignMutation = useAssignToInspector();
+
+  const [assignDialog, setAssignDialog] = useState<{ open: boolean; app: BoilerApplication | null }>({ open: false, app: null });
+  const [selectedInspectorId, setSelectedInspectorId] = useState("");
+
+  const filtered = applications.filter((app) => {
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+    return [app.applicationRegistrationNumber, app.applicationTitle, app.applicationType, app.status]
+      .filter(Boolean)
+      .some((f) => f.toLowerCase().includes(term));
+  });
+
+  const handleAssign = () => {
+    if (!assignDialog.app || !selectedInspectorId || !user) return;
+    assignMutation.mutate(
+      {
+        applicationRegistrationId: String(assignDialog.app.approvalRequestId),
+        applicationType: assignDialog.app.applicationType,
+        applicationTitle: assignDialog.app.applicationTitle || assignDialog.app.applicationRegistrationNumber,
+        applicationRegistrationNumber: assignDialog.app.applicationRegistrationNumber,
+        assignedToUserId: selectedInspectorId,
+        assignedByUserId: user.id,
+      },
+      {
+        onSuccess: () => {
+          setAssignDialog({ open: false, app: null });
+          setSelectedInspectorId("");
+        },
+      }
+    );
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Boiler Application Assignment</h1>
+        <p className="text-muted-foreground">
+          View boiler applications and assign them to inspectors
+        </p>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-4 items-end">
+        <div className="min-w-48">
+          <Label>Filter by Office</Label>
+          <Select value={selectedOfficeId} onValueChange={setSelectedOfficeId}>
+            <SelectTrigger>
+              <SelectValue placeholder="All Offices" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">All Offices</SelectItem>
+              {offices?.map((o: any) => (
+                <SelectItem key={o.id} value={o.id}>
+                  {o.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="min-w-52">
+          <Label>Filter by Application Type</Label>
+          <Select value={selectedType} onValueChange={setSelectedType}>
+            <SelectTrigger>
+              <SelectValue placeholder="All Types" />
+            </SelectTrigger>
+            <SelectContent>
+              {BOILER_APPLICATION_TYPES.map((t) => (
+                <SelectItem key={t} value={t}>
+                  {t}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="relative flex-1 min-w-56">
+          <Label>Search</Label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by number, type..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        </div>
+
+        <Button variant="outline" onClick={() => refetch()}>
+          Refresh
+        </Button>
+      </div>
+
+      {/* Table */}
+      {isLoading ? (
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      ) : (
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Registration No.</TableHead>
+                <TableHead>Application Type</TableHead>
+                <TableHead>Title</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead className="text-right">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                    No boiler applications found
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filtered.map((app) => (
+                  <TableRow key={app.approvalRequestId}>
+                    <TableCell className="font-medium">
+                      {app.applicationRegistrationNumber || "—"}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{app.applicationType}</Badge>
+                    </TableCell>
+                    <TableCell>{app.applicationTitle || "—"}</TableCell>
+                    <TableCell>
+                      <Badge className={getStatusColor(app.status)}>{app.status}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        {formatDate(app.createdDate)}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          setAssignDialog({ open: true, app });
+                          setSelectedInspectorId("");
+                        }}
+                        className="gap-2"
+                      >
+                        <UserCheck className="h-4 w-4" />
+                        Assign to Inspector
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {/* Assign Dialog */}
+      <Dialog
+        open={assignDialog.open}
+        onOpenChange={(open) => setAssignDialog({ open, app: null })}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign to Inspector</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="p-3 bg-muted rounded-lg text-sm">
+              <p>
+                <strong>Application:</strong>{" "}
+                {assignDialog.app?.applicationRegistrationNumber || assignDialog.app?.applicationTitle}
+              </p>
+              <p>
+                <strong>Type:</strong> {assignDialog.app?.applicationType}
+              </p>
+            </div>
+
+            <div>
+              <Label>Select Inspector</Label>
+              <Select value={selectedInspectorId} onValueChange={setSelectedInspectorId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose an inspector..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {inspectors.length === 0 ? (
+                    <SelectItem value="none" disabled>
+                      No inspectors available
+                    </SelectItem>
+                  ) : (
+                    inspectors.map((ins) => (
+                      <SelectItem key={ins.userId} value={ins.userId}>
+                        {ins.username} — {ins.roleName}, {ins.officeCityName}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setAssignDialog({ open: false, app: null })}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleAssign}
+                disabled={!selectedInspectorId || assignMutation.isPending}
+              >
+                {assignMutation.isPending ? "Assigning..." : "Assign"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

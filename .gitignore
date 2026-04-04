@@ -1,0 +1,17 @@
+# OS
+.DS_Store
+
+# SQL scripts generated during setup
+script_utf8.sql
+script_azure.sql
+
+# Frontend
+RajFABFrontend/node_modules/
+RajFABFrontend/dist/
+
+# Backend (inherit from RajFABBackend/.gitignore)
+RajFABBackend/bin/
+RajFABBackend/obj/
+RajFABBackend/Logs/
+RajFABBackend/wwwroot/
+RajFABBackend/.vs/

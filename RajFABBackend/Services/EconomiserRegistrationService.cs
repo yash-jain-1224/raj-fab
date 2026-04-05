@@ -8,6 +8,16 @@ using RajFabAPI.Models.BoilerModels;
 using RajFabAPI.Services.Interface;
 using System;
 using System.Text.Json;
+using static RajFabAPI.Constants.AppConstants;
+using iText.Kernel.Pdf;
+using iText.Layout;
+using iText.Layout.Element;
+using iText.Layout.Properties;
+using iText.Kernel.Colors;
+using iText.IO.Font.Constants;
+using iText.Kernel.Font;
+using PdfTable = iText.Layout.Element.Table;
+using PdfCell = iText.Layout.Element.Cell;
 
 namespace RajFabAPI.Services
 {
@@ -15,11 +25,17 @@ namespace RajFabAPI.Services
     {
         private readonly ApplicationDbContext _dbcontext;
         private readonly IWebHostEnvironment _environment;
+        private readonly IConfiguration _config;
+        private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IPaymentService _paymentService;
 
-        public EconomiserService(ApplicationDbContext dbcontext, IWebHostEnvironment environment)
+        public EconomiserService(ApplicationDbContext dbcontext, IWebHostEnvironment environment, IConfiguration config, IHttpContextAccessor httpContextAccessor, IPaymentService paymentService)
         {
             _dbcontext = dbcontext;
             _environment = environment;
+            _config = config;
+            _httpContextAccessor = httpContextAccessor;
+            _paymentService = paymentService;
         }
 
 
@@ -196,6 +212,7 @@ namespace RajFabAPI.Services
                     ValidFrom = validFrom,
                     ValidUpto = validUpto,
 
+                    Amount = type == "new" ? 5000m : 100m,
                     Type = type,
                     Version = version,
                     Status = "Pending",
@@ -209,6 +226,63 @@ namespace RajFabAPI.Services
                 _dbcontext.EconomiserRegistrations.Add(registration);
 
                 await _dbcontext.SaveChangesAsync();
+
+                // Auto-generate application PDF
+                try { await GenerateEconomiserPdfAsync(registration.ApplicationId); } catch { /* PDF generation failure should not block submission */ }
+
+                if (type == "new")
+                {
+                    var module = await _dbcontext.Set<FormModule>()
+                        .FirstOrDefaultAsync(m => m.Name == ApplicationTypeNames.EconomiserRegistration)
+                        ?? throw new Exception("Economiser Registration module not found.");
+
+                    var appReg = new ApplicationRegistration
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        ModuleId = module.Id,
+                        UserId = userId,
+                        ApplicationId = registration.ApplicationId,
+                        ApplicationRegistrationNumber = registration.ApplicationId,
+                        CreatedDate = DateTime.Now,
+                        UpdatedDate = DateTime.Now
+                    };
+                    _dbcontext.ApplicationRegistrations.Add(appReg);
+
+                    var appHistory = new ApplicationHistory
+                    {
+                        ApplicationId = registration.ApplicationId,
+                        ApplicationType = module.Name,
+                        Action = "Application Submitted",
+                        PreviousStatus = null,
+                        NewStatus = "Pending",
+                        Comments = "Application Submitted and sent for payment",
+                        ActionBy = userId.ToString(),
+                        ActionByName = "Applicant",
+                        ActionDate = DateTime.Now
+                    };
+                    _dbcontext.ApplicationHistories.Add(appHistory);
+
+                    await _dbcontext.SaveChangesAsync();
+                    await tx.CommitAsync();
+
+                    var user = await _dbcontext.Users
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(u => u.Id == userId)
+                        ?? throw new Exception("User not found.");
+
+                    return await _paymentService.ActionRequestPaymentRPP(
+                        registration.Amount,
+                        user.FullName,
+                        user.Mobile,
+                        user.Email,
+                        user.Username,
+                        "4157FE34BBAE3A958D8F58CCBFAD7",
+                        "UWf6a7cDCP",
+                        registration.ApplicationId!,
+                        module.Id.ToString(),
+                        userId.ToString()
+                    );
+                }
 
                 await tx.CommitAsync();
 
@@ -663,10 +737,94 @@ namespace RajFabAPI.Services
                 throw;
             }
         }
+
+        public async Task<string> GenerateEconomiserPdfAsync(string applicationId)
+        {
+            var entity = await _dbcontext.EconomiserRegistrations
+                .FirstOrDefaultAsync(a => a.ApplicationId == applicationId);
+
+            if (entity == null)
+                throw new Exception("Economiser registration not found");
+
+            var uploadPath = Path.Combine(_environment.WebRootPath, "boiler-economiser-forms");
+            Directory.CreateDirectory(uploadPath);
+
+            var fileName = $"economiser_application_{entity.Id}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+            var filePath = Path.Combine(uploadPath, fileName);
+
+            var httpContext = _httpContextAccessor.HttpContext
+                ?? throw new InvalidOperationException("HTTP context unavailable");
+            var request = httpContext.Request;
+            var baseUrl = _config["BaseUrl"] ?? $"{request.Scheme}://{request.Host}";
+            var fileUrl = $"{baseUrl}/boiler-economiser-forms/{fileName}";
+
+            var sections = new List<PdfSection>
+            {
+                new PdfSection
+                {
+                    Title = "Application Info",
+                    Rows = new List<(string, string?)>
+                    {
+                        ("Application Id", entity.ApplicationId),
+                        ("Economiser Registration No", entity.EconomiserRegistrationNo),
+                        ("Type", entity.Type),
+                        ("Status", entity.Status),
+                        ("Factory Registration Number", entity.FactoryRegistrationNumber)
+                    }
+                },
+                new PdfSection
+                {
+                    Title = "Economiser Details",
+                    Rows = new List<(string, string?)>
+                    {
+                        ("Makers Number", entity.MakersNumber),
+                        ("Makers Name", entity.MakersName),
+                        ("Makers Address", entity.MakersAddress),
+                        ("Year Of Make", entity.YearOfMake?.ToString()),
+                        ("Erection Type", entity.ErectionType)
+                    }
+                },
+                new PdfSection
+                {
+                    Title = "Technical Details",
+                    Rows = new List<(string, string?)>
+                    {
+                        ("Pressure From", entity.PressureFrom?.ToString()),
+                        ("Pressure To", entity.PressureTo?.ToString()),
+                        ("Outlet Temperature", entity.OutletTemperature?.ToString()),
+                        ("Total Heating Surface Area", entity.TotalHeatingSurfaceArea?.ToString()),
+                        ("Number Of Tubes", entity.NumberOfTubes?.ToString()),
+                        ("Number Of Headers", entity.NumberOfHeaders?.ToString())
+                    }
+                },
+                new PdfSection
+                {
+                    Title = "Validity",
+                    Rows = new List<(string, string?)>
+                    {
+                        ("Valid From", entity.ValidFrom?.ToString("dd/MM/yyyy")),
+                        ("Valid Upto", entity.ValidUpto?.ToString("dd/MM/yyyy"))
+                    }
+                }
+            };
+
+            BoilerPdfHelper.GeneratePdf(
+                filePath,
+                "Form-ECO1",
+                "(See Indian Boilers Act, 1923)",
+                "Application for Economiser Registration",
+                entity.ApplicationId ?? "-",
+                entity.CreatedDate,
+                sections);
+
+            // Save URL back to DB
+            entity.ApplicationPDFUrl = fileUrl;
+            entity.UpdatedDate = DateTime.Now;
+            await _dbcontext.SaveChangesAsync();
+
+            return filePath;
+        }
+
     }
-
-
-
-
 
 }

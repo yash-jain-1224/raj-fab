@@ -34,6 +34,12 @@ namespace RajFabAPI.Controllers.BoilerControllers
 
                 var applicationId = await _boilerDrawingService.SaveBoilerDrawingAsync(dto, userIdGuid, "new", null);
 
+                // If result contains HTML (payment gateway redirect), return it
+                if (applicationId != null && applicationId.Contains("<html", StringComparison.OrdinalIgnoreCase))
+                {
+                    return Ok(new { success = true, html = applicationId });
+                }
+
                 return Ok(new
                 {
                     success = true,
@@ -174,7 +180,14 @@ namespace RajFabAPI.Controllers.BoilerControllers
             return Ok(result);
         }
 
-        [HttpPost("close")]         
+        [HttpPost("generate-pdf/{applicationId}")]
+        public async Task<IActionResult> GeneratePdf(string applicationId)
+        {
+            var filePath = await _boilerDrawingService.GenerateDrawingPdfAsync(WebUtility.UrlDecode(applicationId));
+            return Ok(new { success = true, message = "PDF generated successfully" });
+        }
+
+        [HttpPost("close")]
         public async Task<IActionResult> CloseBoilerDrawing(  [FromBody] BoilerDrawingClosureDto dto)
         {
             try

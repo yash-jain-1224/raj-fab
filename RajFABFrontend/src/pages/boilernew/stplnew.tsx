@@ -279,6 +279,13 @@ export default function StplNew() {
             : await createStpl(payload);
 
       if (response?.success) {
+        // New application: backend returns payment gateway HTML
+        if ((response as any)?.html) {
+          document.open();
+          document.write((response as any).html);
+          document.close();
+          return;
+        }
         toast.success(
           mode === "update"
             ? "Steam pipeline application updated successfully"

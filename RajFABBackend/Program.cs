@@ -879,6 +879,13 @@ var folders = new[]
     "factory-map-forms",
     "factory-license-forms",
     "boiler-registration-forms",
+    "boiler-stpl-forms",
+    "boiler-economiser-forms",
+    "boiler-welder-forms",
+    "boiler-repairer-forms",
+    "boiler-manufacture-forms",
+    "boiler-drawing-forms",
+    "boiler-smtc-forms",
     "objection-letters",
 };
 

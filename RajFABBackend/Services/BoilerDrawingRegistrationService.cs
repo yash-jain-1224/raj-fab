@@ -7,6 +7,16 @@ using RajFabAPI.Models.BoilerModels;
 using RajFabAPI.Services.Interface;
 using System;
 using System.Text.Json;
+using static RajFabAPI.Constants.AppConstants;
+using iText.Kernel.Pdf;
+using iText.Layout;
+using iText.Layout.Element;
+using iText.Layout.Properties;
+using iText.Kernel.Colors;
+using iText.IO.Font.Constants;
+using iText.Kernel.Font;
+using PdfTable = iText.Layout.Element.Table;
+using PdfCell = iText.Layout.Element.Cell;
 
 namespace RajFabAPI.Services
 {
@@ -14,11 +24,17 @@ namespace RajFabAPI.Services
     {
         private readonly ApplicationDbContext _dbcontext;
         private readonly IWebHostEnvironment _environment;
+        private readonly IConfiguration _config;
+        private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IPaymentService _paymentService;
 
-        public BoilerDrawingService(ApplicationDbContext dbcontext, IWebHostEnvironment environment)
+        public BoilerDrawingService(ApplicationDbContext dbcontext, IWebHostEnvironment environment, IConfiguration config, IHttpContextAccessor httpContextAccessor, IPaymentService paymentService)
         {
             _dbcontext = dbcontext;
             _environment = environment;
+            _config = config;
+            _httpContextAccessor = httpContextAccessor;
+            _paymentService = paymentService;
         }
 
         private async Task<string> GenerateBoilerDrawingRegistrationNoAsync()
@@ -181,6 +197,8 @@ namespace RajFabAPI.Services
                     ValidFrom = validFrom,
                     ValidUpto = validUpto,
 
+                    Amount = type == "new" ? 5000m : 100m,
+
                     Status = "Pending",
                     Type = type,
                     Version = version,
@@ -194,6 +212,64 @@ namespace RajFabAPI.Services
                 _dbcontext.BoilerDrawingApplications.Add(registration);
 
                 await _dbcontext.SaveChangesAsync();
+
+                // Auto-generate application PDF
+                try { await GenerateDrawingPdfAsync(registration.ApplicationId); } catch { /* PDF generation failure should not block submission */ }
+
+                if (type == "new")
+                {
+                    var module = await _dbcontext.Set<FormModule>()
+                        .FirstOrDefaultAsync(m => m.Name == ApplicationTypeNames.BoilerDrawingRegistration)
+                        ?? throw new Exception("BoilerDrawingRegistration module not found.");
+
+                    var appReg = new ApplicationRegistration
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        ModuleId = module.Id,
+                        UserId = userId,
+                        ApplicationId = registration.ApplicationId,
+                        ApplicationRegistrationNumber = registration.ApplicationId,
+                        CreatedDate = DateTime.Now,
+                        UpdatedDate = DateTime.Now
+                    };
+                    _dbcontext.ApplicationRegistrations.Add(appReg);
+
+                    var history = new ApplicationHistory
+                    {
+                        ApplicationId = registration.ApplicationId,
+                        ApplicationType = module.Name,
+                        Action = "Application Submitted",
+                        PreviousStatus = null,
+                        NewStatus = "Pending",
+                        Comments = "Application Submitted and sent for payment",
+                        ActionBy = userId.ToString(),
+                        ActionByName = "Applicant",
+                        ActionDate = DateTime.Now
+                    };
+                    _dbcontext.ApplicationHistories.Add(history);
+
+                    await _dbcontext.SaveChangesAsync();
+                    await tx.CommitAsync();
+
+                    var user = await _dbcontext.Users
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(u => u.Id == userId)
+                        ?? throw new Exception("User not found.");
+
+                    return await _paymentService.ActionRequestPaymentRPP(
+                        registration.Amount,
+                        user.FullName,
+                        user.Mobile,
+                        user.Email,
+                        user.Username,
+                        "4157FE34BBAE3A958D8F58CCBFAD7",
+                        "UWf6a7cDCP",
+                        registration.ApplicationId!,
+                        module.Id.ToString(),
+                        userId.ToString()
+                    );
+                }
+
                 await tx.CommitAsync();
 
                 return applicationId;
@@ -607,6 +683,83 @@ namespace RajFabAPI.Services
                 await tx.RollbackAsync();
                 throw;
             }
+        }
+
+
+        public async Task<string> GenerateDrawingPdfAsync(string applicationId)
+        {
+            var entity = await _dbcontext.BoilerDrawingApplications
+                .FirstOrDefaultAsync(a => a.ApplicationId == applicationId);
+
+            if (entity == null)
+                throw new Exception("Boiler Drawing application not found");
+
+            var uploadPath = Path.Combine(_environment.WebRootPath, "boiler-drawing-forms");
+            Directory.CreateDirectory(uploadPath);
+
+            var fileName = $"drawing_application_{entity.Id}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+            var filePath = Path.Combine(uploadPath, fileName);
+
+            var httpContext = _httpContextAccessor.HttpContext
+                ?? throw new InvalidOperationException("HTTP context unavailable");
+            var request = httpContext.Request;
+            var baseUrl = _config["BaseUrl"] ?? $"{request.Scheme}://{request.Host}";
+            var fileUrl = $"{baseUrl}/boiler-drawing-forms/{fileName}";
+
+            var sections = new List<PdfSection>
+            {
+                new PdfSection
+                {
+                    Title = "Application Info",
+                    Rows = new List<(string, string?)>
+                    {
+                        ("Application Id", entity.ApplicationId),
+                        ("Boiler Drawing Registration No", entity.BoilerDrawingRegistrationNo),
+                        ("Factory Registration Number", entity.FactoryRegistrationNumber),
+                        ("Type", entity.Type),
+                        ("Status", entity.Status)
+                    }
+                },
+                new PdfSection
+                {
+                    Title = "Drawing Details",
+                    Rows = new List<(string, string?)>
+                    {
+                        ("Maker Number", entity.MakerNumber),
+                        ("Maker Name And Address", entity.MakerNameAndAddress),
+                        ("Heating Surface Area", entity.HeatingSurfaceArea),
+                        ("Evaporation Capacity", entity.EvaporationCapacity),
+                        ("Intended Working Pressure", entity.IntendedWorkingPressure),
+                        ("Boiler Type", entity.BoilerType),
+                        ("Drawing No", entity.DrawingNo)
+                    }
+                },
+                new PdfSection
+                {
+                    Title = "Validity",
+                    Rows = new List<(string, string?)>
+                    {
+                        ("Valid From", entity.ValidFrom?.ToString("dd/MM/yyyy")),
+                        ("Valid Upto", entity.ValidUpto?.ToString("dd/MM/yyyy"))
+                    }
+                }
+            };
+
+            BoilerPdfHelper.GeneratePdf(
+                filePath,
+                "Form-BDR1",
+                "(See Indian Boilers Act, 1923)",
+                "Application for Boiler Drawing Registration",
+                entity.ApplicationId ?? "-",
+                entity.CreatedDate,
+                sections);
+
+            // Save URL back to DB
+            entity.ApplicationPDFUrl = fileUrl;
+            entity.UpdatedDate = DateTime.Now;
+            await _dbcontext.SaveChangesAsync();
+
+            return filePath;
         }
 
 

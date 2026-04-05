@@ -7,6 +7,16 @@ using RajFabAPI.Models.BoilerModels;
 using RajFabAPI.Services.Interface;
 using System;
 using System.Text.Json;
+using static RajFabAPI.Constants.AppConstants;
+using iText.Kernel.Pdf;
+using iText.Layout;
+using iText.Layout.Element;
+using iText.Layout.Properties;
+using iText.Kernel.Colors;
+using iText.IO.Font.Constants;
+using iText.Kernel.Font;
+using PdfTable = iText.Layout.Element.Table;
+using PdfCell = iText.Layout.Element.Cell;
 
 namespace RajFabAPI.Services
 {
@@ -14,11 +24,17 @@ namespace RajFabAPI.Services
     {
         private readonly ApplicationDbContext _dbcontext;
         private readonly IWebHostEnvironment _environment;
+        private readonly IConfiguration _config;
+        private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IPaymentService _paymentService;
 
-        public BoilerManufactureService(ApplicationDbContext dbcontext, IWebHostEnvironment environment)
+        public BoilerManufactureService(ApplicationDbContext dbcontext, IWebHostEnvironment environment, IConfiguration config, IHttpContextAccessor httpContextAccessor, IPaymentService paymentService)
         {
             _dbcontext = dbcontext;
             _environment = environment;
+            _config = config;
+            _httpContextAccessor = httpContextAccessor;
+            _paymentService = paymentService;
         }
 
         private async Task<string> GenerateApplicationNumberAsync(string type)
@@ -194,6 +210,8 @@ namespace RajFabAPI.Services
                     ValidFrom = validFrom,
                     ValidUpto = validUpto,
 
+                    Amount = type == "new" ? 5000m : 100m,
+
                     Type = type,
                     Version = version,
                     Status = "Pending",
@@ -317,6 +335,64 @@ namespace RajFabAPI.Services
                 }
 
                 await _dbcontext.SaveChangesAsync();
+
+                // Auto-generate application PDF
+                try { await GenerateManufacturePdfAsync(registration.ApplicationId); } catch { /* PDF generation failure should not block submission */ }
+
+                if (type == "new")
+                {
+                    var module = await _dbcontext.Set<FormModule>()
+                        .FirstOrDefaultAsync(m => m.Name == ApplicationTypeNames.BoilerManufactureRegistration)
+                        ?? throw new Exception("BoilerManufactureRegistration module not found.");
+
+                    var appReg = new ApplicationRegistration
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        ModuleId = module.Id,
+                        UserId = userId,
+                        ApplicationId = registration.ApplicationId,
+                        ApplicationRegistrationNumber = registration.ApplicationId,
+                        CreatedDate = DateTime.Now,
+                        UpdatedDate = DateTime.Now
+                    };
+                    _dbcontext.ApplicationRegistrations.Add(appReg);
+
+                    var history = new ApplicationHistory
+                    {
+                        ApplicationId = registration.ApplicationId,
+                        ApplicationType = module.Name,
+                        Action = "Application Submitted",
+                        PreviousStatus = null,
+                        NewStatus = "Pending",
+                        Comments = "Application Submitted and sent for payment",
+                        ActionBy = userId.ToString(),
+                        ActionByName = "Applicant",
+                        ActionDate = DateTime.Now
+                    };
+                    _dbcontext.ApplicationHistories.Add(history);
+
+                    await _dbcontext.SaveChangesAsync();
+                    await tx.CommitAsync();
+
+                    var user = await _dbcontext.Users
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(u => u.Id == userId)
+                        ?? throw new Exception("User not found.");
+
+                    return await _paymentService.ActionRequestPaymentRPP(
+                        registration.Amount,
+                        user.FullName,
+                        user.Mobile,
+                        user.Email,
+                        user.Username,
+                        "4157FE34BBAE3A958D8F58CCBFAD7",
+                        "UWf6a7cDCP",
+                        registration.ApplicationId!,
+                        module.Id.ToString(),
+                        userId.ToString()
+                    );
+                }
+
                 await tx.CommitAsync();
 
                 return registration.ApplicationId!;
@@ -835,7 +911,67 @@ namespace RajFabAPI.Services
         }
 
 
+        public async Task<string> GenerateManufacturePdfAsync(string applicationId)
+        {
+            var entity = await _dbcontext.BoilerManufactureRegistrations
+                .Include(x => x.DesignFacility)
+                .Include(x => x.TestingFacility)
+                .Include(x => x.RDFacility)
+                .Include(x => x.NDTPersonnels)
+                .Include(x => x.QualifiedWelders)
+                .Include(x => x.TechnicalManpowers)
+                .FirstOrDefaultAsync(a => a.ApplicationId == applicationId);
 
+            if (entity == null)
+                throw new Exception("Boiler Manufacture registration not found");
+
+            var uploadPath = Path.Combine(_environment.WebRootPath, "boiler-manufacture-forms");
+            Directory.CreateDirectory(uploadPath);
+
+            var fileName = $"manufacture_application_{entity.Id}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+            var filePath = Path.Combine(uploadPath, fileName);
+
+            var httpContext = _httpContextAccessor.HttpContext
+                ?? throw new InvalidOperationException("HTTP context unavailable");
+            var request = httpContext.Request;
+            var baseUrl = _config["BaseUrl"] ?? $"{request.Scheme}://{request.Host}";
+            var fileUrl = $"{baseUrl}/boiler-manufacture-forms/{fileName}";
+
+            var sections = new List<PdfSection>
+            {
+                new PdfSection
+                {
+                    Title = "Application Info",
+                    Rows = new List<(string, string?)>
+                    {
+                        ("Application Id", entity.ApplicationId),
+                        ("Manufacture Registration No", entity.ManufactureRegistrationNo),
+                        ("Factory Registration No", entity.FactoryRegistrationNo),
+                        ("BM Classification", entity.BmClassification),
+                        ("Type", entity.Type),
+                        ("Status", entity.Status),
+                        ("Valid From", entity.ValidFrom?.ToString("dd/MM/yyyy")),
+                        ("Valid Upto", entity.ValidUpto?.ToString("dd/MM/yyyy"))
+                    }
+                }
+            };
+
+            BoilerPdfHelper.GeneratePdf(
+                filePath,
+                "Form-BMF1",
+                "(See Indian Boilers Act, 1923)",
+                "Application for Boiler Manufacture Registration",
+                entity.ApplicationId ?? "-",
+                entity.CreatedAt,
+                sections);
+
+            // Save URL back to DB
+            entity.ApplicationPDFUrl = fileUrl;
+            entity.UpdatedAt = DateTime.Now;
+            await _dbcontext.SaveChangesAsync();
+
+            return filePath;
+        }
 
 
     }

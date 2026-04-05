@@ -37,8 +37,15 @@ namespace RajFabAPI.Controllers.BoilerControllers
             var applicationId = await _repairerService
                 .SaveRepairerAsync(dto, userIdGuid, "new", null);
 
+            // If result contains HTML (payment gateway redirect), return it
+            if (applicationId != null && applicationId.Contains("<html", StringComparison.OrdinalIgnoreCase))
+            {
+                return Ok(new { success = true, html = applicationId });
+            }
+
             return Ok(new
             {
+                success = true,
                 message = "Boiler Repairer application created successfully",
                 applicationId = applicationId
             });
@@ -135,6 +142,20 @@ namespace RajFabAPI.Controllers.BoilerControllers
                 return NotFound("Latest approved record not found.");
 
             return Ok(result);
+        }
+
+        [HttpPost("generate-pdf/{applicationId}")]
+        public async Task<IActionResult> GeneratePdf(string applicationId)
+        {
+            try
+            {
+                var filePath = await _repairerService.GenerateRepairerPdfAsync(WebUtility.UrlDecode(applicationId));
+                return Ok(new { success = true, filePath, message = "PDF generated successfully." });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
         }
 
         /* ==========================================================

@@ -340,7 +340,7 @@ class BoilerApiService extends BaseApiService {
     });
   }
   async getSteamPipelineApplicationInfo(id: string): Promise<ApiResponse<BoilerApplication>> {
-    return this.request<ApiResponse<BoilerApplication>>(`/stpl/by-registration/${id}`);
+    return this.request<ApiResponse<BoilerApplication>>(`/stpl/by-application/${encodeURIComponent(id)}`);
   }
 
   async getBoilerRepairerApplications(): Promise<ApiResponse<any[]>> {

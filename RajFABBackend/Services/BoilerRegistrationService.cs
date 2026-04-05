@@ -344,6 +344,9 @@ namespace RajFabAPI.Services
 
                 await _dbcontext.SaveChangesAsync();
 
+                // Auto-generate application PDF
+                try { await GenerateBoilerApplicationPdfAsync(registration.ApplicationId); } catch { /* PDF generation failure should not block submission */ }
+
                 // For new boiler registration: create ApplicationRegistration + history, then trigger payment
                 if (type == "new")
                 {
@@ -1266,12 +1269,12 @@ namespace RajFabAPI.Services
 
                 var boiler = await _dbcontext.BoilerRegistrations
                     .Where(x => x.BoilerRegistrationNo == dto.BoilerRegistrationNo
-                             && x.Status == "Approved")
+                             && (x.Status == "Approved" || x.Status == "Pending"))
                     .OrderByDescending(x => x.Version)
                     .FirstOrDefaultAsync();
 
                 if (boiler == null)
-                    throw new Exception("Approved boiler record not found.");
+                    throw new Exception("Boiler record not found.");
 
                 /* ==========================================================
                    STEP-3 : BLOCK MULTIPLE CLOSURE APPLICATIONS
@@ -1320,11 +1323,59 @@ namespace RajFabAPI.Services
                 };
 
                 _dbcontext.BoilerClosures.Add(closure);
+                await _dbcontext.SaveChangesAsync();
+
+                /* STEP-6 : Payment */
+                var module = await _dbcontext.Set<FormModule>()
+                    .FirstOrDefaultAsync(m => m.Name == "Boiler Registration")
+                    ?? throw new Exception("Boiler Registration module not found.");
+
+                var appReg = new ApplicationRegistration
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    ModuleId = module.Id,
+                    UserId = userId,
+                    ApplicationId = applicationNo,
+                    ApplicationRegistrationNumber = applicationNo,
+                    CreatedDate = DateTime.Now,
+                    UpdatedDate = DateTime.Now
+                };
+                _dbcontext.ApplicationRegistrations.Add(appReg);
+
+                var history = new ApplicationHistory
+                {
+                    ApplicationId = applicationNo,
+                    ApplicationType = module.Name,
+                    Action = "Closure Application Submitted",
+                    PreviousStatus = null,
+                    NewStatus = "Pending",
+                    Comments = "Boiler closure application submitted and sent for payment",
+                    ActionBy = userId.ToString(),
+                    ActionByName = "Applicant",
+                    ActionDate = DateTime.Now
+                };
+                _dbcontext.ApplicationHistories.Add(history);
 
                 await _dbcontext.SaveChangesAsync();
                 await tx.CommitAsync();
 
-                return applicationNo;
+                var user = await _dbcontext.Users
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(u => u.Id == userId)
+                    ?? throw new Exception("User not found.");
+
+                return await _paymentService.ActionRequestPaymentRPP(
+                    5000m,
+                    user.FullName,
+                    user.Mobile,
+                    user.Email,
+                    user.Username,
+                    "4157FE34BBAE3A958D8F58CCBFAD7",
+                    "UWf6a7cDCP",
+                    applicationNo,
+                    module.Id.ToString(),
+                    userId.ToString()
+                );
             }
             catch
             {
@@ -1466,12 +1517,12 @@ namespace RajFabAPI.Services
             {
                 /* STEP-1 : Validate Boiler */
                 var boiler = await _dbcontext.BoilerRegistrations
-                    .Where(x => x.BoilerRegistrationNo == dto.BoilerRegistrationNo && x.Status == "Approved")
+                    .Where(x => x.BoilerRegistrationNo == dto.BoilerRegistrationNo && (x.Status == "Approved" || x.Status == "Pending"))
                     .OrderByDescending(x => x.Version)
                     .FirstOrDefaultAsync();
 
                 if (boiler == null)
-                    throw new Exception("Approved boiler not found.");
+                    throw new Exception("Boiler not found.");
 
                 /* STEP-2 : Get Latest Renewal (Ignore Status) */
                 //var latestRenewal = await _dbcontext.BoilerRegistrations
@@ -1506,7 +1557,7 @@ namespace RajFabAPI.Services
                     BoilerRegistrationNo = boiler.BoilerRegistrationNo!,
                     PersonDetailId = personId,
                     ApplicationId = applicationNo,
-                    //RenewalApplicationId = latestRenewal.ApplicationId,
+                    RenewalApplicationId = dto.RenewalApplicationId ?? boiler.ApplicationId ?? "",
                     RepairType = dto.RepairType,
                     AttendantCertificatePath = dto.AttendantCertificatePath,
                     OperationEngineerCertificatePath = dto.OperationEngineerCertificatePath,
@@ -1518,8 +1569,57 @@ namespace RajFabAPI.Services
                 _dbcontext.BoilerRepairModifications.Add(repair);
                 await _dbcontext.SaveChangesAsync();
 
+                /* STEP-7 : Payment */
+                var module = await _dbcontext.Set<FormModule>()
+                    .FirstOrDefaultAsync(m => m.Name == "Boiler Registration")
+                    ?? throw new Exception("Boiler Registration module not found.");
+
+                var appReg = new ApplicationRegistration
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    ModuleId = module.Id,
+                    UserId = userId,
+                    ApplicationId = applicationNo,
+                    ApplicationRegistrationNumber = applicationNo,
+                    CreatedDate = DateTime.Now,
+                    UpdatedDate = DateTime.Now
+                };
+                _dbcontext.ApplicationRegistrations.Add(appReg);
+
+                var history = new ApplicationHistory
+                {
+                    ApplicationId = applicationNo,
+                    ApplicationType = module.Name,
+                    Action = "Repair/Modification Submitted",
+                    PreviousStatus = null,
+                    NewStatus = "Pending",
+                    Comments = "Repair/Modification application submitted and sent for payment",
+                    ActionBy = userId.ToString(),
+                    ActionByName = "Applicant",
+                    ActionDate = DateTime.Now
+                };
+                _dbcontext.ApplicationHistories.Add(history);
+
+                await _dbcontext.SaveChangesAsync();
                 await tx.CommitAsync();
-                return applicationNo;
+
+                var user = await _dbcontext.Users
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(u => u.Id == userId)
+                    ?? throw new Exception("User not found.");
+
+                return await _paymentService.ActionRequestPaymentRPP(
+                    5000m,
+                    user.FullName,
+                    user.Mobile,
+                    user.Email,
+                    user.Username,
+                    "4157FE34BBAE3A958D8F58CCBFAD7",
+                    "UWf6a7cDCP",
+                    applicationNo,
+                    module.Id.ToString(),
+                    userId.ToString()
+                );
             }
             catch
             {
@@ -1691,92 +1791,62 @@ namespace RajFabAPI.Services
             var baseUrl = _config["BaseUrl"] ?? $"{request.Scheme}://{request.Host}";
             var fileUrl = $"{baseUrl}/boiler-registration-forms/{fileName}";
 
-            var boldFont = PdfFontFactory.CreateFont(StandardFonts.HELVETICA_BOLD);
-            var regularFont = PdfFontFactory.CreateFont(StandardFonts.HELVETICA);
-
-            using var writer = new PdfWriter(filePath);
-            using var pdf = new iText.Kernel.Pdf.PdfDocument(writer);
-            using var document = new Document(pdf);
-
-            // Header
-            document.Add(new Paragraph("Government of Rajasthan")
-                .SetFont(boldFont).SetFontSize(14).SetTextAlignment(TextAlignment.CENTER));
-            document.Add(new Paragraph("Boiler Registration Application")
-                .SetFont(boldFont).SetFontSize(12).SetTextAlignment(TextAlignment.CENTER));
-            document.Add(new Paragraph($"Application No: {boilerReg.ApplicationId ?? "-"}")
-                .SetFont(regularFont).SetFontSize(10).SetTextAlignment(TextAlignment.CENTER));
-            document.Add(new Paragraph($"Date: {boilerReg.CreatedAt:dd/MM/yyyy}")
-                .SetFont(regularFont).SetFontSize(10).SetTextAlignment(TextAlignment.CENTER));
-            document.Add(new Paragraph("\n"));
-
-            // Factory/Boiler Location Details
-            document.Add(new Paragraph("Boiler Location Details")
-                .SetFont(boldFont).SetFontSize(11).SetBackgroundColor(new DeviceGray(0.85f)));
-
-            var locationTable = new PdfTable(UnitValue.CreatePercentArray(new float[] { 1, 2 })).UseAllAvailableWidth();
-            void AddRow(string label, string? value)
+            var sections = new List<PdfSection>
             {
-                locationTable.AddCell(new PdfCell().Add(new Paragraph(label).SetFont(boldFont).SetFontSize(9)).SetBackgroundColor(new DeviceGray(0.93f)));
-                locationTable.AddCell(new PdfCell().Add(new Paragraph(value ?? "-").SetFont(regularFont).SetFontSize(9)));
-            }
+                new PdfSection
+                {
+                    Title = "Boiler Location Details",
+                    Rows = new List<(string, string?)>
+                    {
+                        ("Address Line 1", boilerReg.BoilerDetail?.AddressLine1),
+                        ("Address Line 2", boilerReg.BoilerDetail?.AddressLine2),
+                        ("Area", boilerReg.BoilerDetail?.Area),
+                        ("Pin Code", boilerReg.BoilerDetail?.PinCode?.ToString()),
+                        ("Telephone", boilerReg.BoilerDetail?.Telephone),
+                        ("Mobile", boilerReg.BoilerDetail?.Mobile),
+                        ("Email", boilerReg.BoilerDetail?.Email)
+                    }
+                },
+                new PdfSection
+                {
+                    Title = "Boiler Technical Details",
+                    Rows = new List<(string, string?)>
+                    {
+                        ("Maker Number", boilerReg.BoilerDetail?.MakerNumber),
+                        ("Year of Make", boilerReg.BoilerDetail?.YearOfMake?.ToString()),
+                        ("Heating Surface Area", boilerReg.BoilerDetail?.HeatingSurfaceArea?.ToString()),
+                        ("Evaporation Capacity", $"{boilerReg.BoilerDetail?.EvaporationCapacity} {boilerReg.BoilerDetail?.EvaporationUnit}"),
+                        ("Intended Working Pressure", $"{boilerReg.BoilerDetail?.IntendedWorkingPressure} {boilerReg.BoilerDetail?.PressureUnit}")
+                    }
+                }
+            };
 
-            AddRow("Address Line 1", boilerReg.BoilerDetail?.AddressLine1);
-            AddRow("Address Line 2", boilerReg.BoilerDetail?.AddressLine2);
-            AddRow("Area", boilerReg.BoilerDetail?.Area);
-            AddRow("Pin Code", boilerReg.BoilerDetail?.PinCode?.ToString());
-            AddRow("Telephone", boilerReg.BoilerDetail?.Telephone);
-            AddRow("Mobile", boilerReg.BoilerDetail?.Mobile);
-            AddRow("Email", boilerReg.BoilerDetail?.Email);
-            document.Add(locationTable);
-            document.Add(new Paragraph("\n"));
-
-            // Boiler Technical Details
-            document.Add(new Paragraph("Boiler Technical Details")
-                .SetFont(boldFont).SetFontSize(11).SetBackgroundColor(new DeviceGray(0.85f)));
-
-            var techTable = new PdfTable(UnitValue.CreatePercentArray(new float[] { 1, 2 })).UseAllAvailableWidth();
-            void AddTechRow(string label, string? value)
-            {
-                techTable.AddCell(new PdfCell().Add(new Paragraph(label).SetFont(boldFont).SetFontSize(9)).SetBackgroundColor(new DeviceGray(0.93f)));
-                techTable.AddCell(new PdfCell().Add(new Paragraph(value ?? "-").SetFont(regularFont).SetFontSize(9)));
-            }
-
-            AddTechRow("Maker Number", boilerReg.BoilerDetail?.MakerNumber);
-            AddTechRow("Year of Make", boilerReg.BoilerDetail?.YearOfMake?.ToString());
-            AddTechRow("Heating Surface Area", boilerReg.BoilerDetail?.HeatingSurfaceArea?.ToString());
-            AddTechRow("Evaporation Capacity", $"{boilerReg.BoilerDetail?.EvaporationCapacity} {boilerReg.BoilerDetail?.EvaporationUnit}");
-            AddTechRow("Intended Working Pressure", $"{boilerReg.BoilerDetail?.IntendedWorkingPressure} {boilerReg.BoilerDetail?.PressureUnit}");
-            document.Add(techTable);
-            document.Add(new Paragraph("\n"));
-
-            // Person Details
+            // Owner / Maker Details
             if (boilerReg.Persons != null && boilerReg.Persons.Any())
             {
-                document.Add(new Paragraph("Owner / Maker Details")
-                    .SetFont(boldFont).SetFontSize(11).SetBackgroundColor(new DeviceGray(0.85f)));
-
+                var personRows = new List<(string, string?)>();
                 foreach (var person in boilerReg.Persons)
                 {
-                    var personTable = new PdfTable(UnitValue.CreatePercentArray(new float[] { 1, 2 })).UseAllAvailableWidth();
-                    void AddPersonRow(string label, string? value)
-                    {
-                        personTable.AddCell(new PdfCell().Add(new Paragraph(label).SetFont(boldFont).SetFontSize(9)).SetBackgroundColor(new DeviceGray(0.93f)));
-                        personTable.AddCell(new PdfCell().Add(new Paragraph(value ?? "-").SetFont(regularFont).SetFontSize(9)));
-                    }
-                    AddPersonRow("Name", person.Name);
-                    AddPersonRow("Designation", person.Designation);
-                    AddPersonRow("Email", person.Email);
-                    AddPersonRow("Mobile", person.Mobile);
-                    document.Add(personTable);
-                    document.Add(new Paragraph("\n"));
+                    personRows.Add(("Name", person.Name));
+                    personRows.Add(("Designation", person.Designation));
+                    personRows.Add(("Email", person.Email));
+                    personRows.Add(("Mobile", person.Mobile));
                 }
+                sections.Add(new PdfSection
+                {
+                    Title = "Owner / Maker Details",
+                    Rows = personRows
+                });
             }
 
-            // Declaration
-            document.Add(new Paragraph("Declaration")
-                .SetFont(boldFont).SetFontSize(11).SetBackgroundColor(new DeviceGray(0.85f)));
-            document.Add(new Paragraph("I hereby declare that the information provided in this application is true and correct to the best of my knowledge.")
-                .SetFont(regularFont).SetFontSize(9));
+            BoilerPdfHelper.GeneratePdf(
+                filePath,
+                "Form-BR1",
+                "(See Indian Boilers Act, 1923)",
+                "Application for Registration of Boiler",
+                boilerReg.ApplicationId ?? "-",
+                boilerReg.CreatedAt,
+                sections);
 
             // Save URL back to DB
             boilerReg.ApplicationPDFUrl = fileUrl;

@@ -34,12 +34,19 @@ namespace RajFabAPI.Controllers.SteamPipeLineApplicationControllers
             if (userIdGuid == Guid.Empty)
                 return Unauthorized("Invalid user.");
 
-            var applicationId = await _service.SaveSteamPipeLineAsync(  dto,  "new",  null);
+            var result = await _service.SaveSteamPipeLineAsync(  dto,  userIdGuid,  "new",  null);
+
+            // If result contains HTML (payment gateway redirect), return it
+            if (result != null && result.Contains("<html", StringComparison.OrdinalIgnoreCase))
+            {
+                return Ok(new { success = true, html = result });
+            }
 
             return Ok(new
             {
+                success = true,
                 Message = "Steam Pipe Line application created successfully.",
-                ApplicationId = applicationId
+                ApplicationId = result
             });
         }
 
@@ -59,7 +66,7 @@ namespace RajFabAPI.Controllers.SteamPipeLineApplicationControllers
             if (userIdGuid == Guid.Empty)
                 return Unauthorized("Invalid user.");
 
-            var newAppId = await _service.SaveSteamPipeLineAsync(  dto,  "amend",  steamPipeLineRegistrationNo);
+            var newAppId = await _service.SaveSteamPipeLineAsync(  dto,  userIdGuid,  "amend",  steamPipeLineRegistrationNo);
 
             return Ok(new
             {
@@ -130,6 +137,13 @@ namespace RajFabAPI.Controllers.SteamPipeLineApplicationControllers
                 Message = "Application updated successfully.",
                 ApplicationId = result
             });
+        }
+
+        [HttpPost("generate-pdf/{applicationId}")]
+        public async Task<IActionResult> GeneratePdf(string applicationId)
+        {
+            var filePath = await _service.GenerateStplPdfAsync(WebUtility.UrlDecode(applicationId));
+            return Ok(new { success = true, message = "PDF generated successfully" });
         }
 
         [HttpPost("close")]

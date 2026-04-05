@@ -13,6 +13,7 @@ namespace RajFabAPI.Services.Interface
         Task<bool> UpdateEconomiserAsync(string applicationId, EconomiserCreateDto dto);
         Task<EconomiserDetailsDto?> GetByApplicationIdAsync(string applicationId);
         Task<string> CloseEconomiserAsync(EconomiserClosureDto dto, Guid userId);
+        Task<string> GenerateEconomiserPdfAsync(string applicationId);
 
 
     }

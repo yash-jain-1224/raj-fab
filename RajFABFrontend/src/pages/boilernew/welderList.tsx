@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Eye, Plus, FileBadge, Pencil, TimerReset } from "lucide-react";
+import { Eye, Plus, FileBadge, Pencil, TimerReset, Download } from "lucide-react";
 import {
   normalizeStatus,
   APPLICATION_STATUS,
@@ -122,6 +122,18 @@ export default function WelderList() {
         const maxVersion = Math.max(...applications.map((a: any) => a.version || 0));
         return (
           <div className="flex gap-2 justify-end">
+            {app.status?.toLowerCase()?.includes("approved") && (!app.version || app.version === maxVersion) && (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => navigate(`/user/boilernew-services/weldertest/${app.applicationId}`, {
+                  state: { mode: "amend" }
+                })}
+                title="Amendment"
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+            )}
             {app.status?.toLowerCase()?.includes("returned") && (
               <Button
                 onClick={() =>
@@ -154,6 +166,16 @@ export default function WelderList() {
               >
                 <TimerReset className="h-4 w-4 mr-2" />
                 Renew
+              </Button>
+            )}
+            {app.applicationPDFUrl && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => window.open(app.applicationPDFUrl, "_blank")}
+                title="Download Application PDF"
+              >
+                <Download className="h-4 w-4" />
               </Button>
             )}
             <Button

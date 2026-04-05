@@ -320,7 +320,6 @@ namespace RajFabAPI.Services
                     if (appeal == null)
                         continue;
 
-                    // Get establishment using FactoryRegistrationNumber
                     var estReg = _db.EstablishmentRegistrations
                         .FirstOrDefault(x => x.RegistrationNumber == appeal.FactoryRegistrationNumber);
 
@@ -332,12 +331,137 @@ namespace RajFabAPI.Services
                     applicationUserDashboardDtos.Add(new ApplicationUserDashboardDto
                     {
                         ApplicationRegistrationId = appRegistration.Id,
-                        ApplicationType = appRegistration.ApplicationTypeName, // FactoryLicense / Amendment / Renewal
+                        ApplicationType = appRegistration.ApplicationTypeName,
                         Status = appeal.Status,
                         CreatedDate = appRegistration.CreatedDate,
                         ApplicationId = appeal.Id,
                         ApplicationTitle = estDetails?.EstablishmentName ?? "Appeal",
                         IsESignCompleted = appeal.IsESignCompleted
+                    });
+                }
+                else if (appRegistration.ApplicationTypeName == ApplicationTypeNames.Stplregistration || appRegistration.ApplicationTypeName == ApplicationTypeNames.StplAmendment || appRegistration.ApplicationTypeName == ApplicationTypeNames.Stplrenew)
+                {
+                    var stpl = await _db.Set<SteamPipeLineApplication>().FirstOrDefaultAsync(x => x.ApplicationId == appRegistration.ApplicationId);
+                    if (stpl == null) continue;
+                    applicationUserDashboardDtos.Add(new ApplicationUserDashboardDto
+                    {
+                        ApplicationRegistrationId = appRegistration.Id,
+                        ApplicationType = appRegistration.ApplicationTypeName,
+                        Status = stpl.Status,
+                        CreatedDate = appRegistration.CreatedDate,
+                        ApplicationId = appRegistration.ApplicationId,
+                        ApplicationTitle = stpl.SteamPipeLineRegistrationNo ?? "Steam Pipeline",
+                        IsPaymentCompleted = stpl.IsPaymentCompleted,
+                        IsESignCompleted = stpl.IsESignCompleted
+                    });
+                }
+                else if (appRegistration.ApplicationTypeName == ApplicationTypeNames.WelderRegistration || appRegistration.ApplicationTypeName == ApplicationTypeNames.WelderRenew)
+                {
+                    var welder = await _db.Set<WelderApplication>().FirstOrDefaultAsync(x => x.ApplicationId == appRegistration.ApplicationId);
+                    if (welder == null) continue;
+                    applicationUserDashboardDtos.Add(new ApplicationUserDashboardDto
+                    {
+                        ApplicationRegistrationId = appRegistration.Id,
+                        ApplicationType = appRegistration.ApplicationTypeName,
+                        Status = welder.Status ?? "Pending",
+                        CreatedDate = appRegistration.CreatedDate,
+                        ApplicationId = appRegistration.ApplicationId,
+                        ApplicationTitle = welder.WelderRegistrationNo ?? "Welder Application",
+                        IsPaymentCompleted = welder.IsPaymentCompleted,
+                        IsESignCompleted = welder.IsESignCompleted
+                    });
+                }
+                else if (appRegistration.ApplicationTypeName == ApplicationTypeNames.EconomiserRegistration || appRegistration.ApplicationTypeName == ApplicationTypeNames.Economiserrenew)
+                {
+                    var eco = await _db.Set<EconomiserRegistration>().FirstOrDefaultAsync(x => x.ApplicationId == appRegistration.ApplicationId);
+                    if (eco == null) continue;
+                    applicationUserDashboardDtos.Add(new ApplicationUserDashboardDto
+                    {
+                        ApplicationRegistrationId = appRegistration.Id,
+                        ApplicationType = appRegistration.ApplicationTypeName,
+                        Status = eco.Status,
+                        CreatedDate = appRegistration.CreatedDate,
+                        ApplicationId = appRegistration.ApplicationId,
+                        ApplicationTitle = eco.EconomiserRegistrationNo ?? "Economiser",
+                        IsPaymentCompleted = eco.IsPaymentCompleted,
+                        IsESignCompleted = eco.IsESignCompleted
+                    });
+                }
+                else if (appRegistration.ApplicationTypeName == ApplicationTypeNames.BoilerManufactureRegistration || appRegistration.ApplicationTypeName == ApplicationTypeNames.BoilerManufactureAmend || appRegistration.ApplicationTypeName == ApplicationTypeNames.BoilerManufactureRenewal)
+                {
+                    var mfg = await _db.Set<BoilerManufactureRegistration>().FirstOrDefaultAsync(x => x.ApplicationId == appRegistration.ApplicationId);
+                    if (mfg == null) continue;
+                    applicationUserDashboardDtos.Add(new ApplicationUserDashboardDto
+                    {
+                        ApplicationRegistrationId = appRegistration.Id,
+                        ApplicationType = appRegistration.ApplicationTypeName,
+                        Status = mfg.Status,
+                        CreatedDate = appRegistration.CreatedDate,
+                        ApplicationId = appRegistration.ApplicationId,
+                        ApplicationTitle = mfg.ManufactureRegistrationNo ?? "Boiler Manufacture",
+                        IsPaymentCompleted = mfg.IsPaymentCompleted,
+                        IsESignCompleted = mfg.IsESignCompleted
+                    });
+                }
+                else if (appRegistration.ApplicationTypeName == ApplicationTypeNames.BoilerRepairerRegistration || appRegistration.ApplicationTypeName == ApplicationTypeNames.BoilerRepairerRenew)
+                {
+                    var rep = await _db.Set<BoilerRepairerRegistration>().FirstOrDefaultAsync(x => x.ApplicationId == appRegistration.ApplicationId);
+                    if (rep == null) continue;
+                    applicationUserDashboardDtos.Add(new ApplicationUserDashboardDto
+                    {
+                        ApplicationRegistrationId = appRegistration.Id,
+                        ApplicationType = appRegistration.ApplicationTypeName,
+                        Status = rep.Status,
+                        CreatedDate = appRegistration.CreatedDate,
+                        ApplicationId = appRegistration.ApplicationId,
+                        ApplicationTitle = rep.RepairerRegistrationNo ?? "Boiler Repairer",
+                        IsPaymentCompleted = rep.IsPaymentCompleted,
+                        IsESignCompleted = rep.IsESignCompleted
+                    });
+                }
+                else if (appRegistration.ApplicationTypeName == ApplicationTypeNames.BoilerDrawingRegistration || appRegistration.ApplicationTypeName == ApplicationTypeNames.BoierDrawingRenewal)
+                {
+                    var dwg = await _db.Set<BoilerDrawingApplication>().FirstOrDefaultAsync(x => x.ApplicationId == appRegistration.ApplicationId);
+                    if (dwg == null) continue;
+                    applicationUserDashboardDtos.Add(new ApplicationUserDashboardDto
+                    {
+                        ApplicationRegistrationId = appRegistration.Id,
+                        ApplicationType = appRegistration.ApplicationTypeName,
+                        Status = dwg.Status ?? "Pending",
+                        CreatedDate = appRegistration.CreatedDate,
+                        ApplicationId = appRegistration.ApplicationId,
+                        ApplicationTitle = dwg.BoilerDrawingRegistrationNo ?? "Boiler Drawing",
+                        IsPaymentCompleted = dwg.IsPaymentCompleted,
+                        IsESignCompleted = dwg.IsESignCompleted
+                    });
+                }
+                else if (appRegistration.ApplicationTypeName == ApplicationTypeNames.SMTCRegistration)
+                {
+                    var smtc = await _db.Set<SMTCRegistration>().FirstOrDefaultAsync(x => x.ApplicationId == appRegistration.ApplicationId);
+                    if (smtc == null) continue;
+                    applicationUserDashboardDtos.Add(new ApplicationUserDashboardDto
+                    {
+                        ApplicationRegistrationId = appRegistration.Id,
+                        ApplicationType = appRegistration.ApplicationTypeName,
+                        Status = smtc.Status,
+                        CreatedDate = appRegistration.CreatedDate,
+                        ApplicationId = appRegistration.ApplicationId,
+                        ApplicationTitle = smtc.SMTCRegistrationNo ?? "SMTC Registration",
+                        IsPaymentCompleted = smtc.IsPaymentCompleted,
+                        IsESignCompleted = smtc.IsESignCompleted
+                    });
+                }
+                else
+                {
+                    // Fallback for any unhandled module (closure, repair, etc.)
+                    applicationUserDashboardDtos.Add(new ApplicationUserDashboardDto
+                    {
+                        ApplicationRegistrationId = appRegistration.Id,
+                        ApplicationType = appRegistration.ApplicationTypeName,
+                        Status = "Pending",
+                        CreatedDate = appRegistration.CreatedDate,
+                        ApplicationId = appRegistration.ApplicationId,
+                        ApplicationTitle = appRegistration.ApplicationId ?? appRegistration.ApplicationTypeName,
                     });
                 }
             }
@@ -424,6 +548,69 @@ namespace RajFabAPI.Services
                     await _db.SaveChangesAsync();
                     await dbTx.CommitAsync();
 
+                    return true;
+                }
+                else if (applicationData.ModuleName == ApplicationTypeNames.Stplregistration || applicationData.ModuleName == ApplicationTypeNames.StplAmendment || applicationData.ModuleName == ApplicationTypeNames.Stplrenew)
+                {
+                    var stpl = await _db.Set<SteamPipeLineApplication>()
+                        .FirstOrDefaultAsync(x => x.ApplicationId == applicationId);
+                    if (stpl != null) { stpl.IsPaymentCompleted = true; stpl.UpdatedAt = DateTime.Now; }
+                    await _db.SaveChangesAsync();
+                    await dbTx.CommitAsync();
+                    return true;
+                }
+                else if (applicationData.ModuleName == ApplicationTypeNames.WelderRegistration || applicationData.ModuleName == ApplicationTypeNames.WelderRenew)
+                {
+                    var welder = await _db.Set<WelderApplication>()
+                        .FirstOrDefaultAsync(x => x.ApplicationId == applicationId);
+                    if (welder != null) { welder.IsPaymentCompleted = true; welder.UpdatedDate = DateTime.Now; }
+                    await _db.SaveChangesAsync();
+                    await dbTx.CommitAsync();
+                    return true;
+                }
+                else if (applicationData.ModuleName == ApplicationTypeNames.EconomiserRegistration || applicationData.ModuleName == ApplicationTypeNames.Economiserrenew)
+                {
+                    var eco = await _db.Set<EconomiserRegistration>()
+                        .FirstOrDefaultAsync(x => x.ApplicationId == applicationId);
+                    if (eco != null) { eco.IsPaymentCompleted = true; eco.UpdatedDate = DateTime.Now; }
+                    await _db.SaveChangesAsync();
+                    await dbTx.CommitAsync();
+                    return true;
+                }
+                else if (applicationData.ModuleName == ApplicationTypeNames.BoilerManufactureRegistration || applicationData.ModuleName == ApplicationTypeNames.BoilerManufactureAmend || applicationData.ModuleName == ApplicationTypeNames.BoilerManufactureRenewal)
+                {
+                    var mfg = await _db.Set<BoilerManufactureRegistration>()
+                        .FirstOrDefaultAsync(x => x.ApplicationId == applicationId);
+                    if (mfg != null) { mfg.IsPaymentCompleted = true; mfg.UpdatedAt = DateTime.Now; }
+                    await _db.SaveChangesAsync();
+                    await dbTx.CommitAsync();
+                    return true;
+                }
+                else if (applicationData.ModuleName == ApplicationTypeNames.BoilerRepairerRegistration || applicationData.ModuleName == ApplicationTypeNames.BoilerRepairerRenew)
+                {
+                    var rep = await _db.Set<BoilerRepairerRegistration>()
+                        .FirstOrDefaultAsync(x => x.ApplicationId == applicationId);
+                    if (rep != null) { rep.IsPaymentCompleted = true; rep.UpdatedAt = DateTime.Now; }
+                    await _db.SaveChangesAsync();
+                    await dbTx.CommitAsync();
+                    return true;
+                }
+                else if (applicationData.ModuleName == ApplicationTypeNames.BoilerDrawingRegistration || applicationData.ModuleName == ApplicationTypeNames.BoierDrawingRenewal)
+                {
+                    var dwg = await _db.Set<BoilerDrawingApplication>()
+                        .FirstOrDefaultAsync(x => x.ApplicationId == applicationId);
+                    if (dwg != null) { dwg.IsPaymentCompleted = true; dwg.UpdatedDate = DateTime.Now; }
+                    await _db.SaveChangesAsync();
+                    await dbTx.CommitAsync();
+                    return true;
+                }
+                else if (applicationData.ModuleName == ApplicationTypeNames.SMTCRegistration)
+                {
+                    var smtc = await _db.Set<SMTCRegistration>()
+                        .FirstOrDefaultAsync(x => x.ApplicationId == applicationId);
+                    if (smtc != null) { smtc.IsPaymentCompleted = true; smtc.UpdatedAt = DateTime.Now; }
+                    await _db.SaveChangesAsync();
+                    await dbTx.CommitAsync();
                     return true;
                 }
 

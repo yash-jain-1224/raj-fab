@@ -1303,6 +1303,12 @@ export default function BoilerManufactureRegistrationNew() {
       console.log("Response:", response);
 
       if (response.success) {
+        if ((response as any)?.html) {
+          document.open();
+          document.write((response as any).html);
+          document.close();
+          return;
+        }
         toast({ title: "Registration submitted successfully", description: "Your boiler manufacture registration has been submitted.", variant: "destructive" });
         navigate("/user");
       } else {

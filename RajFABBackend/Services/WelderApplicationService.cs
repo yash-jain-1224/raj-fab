@@ -1,3 +1,10 @@
+using iText.Kernel.Pdf;
+using iText.Layout;
+using iText.Layout.Element;
+using iText.Layout.Properties;
+using iText.Kernel.Colors;
+using iText.IO.Font.Constants;
+using iText.Kernel.Font;
 using Microsoft.EntityFrameworkCore;
 using RajFabAPI.Data;
 using RajFabAPI.DTOs;
@@ -6,6 +13,8 @@ using RajFabAPI.Models.BoilerModels;
 using RajFabAPI.Services.Interface;
 using System.Text.Json;
 using static RajFabAPI.Constants.AppConstants;
+using PdfTable = iText.Layout.Element.Table;
+using PdfCell = iText.Layout.Element.Cell;
 
 namespace RajFabAPI.Services
 {
@@ -13,10 +22,17 @@ namespace RajFabAPI.Services
     {
         private readonly ApplicationDbContext _dbcontext;
         private readonly IWebHostEnvironment _environment;
+        private readonly IPaymentService _paymentService;
+        private readonly IConfiguration _config;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public WelderApplicationService(ApplicationDbContext context)
+        public WelderApplicationService(ApplicationDbContext context, IPaymentService paymentService, IWebHostEnvironment environment, IConfiguration config, IHttpContextAccessor httpContextAccessor)
         {
             _dbcontext = context;
+            _paymentService = paymentService;
+            _environment = environment;
+            _config = config;
+            _httpContextAccessor = httpContextAccessor;
         }
 
         private async Task<string> GenerateApplicationNumberAsync(string type)
@@ -162,6 +178,7 @@ namespace RajFabAPI.Services
                     ApplicationId = applicationNumber,
                     WelderRegistrationNo = finalRegistrationNo,
 
+                    Amount = type == "new" ? 5000m : 100m,
                     Type = type,
                     Version = version,
                     Status = "Pending",
@@ -259,6 +276,64 @@ namespace RajFabAPI.Services
                 _dbcontext.WelderEmployers.Add(employer);
 
                 await _dbcontext.SaveChangesAsync();
+
+                // Auto-generate application PDF
+                try { await GenerateWelderPdfAsync(registration.ApplicationId); } catch { /* PDF generation failure should not block submission */ }
+
+                if (type == "new")
+                {
+                    var module = await _dbcontext.Set<FormModule>()
+                        .FirstOrDefaultAsync(m => m.Name == ApplicationTypeNames.WelderRegistration)
+                        ?? throw new Exception("Welder Registration module not found.");
+
+                    var appReg = new ApplicationRegistration
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        ModuleId = module.Id,
+                        UserId = userId,
+                        ApplicationId = registration.ApplicationId,
+                        ApplicationRegistrationNumber = registration.ApplicationId,
+                        CreatedDate = DateTime.Now,
+                        UpdatedDate = DateTime.Now
+                    };
+                    _dbcontext.ApplicationRegistrations.Add(appReg);
+
+                    var appHistory = new ApplicationHistory
+                    {
+                        ApplicationId = registration.ApplicationId,
+                        ApplicationType = module.Name,
+                        Action = "Application Submitted",
+                        PreviousStatus = null,
+                        NewStatus = "Pending",
+                        Comments = "Application Submitted and sent for payment",
+                        ActionBy = userId.ToString(),
+                        ActionByName = "Applicant",
+                        ActionDate = DateTime.Now
+                    };
+                    _dbcontext.ApplicationHistories.Add(appHistory);
+
+                    await _dbcontext.SaveChangesAsync();
+                    await tx.CommitAsync();
+
+                    var user = await _dbcontext.Users
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(u => u.Id == userId)
+                        ?? throw new Exception("User not found.");
+
+                    return await _paymentService.ActionRequestPaymentRPP(
+                        registration.Amount,
+                        user.FullName,
+                        user.Mobile,
+                        user.Email,
+                        user.Username,
+                        "4157FE34BBAE3A958D8F58CCBFAD7",
+                        "UWf6a7cDCP",
+                        registration.ApplicationId!,
+                        module.Id.ToString(),
+                        userId.ToString()
+                    );
+                }
+
                 await tx.CommitAsync();
 
                 return registration.ApplicationId!;
@@ -933,6 +1008,123 @@ namespace RajFabAPI.Services
                 await tx.RollbackAsync();
                 throw;
             }
+        }
+
+        public async Task<string> GenerateWelderPdfAsync(string applicationId)
+        {
+            var entity = await _dbcontext.WelderApplications
+                .Include(x => x.WelderDetail)
+                .Include(x => x.WelderEmployer)
+                .FirstOrDefaultAsync(x => x.ApplicationId == applicationId);
+
+            if (entity == null)
+                throw new Exception("Welder application not found");
+
+            var uploadPath = Path.Combine(_environment.WebRootPath, "boiler-welder-forms");
+            Directory.CreateDirectory(uploadPath);
+
+            var fileName = $"welder_application_{entity.Id}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+            var filePath = Path.Combine(uploadPath, fileName);
+
+            var httpContext = _httpContextAccessor.HttpContext
+                ?? throw new InvalidOperationException("HTTP context unavailable");
+            var request = httpContext.Request;
+            var baseUrl = _config["BaseUrl"] ?? $"{request.Scheme}://{request.Host}";
+            var fileUrl = $"{baseUrl}/boiler-welder-forms/{fileName}";
+
+            var sections = new List<PdfSection>
+            {
+                new PdfSection
+                {
+                    Title = "Application Info",
+                    Rows = new List<(string, string?)>
+                    {
+                        ("Application Id", entity.ApplicationId),
+                        ("Welder Registration No", entity.WelderRegistrationNo),
+                        ("Type", entity.Type),
+                        ("Status", entity.Status),
+                        ("Valid From", entity.ValidFrom?.ToString("dd/MM/yyyy")),
+                        ("Valid Upto", entity.ValidUpto?.ToString("dd/MM/yyyy"))
+                    }
+                }
+            };
+
+            // Welder Detail (only non-null properties)
+            if (entity.WelderDetail != null)
+            {
+                var wd = entity.WelderDetail;
+                var welderRows = new List<(string, string?)>();
+                void AddIfNotNull(string label, string? value) { if (value != null) welderRows.Add((label, value)); }
+                AddIfNotNull("Name", wd.Name);
+                AddIfNotNull("Father Name", wd.FatherName);
+                AddIfNotNull("DOB", wd.DOB?.ToString("dd/MM/yyyy"));
+                AddIfNotNull("Identification Mark", wd.IdentificationMark);
+                AddIfNotNull("Weight", wd.Weight?.ToString());
+                AddIfNotNull("Height", wd.Height?.ToString());
+                AddIfNotNull("Address Line 1", wd.AddressLine1);
+                AddIfNotNull("Address Line 2", wd.AddressLine2);
+                AddIfNotNull("District", wd.District);
+                AddIfNotNull("Tehsil", wd.Tehsil);
+                AddIfNotNull("Area", wd.Area);
+                AddIfNotNull("Pincode", wd.Pincode);
+                AddIfNotNull("Telephone", wd.Telephone);
+                AddIfNotNull("Mobile", wd.Mobile);
+                AddIfNotNull("Email", wd.Email);
+                AddIfNotNull("Experience Years", wd.ExperienceYears?.ToString());
+                AddIfNotNull("Experience Details", wd.ExperienceDetails);
+                AddIfNotNull("Experience Certificate", wd.ExperienceCertificate);
+                AddIfNotNull("Test Type", wd.TestType);
+                AddIfNotNull("Radiography", wd.Radiography);
+                AddIfNotNull("Materials", wd.Materials);
+                AddIfNotNull("Date Of Test", wd.DateOfTest?.ToString("dd/MM/yyyy"));
+                AddIfNotNull("Type Position", wd.TypePosition);
+                AddIfNotNull("Material Type", wd.MaterialType);
+                AddIfNotNull("Material Grouping", wd.MaterialGrouping);
+                AddIfNotNull("Process Of Welding", wd.ProcessOfWelding);
+                AddIfNotNull("Weld With Backing", wd.WeldWithBacking);
+                AddIfNotNull("Electrode Grouping", wd.ElectrodeGrouping);
+                AddIfNotNull("Test Piece Xrayed", wd.TestPieceXrayed);
+                sections.Add(new PdfSection { Title = "Welder Detail", Rows = welderRows });
+            }
+
+            // Employer Detail (only non-null properties)
+            if (entity.WelderEmployer != null)
+            {
+                var emp = entity.WelderEmployer;
+                var empRows = new List<(string, string?)>();
+                void AddEmpIfNotNull(string label, string? value) { if (value != null) empRows.Add((label, value)); }
+                AddEmpIfNotNull("Employer Type", emp.EmployerType);
+                AddEmpIfNotNull("Employer Name", emp.EmployerName);
+                AddEmpIfNotNull("Firm Name", emp.FirmName);
+                AddEmpIfNotNull("Address Line 1", emp.AddressLine1);
+                AddEmpIfNotNull("Address Line 2", emp.AddressLine2);
+                AddEmpIfNotNull("District", emp.District);
+                AddEmpIfNotNull("Tehsil", emp.Tehsil);
+                AddEmpIfNotNull("Area", emp.Area);
+                AddEmpIfNotNull("Pincode", emp.Pincode);
+                AddEmpIfNotNull("Telephone", emp.Telephone);
+                AddEmpIfNotNull("Mobile", emp.Mobile);
+                AddEmpIfNotNull("Email", emp.Email);
+                AddEmpIfNotNull("Employed From", emp.EmployedFrom?.ToString("dd/MM/yyyy"));
+                AddEmpIfNotNull("Employed To", emp.EmployedTo?.ToString("dd/MM/yyyy"));
+                sections.Add(new PdfSection { Title = "Employer Detail", Rows = empRows });
+            }
+
+            BoilerPdfHelper.GeneratePdf(
+                filePath,
+                "Form-WLD1",
+                "(See Indian Boilers Act, 1923)",
+                "Application for Welder Test",
+                entity.ApplicationId ?? "-",
+                entity.CreatedDate,
+                sections);
+
+            // Save URL back to DB
+            entity.ApplicationPDFUrl = fileUrl;
+            entity.UpdatedDate = DateTime.Now;
+            await _dbcontext.SaveChangesAsync();
+
+            return filePath;
         }
 
     }

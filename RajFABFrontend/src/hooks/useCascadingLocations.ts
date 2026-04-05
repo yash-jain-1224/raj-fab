@@ -90,7 +90,7 @@ export function useCascadingLocations() {
     isLoadingCities,
     isLoadingTehsils,
 
-    // fetchDistrictsByDivision,
+    fetchDistrictsByDivision: (_divisionId: string) => { /* districts loaded globally via useDistricts() */ },
     fetchCitiesByDistrict,
     fetchTehsilsByDistrict
   };

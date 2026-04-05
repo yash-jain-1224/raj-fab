@@ -7,7 +7,7 @@ namespace RajFabAPI.DTOs
     public class DocumentUploadRequest
     {
         public Guid ModuleId { get; set; }
-        public string ModuleDocType { get; set; }
+        public string? ModuleDocType { get; set; } = "";
         public IFormFile File { get; set; }
     }
     public class UserDocumentsByModuleDto

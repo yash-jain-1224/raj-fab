@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Eye, Plus, Factory, Pencil, TimerReset, XCircle } from "lucide-react";
+import { Eye, Plus, Factory, Pencil, TimerReset, XCircle, Download } from "lucide-react";
 import {
   normalizeStatus,
   APPLICATION_STATUS,
@@ -121,6 +121,18 @@ export default function EconomiserList() {
 
         return (
           <div className="flex gap-2 justify-end">
+            {isApproved && isLatest && (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => navigate(`/user/boilernew-services/economiser/${app.applicationId}`, {
+                  state: { mode: "amend" }
+                })}
+                title="Amendment"
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+            )}
             {app.status?.toLowerCase()?.includes("returned") && (
               <Button
                 onClick={() =>
@@ -172,6 +184,16 @@ export default function EconomiserList() {
                   Close
                 </Button>
               </>
+            )}
+            {app.applicationPDFUrl && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => window.open(app.applicationPDFUrl, "_blank")}
+                title="Download Application PDF"
+              >
+                <Download className="h-4 w-4" />
+              </Button>
             )}
             <Button
               onClick={() =>

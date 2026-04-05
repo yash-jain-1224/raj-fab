@@ -23,6 +23,12 @@ namespace RajFabAPI.Models
 
         public string? Comments { get; set; }
 
+        public decimal Amount { get; set; } = 0;
+        public bool IsPaymentCompleted { get; set; } = false;
+        public bool IsESignCompleted { get; set; } = false;
+        [MaxLength(500)]
+        public string? ApplicationPDFUrl { get; set; }
+
         public string Type { get; set; } = "new";
 
         public string Status { get; set; } = "Pending";

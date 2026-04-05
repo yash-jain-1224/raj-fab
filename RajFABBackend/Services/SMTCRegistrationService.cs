@@ -5,6 +5,15 @@ using RajFabAPI.Models;
 using RajFabAPI.Services.Interface;
 using System.Text.Json;
 using static RajFabAPI.Constants.AppConstants;
+using iText.Kernel.Pdf;
+using iText.Layout;
+using iText.Layout.Element;
+using iText.Layout.Properties;
+using iText.Kernel.Colors;
+using iText.IO.Font.Constants;
+using iText.Kernel.Font;
+using PdfTable = iText.Layout.Element.Table;
+using PdfCell = iText.Layout.Element.Cell;
 
 namespace RajFabAPI.Services
 {
@@ -12,11 +21,17 @@ namespace RajFabAPI.Services
     {
         private readonly ApplicationDbContext _dbcontext;
         private readonly IWebHostEnvironment _environment;
+        private readonly IConfiguration _config;
+        private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IPaymentService _paymentService;
 
-        public SMTCRegistrationService(ApplicationDbContext context, IWebHostEnvironment environment)
+        public SMTCRegistrationService(ApplicationDbContext context, IWebHostEnvironment environment, IConfiguration config, IHttpContextAccessor httpContextAccessor, IPaymentService paymentService)
         {
             _dbcontext = context;
             _environment = environment;
+            _config = config;
+            _httpContextAccessor = httpContextAccessor;
+            _paymentService = paymentService;
         }
 
 
@@ -149,6 +164,8 @@ namespace RajFabAPI.Services
 
                     Version = version,
 
+                    Amount = type == "new" ? 5000m : 100m,
+
                     ValidUpto = DateTime.Now.AddYears(1),
 
                     CreatedAt = DateTime.Now,
@@ -215,6 +232,63 @@ namespace RajFabAPI.Services
                 }
 
                 await _dbcontext.SaveChangesAsync();
+
+                // Auto-generate application PDF
+                try { await GenerateSmtcPdfAsync(registration.ApplicationId); } catch { /* PDF generation failure should not block submission */ }
+
+                if (type == "new")
+                {
+                    var module = await _dbcontext.Set<FormModule>()
+                        .FirstOrDefaultAsync(m => m.Name == "SMTC Registration")
+                        ?? throw new Exception("SMTC Registration module not found.");
+
+                    var appReg = new ApplicationRegistration
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        ModuleId = module.Id,
+                        UserId = userId,
+                        ApplicationId = registration.ApplicationId,
+                        ApplicationRegistrationNumber = registration.ApplicationId,
+                        CreatedDate = DateTime.Now,
+                        UpdatedDate = DateTime.Now
+                    };
+                    _dbcontext.ApplicationRegistrations.Add(appReg);
+
+                    var history = new ApplicationHistory
+                    {
+                        ApplicationId = registration.ApplicationId,
+                        ApplicationType = module.Name,
+                        Action = "Application Submitted",
+                        PreviousStatus = null,
+                        NewStatus = "Pending",
+                        Comments = "Application Submitted and sent for payment",
+                        ActionBy = userId.ToString(),
+                        ActionByName = "Applicant",
+                        ActionDate = DateTime.Now
+                    };
+                    _dbcontext.ApplicationHistories.Add(history);
+
+                    await _dbcontext.SaveChangesAsync();
+                    await tx.CommitAsync();
+
+                    var user = await _dbcontext.Users
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(u => u.Id == userId)
+                        ?? throw new Exception("User not found.");
+
+                    return await _paymentService.ActionRequestPaymentRPP(
+                        registration.Amount,
+                        user.FullName,
+                        user.Mobile,
+                        user.Email,
+                        user.Username,
+                        "4157FE34BBAE3A958D8F58CCBFAD7",
+                        "UWf6a7cDCP",
+                        registration.ApplicationId!,
+                        module.Id.ToString(),
+                        userId.ToString()
+                    );
+                }
 
                 await tx.CommitAsync();
 
@@ -419,6 +493,81 @@ namespace RajFabAPI.Services
 
             return result;
         }
+
+
+        public async Task<string> GenerateSmtcPdfAsync(string applicationId)
+        {
+            var entity = await _dbcontext.SMTCRegistrations
+                .Include(x => x.Trainers)
+                .FirstOrDefaultAsync(a => a.ApplicationId == applicationId);
+
+            if (entity == null)
+                throw new Exception("SMTC Registration not found");
+
+            var uploadPath = Path.Combine(_environment.WebRootPath, "boiler-smtc-forms");
+            Directory.CreateDirectory(uploadPath);
+
+            var fileName = $"smtc_application_{entity.Id}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+            var filePath = Path.Combine(uploadPath, fileName);
+
+            var httpContext = _httpContextAccessor.HttpContext
+                ?? throw new InvalidOperationException("HTTP context unavailable");
+            var request = httpContext.Request;
+            var baseUrl = _config["BaseUrl"] ?? $"{request.Scheme}://{request.Host}";
+            var fileUrl = $"{baseUrl}/boiler-smtc-forms/{fileName}";
+
+            var sections = new List<PdfSection>
+            {
+                new PdfSection
+                {
+                    Title = "Application Info",
+                    Rows = new List<(string, string?)>
+                    {
+                        ("Application Id", entity.ApplicationId),
+                        ("SMTC Registration No", entity.SMTCRegistrationNo),
+                        ("Factory Registration No", entity.FactoryRegistrationNo),
+                        ("Type", entity.Type),
+                        ("Status", entity.Status)
+                    }
+                },
+                new PdfSection
+                {
+                    Title = "Training Center Details",
+                    Rows = new List<(string, string?)>
+                    {
+                        ("Training Center Available", entity.TrainingCenterAvailable.ToString()),
+                        ("Seating Capacity", entity.SeatingCapacity?.ToString()),
+                        ("Audio Video Facility", entity.AudioVideoFacility?.ToString()),
+                        ("Comments", entity.Comments)
+                    }
+                },
+                new PdfSection
+                {
+                    Title = "Validity",
+                    Rows = new List<(string, string?)>
+                    {
+                        ("Valid Upto", entity.ValidUpto?.ToString("dd/MM/yyyy"))
+                    }
+                }
+            };
+
+            BoilerPdfHelper.GeneratePdf(
+                filePath,
+                "Form-SMTC1",
+                "(See Indian Boilers Act, 1923)",
+                "Application for SMTC Registration",
+                entity.ApplicationId ?? "-",
+                entity.CreatedAt,
+                sections);
+
+            // Save URL back to DB
+            entity.ApplicationPDFUrl = fileUrl;
+            entity.UpdatedAt = DateTime.Now;
+            await _dbcontext.SaveChangesAsync();
+
+            return filePath;
+        }
+
 
     }
 

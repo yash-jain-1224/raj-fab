@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Plus, Building2, Pencil, Eye } from "lucide-react";
+import { Plus, Building2, Pencil, Eye, TimerReset, Download } from "lucide-react";
 import {
   normalizeStatus,
   APPLICATION_STATUS,
@@ -127,6 +127,18 @@ export default function SteamPipelineList() {
                 Amendment
               </Button>
             )}
+            {app.status?.toLowerCase()?.includes("approved") && Number(app.version || 0) === maxVersion && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => navigate("/user/boiler-services/stpl/renew", {
+                  state: { applicationId: app.applicationId, registrationNo: app.steamPipeLineRegistrationNo }
+                })}
+                title="Renew"
+              >
+                <TimerReset className="h-4 w-4" />
+              </Button>
+            )}
             {app.status?.toLowerCase()?.includes("returned") && (
               <Button
                 onClick={() =>
@@ -137,6 +149,16 @@ export default function SteamPipelineList() {
               >
                 <Pencil className="h-4 w-4 mr-2" />
                 Edit
+              </Button>
+            )}
+            {app.applicationPDFUrl && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => window.open(app.applicationPDFUrl, "_blank")}
+                title="Download Application PDF"
+              >
+                <Download className="h-4 w-4" />
               </Button>
             )}
             <Button

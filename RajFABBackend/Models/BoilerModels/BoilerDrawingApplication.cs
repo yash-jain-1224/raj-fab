@@ -50,6 +50,12 @@ namespace RajFabAPI.Models.BoilerModels
 
         public DateTime? ValidUpto { get; set; }
 
+        public decimal Amount { get; set; } = 0;
+        public bool IsPaymentCompleted { get; set; } = false;
+        public bool IsESignCompleted { get; set; } = false;
+        [MaxLength(500)]
+        public string? ApplicationPDFUrl { get; set; }
+
         /* ================= WORKFLOW ================= */
 
         public string? Type { get; set; }

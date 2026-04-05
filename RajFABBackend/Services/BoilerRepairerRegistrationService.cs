@@ -1,3 +1,10 @@
+using iText.Kernel.Pdf;
+using iText.Layout;
+using iText.Layout.Element;
+using iText.Layout.Properties;
+using iText.Kernel.Colors;
+using iText.IO.Font.Constants;
+using iText.Kernel.Font;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using RajFabAPI.Data;
@@ -7,6 +14,9 @@ using RajFabAPI.Models.BoilerModels;
 using RajFabAPI.Services.Interface;
 using System;
 using System.Text.Json;
+using static RajFabAPI.Constants.AppConstants;
+using PdfTable = iText.Layout.Element.Table;
+using PdfCell = iText.Layout.Element.Cell;
 
 namespace RajFabAPI.Services
 {
@@ -14,11 +24,17 @@ namespace RajFabAPI.Services
     {
         private readonly ApplicationDbContext _dbcontext;
         private readonly IWebHostEnvironment _environment;
+        private readonly IPaymentService _paymentService;
+        private readonly IConfiguration _config;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public BoilerRepairerService(ApplicationDbContext dbcontext, IWebHostEnvironment environment)
+        public BoilerRepairerService(ApplicationDbContext dbcontext, IWebHostEnvironment environment, IPaymentService paymentService, IConfiguration config, IHttpContextAccessor httpContextAccessor)
         {
             _dbcontext = dbcontext;
             _environment = environment;
+            _paymentService = paymentService;
+            _config = config;
+            _httpContextAccessor = httpContextAccessor;
         }
 
         private async Task<string> GenerateApplicationNumberAsync(string type)
@@ -175,6 +191,8 @@ namespace RajFabAPI.Services
                     ValidFrom = validFrom,
                     ValidUpto = validUpto,
 
+                    Amount = type == "new" ? 5000m : 100m,
+
                     Status = "Pending",
                     Type = type,
                     Version = version,
@@ -262,6 +280,64 @@ namespace RajFabAPI.Services
                 }
 
                 await _dbcontext.SaveChangesAsync();
+
+                // Auto-generate application PDF
+                try { await GenerateRepairerPdfAsync(registration.ApplicationId); } catch { /* PDF generation failure should not block submission */ }
+
+                if (type == "new")
+                {
+                    var module = await _dbcontext.Set<FormModule>()
+                        .FirstOrDefaultAsync(m => m.Name == ApplicationTypeNames.BoilerRepairerRegistration)
+                        ?? throw new Exception("BoilerRepairerRegistration module not found.");
+
+                    var appReg = new ApplicationRegistration
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        ModuleId = module.Id,
+                        UserId = userId,
+                        ApplicationId = registration.ApplicationId,
+                        ApplicationRegistrationNumber = registration.ApplicationId,
+                        CreatedDate = DateTime.Now,
+                        UpdatedDate = DateTime.Now
+                    };
+                    _dbcontext.ApplicationRegistrations.Add(appReg);
+
+                    var history = new ApplicationHistory
+                    {
+                        ApplicationId = registration.ApplicationId,
+                        ApplicationType = module.Name,
+                        Action = "Application Submitted",
+                        PreviousStatus = null,
+                        NewStatus = "Pending",
+                        Comments = "Application Submitted and sent for payment",
+                        ActionBy = userId.ToString(),
+                        ActionByName = "Applicant",
+                        ActionDate = DateTime.Now
+                    };
+                    _dbcontext.ApplicationHistories.Add(history);
+
+                    await _dbcontext.SaveChangesAsync();
+                    await tx.CommitAsync();
+
+                    var user = await _dbcontext.Users
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(u => u.Id == userId)
+                        ?? throw new Exception("User not found.");
+
+                    return await _paymentService.ActionRequestPaymentRPP(
+                        registration.Amount,
+                        user.FullName,
+                        user.Mobile,
+                        user.Email,
+                        user.Username,
+                        "4157FE34BBAE3A958D8F58CCBFAD7",
+                        "UWf6a7cDCP",
+                        registration.ApplicationId!,
+                        module.Id.ToString(),
+                        userId.ToString()
+                    );
+                }
+
                 await tx.CommitAsync();
 
                 return applicationId;
@@ -684,6 +760,102 @@ namespace RajFabAPI.Services
 
 
 
+
+        public async Task<string> GenerateRepairerPdfAsync(string applicationId)
+        {
+            var entity = await _dbcontext.BoilerRepairerRegistrations
+                .Include(x => x.BoilerRepairerEngineers)
+                .Include(x => x.BoilerRepairerWelders)
+                .FirstOrDefaultAsync(x => x.ApplicationId == applicationId);
+
+            if (entity == null)
+                throw new Exception("Boiler repairer registration not found");
+
+            var uploadPath = Path.Combine(_environment.WebRootPath, "boiler-repairer-forms");
+            Directory.CreateDirectory(uploadPath);
+
+            var fileName = $"repairer_application_{entity.Id}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+            var filePath = Path.Combine(uploadPath, fileName);
+
+            var httpContext = _httpContextAccessor.HttpContext
+                ?? throw new InvalidOperationException("HTTP context unavailable");
+            var request = httpContext.Request;
+            var baseUrl = _config["BaseUrl"] ?? $"{request.Scheme}://{request.Host}";
+            var fileUrl = $"{baseUrl}/boiler-repairer-forms/{fileName}";
+
+            var sections = new List<PdfSection>
+            {
+                new PdfSection
+                {
+                    Title = "Application Info",
+                    Rows = new List<(string, string?)>
+                    {
+                        ("Application Id", entity.ApplicationId),
+                        ("Repairer Registration No", entity.RepairerRegistrationNo),
+                        ("Factory Registration No", entity.FactoryRegistrationNo),
+                        ("BR Classification", entity.BrClassification),
+                        ("Type", entity.Type),
+                        ("Status", entity.Status)
+                    }
+                },
+                new PdfSection
+                {
+                    Title = "Quality Control",
+                    Rows = new List<(string, string?)>
+                    {
+                        ("Quality Control Type", entity.QualityControlType),
+                        ("Tools Available", entity.ToolsAvailable?.ToString()),
+                        ("Simultaneous Sites", entity.SimultaneousSites?.ToString()),
+                        ("Accepts Regulations", entity.AcceptsRegulations?.ToString()),
+                        ("Accepts Responsibility", entity.AcceptsResponsibility?.ToString()),
+                        ("Can Supply Material", entity.CanSupplyMaterial?.ToString())
+                    }
+                },
+                new PdfSection
+                {
+                    Title = "Validity",
+                    Rows = new List<(string, string?)>
+                    {
+                        ("Valid From", entity.ValidFrom?.ToString("dd/MM/yyyy")),
+                        ("Valid Upto", entity.ValidUpto?.ToString("dd/MM/yyyy"))
+                    }
+                }
+            };
+
+            // Engineers
+            if (entity.BoilerRepairerEngineers != null && entity.BoilerRepairerEngineers.Any())
+            {
+                var engineerRows = new List<(string, string?)>();
+                foreach (var eng in entity.BoilerRepairerEngineers)
+                    engineerRows.Add(("Name", eng.Name));
+                sections.Add(new PdfSection { Title = "Engineers", Rows = engineerRows });
+            }
+
+            // Welders
+            if (entity.BoilerRepairerWelders != null && entity.BoilerRepairerWelders.Any())
+            {
+                var welderRows = new List<(string, string?)>();
+                foreach (var w in entity.BoilerRepairerWelders)
+                    welderRows.Add(("Name", w.Name));
+                sections.Add(new PdfSection { Title = "Welders", Rows = welderRows });
+            }
+
+            BoilerPdfHelper.GeneratePdf(
+                filePath,
+                "Form-BRP1",
+                "(See Indian Boilers Act, 1923)",
+                "Application for Boiler Repairer Registration",
+                entity.ApplicationId ?? "-",
+                entity.CreatedAt,
+                sections);
+
+            // Save URL back to DB
+            entity.ApplicationPDFUrl = fileUrl;
+            entity.UpdatedAt = DateTime.Now;
+            await _dbcontext.SaveChangesAsync();
+
+            return filePath;
+        }
 
     }
 }

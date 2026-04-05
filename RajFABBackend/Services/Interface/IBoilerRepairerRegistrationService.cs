@@ -11,6 +11,7 @@ namespace RajFabAPI.Services.Interface
         Task<BoilerRepairerResponseDto?> GetByApplicationIdAsync(string applicationId);
         Task<BoilerRepairerResponseDto?> GetLatestApprovedByRegistrationNoAsync(string registrationNo);
         Task<List<BoilerRepairerResponseDto>> GetAllAsync();
+        Task<string> GenerateRepairerPdfAsync(string applicationId);
 
     }
 

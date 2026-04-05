@@ -14,6 +14,7 @@ namespace RajFabAPI.Services.Interface
         Task<List<GetWelderResponseDto>> GetAllAsync();
 
         Task<string> CloseWelderAsync(WelderClosureDto dto, Guid userId);
+        Task<string> GenerateWelderPdfAsync(string applicationId);
     }
 
 

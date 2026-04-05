@@ -189,7 +189,13 @@ export default function EconomiserRegistration() {
     } as any;
 
     const mutationOptions = {
-      onSuccess: () => {
+      onSuccess: (response: any) => {
+        if (!isEditMode && (response as any)?.html) {
+          document.open();
+          document.write((response as any).html);
+          document.close();
+          return;
+        }
         toast.success(isEditMode ? "Economiser amendment submitted successfully!" : "Economiser registration submitted successfully!");
         navigate("/user/boilernew-services/economiser/list");
       },

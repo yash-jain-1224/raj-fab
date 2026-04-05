@@ -33,6 +33,12 @@ namespace RajFabAPI.Controllers.BoilerControllers
 
                 var applicationId = await _economiserService.SaveEconomiserAsync(dto, userIdGuid, "new", null);
 
+                // If result contains HTML (payment gateway redirect), return it
+                if (applicationId != null && applicationId.Contains("<html", StringComparison.OrdinalIgnoreCase))
+                {
+                    return Ok(new { success = true, html = applicationId });
+                }
+
                 return Ok(new
                 {
                     success = true,
@@ -161,8 +167,15 @@ namespace RajFabAPI.Controllers.BoilerControllers
         }
 
 
+        [HttpPost("generate-pdf/{applicationId}")]
+        public async Task<IActionResult> GeneratePdf(string applicationId)
+        {
+            var filePath = await _economiserService.GenerateEconomiserPdfAsync(WebUtility.UrlDecode(applicationId));
+            return Ok(new { success = true, message = "PDF generated successfully" });
+        }
+
         [HttpPost("close")]
-       
+
         public async Task<IActionResult> CloseEconomiser([FromBody] EconomiserClosureDto dto)
         {
             try

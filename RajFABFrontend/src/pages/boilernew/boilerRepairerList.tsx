@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Plus, Building2, TimerReset, XCircle, Eye, Pencil } from "lucide-react";
+import { Plus, Building2, TimerReset, XCircle, Eye, Pencil, Download } from "lucide-react";
 import { normalizeStatus, APPLICATION_STATUS } from "@/constants/applicationStatus";
 import { DataTable, TableColumn } from "@/components/common/DataTable";
 import { getAllBoilerRepairerApplications } from "@/hooks/api/useBoilers";
@@ -116,6 +116,16 @@ export default function BoilerRepairerList() {
               <XCircle className="h-4 w-4 mr-2" />
               Close
             </Button>
+            {app.applicationPDFUrl && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => window.open(app.applicationPDFUrl, "_blank")}
+                title="Download Application PDF"
+              >
+                <Download className="h-4 w-4" />
+              </Button>
+            )}
             <Button
               size="sm"
               variant="outline"

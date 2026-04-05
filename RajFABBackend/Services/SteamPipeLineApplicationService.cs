@@ -5,6 +5,15 @@ using RajFabAPI.Models;
 using RajFabAPI.Services.Interface;
 using System.Text.Json;
 using static RajFabAPI.Constants.AppConstants;
+using iText.Kernel.Pdf;
+using iText.Layout;
+using iText.Layout.Element;
+using iText.Layout.Properties;
+using iText.Kernel.Colors;
+using iText.IO.Font.Constants;
+using iText.Kernel.Font;
+using PdfTable = iText.Layout.Element.Table;
+using PdfCell = iText.Layout.Element.Cell;
 
 namespace RajFabAPI.Services
 {
@@ -12,10 +21,17 @@ namespace RajFabAPI.Services
     {
         private readonly ApplicationDbContext _dbcontext;
         private readonly IWebHostEnvironment _environment;
+        private readonly IConfiguration _config;
+        private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IPaymentService _paymentService;
 
-        public SteamPipeLineApplicationService(ApplicationDbContext context)
+        public SteamPipeLineApplicationService(ApplicationDbContext context, IWebHostEnvironment environment, IConfiguration config, IHttpContextAccessor httpContextAccessor, IPaymentService paymentService)
         {
             _dbcontext = context;
+            _environment = environment;
+            _config = config;
+            _httpContextAccessor = httpContextAccessor;
+            _paymentService = paymentService;
         }
 
         private async Task<string> GenerateApplicationNumberAsync(string type)
@@ -68,7 +84,7 @@ namespace RajFabAPI.Services
             return $"STPL-{next:D5}";
         }
 
-        public async Task<string> SaveSteamPipeLineAsync(  CreateSteamPipeLineDto dto,    string? type,  string? steamPipeLineRegistrationNo)
+        public async Task<string> SaveSteamPipeLineAsync(  CreateSteamPipeLineDto dto,  Guid userId,  string? type,  string? steamPipeLineRegistrationNo)
         {
             if (dto == null)
                 throw new ArgumentNullException(nameof(dto));
@@ -186,6 +202,7 @@ namespace RajFabAPI.Services
                     ValidFrom = validFrom,
                     ValidUpto = validUpto,
 
+                    Amount = type == "new" ? 5000m : 100m,
                     Type = type,
                     Version = version,
                     Status = "Pending",
@@ -196,6 +213,63 @@ namespace RajFabAPI.Services
 
                 _dbcontext.SteamPipeLineApplications.Add(entity);
                 await _dbcontext.SaveChangesAsync();
+
+                // Auto-generate application PDF
+                try { await GenerateStplPdfAsync(entity.ApplicationId); } catch { /* PDF generation failure should not block submission */ }
+
+                if (type == "new")
+                {
+                    var module = await _dbcontext.Set<FormModule>()
+                        .FirstOrDefaultAsync(m => m.Name == ApplicationTypeNames.Stplregistration)
+                        ?? throw new Exception("Stpl Registration module not found.");
+
+                    var appReg = new ApplicationRegistration
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        ModuleId = module.Id,
+                        UserId = userId,
+                        ApplicationId = entity.ApplicationId,
+                        ApplicationRegistrationNumber = entity.ApplicationId,
+                        CreatedDate = DateTime.Now,
+                        UpdatedDate = DateTime.Now
+                    };
+                    _dbcontext.ApplicationRegistrations.Add(appReg);
+
+                    var history = new ApplicationHistory
+                    {
+                        ApplicationId = entity.ApplicationId,
+                        ApplicationType = module.Name,
+                        Action = "Application Submitted",
+                        PreviousStatus = null,
+                        NewStatus = "Pending",
+                        Comments = "Application Submitted and sent for payment",
+                        ActionBy = userId.ToString(),
+                        ActionByName = "Applicant",
+                        ActionDate = DateTime.Now
+                    };
+                    _dbcontext.ApplicationHistories.Add(history);
+
+                    await _dbcontext.SaveChangesAsync();
+                    await tx.CommitAsync();
+
+                    var user = await _dbcontext.Users
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(u => u.Id == userId)
+                        ?? throw new Exception("User not found.");
+
+                    return await _paymentService.ActionRequestPaymentRPP(
+                        entity.Amount,
+                        user.FullName,
+                        user.Mobile,
+                        user.Email,
+                        user.Username,
+                        "4157FE34BBAE3A958D8F58CCBFAD7",
+                        "UWf6a7cDCP",
+                        entity.ApplicationId!,
+                        module.Id.ToString(),
+                        userId.ToString()
+                    );
+                }
 
                 await tx.CommitAsync();
 
@@ -680,6 +754,94 @@ namespace RajFabAPI.Services
             }
         }
 
+
+        public async Task<string> GenerateStplPdfAsync(string applicationId)
+        {
+            var entity = await _dbcontext.SteamPipeLineApplications
+                .FirstOrDefaultAsync(a => a.ApplicationId == applicationId);
+
+            if (entity == null)
+                throw new Exception("Steam Pipeline application not found");
+
+            var uploadPath = Path.Combine(_environment.WebRootPath, "boiler-stpl-forms");
+            Directory.CreateDirectory(uploadPath);
+
+            var fileName = $"stpl_application_{entity.Id}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+            var filePath = Path.Combine(uploadPath, fileName);
+
+            var httpContext = _httpContextAccessor.HttpContext
+                ?? throw new InvalidOperationException("HTTP context unavailable");
+            var request = httpContext.Request;
+            var baseUrl = _config["BaseUrl"] ?? $"{request.Scheme}://{request.Host}";
+            var fileUrl = $"{baseUrl}/boiler-stpl-forms/{fileName}";
+
+            var sections = new List<PdfSection>
+            {
+                new PdfSection
+                {
+                    Title = "Application Info",
+                    Rows = new List<(string, string?)>
+                    {
+                        ("Application Id", entity.ApplicationId),
+                        ("Registration No", entity.SteamPipeLineRegistrationNo),
+                        ("Type", entity.Type),
+                        ("Status", entity.Status),
+                        ("Created At", entity.CreatedAt.ToString("dd/MM/yyyy"))
+                    }
+                },
+                new PdfSection
+                {
+                    Title = "Pipeline Details",
+                    Rows = new List<(string, string?)>
+                    {
+                        ("Boiler Application No", entity.BoilerApplicationNo),
+                        ("Steam Pipeline Drawing No", entity.SteamPipeLineDrawingNo),
+                        ("Boiler Maker Registration No", entity.BoilerMakerRegistrationNo),
+                        ("Erector Name", entity.ErectorName),
+                        ("Factory Registration Number", entity.FactoryRegistrationNumber)
+                    }
+                },
+                new PdfSection
+                {
+                    Title = "Pipe Specifications",
+                    Rows = new List<(string, string?)>
+                    {
+                        ("Pipe Length Up To 100mm", entity.PipeLengthUpTo100mm?.ToString()),
+                        ("Pipe Length Above 100mm", entity.PipeLengthAbove100mm?.ToString()),
+                        ("No Of De-Super Heaters", entity.NoOfDeSuperHeaters?.ToString()),
+                        ("No Of Steam Receivers", entity.NoOfSteamReceivers?.ToString()),
+                        ("No Of Feed Heaters", entity.NoOfFeedHeaters?.ToString()),
+                        ("No Of Separately Fired Super Heaters", entity.NoOfSeparatelyFiredSuperHeaters?.ToString())
+                    }
+                },
+                new PdfSection
+                {
+                    Title = "Validity",
+                    Rows = new List<(string, string?)>
+                    {
+                        ("Valid From", entity.ValidFrom?.ToString("dd/MM/yyyy")),
+                        ("Valid Upto", entity.ValidUpto?.ToString("dd/MM/yyyy")),
+                        ("Renewal Years", entity.RenewalYears.ToString())
+                    }
+                }
+            };
+
+            BoilerPdfHelper.GeneratePdf(
+                filePath,
+                "Form-STPL1",
+                "(See Indian Boilers Act, 1923)",
+                "Application for Steam Pipeline Registration",
+                entity.ApplicationId ?? "-",
+                entity.CreatedAt,
+                sections);
+
+            // Save URL back to DB
+            entity.ApplicationPDFUrl = fileUrl;
+            entity.UpdatedAt = DateTime.Now;
+            await _dbcontext.SaveChangesAsync();
+
+            return filePath;
+        }
 
     }
 }

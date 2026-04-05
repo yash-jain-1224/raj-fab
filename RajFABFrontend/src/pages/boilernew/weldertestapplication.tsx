@@ -263,7 +263,13 @@ export default function WelderTestApplication() {
     };
 
     const mutationOptions = {
-      onSuccess: () => {
+      onSuccess: (response: any) => {
+        if (!isEditMode && (response as any)?.html) {
+          document.open();
+          document.write((response as any).html);
+          document.close();
+          return;
+        }
         toast.success(isEditMode ? "Application Updated Successfully!" : "Application Submitted Successfully!");
         navigate("/user/boilernew-services/weldertest/list");
       },

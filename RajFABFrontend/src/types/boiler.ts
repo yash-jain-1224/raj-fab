@@ -19,15 +19,15 @@ export interface BoilerLocation {
   factoryName: string;
   factoryLicenseNumber?: string;
   plotNumber: string;
-  address: string;
+  street: string;
+  locality: string;
   pincode: string;
+  areaId: string;
   cityId: string;
   districtId: string;
   divisionId: string;
-  coordinates?: {
-    latitude: number;
-    longitude: number;
-  };
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface BoilerSafetyFeatures {

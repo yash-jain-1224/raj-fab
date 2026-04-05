@@ -12,6 +12,7 @@ namespace RajFabAPI.Services.Interface
         Task<BoilerManufactureDetailsDto?> GetByApplicationIdAsync(string applicationId);
         Task<BoilerManufactureDetailsDto?> GetLatestApprovedByRegistrationNoAsync(string manufactureRegistrationNo);
         Task<List<BoilerManufactureDetailsDto>> GetAllAsync();
+        Task<string> GenerateManufacturePdfAsync(string applicationId);
 
 
     }

@@ -40,8 +40,9 @@ export default function BoilerClosureNew() {
   const location = useLocation();
   const totalSteps = 6;
 
-  const mode = (location.state as any)?.mode as "update" | undefined;
+  const mode = (location.state as any)?.mode as "update" | "view" | undefined;
   const changeReqId = params.changeReqId;
+  const isViewMode = mode === "view";
 
   const [currentStep, setCurrentStep] = useState(1);
   const [lookupRegistrationNo, setLookupRegistrationNo] = useState("");
@@ -398,7 +399,7 @@ export default function BoilerClosureNew() {
 
     const d = formData.closureDetails;
     const payload: any = {
-      boilerRegistrationNo: lookupRegistrationNo.trim() || formData.boilerRegistrationNo,
+      boilerRegistrationNo: formData.boilerRegistrationNo || lookupRegistrationNo.trim(),
       closureType: d.closureType,
       closureDate: new Date(d.closureDate).toISOString(),
       toStateName: d.toStateName || "",
@@ -414,6 +415,12 @@ export default function BoilerClosureNew() {
           : await createClosure(payload);
 
       if (response?.success) {
+        if (response?.html) {
+          document.open();
+          document.write(response.html);
+          document.close();
+          return;
+        }
         toast.success(
           mode === "update"
             ? "Boiler closure application updated successfully"

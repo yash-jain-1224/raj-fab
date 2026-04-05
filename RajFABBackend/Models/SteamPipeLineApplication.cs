@@ -34,6 +34,13 @@ namespace RajFabAPI.Models
         public string? FormIVAPath { get; set; }
         public string? DrawingPath { get; set; }
         public string? SupportingDocumentsPath { get; set; }
+
+        public decimal Amount { get; set; } = 0;
+        public bool IsPaymentCompleted { get; set; } = false;
+        public bool IsESignCompleted { get; set; } = false;
+        [MaxLength(500)]
+        public string? ApplicationPDFUrl { get; set; }
+
         public string Status { get; set; } = "Pending";
         public decimal Version { get; set; } = 1.0m;
         public bool IsActive { get; set; } = true;

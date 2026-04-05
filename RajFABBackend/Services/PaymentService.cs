@@ -178,7 +178,8 @@ namespace RajFabAPI.Services
         {
             try
             {
-                using var dbTx = await _db.Database.BeginTransactionAsync();
+                var hasExistingTransaction = _db.Database.CurrentTransaction != null;
+                var dbTx = hasExistingTransaction ? null : await _db.Database.BeginTransactionAsync();
 
                 string RU = $"{_config["Payment:ReturnUrl"]}";
                 string MERCHANTCODE = "rppTestMerchant";
@@ -242,7 +243,7 @@ namespace RajFabAPI.Services
 
                 await _db.SaveChangesAsync();
 
-                await dbTx.CommitAsync();
+                if (dbTx != null) await dbTx.CommitAsync();
 
                 return PostToPage(
                     "https://rpptest.rajasthan.gov.in/payments/v1/init",

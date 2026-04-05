@@ -8,6 +8,9 @@ script_azure.sql
 # Frontend
 RajFABFrontend/node_modules/
 RajFABFrontend/dist/
+RajFABFrontend/e2e/
+RajFABFrontend/test-results/
+RajFABFrontend/playwright.config.ts
 
 # Backend (inherit from RajFABBackend/.gitignore)
 RajFABBackend/bin/

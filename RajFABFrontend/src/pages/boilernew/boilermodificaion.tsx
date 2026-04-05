@@ -412,7 +412,7 @@ export default function BoilerModificationNew() {
 
     const d = formData.repairerDetails;
     const payload: any = {
-      boilerRegistrationNo: lookupRegistrationNo.trim() || formData.boilerRegistrationNo,
+      boilerRegistrationNo: formData.boilerRegistrationNo || lookupRegistrationNo.trim(),
       repairType: d.repairType,
       repairerDetail: {
         name: d.name,
@@ -446,6 +446,12 @@ export default function BoilerModificationNew() {
           ? await updateBoilerForm({ applicationId: changeReqId, data: payload })
           : await createBoilerForm(payload);
       if (response?.success) {
+        if (response?.html) {
+          document.open();
+          document.write(response.html);
+          document.close();
+          return;
+        }
         toast.success(
           mode === "update"
             ? "Boiler modification/repair application updated successfully"

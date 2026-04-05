@@ -102,8 +102,11 @@ export default function BoilerRegistrationForm() {
       },
       location: {
         factoryName: "",
-        address: "",
+        plotNumber: "",
+        street: "",
+        locality: "",
         pincode: "",
+        areaId: "",
         cityId: "",
         districtId: "",
         divisionId: ""
@@ -133,7 +136,7 @@ export default function BoilerRegistrationForm() {
   const divisionId = form.watch("location.divisionId");
   const districtId = form.watch("location.districtId");
   const cityId = form.watch("location.cityId");
-  const address = form.watch("location.address");
+  const street = form.watch("location.street");
   const pinCode = form.watch("location.pincode");
 
   const progress = (currentStep / STEPS.length) * 100;
@@ -331,8 +334,13 @@ export default function BoilerRegistrationForm() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="street">Address *</Label>
-                <Input {...form.register("location.address")} placeholder="Enter street address" />
+                <Label htmlFor="street">Street *</Label>
+                <Input {...form.register("location.street")} placeholder="Enter street name" />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="locality">Locality *</Label>
+                <Input {...form.register("location.locality")} placeholder="Enter locality" />
               </div>
 
               <div className="space-y-2">
@@ -351,7 +359,7 @@ export default function BoilerRegistrationForm() {
               selectedDivisionId={divisionId}
               selectedDistrictId={districtId}
               selectedCityId={cityId}
-              address={address || ""}
+              address={street || ""}
               pincode={pinCode || ""}
               onDivisionChange={(id) => {
                 form.setValue("location.divisionId", id);
@@ -560,7 +568,8 @@ export default function BoilerRegistrationForm() {
                 <CardContent className="space-y-2">
                   <p><strong>Factory:</strong> {formData.location?.factoryName}</p>
                   <p><strong>Plot:</strong> {formData.location?.plotNumber}</p>
-                  <p><strong>Address:</strong> {formData.location?.address}</p>
+                  <p><strong>Street:</strong> {formData.location?.street}</p>
+                  <p><strong>Locality:</strong> {formData.location?.locality}</p>
                   <p><strong>Pin Code:</strong> {formData.location?.pincode}</p>
                 </CardContent>
               </Card>

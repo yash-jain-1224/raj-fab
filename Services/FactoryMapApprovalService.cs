@@ -1753,7 +1753,7 @@ namespace RajFabAPI.Services
         {
             if (dto == null) throw new ArgumentNullException(nameof(dto));
 
-            var fileName = $"objection_map_{applicationId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+            var fileName = $"objection_map_approval_{applicationId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
             var webRootPath = _environment.WebRootPath;
             if (string.IsNullOrWhiteSpace(webRootPath))
                 throw new InvalidOperationException("wwwroot is not configured.");

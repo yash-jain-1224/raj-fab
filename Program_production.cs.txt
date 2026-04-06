@@ -52,10 +52,10 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
     });
 builder.Services.AddEndpointsApiExplorer();
-// builder.Services.AddControllers(options =>
-// {
-//     options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true;
-// });
+builder.Services.AddControllers(options =>
+{
+    options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true;
+});
 builder.Services.AddSwaggerGen(options =>
 {
     options.OperationFilter<FileUploadOperationFilter>();
@@ -184,7 +184,7 @@ builder.Services.AddScoped<IWelderApplicationService, WelderApplicationService>(
 builder.Services.AddScoped<IBoilerDrawingService, BoilerDrawingService>();
 builder.Services.AddScoped<ICompetantPersonRegistartionService, CompetantPersonRegistartionService>();
 builder.Services.AddScoped<ICompetantPersonEquipmentRegistartionService, CompetantPersonEquipmentRegistartionService>();
-builder.Services.AddScoped<ISMTCRegistrationService, SMTCRegistrationService>();
+builder.Services.AddScoped<ISMTCRegistrationService,SMTCRegistrationService>();
 
 builder.Services.AddScoped<IBoilerWorkflowService, BoilerWorkflowService>();
 builder.Services.AddScoped<IBoilerCategoryService, BoilerCategoryService>();
@@ -205,8 +205,7 @@ builder.Services.AddCors(options =>
                "http://10.68.211.24:8080",
                "http://10.70.234.214",
                "http://10.70.234.214:8080",
-               "http://localhost:8080",
-               "*"
+               "http://localhost:8080"
            )
            .AllowAnyHeader()
            .AllowAnyMethod()
@@ -221,43 +220,43 @@ builder.Services.AddHttpClient();
 
 var app = builder.Build();
 
-// app.Use(async (context, next) =>
-// {
-//     context.Response.Headers.Remove("Server");
-//     context.Response.Headers.Remove("X-Powered-By");
-//     await next();
-// });
 
-// app.Use(async (context, next) =>
-// {
-//     context.Response.Headers.Add("X-Frame-Options", "DENY");
-//     context.Response.Headers.Add("X-Content-Type-Options", "nosniff");
-//     context.Response.Headers.Add("X-XSS-Protection", "1; mode=block");
-//     context.Response.Headers["Referrer-Policy"] = "no-referrer";
-//     context.Response.Headers["Permissions-Policy"] = "geolocation=(), microphone=()";
-//     await next();
-// });
+app.Use(async (context, next) =>
+{
+    context.Response.Headers.Remove("Server");
+    context.Response.Headers.Remove("X-Powered-By");
+    await next();
+});
+app.Use(async (context, next) =>
+{
+    context.Response.Headers.Add("X-Frame-Options", "DENY");
+    context.Response.Headers.Add("X-Content-Type-Options", "nosniff");
+    context.Response.Headers.Add("X-XSS-Protection", "1; mode=block");
+    context.Response.Headers["Referrer-Policy"] = "no-referrer";
+    context.Response.Headers["Permissions-Policy"] = "geolocation=(), microphone=()";
+    await next();
+});
 
-// app.Use(async (context, next) =>
-// {
-//     context.Response.Headers.Add("Content-Security-Policy",
-//         "default-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'; frame-ancestors 'none'; img-src 'self' data:;");
-//     await next();
-// });
+app.Use(async (context, next) =>
+{
+    context.Response.Headers.Add("Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'; frame-ancestors 'none'; img-src 'self' data:;");
+    await next();
+});
 
-// app.Use(async (context, next) =>
-// {
-//     var allowedMethods = new[] { "GET", "POST" };
+app.Use(async (context, next) =>
+{
+    var allowedMethods = new[] { "GET", "POST" };
 
-//     if (!allowedMethods.Contains(context.Request.Method))
-//     {
-//         context.Response.StatusCode = 405;
-//         await context.Response.WriteAsync("Method Not Allowed");
-//         return;
-//     }
+    if (!allowedMethods.Contains(context.Request.Method))
+    {
+        context.Response.StatusCode = 405;
+        await context.Response.WriteAsync("Method Not Allowed");
+        return;
+    }
 
-//     await next();
-// });
+    await next();
+});
 
 // Auto-migrate database on startup
 using (var scope = app.Services.CreateScope())

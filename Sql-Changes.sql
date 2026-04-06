@@ -2131,3 +2131,15 @@ DROP COLUMN
     ESignPrnNumberOccupier,
     IsESignCompletedManager,
     ESignPrnNumberManager;
+
+ALTER TABLE ManagerChanges
+DROP COLUMN
+    SignatureofOccupier,
+    SignatureOfNewManager,
+    FactoryRegistrationId,
+    AcknowledgementNumber;
+
+ALTER TABLE ManagerChanges
+ADD
+    ApplicationNumber NVARCHAR(50) NULL DEFAULT '',
+    FactoryRegistrationNumber NVARCHAR(50) NULL DEFAULT '';

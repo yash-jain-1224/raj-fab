@@ -122,10 +122,26 @@ namespace RajFabAPI.Services
                 newVersion = 1.0m;
             }
 
-            var factoryType = _db.FactoryTypes.FirstOrDefault(x => x.Name == "Not Applicable");
-            var factoryTypeIdGuid = dto.EstablishmentDetails.FactoryTypeId ?? factoryType?.Id;
+            int totalWorkers = dto?.Factory?.NumberOfWorker ?? 0;
 
-            int totalWorkers = dto?.Factory.NumberOfWorker ?? 0;
+            var factoryTypeId = dto?.EstablishmentDetails?.FactoryTypeId 
+                ?? await _db.FactoryTypes
+                    .Where(x => x.Name == "Not Applicable")
+                    .Select(x => x.Id)
+                    .FirstOrDefaultAsync();
+
+            var workerRangeId = await _db.WorkerRanges
+                .Where(x => x.MinWorkers <= totalWorkers && x.MaxWorkers >= totalWorkers)
+                .Select(x => x.Id)
+                .FirstOrDefaultAsync();
+
+            if (factoryTypeId == null || workerRangeId == null)
+                throw new Exception("Invalid Factory Type or Worker Range.");
+
+            var factoryCategory = await _db.FactoryCategories
+                .FirstOrDefaultAsync(x =>
+                    x.FactoryTypeId == factoryTypeId &&
+                    x.WorkerRangeId == workerRangeId);
 
             var manuType = (dto.Factory?.ManufacturingType ?? "manufacture").ToLower().Replace(" ", "");
             bool isElectricGen = manuType == "electricgeneration";
@@ -204,6 +220,7 @@ namespace RajFabAPI.Services
                     Version = newVersion,
                     Type = type,
                     Amount = feeResult,
+                    FactoryCategoryId = factoryCategory.Id,
                     OccupierIdProof = dto.OccupierIdProof,
                     PartnershipDeed = dto.PartnershipDeed,
                     ManagerIdProof = dto.ManagerIdProof,
@@ -240,7 +257,7 @@ namespace RajFabAPI.Services
                         TotalNumberOfInterstateWorker = dto.EstablishmentDetails.TotalNumberOfInterstateWorker,
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now,
-                        FactoryTypeId = factoryTypeIdGuid
+                        FactoryTypeId = factoryTypeId
                     };
                     _ = _db.Set<EstablishmentDetail>().Add(estDetail);
                     _ = await _db.SaveChangesAsync();
@@ -4439,7 +4456,7 @@ namespace RajFabAPI.Services
         {
             if (dto == null) throw new ArgumentNullException(nameof(dto));
 
-            var fileName = $"objection_{registrationId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+            var fileName = $"objection_establishment_registration_{registrationId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
             var webRootPath = _environment.WebRootPath;
             if (string.IsNullOrWhiteSpace(webRootPath))
                 throw new InvalidOperationException("wwwroot is not configured.");

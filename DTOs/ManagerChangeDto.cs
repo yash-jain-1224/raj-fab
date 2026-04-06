@@ -2,7 +2,7 @@ namespace RajFabAPI.DTOs
 {
     public class CreateManagerChangeRequestDto
     {
-       required public Guid FactoryRegistrationId { get; set; }
+       required public string FactoryRegistrationNumber { get; set; }
         public Guid OldManagerId { get; set; }
 
         // ?? New Manager Details
@@ -10,6 +10,7 @@ namespace RajFabAPI.DTOs
         public string NewManagerFatherOrHusbandName { get; set; } = string.Empty;
         public string NewManagerRelation { get; set; } = string.Empty;
         public string NewManagerAddressLine1 { get; set; } = string.Empty;
+        public string NewManagerDesignation { get; set; } = string.Empty;
         public string NewManagerAddressLine2 { get; set; } = string.Empty;
         public string NewManagerDistrict { get; set; } = string.Empty;
         public string NewManagerTehsil { get; set; } = string.Empty;
@@ -20,10 +21,6 @@ namespace RajFabAPI.DTOs
         public string NewManagerMobile { get; set; } = string.Empty;
 
         public DateTime NewManagerDateOfAppointment { get; set; }
-
-        public string? SignatureofOccupier { get; set; }
-        public string? SignatureOfNewManager { get; set; }
-
     }
 
 
@@ -34,6 +31,7 @@ namespace RajFabAPI.DTOs
 
         // New Manager Details
         public string? NewManagerName { get; set; }
+        public string? NewManagerDesignation { get; set; }
         public string? NewManagerFatherOrHusbandName { get; set; }
         public string? NewManagerRelation { get; set; }
         public string? NewManagerAddressLine1 { get; set; }
@@ -59,7 +57,7 @@ namespace RajFabAPI.DTOs
     {
         public Guid ManagerChangeId { get; set; }
         public Guid NewManagerId { get; set; }
-        public string AcknowledgementNumber { get; set; } = string.Empty;
+        public string ApplicationNumber { get; set; } = string.Empty;
         public string Message { get; set; } = "Manager changed successfully";
         // public string? Html { get; set; } = string.Empty;
     }
@@ -67,7 +65,7 @@ namespace RajFabAPI.DTOs
     public class ManagerChangeGetResponseDto
     {
         public Guid ManagerChangeId { get; set; }
-        public string AcknowledgementNumber { get; set; }
+        public string ApplicationNumber { get; set; }
         public string Status { get; set; }
         public DateTime SubmittedDate { get; set; }
         public DateTime DateOfAppointment { get; set; }
@@ -83,7 +81,7 @@ namespace RajFabAPI.DTOs
 
     public class FactoryBasicDto
     {
-        public Guid FactoryRegistrationId { get; set; }
+        public string FactoryRegistrationNumber { get; set; }
         public string FactoryName { get; set; }
         public string AddressLine1 { get; set; }
         public string AddressLine2 { get; set; }

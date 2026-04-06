@@ -239,7 +239,7 @@ namespace RajFabAPI.Services
                     var managerChange = _db.ManagerChanges
                         .FirstOrDefault(x => x.Id == managerChangeId);
                     var estReg = _db.EstablishmentRegistrations
-                        .FirstOrDefault(x => x.EstablishmentRegistrationId == managerChange.FactoryRegistrationId.ToString());
+                        .FirstOrDefault(x => x.RegistrationNumber == managerChange.FactoryRegistrationNumber.ToString());
                     var estDetails = _db.EstablishmentDetails
                         .FirstOrDefault(x => x.Id == estReg.EstablishmentDetailId);
 
@@ -251,6 +251,7 @@ namespace RajFabAPI.Services
                             ApplicationType = ApplicationTypeNames.ManagerChange,
                             Status = managerChange.Status,
                             CreatedDate = appRegistration.CreatedDate,
+                            ApplicationNumber = managerChange.ApplicationNumber,
                             ApplicationId = appRegistration.ApplicationId,
                             ApplicationTitle = estDetails.EstablishmentName,
                             IsESignCompletedOccupier = appRegistration.IsESignCompletedOccupier,
@@ -725,7 +726,7 @@ namespace RajFabAPI.Services
                         }
 
                         var estDetailId = await _db.Set<EstablishmentRegistration>()
-                            .Where(m => m.EstablishmentRegistrationId == managerChangeReg.FactoryRegistrationId.ToString())
+                            .Where(m => m.EstablishmentRegistrationId == managerChangeReg.FactoryRegistrationNumber.ToString())
                             .Select(m => m.EstablishmentDetailId)
                             .FirstOrDefaultAsync();
 

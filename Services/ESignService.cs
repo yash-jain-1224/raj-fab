@@ -98,6 +98,10 @@ namespace RajFabAPI.Services
 
                     var user = _httpContextAccessor.HttpContext?.User;
                     var fullName = user?.FindFirst("fullName")?.Value;
+                    string signerName = fullName ?? "";
+                    string signerDesignation = "Occupier";
+                    string signerLocation = "Jaipur, Rajasthan";
+                    string signerXcord = "415";   // occupier box x
 
                     _logger.LogInformation("Fetching application data from DB");
 
@@ -110,7 +114,7 @@ namespace RajFabAPI.Services
                         {
                             Application = appReg,
                             ModuleName = module.Name,
-                            UserId = appReg.UserId
+                            appReg.UserId
                         }
                     ).FirstOrDefaultAsync();
 
@@ -195,6 +199,8 @@ namespace RajFabAPI.Services
                                 _logger.LogInformation("Processing New Establishment PDF generation");
 
                                 var data = await _estRegService.GetAllEntitiesByRegistrationIdAsync(applicationId);
+                                signerName = data.ApplicationDetails.Factory.EmployerDetail.Name;
+                                signerLocation = data.ApplicationDetails.Factory.DistrictName;
                                 var filePath = await _estRegService.GenerateEstablishmentPdf(data);
 
                                 if (!File.Exists(filePath))
@@ -210,7 +216,10 @@ namespace RajFabAPI.Services
                                 _logger.LogInformation("Processing Map Approval PDF generation");
 
                                 var response = await _factoryMapApprovalService.GetApplicationByIdAsync(applicationId);
-
+                                var res = await _estRegService.GetFactoryDetailsByFactoryRegistrationNumberAsync(response.Data.FactoryRegistrationNumber);
+                                
+                                signerName = res.Factory?.EmployerDetail?.Name ?? "Occupier";
+                                signerLocation = res.Factory?.DistrictName ?? "Rajasthan";
                                 if (!response.Success || response.Data == null)
                                 {
                                     _logger.LogError("Map Approval data fetch failed. Message: {Message}",
@@ -380,11 +389,6 @@ namespace RajFabAPI.Services
 
                             // Signature box coordinates from FactoryLicensePageBorderAndFooterEventHandler:
                             //   A4 width=595, rightMargin=30, signBlockWidth=120, gap=8, footerY=35
-                            //   occupierX = 595-30-120 = 445 ; managerX = 445-8-120 = 317
-                            string signerName = fullName ?? "";
-                            string signerDesignation = "Occupier";
-                            string signerLocation = "Jaipur, Rajasthan";
-                            string signerXcord = "415";   // occupier box x
 
                             if (isManagerTurn)
                             {
@@ -410,9 +414,10 @@ namespace RajFabAPI.Services
                                                 signerName = mgr.Value.TryGetProperty("name", out var n) ? n.GetString() ?? signerName : signerName;
                                                 signerDesignation = mgr.Value.TryGetProperty("designation", out var d) && !string.IsNullOrEmpty(d.GetString()) ? d.GetString()! : "Manager";
                                                 var district = mgr.Value.TryGetProperty("district", out var di) ? di.GetString() : null;
-                                                signerLocation = district;
-                                                if (string.IsNullOrEmpty(signerLocation)) signerLocation = "Rajasthan";
                                             }
+                                            var factoryDistrict = fdJson.RootElement.TryGetProperty("district", out var fd) ? fd.GetString() : null;
+
+                                            signerLocation = !string.IsNullOrEmpty(factoryDistrict) ? factoryDistrict : "Rajasthan";
                                         }
                                         catch { /* keep defaults */ }
                                     }
@@ -430,12 +435,13 @@ namespace RajFabAPI.Services
                                             var mgrPerson = await _db.Set<PersonDetail>()
                                                 .FirstOrDefaultAsync(p => p.Id == mcRec.NewManagerId);
 
+                                            var res = await _estRegService.GetFactoryDetailsByFactoryRegistrationNumberAsync(mcRec.FactoryRegistrationNumber.ToString());
+                                                                            
                                             if (mgrPerson != null)
                                             {
                                                 signerName = mgrPerson.Name ?? signerName;
                                                 signerDesignation = mgrPerson.Designation ?? "Manager";
-                                                signerLocation = string.Join(", ", new[] { mgrPerson.Area, mgrPerson.District }.Where(x => !string.IsNullOrEmpty(x)));
-                                                if (string.IsNullOrEmpty(signerLocation)) signerLocation = "Rajasthan";
+                                                signerLocation = res.Factory?.DistrictName ?? "Rajasthan";
                                             }
                                         }
                                     }

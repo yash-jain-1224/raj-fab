@@ -53,6 +53,7 @@ namespace RajFabAPI.Services
         private readonly ILogger<ESignService> _logger;
         private readonly IWebHostEnvironment _environment;
         private readonly IBoilerRegistartionService _boilerRegistrationService;
+        private readonly IManagerChangeService _managerChangeService;
 
         public ESignService(
             IMemoryCache cache, IEstablishmentRegistrationService estRegService, ApplicationDbContext db, IConfiguration config,
@@ -62,7 +63,8 @@ namespace RajFabAPI.Services
             ILogger<ESignService> logger,
             IAppealService appealService,
             IWebHostEnvironment environment,
-            IBoilerRegistartionService boilerRegistrationService)
+            IBoilerRegistartionService boilerRegistrationService,
+            IManagerChangeService managerChangeService)
         {
             _logger = logger;
             _cache = cache;
@@ -77,6 +79,7 @@ namespace RajFabAPI.Services
             _appealService = appealService;
             _environment = environment;
             _boilerRegistrationService = boilerRegistrationService;
+            _managerChangeService = managerChangeService;
         }
 
         public async Task<string> GenerateESignHtmlAsync(string applicationId)
@@ -129,8 +132,65 @@ namespace RajFabAPI.Services
 
                             byte[]? pdfBytes = null;
 
-                            // ---- MODULE SWITCH ----
-                            if (applicationData.ModuleName == ApplicationTypeNames.NewEstablishment || applicationData.ModuleName == ApplicationTypeNames.FactoryAmendment || applicationData.ModuleName == ApplicationTypeNames.FactoryRenewal)
+                            // ── For dual-eSign modules, the PDF is generated ONCE (occupier step).
+                            // On manager step, reuse the already-signed/stored PDF from ApplicationPDFUrl.
+                            bool isDualESignForPdf =
+                                applicationData.ModuleName == ApplicationTypeNames.FactoryLicense ||
+                                applicationData.ModuleName == ApplicationTypeNames.FactoryLicenseAmendment ||
+                                applicationData.ModuleName == ApplicationTypeNames.FactoryLicenseRenewal ||
+                                applicationData.ModuleName == ApplicationTypeNames.ManagerChange;
+
+                            bool isManagerTurnForPdf = isDualESignForPdf && applicationData.Application.IsESignCompletedOccupier;
+
+                            if (isManagerTurnForPdf)
+                            {
+                                _logger.LogInformation("Manager eSign step — reusing existing PDF from ApplicationPDFUrl");
+
+                                string? existingUrl = null;
+
+                                if (applicationData.ModuleName == ApplicationTypeNames.FactoryLicense ||
+                                    applicationData.ModuleName == ApplicationTypeNames.FactoryLicenseAmendment ||
+                                    applicationData.ModuleName == ApplicationTypeNames.FactoryLicenseRenewal)
+                                {
+                                    existingUrl = await _db.Set<FactoryLicense>()
+                                        .Where(l => l.Id == applicationId)
+                                        .Select(l => l.ApplicationPDFUrl)
+                                        .FirstOrDefaultAsync();
+                                }
+                                else if (applicationData.ModuleName == ApplicationTypeNames.ManagerChange &&
+                                         Guid.TryParse(applicationId, out var mcGuidPdf))
+                                {
+                                    existingUrl = await _db.Set<ManagerChange>()
+                                        .Where(m => m.Id == mcGuidPdf)
+                                        .Select(m => m.ApplicationPDFUrl)
+                                        .FirstOrDefaultAsync();
+                                }
+
+                                if (string.IsNullOrEmpty(existingUrl))
+                                {
+                                    _logger.LogError("ApplicationPDFUrl not set for manager eSign on ApplicationId: {Id}", applicationId);
+                                    throw new Exception("PDF not found for manager eSign. Occupier must eSign first.");
+                                }
+
+                                // Resolve URL → physical path
+                                string relativePath = existingUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+                                    ? new Uri(existingUrl).AbsolutePath.TrimStart('/')
+                                    : existingUrl.TrimStart('/');
+
+                                var physicalPath = Path.Combine(_environment.WebRootPath, relativePath);
+
+                                if (!File.Exists(physicalPath))
+                                {
+                                    _logger.LogError("Existing PDF not found on disk: {Path}", physicalPath);
+                                    throw new Exception("Stored PDF file not found on disk.");
+                                }
+
+                                pdfBytes = await File.ReadAllBytesAsync(physicalPath);
+                                _logger.LogInformation("Reused existing PDF ({Bytes} bytes) for manager eSign", pdfBytes.Length);
+                            }
+
+                            // ---- MODULE SWITCH (occupier step or single-eSign modules) ----
+                            if (!isManagerTurnForPdf && (applicationData.ModuleName == ApplicationTypeNames.NewEstablishment || applicationData.ModuleName == ApplicationTypeNames.FactoryAmendment || applicationData.ModuleName == ApplicationTypeNames.FactoryRenewal))
                             {
                                 _logger.LogInformation("Processing New Establishment PDF generation");
 
@@ -197,9 +257,9 @@ namespace RajFabAPI.Services
 
                                 pdfBytes = await File.ReadAllBytesAsync(filePath);
                             }
-                            else if (applicationData.ModuleName == ApplicationTypeNames.FactoryLicense || applicationData.ModuleName == ApplicationTypeNames.FactoryLicenseAmendment || applicationData.ModuleName == ApplicationTypeNames.FactoryLicenseRenewal)
+                            else if (!isManagerTurnForPdf && (applicationData.ModuleName == ApplicationTypeNames.FactoryLicense || applicationData.ModuleName == ApplicationTypeNames.FactoryLicenseAmendment || applicationData.ModuleName == ApplicationTypeNames.FactoryLicenseRenewal))
                             {
-                                _logger.LogInformation("Processing Factory License PDF generation");
+                                _logger.LogInformation("Processing Factory License PDF generation (occupier step)");
 
                                 var response = await _factoryLicenseService.GetByIdAsync(applicationId);
 
@@ -235,6 +295,26 @@ namespace RajFabAPI.Services
                                 }
 
                                 var filePath = await _appealService.GenerateAppealPdf(response);
+
+                                _logger.LogInformation("Generated PDF Path: {FilePath}", filePath);
+
+                                if (!File.Exists(filePath))
+                                {
+                                    _logger.LogError("PDF file not found at path: {FilePath}", filePath);
+                                    throw new Exception("Generated PDF not found");
+                                }
+
+                                pdfBytes = await File.ReadAllBytesAsync(filePath);
+                            }
+
+                            else if (!isManagerTurnForPdf && applicationData.ModuleName == ApplicationTypeNames.ManagerChange)
+                            {
+                                _logger.LogInformation("Processing ManagerChange PDF generation (occupier step)");
+
+                                if (!Guid.TryParse(applicationId, out var mcGuid))
+                                    throw new Exception("Invalid ManagerChange application ID");
+
+                                var filePath = await _managerChangeService.GenerateManagerChangePdfAsync(mcGuid);
 
                                 _logger.LogInformation("Generated PDF Path: {FilePath}", filePath);
 
@@ -287,12 +367,90 @@ namespace RajFabAPI.Services
 
                             _logger.LogInformation("Auth token received");
 
+                            // ── Determine signer: occupier (step 1) or manager (step 2) ──────────
+                            // Dual-eSign modules: FactoryLicense variants + ManagerChange.
+                            // IsESignCompletedOccupier=false → occupier turn; true → manager turn.
+                            bool isDualESign =
+                                applicationData.ModuleName == ApplicationTypeNames.FactoryLicense ||
+                                applicationData.ModuleName == ApplicationTypeNames.FactoryLicenseAmendment ||
+                                applicationData.ModuleName == ApplicationTypeNames.FactoryLicenseRenewal ||
+                                applicationData.ModuleName == ApplicationTypeNames.ManagerChange;
+
+                            bool isManagerTurn = isDualESign && applicationData.Application.IsESignCompletedOccupier;
+
+                            // Signature box coordinates from FactoryLicensePageBorderAndFooterEventHandler:
+                            //   A4 width=595, rightMargin=30, signBlockWidth=120, gap=8, footerY=35
+                            //   occupierX = 595-30-120 = 445 ; managerX = 445-8-120 = 317
+                            string signerName = fullName ?? "";
+                            string signerDesignation = "Occupier";
+                            string signerLocation = "Jaipur, Rajasthan";
+                            string signerXcord = "400";   // occupier box x
+
+                            if (isManagerTurn)
+                            {
+                                signerXcord = "317";   // manager box x (left of occupier box)
+                                signerDesignation = "Manager";
+
+                                if (applicationData.ModuleName == ApplicationTypeNames.FactoryLicense ||
+                                    applicationData.ModuleName == ApplicationTypeNames.FactoryLicenseAmendment ||
+                                    applicationData.ModuleName == ApplicationTypeNames.FactoryLicenseRenewal)
+                                {
+                                    // Read manager details from the FactoryData JSON snapshot on the license
+                                    var licenseRec = await _db.Set<FactoryLicense>()
+                                        .FirstOrDefaultAsync(l => l.Id == applicationId);
+
+                                    if (licenseRec?.FactoryData != null)
+                                    {
+                                        try
+                                        {
+                                            var fdJson = System.Text.Json.JsonDocument.Parse(licenseRec.FactoryData);
+                                            var mgr = fdJson.RootElement.TryGetProperty("managerDetails", out var mgrEl) ? mgrEl : (System.Text.Json.JsonElement?)null;
+                                            if (mgr.HasValue)
+                                            {
+                                                signerName = mgr.Value.TryGetProperty("name", out var n) ? n.GetString() ?? signerName : signerName;
+                                                signerDesignation = mgr.Value.TryGetProperty("designation", out var d) && !string.IsNullOrEmpty(d.GetString()) ? d.GetString()! : "Manager";
+                                                var district = mgr.Value.TryGetProperty("district", out var di) ? di.GetString() : null;
+                                                signerLocation = district;
+                                                if (string.IsNullOrEmpty(signerLocation)) signerLocation = "Rajasthan";
+                                            }
+                                        }
+                                        catch { /* keep defaults */ }
+                                    }
+                                }
+                                else if (applicationData.ModuleName == ApplicationTypeNames.ManagerChange)
+                                {
+                                    // Read new manager details from PersonDetails via ManagerChange record
+                                    if (Guid.TryParse(applicationId, out var mcGuid))
+                                    {
+                                        var mcRec = await _db.Set<ManagerChange>()
+                                            .FirstOrDefaultAsync(m => m.Id == mcGuid);
+
+                                        if (mcRec != null)
+                                        {
+                                            var mgrPerson = await _db.Set<PersonDetail>()
+                                                .FirstOrDefaultAsync(p => p.Id == mcRec.NewManagerId);
+
+                                            if (mgrPerson != null)
+                                            {
+                                                signerName = mgrPerson.Name ?? signerName;
+                                                signerDesignation = mgrPerson.Designation ?? "Manager";
+                                                signerLocation = string.Join(", ", new[] { mgrPerson.Area, mgrPerson.District }.Where(x => !string.IsNullOrEmpty(x)));
+                                                if (string.IsNullOrEmpty(signerLocation)) signerLocation = "Rajasthan";
+                                            }
+                                        }
+                                    }
+                                }
+
+                                _logger.LogInformation("Manager eSign — Name: {Name}, Designation: {Desig}, Location: {Loc}", signerName, signerDesignation, signerLocation);
+                            }
+
                             generateSignedXml_Request Signrequest = new generateSignedXml_Request
                             {
                                 pdfFile = pdfBytes,
-                                personName = fullName,
-                                personDesignation = "Developer",
-                                personLocation = "Jaipur, Rajasthan",
+                                personName = signerName,
+                                personDesignation = signerDesignation,
+                                personLocation = signerLocation,
+                                xcord = signerXcord,
                                 responseUrl = $"{_config["ESignSettings:ResponseUrl"]}",
                                 prn = prnNumber
                             };
@@ -332,15 +490,16 @@ namespace RajFabAPI.Services
                             {
                                 ApplicationId = applicationId,
                                 ApplicationType = applicationData.ModuleName,
-                                Action = "Esign Initiated",
+                                Action = "E-Sign Initiated",
                                 PreviousStatus = null,
                                 NewStatus = "Pending",
-                                Comments = "Esign Initiated",
+                                Comments = "E-Sign process started",
                                 ActionBy = applicationData.UserId.ToString(),
                                 ActionByName = "Applicant",
                                 ActionDate = DateTime.Now
                             };
                             _db.ApplicationHistories.Add(history);
+                            await _db.SaveChangesAsync();
                             return html;
                         }
                     }
@@ -441,6 +600,7 @@ namespace RajFabAPI.Services
                     if (signingResponse == null)
                     {
                         _logger.LogError("Signing API returned null response");
+                        await RecordESignFailureAsync(esignTempData.prn, "E-Sign failed: Signing service returned no response");
                         return BuildErrorRedirect("Signing API returned null response");
                     }
 
@@ -452,7 +612,9 @@ namespace RajFabAPI.Services
                             signingResponse.message
                         );
 
-                        return BuildErrorRedirect(signingResponse.message ?? "Signing API failed");
+                        var failMsg = signingResponse.message ?? "Signing API failed";
+                        await RecordESignFailureAsync(esignTempData.prn, $"E-Sign failed: {failMsg}");
+                        return BuildErrorRedirect(failMsg);
                     }
 
                     _logger.LogInformation(
@@ -758,6 +920,37 @@ namespace RajFabAPI.Services
             return $"{_config["FrontendUrl"]}/error?details={encodedMessage}";
         }
 
+        private async Task RecordESignFailureAsync(string prn, string errorMessage)
+        {
+            try
+            {
+                var appReg = await _db.Set<ApplicationRegistration>()
+                    .FirstOrDefaultAsync(r => r.ESignPrnNumberOccupier == prn || r.ESignPrnNumberManager == prn);
+                if (appReg == null) return;
+
+                var module = await _db.Set<FormModule>()
+                    .FirstOrDefaultAsync(m => m.Id == appReg.ModuleId);
+
+                _db.ApplicationHistories.Add(new ApplicationHistory
+                {
+                    ApplicationId = appReg.ApplicationId,
+                    ApplicationType = module?.Name ?? "",
+                    Action = "E-Sign Failed",
+                    PreviousStatus = null,
+                    NewStatus = "Pending",
+                    Comments = errorMessage,
+                    ActionBy = appReg.UserId.ToString(),
+                    ActionByName = "Applicant",
+                    ActionDate = DateTime.Now
+                });
+                await _db.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to record eSign failure history for PRN: {PRN}", prn);
+            }
+        }
+
         public async Task<string> GenerateCertificateESignHtmlAsync(string certificateId)
         {
             _logger.LogInformation("GenerateCertificateESignHtmlAsync started for CertificateId: {CertificateId}", certificateId);
@@ -850,7 +1043,11 @@ namespace RajFabAPI.Services
                 if (application == null)
                     return BuildErrorRedirect("Application not found");
 
-                application.ESignPrnNumberOccupier = prn;
+                // Route PRN to the correct slot (same logic as SavePRNNumber)
+                if (application.IsESignCompletedOccupier)
+                    application.ESignPrnNumberManager = prn;
+                else
+                    application.ESignPrnNumberOccupier = prn;
                 application.UpdatedDate = DateTime.Now;
 
                 var Module = await _db.Modules
@@ -888,6 +1085,11 @@ namespace RajFabAPI.Services
 
                     var filePath = await _factoryLicenseService
                         .GenerateFactoryLicensePdf(response);
+                }
+                else if (Module.Name == ApplicationTypeNames.ManagerChange)
+                {
+                    if (Guid.TryParse(applicationId, out var mcGuid))
+                        await _managerChangeService.GenerateManagerChangePdfAsync(mcGuid);
                 }
                 else if (Module.Name == ApplicationTypeNames.BoilerRegistration)
                 {

@@ -80,6 +80,9 @@ namespace RajFabAPI.DTOs
     {
         [Required]
         public string FactoryDetails { get; set; }
+
+        [Required]
+        public string? FactoryRegistrationNumber { get; set; }
         
         [Required]
         public string OccupierDetails { get; set; }

@@ -1,3 +1,10 @@
+using iText.Kernel.Colors;
+using iText.Kernel.Font;
+using iText.Kernel.Pdf;
+using iText.Layout;
+using iText.Layout.Borders;
+using iText.Layout.Element;
+using iText.Layout.Properties;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RajFabAPI.Data;
@@ -5,6 +12,10 @@ using RajFabAPI.DTOs;
 using RajFabAPI.Models;
 using RajFabAPI.Services.Interface;
 using static RajFabAPI.Constants.AppConstants;
+using PdfCell = iText.Layout.Element.Cell;
+using PdfDoc = iText.Layout.Document;
+using PdfTable = iText.Layout.Element.Table;
+using PdfWriter = iText.Kernel.Pdf.PdfWriter;
 
 namespace RajFabAPI.Services
 {  
@@ -12,11 +23,18 @@ namespace RajFabAPI.Services
     {
         private readonly ApplicationDbContext _context;
         private readonly IPaymentService _payment;
+        private readonly IWebHostEnvironment _environment;
+        private readonly IConfiguration _config;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public ManagerChangeService(ApplicationDbContext context, IWebHostEnvironment environment, IPaymentService payment)
+        public ManagerChangeService(ApplicationDbContext context, IWebHostEnvironment environment, IPaymentService payment,
+            IConfiguration config, IHttpContextAccessor httpContextAccessor)
         {
             _context = context;
             _payment = payment;
+            _environment = environment;
+            _config = config;
+            _httpContextAccessor = httpContextAccessor;
         }
 
         public string GenerateAcknowledgementNumber()
@@ -189,44 +207,10 @@ namespace RajFabAPI.Services
                 _context.ApplicationRegistrations.Add(appReg);
                 await _context.SaveChangesAsync();
 
-                // 4?? Workflow / Approval
-                var areaId = await _context.Set<EstablishmentDetail>()
-                    .Where(m => m.Id == EstablishmentDetailId)
-                    .Select(m => m.SubDivisionId)
-                    .FirstOrDefaultAsync();
+                // Workflow / ApprovalRequest is created AFTER both eSigns complete
+                // (occupier first, then manager) via UpdateApplicationESignData.
+                // Do NOT create it here to avoid duplicate entries.
 
-                var officeApplicationArea = await _context.Set<OfficeApplicationArea>()
-                    .FirstOrDefaultAsync(oaa => oaa.CityId == Guid.Parse(areaId));
-
-                var factoryCategoryId = Guid.Parse("EB857143-2FBB-4C6E-88F8-888C3D6DB671");
-
-                if (officeApplicationArea != null)
-                {
-                    var workflow = await _context.Set<ApplicationWorkFlow>()
-                        .FirstOrDefaultAsync(wf => wf.ModuleId == module.Id
-                            && wf.FactoryCategoryId == factoryCategoryId
-                            && wf.OfficeId == officeApplicationArea.OfficeId);
-                    Guid workflowId = workflow?.Id ?? Guid.Empty;
-                    var workflowLevel = await _context.Set<ApplicationWorkFlowLevel>()
-                        .Where(wfl => wfl.ApplicationWorkFlowId == workflowId)
-                        .OrderBy(wfl => wfl.LevelNumber)
-                        .FirstOrDefaultAsync();
-
-                    if (workflowLevel != null)
-                    {
-                        _context.ApplicationApprovalRequests.Add(new ApplicationApprovalRequest
-                        {
-                            ModuleId = module.Id,
-                            ApplicationRegistrationId = appReg.Id,
-                            ApplicationWorkFlowLevelId = workflowLevel.Id,
-                            Status = "Pending",
-                            CreatedDate = DateTime.Now,
-                            UpdatedDate = DateTime.Now
-                        });
-
-                        await _context.SaveChangesAsync();
-                    }
-                }
                 var User = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
                 var html = await _payment.ActionRequestPaymentRPP(1000, User.FullName, User.Mobile, User.Email, User.Username, "4157FE34BBAE3A958D8F58CCBFAD7", "UWf6a7cDCP", managerChange.AcknowledgementNumber, module.Id.ToString(), userId.ToString()) ?? "";
 
@@ -505,6 +489,101 @@ namespace RajFabAPI.Services
                     Designation = managerChange.NewManager.Designation ?? ""
                 }
             };
+        }
+
+        public async Task<string> GenerateManagerChangePdfAsync(Guid managerChangeId)
+        {
+            var data = await GetByIdAsync(managerChangeId);
+
+            var folderName = "manager-change-pdfs";
+            var folderPath = Path.Combine(_environment.WebRootPath, folderName);
+            Directory.CreateDirectory(folderPath);
+            var fileName = $"MC_{managerChangeId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+            var filePath = Path.Combine(folderPath, fileName);
+
+            var httpContext = _httpContextAccessor.HttpContext
+                ?? throw new InvalidOperationException("HTTP context unavailable");
+            var request = httpContext.Request;
+            var baseUrl = _config["BaseUrl"] ?? $"{request.Scheme}://{request.Host}";
+            var fileUrl = $"{baseUrl}/{folderName}/{fileName}";
+
+            using var writer = new PdfWriter(filePath);
+            using var pdf = new PdfDocument(writer);
+            using var doc = new PdfDoc(pdf);
+
+            var bold = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA_BOLD);
+            var regular = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA);
+
+            // Header
+            doc.Add(new Paragraph("Form – 11").SetFont(bold).SetFontSize(14).SetTextAlignment(TextAlignment.CENTER));
+            doc.Add(new Paragraph("(See Rule 14)").SetFont(regular).SetFontSize(11).SetTextAlignment(TextAlignment.CENTER));
+            doc.Add(new Paragraph("Notice of Change of Manager").SetFont(bold).SetFontSize(12).SetTextAlignment(TextAlignment.CENTER));
+            doc.Add(new Paragraph("\n"));
+
+            // Helper to add section table
+            void AddSection(string title, (string Label, string? Value)[] rows)
+            {
+                doc.Add(new Paragraph(title).SetFont(bold).SetFontSize(11));
+                var table = new PdfTable(new float[] { 2, 3 }).UseAllAvailableWidth();
+                foreach (var (label, value) in rows)
+                {
+                    _ = table.AddCell(new PdfCell().Add(new Paragraph(label).SetFont(bold).SetFontSize(9)).SetBorder(new SolidBorder(0.5f)));
+                    _ = table.AddCell(new PdfCell().Add(new Paragraph(value ?? "—").SetFont(regular).SetFontSize(9)).SetBorder(new SolidBorder(0.5f)));
+                }
+                doc.Add(table);
+                doc.Add(new Paragraph("\n"));
+            }
+
+            AddSection("1. Factory Details", new[]
+            {
+                ("Factory Name", data.Factory?.FactoryName),
+                ("Factory Registration No.", data.Factory?.FactoryRegistrationId.ToString()),
+                ("Application No.", data.AcknowledgementNumber),
+                ("Address", $"{data.Factory?.AddressLine1}, {data.Factory?.AddressLine2}"),
+                ("District", data.Factory?.DistrictName),
+                ("Pincode", data.Factory?.Pincode),
+            });
+
+            AddSection("2. Outgoing Manager", new[]
+            {
+                ("Name", data.OldManager?.Name),
+                ("Designation", data.OldManager?.Designation),
+                (data.OldManager?.RelationType?.ToUpper() + " Name", data.OldManager?.RelativeName),
+                ("Address", $"{data.OldManager?.AddressLine1}, {data.OldManager?.AddressLine2}"),
+                ("District", data.OldManager?.District),
+                ("Tehsil", data.OldManager?.Tehsil),
+                ("Area", data.OldManager?.Area),
+                ("Pincode", data.OldManager?.Pincode),
+                ("Mobile", data.OldManager?.Mobile),
+            });
+
+            AddSection("3. New Manager", new[]
+            {
+                ("Name", data.NewManager?.Name),
+                ("Designation", data.NewManager?.Designation),
+                (data.NewManager?.RelationType?.ToUpper() + " Name", data.NewManager?.RelativeName),
+                ("Address", $"{data.NewManager?.AddressLine1}, {data.NewManager?.AddressLine2}"),
+                ("District", data.NewManager?.District),
+                ("Tehsil", data.NewManager?.Tehsil),
+                ("Area", data.NewManager?.Area),
+                ("Pincode", data.NewManager?.Pincode),
+                ("Mobile", data.NewManager?.Mobile),
+            });
+
+            AddSection("4. Date of Appointment", new[]
+            {
+                ("Date of Appointment of New Manager", data.DateOfAppointment.ToString("dd MMM yyyy")),
+            });
+
+            // Save the URL to the ManagerChange record so manager eSign can reuse this PDF
+            var mcRecord = await _context.ManagerChanges.FirstOrDefaultAsync(m => m.Id == managerChangeId);
+            if (mcRecord != null)
+            {
+                mcRecord.ApplicationPDFUrl = fileUrl;
+                await _context.SaveChangesAsync();
+            }
+
+            return filePath;
         }
 
         public async Task<AreaHierarchyDto?> GetAreaHierarchyAsync(string? areaIdStr)

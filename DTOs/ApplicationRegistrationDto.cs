@@ -44,7 +44,8 @@ namespace RajFabAPI.DTOs
         public DateTime CreatedDate { get; set; }
         public bool? IsPaymentCompleted { get; set; }
         public bool? IsPaymentPending { get; set; }
-        public bool? IsESignCompleted{ get; set; }
+        public bool? IsESignCompletedOccupier{ get; set; }
+        public bool? IsESignCompletedManager{ get; set; }
     }
 
     public class RemarkDetailsDto

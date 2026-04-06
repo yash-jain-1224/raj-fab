@@ -2090,7 +2090,11 @@ ALTER TABLE BoilerRegistrations
     ADD ObjectionLetterUrl NVARCHAR(500) NOT NULL DEFAULT '';
 
 ALTER TABLE FactoryMapApprovals
-    ADD ApplicationId NVARCHAR(50) NOT NULL DEFAULT '';
+    DROP COLUMN
+        ApplicationId;
+        
+ALTER TABLE FactoryMapApprovals
+    ADD ApplicationNumber NVARCHAR(50) NOT NULL DEFAULT '';
 
 ALTER TABLE EstablishmentRegistrations
     ADD Form32 NVARCHAR(500) NOT NULL DEFAULT '';
@@ -2107,8 +2111,23 @@ ADD
 
     
 ALTER TABLE EstablishmentRegistrations
-DROP COLUMN 
+DROP COLUMN
     Date,
     Signature,
     IsESignCompleted,
     ESignPrnNumber;
+
+ALTER TABLE ApplicationRegistrations
+ADD
+    IsESignCompletedOccupier BIT NOT NULL DEFAULT 0,
+    IsESignCompletedManager  BIT NOT NULL DEFAULT 0;
+
+ALTER TABLE ManagerChanges
+    ADD ApplicationPDFUrl NVARCHAR(MAX) NULL DEFAULT '';
+
+ALTER TABLE FactoryLicenses
+DROP COLUMN
+    IsESignCompletedOccupier,
+    ESignPrnNumberOccupier,
+    IsESignCompletedManager,
+    ESignPrnNumberManager;

@@ -41,5 +41,6 @@ namespace RajFabAPI.Models
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         public DateTime UpdatedAt { get; set; } = DateTime.Now;
         public bool IsActive { get; set; } = true;
+        public string? ApplicationPDFUrl { get; set; }
     }
 }

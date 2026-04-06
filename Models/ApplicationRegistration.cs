@@ -15,6 +15,8 @@ namespace RajFabAPI.Models
         [StringLength(50)]
         public string? ESignPrnNumberOccupier { get; set; } = string.Empty;
         public string? ESignPrnNumberManager { get; set; } = string.Empty;
+        public bool IsESignCompletedOccupier { get; set; } = false;
+        public bool IsESignCompletedManager { get; set; } = false;
         public DateTime CreatedDate { get; set; } = DateTime.Now;
         public DateTime UpdatedDate { get; set; } = DateTime.Now;
     }

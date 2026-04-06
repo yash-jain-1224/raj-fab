@@ -817,7 +817,7 @@ namespace RajFabAPI.Services
             using var writer = new PdfWriter(filePath);
             using var pdf = new PdfDocument(writer);
             pdf.AddEventHandler(PdfDocumentEvent.END_PAGE,
-                new MapApprovalPageBorderAndFooterEventHandler(boldFont, regularFont, DateTime.Now.ToString("dd/MM/yyyy")));
+                new FactoryLicensePageBorderAndFooterEventHandler(boldFont, regularFont, DateTime.Now.ToString("dd/MM/yyyy")));
             using var document = new PdfDoc(pdf);
             document.SetMargins(40, 40, 130, 40);
 
@@ -1181,7 +1181,7 @@ namespace RajFabAPI.Services
                 await _context.SaveChangesAsync();
             }
 
-            return fileUrl;
+            return filePath;
         }
 
         // ─────────────────────────────────────────────────────────────────────────────
@@ -1510,13 +1510,13 @@ namespace RajFabAPI.Services
             }
         }
 
-        private sealed class MapApprovalPageBorderAndFooterEventHandler : AbstractPdfDocumentEventHandler
+        private sealed class FactoryLicensePageBorderAndFooterEventHandler : AbstractPdfDocumentEventHandler
         {
             private readonly PdfFont _boldFont;
             private readonly PdfFont _regularFont;
             private readonly string _date;
 
-            public MapApprovalPageBorderAndFooterEventHandler(PdfFont boldFont, PdfFont regularFont, string date)
+            public FactoryLicensePageBorderAndFooterEventHandler(PdfFont boldFont, PdfFont regularFont, string date)
             {
                 _boldFont = boldFont;
                 _regularFont = regularFont;

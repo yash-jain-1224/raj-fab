@@ -305,6 +305,7 @@ namespace RajFabAPI.Services
                     FactoryDetails = request.FactoryDetails,
                     NoOfShifts = request.NoOfShifts,
                     IsNew = isNew ?? true,
+                    FactoryRegistrationNumber = request.FactoryRegistrationNumber,
                     Version = newVersion
                 };
 

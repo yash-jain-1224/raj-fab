@@ -265,6 +265,7 @@ namespace RajFabAPI.Services
             {
                 decimal newVersion;
                 string acknowledgementNumber;
+                var applicationNumber = await GenerateApplicationNumberAsync();
 
                 if (isNew == false && !string.IsNullOrWhiteSpace(factoryMapApprovalId))
                 {
@@ -281,10 +282,9 @@ namespace RajFabAPI.Services
                 }
                 else
                 {
-                    acknowledgementNumber = GenerateAcknowledgementNumber();
+                    acknowledgementNumber = applicationNumber;
                     newVersion = 1.0m;
                 }
-                var applicationNumber = await GenerateApplicationNumberAsync();
 
                 // Ensure Id is set before using as FK
                 var application = new FactoryMapApproval

@@ -384,11 +384,11 @@ namespace RajFabAPI.Services
                             string signerName = fullName ?? "";
                             string signerDesignation = "Occupier";
                             string signerLocation = "Jaipur, Rajasthan";
-                            string signerXcord = "400";   // occupier box x
+                            string signerXcord = "415";   // occupier box x
 
                             if (isManagerTurn)
                             {
-                                signerXcord = "317";   // manager box x (left of occupier box)
+                                signerXcord = "250";   // manager box x (left of occupier box)
                                 signerDesignation = "Manager";
 
                                 if (applicationData.ModuleName == ApplicationTypeNames.FactoryLicense ||

@@ -112,10 +112,11 @@ namespace RajFabAPI.Services
                 .FirstOrDefaultAsync(u => u.Id == userId);
             decimal newVersion;
             string finalFactoryLicenseNumber;
+            var applicationNumber = await GenerateApplicationNumberAsync();
 
             if (type == "new" && string.IsNullOrEmpty(FactoryLicenseNumber))
             {
-                finalFactoryLicenseNumber = GenerateLicenseNumber();
+                finalFactoryLicenseNumber = applicationNumber;
                 newVersion = 1.0m;
             }
             else if (type == "amendment" || type == "renewal")
@@ -218,7 +219,6 @@ namespace RajFabAPI.Services
                     feeResult = await GetFeeAmountAsync(feeReq) ?? 0;
                 }
             }
-            var applicationNumber = await GenerateApplicationNumberAsync();
 
             await using var tx = await _context.Database.BeginTransactionAsync();
             try

@@ -17,6 +17,7 @@ namespace RajFabAPI.Services.Interface
             Guid id, UpdateApplicationWorkFlowDto dto);
 
         Task<bool> DeleteAsync(Guid id);
+        Task<bool> AddApplicationToWorkFlow(string applicationId);
     }
 
 }

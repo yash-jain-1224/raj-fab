@@ -147,8 +147,8 @@ namespace RajFabAPI.Services
                     IsActive = request.IsActive,
                     FormData = request.FormData.GetRawText(),
                     Version = newVersion,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.Now,
+                    UpdatedAt = DateTime.Now
                 };
 
                 _context.AnnualReturns.Add(annualReturn);
@@ -202,7 +202,7 @@ namespace RajFabAPI.Services
                     annualReturn.Version = request.Version.Value;
                 }
 
-                annualReturn.UpdatedAt = DateTime.UtcNow;
+                annualReturn.UpdatedAt = DateTime.Now;
 
                 _context.AnnualReturns.Update(annualReturn);
                 await _context.SaveChangesAsync();

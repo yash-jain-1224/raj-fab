@@ -395,7 +395,7 @@ namespace RajFabAPI.Services
         {
             try
             {
-                var history = new ApplicationHistory
+                var history = new Models.ApplicationHistory
                 {
                     Id = Guid.NewGuid(),
                     ApplicationId = applicationId,

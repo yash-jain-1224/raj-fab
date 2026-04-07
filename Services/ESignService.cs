@@ -1,206 +1,758 @@
-using Microsoft.AspNetCore.Mvc;
+using iText.Kernel.Colors;
+using iText.Kernel.Font;
+using iText.Kernel.Pdf;
+using iText.Layout;
+using iText.Layout.Borders;
+using iText.Layout.Element;
+using iText.Layout.Properties;
+using iText.StyledXmlParser.Jsoup.Nodes;
+using iTextSharp.text.log;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using RajFabAPI.Data;
 using RajFabAPI.DTOs;
 using RajFabAPI.Models;
+using RajFabAPI.Models.FactoryModels;
 using RajFabAPI.Services.Interface;
-using System.Net.Http.Headers;
-using System.Security.Claims;
-using System.Security.Cryptography;
-using System.Security.Cryptography.Xml;
+using Serilog.Context;
+using System.Data;
 using System.Text;
 using System.Text.Json;
-using System.Xml;
-
+using System.Xml.Linq;
+using static RajFabAPI.Constants.AppConstants;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+using ImageDataFactory = iText.IO.Image.ImageDataFactory;
+using PdfCell = iText.Layout.Element.Cell;
+using PdfDoc = iText.Layout.Document;
+using PdfImage = iText.Layout.Element.Image;
+using PdfTable = iText.Layout.Element.Table;
 
 namespace RajFabAPI.Services
 {
-
     public class ESignService : IESignService
     {
-        private readonly HttpClient _httpClient;
+        private readonly string generateTokenURL = "https://rajesignapitest.rajasthan.gov.in/caEsign/auth/generateToken";
+        private readonly string generateSignedXmlURL = "https://rajesignapitest.rajasthan.gov.in/caEsign/v2/generateSignedXmlV2_1";
+        private readonly string signdocURL = "https://esignuat.rajasthan.gov.in:9006/esign/2.1/signdoc/";
+        private readonly string signingPdf = "https://rajesignapitest.rajasthan.gov.in/caEsign/v2/signingPdfV2_1";
+        private readonly string SSOID = "RJJO201924027728";
+        private readonly string SecretKey = "esIXWgfhVzleJG9OlB/jX3DDzFGU0bN3vgrUkyGBUQQ=";
+        private readonly IMemoryCache _cache;
         private readonly ApplicationDbContext _db;
-        private readonly ESignSettings _settings;
+        private readonly IConfiguration _config;
+        private readonly IApplicationRegistrationService _applicationRegistrationService;
+        private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IEstablishmentRegistrationService _estRegService;
+        private readonly IFactoryMapApprovalService _factoryMapApprovalService;
+        private readonly ICommencementCessationService _commencementCessationService;
+        private readonly IFactoryLicenseService _factoryLicenseService;
+        private readonly IAppealService _appealService;
+        private readonly ILogger<ESignService> _logger;
+        private readonly IWebHostEnvironment _environment;
+        private readonly IBoilerRegistartionService _boilerRegistrationService;
+        private readonly IManagerChangeService _managerChangeService;
 
-        public ESignService(HttpClient httpClient, ApplicationDbContext db, IConfiguration config, IHttpContextAccessor httpContextAccessor)
+        public ESignService(
+            IMemoryCache cache, IEstablishmentRegistrationService estRegService, ApplicationDbContext db, IConfiguration config,
+            IApplicationWorkFlowService applicationWorkFlowService, IApplicationRegistrationService applicationRegistrationService,
+            IHttpContextAccessor httpContextAccessor, IFactoryMapApprovalService factoryMapApprovalService,
+            ICommencementCessationService commencementCessationService, IFactoryLicenseService factoryLicenseService,
+            ILogger<ESignService> logger,
+            IAppealService appealService,
+            IWebHostEnvironment environment,
+            IBoilerRegistartionService boilerRegistrationService,
+            IManagerChangeService managerChangeService)
         {
-            _httpClient = httpClient;
+            _logger = logger;
+            _cache = cache;
             _db = db;
-            _settings = config.GetSection("ESignSettings").Get<ESignSettings>();
+            _config = config;
+            _applicationRegistrationService = applicationRegistrationService;
             _httpContextAccessor = httpContextAccessor;
+            _estRegService = estRegService;
+            _factoryMapApprovalService = factoryMapApprovalService;
+            _commencementCessationService = commencementCessationService;
+            _factoryLicenseService = factoryLicenseService;
+            _appealService = appealService;
+            _environment = environment;
+            _boilerRegistrationService = boilerRegistrationService;
+            _managerChangeService = managerChangeService;
         }
 
-        private async Task<string> GenerateTokenAsync()
+        public async Task<string> GenerateESignHtmlAsync(string applicationId)
         {
-            var ssoId = _settings.SsoId;
-            var secretKey = _settings.SecretKey;
-            string basicAuth = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{ssoId}:{secretKey}"));
-            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", basicAuth);
+            using (LogContext.PushProperty("ApplicationId", applicationId))
+            {
+                _logger.LogInformation("GenerateESignHtmlAsync started");
 
-            var response = await _httpClient.PostAsync(_settings.TokenUrl, null);
-            response.EnsureSuccessStatusCode();
+                try
+                {
+                    if (string.IsNullOrEmpty(applicationId))
+                    {
+                        _logger.LogWarning("ApplicationId is null or empty");
+                        throw new Exception("Application Id is required");
+                    }
 
-            var content = await response.Content.ReadAsStringAsync();
-            var tokenResp = JsonSerializer.Deserialize<GenerateTokenResponse>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    var user = _httpContextAccessor.HttpContext?.User;
+                    var fullName = user?.FindFirst("fullName")?.Value;
+                    string signerName = fullName ?? "";
+                    string signerDesignation = "Occupier";
+                    string signerLocation = "Jaipur, Rajasthan";
+                    string signerXcord = "415";   // occupier box x
 
-            if (tokenResp?.Status != "SUCCESS" || tokenResp.Data == null)
-                throw new Exception("Failed to generate token: " + tokenResp?.Message);
+                    _logger.LogInformation("Fetching application data from DB");
 
-            return tokenResp.Data.EncryptedToken;
+                    var applicationData = await (
+                        from appReg in _db.Set<ApplicationRegistration>()
+                        join module in _db.Set<FormModule>()
+                            on appReg.ModuleId equals module.Id
+                        where appReg.ApplicationId == applicationId
+                        select new
+                        {
+                            Application = appReg,
+                            ModuleName = module.Name,
+                            appReg.UserId
+                        }
+                    ).FirstOrDefaultAsync();
+
+                    if (applicationData == null)
+                    {
+                        _logger.LogError("Application data not found");
+                        throw new Exception("Application data not found");
+                    }
+
+                    using (LogContext.PushProperty("ModuleName", applicationData.ModuleName))
+                    {
+                        _logger.LogInformation("Module detected");
+
+                        var prnNumber = "RAJFAB" + string.Concat(Guid.NewGuid().ToString("N").Where(char.IsDigit));
+
+                        using (LogContext.PushProperty("PRN", prnNumber))
+                        {
+                            _logger.LogInformation("Generated PRN");
+
+                            byte[]? pdfBytes = null;
+
+                            // ── For dual-eSign modules, the PDF is generated ONCE (occupier step).
+                            // On manager step, reuse the already-signed/stored PDF from ApplicationPDFUrl.
+                            bool isDualESignForPdf =
+                                applicationData.ModuleName == ApplicationTypeNames.FactoryLicense ||
+                                applicationData.ModuleName == ApplicationTypeNames.FactoryLicenseAmendment ||
+                                applicationData.ModuleName == ApplicationTypeNames.FactoryLicenseRenewal ||
+                                applicationData.ModuleName == ApplicationTypeNames.ManagerChange;
+
+                            bool isManagerTurnForPdf = isDualESignForPdf && applicationData.Application.IsESignCompletedOccupier;
+
+                            if (isManagerTurnForPdf)
+                            {
+                                _logger.LogInformation("Manager eSign step — reusing existing PDF from ApplicationPDFUrl");
+
+                                string? existingUrl = null;
+
+                                if (applicationData.ModuleName == ApplicationTypeNames.FactoryLicense ||
+                                    applicationData.ModuleName == ApplicationTypeNames.FactoryLicenseAmendment ||
+                                    applicationData.ModuleName == ApplicationTypeNames.FactoryLicenseRenewal)
+                                {
+                                    existingUrl = await _db.Set<FactoryLicense>()
+                                        .Where(l => l.Id == applicationId)
+                                        .Select(l => l.ApplicationPDFUrl)
+                                        .FirstOrDefaultAsync();
+                                }
+                                else if (applicationData.ModuleName == ApplicationTypeNames.ManagerChange &&
+                                         Guid.TryParse(applicationId, out var mcGuidPdf))
+                                {
+                                    existingUrl = await _db.Set<ManagerChange>()
+                                        .Where(m => m.Id == mcGuidPdf)
+                                        .Select(m => m.ApplicationPDFUrl)
+                                        .FirstOrDefaultAsync();
+                                }
+
+                                if (string.IsNullOrEmpty(existingUrl))
+                                {
+                                    _logger.LogError("ApplicationPDFUrl not set for manager eSign on ApplicationId: {Id}", applicationId);
+                                    throw new Exception("PDF not found for manager eSign. Occupier must eSign first.");
+                                }
+
+                                // Resolve URL → physical path
+                                string relativePath = existingUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+                                    ? new Uri(existingUrl).AbsolutePath.TrimStart('/')
+                                    : existingUrl.TrimStart('/');
+
+                                var physicalPath = Path.Combine(_environment.WebRootPath, relativePath);
+
+                                if (!File.Exists(physicalPath))
+                                {
+                                    _logger.LogError("Existing PDF not found on disk: {Path}", physicalPath);
+                                    throw new Exception("Stored PDF file not found on disk.");
+                                }
+
+                                pdfBytes = await File.ReadAllBytesAsync(physicalPath);
+                                _logger.LogInformation("Reused existing PDF ({Bytes} bytes) for manager eSign", pdfBytes.Length);
+                            }
+
+                            // ---- MODULE SWITCH (occupier step or single-eSign modules) ----
+                            if (!isManagerTurnForPdf && (applicationData.ModuleName == ApplicationTypeNames.NewEstablishment || applicationData.ModuleName == ApplicationTypeNames.FactoryAmendment || applicationData.ModuleName == ApplicationTypeNames.FactoryRenewal))
+                            {
+                                _logger.LogInformation("Processing New Establishment PDF generation");
+
+                                var data = await _estRegService.GetAllEntitiesByRegistrationIdAsync(applicationId);
+                                signerName = data.ApplicationDetails.Factory.EmployerDetail.Name;
+                                signerLocation = data.ApplicationDetails.Factory.DistrictName;
+                                var filePath = await _estRegService.GenerateEstablishmentPdf(data);
+
+                                if (!File.Exists(filePath))
+                                {
+                                    _logger.LogError("Generated PDF not found at path {FilePath}", filePath);
+                                    throw new Exception("Generated PDF not found");
+                                }
+
+                                pdfBytes = await File.ReadAllBytesAsync(filePath);
+                            }
+                            else if (applicationData.ModuleName == ApplicationTypeNames.MapApproval || applicationData.ModuleName == ApplicationTypeNames.MapApprovalAmendment)
+                            {
+                                _logger.LogInformation("Processing Map Approval PDF generation");
+
+                                var response = await _factoryMapApprovalService.GetApplicationByIdAsync(applicationId);
+                                var res = await _estRegService.GetFactoryDetailsByFactoryRegistrationNumberAsync(response.Data.FactoryRegistrationNumber);
+                                
+                                signerName = res.Factory?.EmployerDetail?.Name ?? "Occupier";
+                                signerLocation = res.Factory?.DistrictName ?? "Rajasthan";
+                                if (!response.Success || response.Data == null)
+                                {
+                                    _logger.LogError("Map Approval data fetch failed. Message: {Message}",
+                                        response.Message);
+
+                                    throw new Exception(response.Message ?? "Unable to fetch application.");
+                                }
+
+                                var filePath = await _factoryMapApprovalService
+                                    .GenerateFactoryMapApprovalPdf(response.Data);
+
+                                _logger.LogInformation("Generated PDF Path: {FilePath}", filePath);
+
+                                if (!File.Exists(filePath))
+                                {
+                                    _logger.LogError("PDF file not found at path: {FilePath}", filePath);
+                                    throw new Exception("Generated PDF not found");
+                                }
+
+                                pdfBytes = await File.ReadAllBytesAsync(filePath);
+                            }
+                            else if (applicationData.ModuleName == ApplicationTypeNames.FactoryCommencementCessation)
+                            {
+                                _logger.LogInformation("Processing Factory Commencement/Cessation PDF generation");
+
+                                var response = await _commencementCessationService.GetByIdAsync(applicationId);
+
+                                if (response?.CommencementCessationData == null)
+                                {
+                                    _logger.LogError("Commencement/Cessation data fetch failed");
+                                    throw new Exception("Unable to fetch application.");
+                                }
+
+                                var filePath = await _commencementCessationService
+                                    .GenerateCommencementCessationPdf(response);
+
+                                _logger.LogInformation("Generated PDF Path: {FilePath}", filePath);
+
+                                if (!File.Exists(filePath))
+                                {
+                                    _logger.LogError("PDF file not found at path: {FilePath}", filePath);
+                                    throw new Exception("Generated PDF not found");
+                                }
+
+                                pdfBytes = await File.ReadAllBytesAsync(filePath);
+                            }
+                            else if (!isManagerTurnForPdf && (applicationData.ModuleName == ApplicationTypeNames.FactoryLicense || applicationData.ModuleName == ApplicationTypeNames.FactoryLicenseAmendment || applicationData.ModuleName == ApplicationTypeNames.FactoryLicenseRenewal))
+                            {
+                                _logger.LogInformation("Processing Factory License PDF generation (occupier step)");
+
+                                var response = await _factoryLicenseService.GetByIdAsync(applicationId);
+
+                                if (response?.FactoryLicense == null)
+                                {
+                                    _logger.LogError("Factory License data fetch failed");
+                                    throw new Exception("Unable to fetch application.");
+                                }
+
+                                var filePath = await _factoryLicenseService
+                                    .GenerateFactoryLicensePdf(response);
+
+                                _logger.LogInformation("Generated PDF Path: {FilePath}", filePath);
+
+                                if (!File.Exists(filePath))
+                                {
+                                    _logger.LogError("PDF file not found at path: {FilePath}", filePath);
+                                    throw new Exception("Generated PDF not found");
+                                }
+
+                                pdfBytes = await File.ReadAllBytesAsync(filePath);
+                            }
+                            else if (applicationData.ModuleName == ApplicationTypeNames.Appeal)
+                            {
+                                _logger.LogInformation("Processing Appeal PDF generation");
+
+                                var response = await _appealService.GetByIdAsync(applicationId);
+
+                                if (response?.AppealData?.FactoryRegistrationNumber == null)
+                                {
+                                    _logger.LogError("Appeal data fetch failed");
+                                    throw new Exception("Unable to fetch application.");
+                                }
+
+                                var filePath = await _appealService.GenerateAppealPdf(response);
+
+                                _logger.LogInformation("Generated PDF Path: {FilePath}", filePath);
+
+                                if (!File.Exists(filePath))
+                                {
+                                    _logger.LogError("PDF file not found at path: {FilePath}", filePath);
+                                    throw new Exception("Generated PDF not found");
+                                }
+
+                                pdfBytes = await File.ReadAllBytesAsync(filePath);
+                            }
+
+                            else if (!isManagerTurnForPdf && applicationData.ModuleName == ApplicationTypeNames.ManagerChange)
+                            {
+                                _logger.LogInformation("Processing ManagerChange PDF generation (occupier step)");
+
+                                if (!Guid.TryParse(applicationId, out var mcGuid))
+                                    throw new Exception("Invalid ManagerChange application ID");
+
+                                var filePath = await _managerChangeService.GenerateManagerChangePdfAsync(mcGuid);
+
+                                _logger.LogInformation("Generated PDF Path: {FilePath}", filePath);
+
+                                if (!File.Exists(filePath))
+                                {
+                                    _logger.LogError("PDF file not found at path: {FilePath}", filePath);
+                                    throw new Exception("Generated PDF not found");
+                                }
+
+                                pdfBytes = await File.ReadAllBytesAsync(filePath);
+                            }
+
+                            else if (applicationData.ModuleName == ApplicationTypeNames.BoilerRegistration || applicationData.ModuleName == ApplicationTypeNames.BoilerAmendment || applicationData.ModuleName == ApplicationTypeNames.BoilerRenewal)
+                            {
+                                _logger.LogInformation("Processing Boiler Registration PDF generation");
+
+                                var filePath = await _boilerRegistrationService.GenerateBoilerApplicationPdfAsync(applicationId);
+
+                                _logger.LogInformation("Generated PDF Path: {FilePath}", filePath);
+
+                                if (!File.Exists(filePath))
+                                {
+                                    _logger.LogError("PDF file not found at path: {FilePath}", filePath);
+                                    throw new Exception("Generated PDF not found");
+                                }
+
+                                pdfBytes = await File.ReadAllBytesAsync(filePath);
+                            }
+
+                            if (pdfBytes == null || pdfBytes.Length == 0)
+                            {
+                                _logger.LogError("PDF bytes are empty");
+                                throw new Exception("PDF not available");
+                            }
+
+                            _logger.LogInformation("Saving PRN in DB");
+                            await _applicationRegistrationService.SavePRNNumber(applicationId, prnNumber);
+
+                            _logger.LogInformation("Requesting Auth Token from eSign provider");
+
+                            Token_Response? tokenResponse = await getAuthToken();
+
+                            if (tokenResponse == null || tokenResponse.status != "SUCCESS")
+                            {
+                                _logger.LogError("Failed to get auth token {@TokenResponse}", tokenResponse);
+                                throw new Exception(tokenResponse?.message ?? "Failed to get auth token");
+                            }
+
+                            string authToken = tokenResponse.data.encryptedToken;
+
+                            _logger.LogInformation("Auth token received");
+
+                            // ── Determine signer: occupier (step 1) or manager (step 2) ──────────
+                            // Dual-eSign modules: FactoryLicense variants + ManagerChange.
+                            // IsESignCompletedOccupier=false → occupier turn; true → manager turn.
+                            bool isDualESign =
+                                applicationData.ModuleName == ApplicationTypeNames.FactoryLicense ||
+                                applicationData.ModuleName == ApplicationTypeNames.FactoryLicenseAmendment ||
+                                applicationData.ModuleName == ApplicationTypeNames.FactoryLicenseRenewal ||
+                                applicationData.ModuleName == ApplicationTypeNames.ManagerChange;
+
+                            bool isManagerTurn = isDualESign && applicationData.Application.IsESignCompletedOccupier;
+
+                            // Signature box coordinates from FactoryLicensePageBorderAndFooterEventHandler:
+                            //   A4 width=595, rightMargin=30, signBlockWidth=120, gap=8, footerY=35
+
+                            if (isManagerTurn)
+                            {
+                                signerXcord = "250";   // manager box x (left of occupier box)
+                                signerDesignation = "Manager";
+
+                                if (applicationData.ModuleName == ApplicationTypeNames.FactoryLicense ||
+                                    applicationData.ModuleName == ApplicationTypeNames.FactoryLicenseAmendment ||
+                                    applicationData.ModuleName == ApplicationTypeNames.FactoryLicenseRenewal)
+                                {
+                                    // Read manager details from the FactoryData JSON snapshot on the license
+                                    var licenseRec = await _db.Set<FactoryLicense>()
+                                        .FirstOrDefaultAsync(l => l.Id == applicationId);
+
+                                    if (licenseRec?.FactoryData != null)
+                                    {
+                                        try
+                                        {
+                                            var fdJson = System.Text.Json.JsonDocument.Parse(licenseRec.FactoryData);
+                                            var mgr = fdJson.RootElement.TryGetProperty("managerDetails", out var mgrEl) ? mgrEl : (System.Text.Json.JsonElement?)null;
+                                            if (mgr.HasValue)
+                                            {
+                                                signerName = mgr.Value.TryGetProperty("name", out var n) ? n.GetString() ?? signerName : signerName;
+                                                signerDesignation = mgr.Value.TryGetProperty("designation", out var d) && !string.IsNullOrEmpty(d.GetString()) ? d.GetString()! : "Manager";
+                                                var district = mgr.Value.TryGetProperty("district", out var di) ? di.GetString() : null;
+                                            }
+                                            var factoryDistrict = fdJson.RootElement.TryGetProperty("district", out var fd) ? fd.GetString() : null;
+
+                                            signerLocation = !string.IsNullOrEmpty(factoryDistrict) ? factoryDistrict : "Rajasthan";
+                                        }
+                                        catch { /* keep defaults */ }
+                                    }
+                                }
+                                else if (applicationData.ModuleName == ApplicationTypeNames.ManagerChange)
+                                {
+                                    // Read new manager details from PersonDetails via ManagerChange record
+                                    if (Guid.TryParse(applicationId, out var mcGuid))
+                                    {
+                                        var mcRec = await _db.Set<ManagerChange>()
+                                            .FirstOrDefaultAsync(m => m.Id == mcGuid);
+
+                                        if (mcRec != null)
+                                        {
+                                            var mgrPerson = await _db.Set<PersonDetail>()
+                                                .FirstOrDefaultAsync(p => p.Id == mcRec.NewManagerId);
+
+                                            var res = await _estRegService.GetFactoryDetailsByFactoryRegistrationNumberAsync(mcRec.FactoryRegistrationNumber.ToString());
+                                                                            
+                                            if (mgrPerson != null)
+                                            {
+                                                signerName = mgrPerson.Name ?? signerName;
+                                                signerDesignation = mgrPerson.Designation ?? "Manager";
+                                                signerLocation = res.Factory?.DistrictName ?? "Rajasthan";
+                                            }
+                                        }
+                                    }
+                                }
+
+                                _logger.LogInformation("Manager eSign — Name: {Name}, Designation: {Desig}, Location: {Loc}", signerName, signerDesignation, signerLocation);
+                            }
+
+                            generateSignedXml_Request Signrequest = new generateSignedXml_Request
+                            {
+                                pdfFile = pdfBytes,
+                                personName = signerName,
+                                personDesignation = signerDesignation,
+                                personLocation = signerLocation,
+                                xcord = signerXcord,
+                                responseUrl = $"{_config["ESignSettings:ResponseUrl"]}",
+                                prn = prnNumber
+                            };
+
+                            _logger.LogInformation("Calling generateSignedXml API");
+
+                            var generateSignedXml_Response =
+                                await generateSignedXml(Signrequest, authToken);
+
+                            if (generateSignedXml_Response == null ||
+                                generateSignedXml_Response.status != "SUCCESS")
+                            {
+                                _logger.LogError(
+                                    "generateSignedXml failed {@Response}",
+                                    generateSignedXml_Response);
+
+                                throw new Exception("Failed to generate signed XML");
+                            }
+
+                            _logger.LogInformation("Signed XML generated successfully");
+
+                            EsignTempData esignTempData = new EsignTempData
+                            {
+                                prn = generateSignedXml_Response.data.prn,
+                                txnId = generateSignedXml_Response.data.txnId,
+                                authToken = authToken
+                            };
+
+                            _cache.Set(esignTempData.prn, esignTempData, TimeSpan.FromHours(1));
+
+                            _logger.LogInformation("EsignTempData cached");
+
+                            var html = PostToPage(signdocURL, generateSignedXml_Response.data.signedXMLData);
+
+                            _logger.LogInformation("GenerateESignHtmlAsync completed successfully");
+                            var history = new ApplicationHistory
+                            {
+                                ApplicationId = applicationId,
+                                ApplicationType = applicationData.ModuleName,
+                                Action = "E-Sign Initiated",
+                                PreviousStatus = null,
+                                NewStatus = "Pending",
+                                Comments = "E-Sign process started",
+                                ActionBy = applicationData.UserId.ToString(),
+                                ActionByName = "Applicant",
+                                ActionDate = DateTime.Now
+                            };
+                            _db.ApplicationHistories.Add(history);
+                            await _db.SaveChangesAsync();
+                            return html;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Unhandled exception in GenerateESignHtmlAsync");
+                    throw;
+                }
+            }
         }
 
-        public async Task<SignedXmlData> GenerateSignedXmlAsync(string token, ESignRequest request)
+        public async Task<string> ProcessEsignResponseAsync(string esignData)
         {
+            _logger.LogInformation("===== ProcessEsignResponseAsync STARTED =====");
+
             try
             {
-                // Ensure token is not null or empty before proceeding
-                if (string.IsNullOrWhiteSpace(token))
+                if (string.IsNullOrWhiteSpace(esignData))
                 {
-                    throw new Exception("GenerateTokenAsync returned null or empty token!");
+                    _logger.LogWarning("Received empty eSign response");
+                    throw new Exception("Invalid eSign response data");
                 }
 
-                // Log the JWT token (for debugging purposes)
-                Console.WriteLine("JWT Token being sent: " + token.Substring(0, 20) + "...");
+                // RAW RESPONSE
+                _logger.LogInformation("Raw eSign XML Response: {EsignData}", esignData);
 
-                // Set the Authorization header with the Bearer token
-                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-                // Ensure the Authorization header is set correctly
-                if (_httpClient.DefaultRequestHeaders.Authorization == null ||
-                    string.IsNullOrEmpty(_httpClient.DefaultRequestHeaders.Authorization.Parameter))
+                _logger.LogInformation("Parsing eSign XML response");
+
+                var doc = XDocument.Parse(esignData);
+
+                string? txn = doc.Root?.Attribute("txn")?.Value;
+                string? status = doc.Root?.Attribute("status")?.Value;
+                string? errCode = doc.Root?.Attribute("errCode")?.Value;
+                string? errMsg = doc.Root?.Attribute("errMsg")?.Value;
+
+                _logger.LogInformation(
+                    "Parsed XML -> Txn: {Txn}, Status: {Status}, ErrCode: {ErrCode}, ErrMsg: {ErrMsg}",
+                    txn,
+                    status,
+                    errCode,
+                    errMsg
+                );
+
+                if (string.IsNullOrEmpty(txn))
                 {
-                    throw new Exception("Authorization header is not set or the token is missing.");
+                    _logger.LogError("Transaction Id missing in eSign response");
+                    throw new Exception("Transaction Id missing");
                 }
 
-                // Prepare the PDF file content as a memory stream
-                using var ms = new MemoryStream();
-                await request.PdfFile.CopyToAsync(ms);
-                ms.Position = 0;
+                _logger.LogInformation("Transaction Id received: {Txn}", txn);
 
-                // Prepare the multipart form data content for the API request
-                using var form = new MultipartFormDataContent();
-                form.Add(new StreamContent(ms), "pdfFile", request.PdfFile.FileName);
-                form.Add(new StringContent(request.ApplicationCode), "applicationCode");
-                form.Add(new StringContent(request.AspId), "aspId");
-                form.Add(new StringContent(request.Xcord.ToString()), "xcord");
-                form.Add(new StringContent(request.Ycord.ToString()), "ycord");
-                form.Add(new StringContent(request.Prn), "prn");
-                form.Add(new StringContent(request.SignatureOnPageNumber), "signatureOnPageNumber");
-                form.Add(new StringContent(request.PersonName), "personName");
-                form.Add(new StringContent(request.PersonDesignation ?? ""), "personDesignation");
-                form.Add(new StringContent(request.PersonLocation ?? ""), "personLocation");
-                form.Add(new StringContent(request.SignatureSize), "signatureSize");
-                form.Add(new StringContent(request.ResponseUrl), "responseUrl");
+                // CACHE LOOKUP
+                _logger.LogInformation("Fetching cache for Txn: {Txn}", txn);
 
-                // Send the request to the eSign API
-                var response = await _httpClient.PostAsync(_settings.SignedXmlUrl, form);
+                EsignTempData? esignTempData = _cache.Get<EsignTempData>(txn);
 
-                // Read the response body for error handling and logging
-                var responseBody = await response.Content.ReadAsStringAsync();
-
-                // If the response status code is not successful, log the details
-                if (!response.IsSuccessStatusCode)
+                if (esignTempData == null)
                 {
-                    var errorLog = new
+                    _logger.LogError("Invalid or expired transaction. Txn: {Txn}", txn);
+                    throw new Exception("Invalid or expired transaction");
+                }
+
+                using (LogContext.PushProperty("Txn", txn))
+                using (LogContext.PushProperty("PRN", esignTempData.prn))
+                {
+                    _logger.LogInformation(
+                        "Cache Data -> PRN: {PRN}, TxnId: {TxnId}, AuthTokenPrefix: {Token}",
+                        esignTempData.prn,
+                        esignTempData.txnId,
+                        esignTempData.authToken?.Substring(0, Math.Min(10, esignTempData.authToken.Length))
+                    );
+
+                    _cache.Remove(txn);
+                    _logger.LogInformation("Cache cleared for Txn: {Txn}", txn);
+
+                    signingPdf_Request signingRequest = new signingPdf_Request
                     {
-                        Url = _settings.SignedXmlUrl,
-                        StatusCode = response.StatusCode,
-                        ReasonPhrase = response.ReasonPhrase,
-                        ResponseBody = responseBody
+                        prn = esignTempData.prn,
+                        txnId = esignTempData.txnId,
+                        esignResponse = Convert.ToBase64String(Encoding.UTF8.GetBytes(esignData))
                     };
 
-                    // Log the error details for debugging (use a proper logger in production)
-                    Console.WriteLine(JsonSerializer.Serialize(errorLog));
-
-                    throw new Exception(
-                        $"eSign SignedXML API failed. Status: {(int)response.StatusCode}. Response: {responseBody}"
+                    _logger.LogInformation(
+                        "Signing API Request -> PRN: {PRN}, TxnId: {TxnId}, ResponseBase64Length: {Length}",
+                        signingRequest.prn,
+                        signingRequest.txnId,
+                        signingRequest.esignResponse.Length
                     );
+
+                    _logger.LogInformation("Calling getSigningPdf API");
+
+                    signingPdf_Response? signingResponse =
+                        await getSigningPdf(signingRequest, esignTempData.authToken);
+
+                    _logger.LogInformation("Signing API response: {@Response}", signingResponse);
+
+                    if (signingResponse == null)
+                    {
+                        _logger.LogError("Signing API returned null response");
+                        await RecordESignFailureAsync(esignTempData.prn, "E-Sign failed: Signing service returned no response");
+                        return BuildErrorRedirect("Signing API returned null response");
+                    }
+
+                    if (signingResponse.status != "SUCCESS")
+                    {
+                        _logger.LogError(
+                            "Signing API failed. Status: {Status}, Message: {Message}",
+                            signingResponse.status,
+                            signingResponse.message
+                        );
+
+                        var failMsg = signingResponse.message ?? "Signing API failed";
+                        await RecordESignFailureAsync(esignTempData.prn, $"E-Sign failed: {failMsg}");
+                        return BuildErrorRedirect(failMsg);
+                    }
+
+                    _logger.LogInformation(
+                        "Signed PDF received. Base64 Length: {Length}",
+                        signingResponse.data?.signedPDFBase64?.Length
+                    );
+
+                    _logger.LogInformation("Signing successful. Updating application DB");
+
+                    var certificate = await _db.Certificates
+                            .FirstOrDefaultAsync(c => c.ESignPrnNumber == esignTempData.prn);
+
+                    if (certificate != null)
+                    {
+                        _logger.LogInformation("PRN matched a certificate. Updating certificate status");
+
+                        if (!string.IsNullOrWhiteSpace(signingResponse.data.signedPDFBase64))
+                        {
+                            var signedPdfBase64 = signingResponse.data.signedPDFBase64;
+
+                            if (signedPdfBase64.Contains(","))
+                                signedPdfBase64 = signedPdfBase64.Split(',')[1];
+
+                            var signedPdfBytes = Convert.FromBase64String(signedPdfBase64);
+
+                            var fileName = Path.GetFileName(
+                                new Uri(certificate.CertificateUrl).AbsolutePath);
+
+                            var physicalPath = Path.Combine(
+                                _environment.WebRootPath,
+                                "certificates",
+                                fileName
+                            );
+
+                            _logger.LogInformation("Writing signed certificate PDF to: {Path}", physicalPath);
+
+                            await File.WriteAllBytesAsync(physicalPath, signedPdfBytes);
+
+                            _logger.LogInformation("Certificate PDF written successfully");
+                        }
+
+                        certificate.IsESignCompleted = true;
+                        certificate.Status = "Active";
+                        await _db.SaveChangesAsync();
+                        _logger.LogInformation("Certificate DB updated successfully");
+                    } else
+                    {
+                        var updateSuccess = await _applicationRegistrationService
+                        .UpdateApplicationESignData(
+                            esignTempData.prn,
+                            signingResponse.data.signedPDFBase64);
+
+                        _logger.LogInformation("Application DB update result: {Result}", updateSuccess);
+                    }
+
+                    _logger.LogInformation(
+                        "===== ProcessEsignResponseAsync COMPLETED SUCCESSFULLY -> PRN: {PRN}, Txn: {Txn} =====",
+                        esignTempData.prn,
+                        txn
+                    );
+
+                    return $"{_config["FrontendUrl"]}/user/track";
                 }
-
-                // Ensure the response is successful
-                response.EnsureSuccessStatusCode();
-
-                // Deserialize and return the signed XML data
-                var content = await response.Content.ReadAsStringAsync();
-                var signedXmlResp = JsonSerializer.Deserialize<SignedXmlResponse>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-                if (signedXmlResp?.Status != "SUCCESS" || signedXmlResp.Data == null)
-                {
-                    throw new Exception("Failed to generate signed XML: " + signedXmlResp?.Message);
-                }
-
-                return signedXmlResp.Data;
             }
             catch (Exception ex)
             {
-                // Log and rethrow the exception for further handling
-                Console.WriteLine($"Error during Signed XML generation: {ex.Message}");
-                throw;
+                _logger.LogError(ex, "Unhandled exception in ProcessEsignResponseAsync");
+                return BuildErrorRedirect("Unexpected server error");
             }
         }
 
-
-        public async Task<string> StartEsignAsync(IFormFile pdfFile)
+        private async Task<Token_Response?> getAuthToken()
         {
             try
             {
-                var userIdString = _httpContextAccessor.HttpContext?
-                .User?.FindFirstValue(ClaimTypes.NameIdentifier);
+                string authheader = "Basic " + Convert.ToBase64String(Encoding.UTF8.GetBytes(SSOID + ":" + SecretKey));
+                //"Basic UkpKTzIwMTkyNDAyNzcyODplc0lYV2dmaFZ6bGVKRzlPbEIvalgzRER6RkdVMGJOM3ZnclVreUdCVVFRPQ=="
+                var client = new HttpClient();
+                var request = new HttpRequestMessage(HttpMethod.Post, generateTokenURL);
+                request.Headers.Add("Authorization", authheader);
+                var response = await client.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+                if (!response.IsSuccessStatusCode)
+                    return null;
 
-                if (string.IsNullOrWhiteSpace(userIdString))
-                    throw new UnauthorizedAccessException("User not authenticated");
+                var json = await response.Content.ReadAsStringAsync();
+                return JsonSerializer.Deserialize<Token_Response>(json, JsonOptions);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+        private async Task<generateSignedXml_Response?> generateSignedXml(generateSignedXml_Request Signrequest, string authToken)
+        {
+            try
+            {
+                authToken = "Bearer " + authToken;
+                using var client = new HttpClient();
 
-                var userId = Guid.Parse(userIdString);
+                var request = new HttpRequestMessage(HttpMethod.Post, generateSignedXmlURL);
+                request.Headers.Add("Authorization", authToken);
 
-                var user = await _db.Users
-                    .Where(u => u.Id == userId)
-                    .Select(u => new { u.Username, u.FullName })
-                    .FirstOrDefaultAsync();
+                var content = new MultipartFormDataContent();
 
-                if (user == null)
-                    throw new Exception("User not found");
-
-                var prn = $"PRN{DateTime.Now.Ticks}";
-
-                // 🔐 Encrypt PRN
-                var encryptedPrn = AesEncryption.Encrypt(prn, _settings.SecretKey);
-
-                var prnHash = Convert.ToBase64String(
-                    SHA256.HashData(Encoding.UTF8.GetBytes(prn)));
-
-                _db.ESignTransactions.Add(new ESignTransaction
+                foreach (var prop in Signrequest.GetType().GetProperties())
                 {
-                    Id = Guid.NewGuid(),
-                    UserId = userId,
-                    EncryptedPrn = encryptedPrn,
-                    PrnHash = prnHash,
-                    Status = "INITIATED"
-                });
-                await _db.SaveChangesAsync();
+                    var value = prop.GetValue(Signrequest);
+                    if (value == null) continue;
 
-                var request = new ESignRequest
-                {
-                    PdfFile = pdfFile,
-                    ApplicationCode = _settings.ApplicationCode,
-                    AspId = _settings.AspId,
-                    ResponseUrl = _settings.ResponseUrl,
-                    Xcord = 400,
-                    Ycord = 30,
-                    Prn = prn,
-                    SignatureOnPageNumber = "1",
-                    PersonName = user.FullName,
-                    SignatureSize = "M",
-                    SsoId = user.Username,
-                    SecretKey = _settings.SecretKey
-                };
+                    // Check if the property is byte[] (PDF file)
+                    if (value is byte[] bytes)
+                    {
+                        var streamContent = new StreamContent(new MemoryStream(bytes));
+                        streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pdf");
 
-                var token = await GenerateTokenAsync();
-                var signedXml = await GenerateSignedXmlAsync(token, request);
+                        // Use the property name as form field name and provide a filename
+                        content.Add(streamContent, prop.Name, "document.pdf");
+                    }
+                    else
+                    {
+                        content.Add(new StringContent(value.ToString()!), prop.Name);
+                    }
+                }
 
-                var decodedXml = Encoding.UTF8.GetString(
-                    Convert.FromBase64String(signedXml.SignedXMLData));
+                request.Content = content;
 
-                return GenerateEspRedirectHtml(decodedXml);
+                var response = await client.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+
+                var json = await response.Content.ReadAsStringAsync();
+                return JsonSerializer.Deserialize<generateSignedXml_Response>(json, JsonOptions);
             }
             catch
             {
@@ -208,169 +760,372 @@ namespace RajFabAPI.Services
             }
         }
 
-
-        public string GenerateEspRedirectHtml(string xml)
-        {
-            return $"""
-<!DOCTYPE html>
-<html>
-<body onload="document.forms[0].submit()">
-<form action="{_settings.EspRedirectUrl}" method="post" enctype="multipart/form-data">
-<textarea name="esignData" hidden>{System.Net.WebUtility.HtmlEncode(xml)}</textarea>
-</form>
-</body>
-</html>
-""";
-        }
-
-        public async Task<ESignResult> CompleteEsignAsync(string esignXml)
-        {
-            var base64Response = ExtractBase64FromEspXml(esignXml);
-
-            var token = await GenerateTokenAsync();
-
-            _httpClient.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Bearer", token);
-
-            using var form = new MultipartFormDataContent();
-            form.Add(new StringContent(base64Response), "esignResponse");
-            form.Add(new StringContent(_settings.ApplicationCode), "applicationCode");
-            form.Add(new StringContent(_settings.AspId), "aspId");
-
-            var response = await _httpClient.PostAsync(_settings.SignPdfUrl, form);
-            response.EnsureSuccessStatusCode();
-
-            var json = await response.Content.ReadAsStringAsync();
-            var pdfResp = JsonSerializer.Deserialize<SignedPdfResponse>(json,
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-            if (pdfResp?.Status != "SUCCESS")
-                throw new Exception(pdfResp?.Message);
-
-            var prnHash = Convert.ToBase64String(
-                SHA256.HashData(Encoding.UTF8.GetBytes(pdfResp.Data.Prn)));
-
-            var txn = await _db.ESignTransactions
-                .FirstAsync(x => x.PrnHash == prnHash);
-
-            var prn = AesEncryption.Decrypt(txn.EncryptedPrn, _settings.SecretKey);
-
-            var pdfBytes = Convert.FromBase64String(pdfResp.Data.SignedPDFBase64);
-            var path = await SaveSignedPdfAsync(pdfBytes, prn);
-
-            txn.Status = "SIGNED";
-            txn.TxnId = pdfResp.Data.TxnId;
-            txn.SignedPdfPath = path;
-
-            await _db.SaveChangesAsync();
-
-            return new ESignResult
-            {
-                SignedPdfBytes = pdfBytes,
-                Prn = prn,
-                TxnId = pdfResp.Data.TxnId
-            };
-        }
-
-
-        private async Task<string> SaveSignedPdfAsync(byte[] pdfBytes, string prn)
-        {
-            var folder = Path.Combine("wwwroot", "esign",
-                DateTime.UtcNow.Year.ToString(),
-                DateTime.UtcNow.Month.ToString());
-
-            Directory.CreateDirectory(folder);
-
-            var filePath = Path.Combine(folder, $"{prn}.pdf");
-            await File.WriteAllBytesAsync(filePath, pdfBytes);
-
-            return filePath;
-        }
-
-        private static string ExtractBase64FromEspXml(string xml)
-        {
-            var doc = new XmlDocument();
-            doc.LoadXml(xml);
-
-            return doc.SelectSingleNode("//EsignResp")?.InnerText
-                   ?? throw new Exception("Invalid ESP response");
-        }
-
-        public async Task<string> GenerateEsignToken()
+        private async Task<signingPdf_Response?> getSigningPdf(signingPdf_Request Signrequest, string authToken)
         {
             try
             {
-                var token = await GenerateTokenAsync();
-                return token;
-            }
-            catch (Exception ex)
-            {
-                throw ex;
-            }
-        }
+                authToken = "Bearer " + authToken;
+                var client = new HttpClient();
 
-        public async Task<SignedXmlData> GenerateESignedXmlAsync(IFormFile pdfFile, string token)
-        {
-            try
-            {
-                var userIdString = _httpContextAccessor.HttpContext?
-                .User?.FindFirstValue(ClaimTypes.NameIdentifier);
+                var request = new HttpRequestMessage(HttpMethod.Post, signingPdf);
+                request.Headers.Add("Authorization", authToken);
 
-                if (string.IsNullOrWhiteSpace(userIdString))
-                    throw new UnauthorizedAccessException("User not authenticated");
-
-                var userId = Guid.Parse(userIdString);
-
-                var user = await _db.Users
-                    .Where(u => u.Id == userId)
-                    .Select(u => new { u.Username, u.FullName })
-                    .FirstOrDefaultAsync();
-
-                if (user == null)
-                    throw new Exception("User not found");
-
-                var prn = $"PRN{DateTime.Now.Ticks}";
-
-                // 🔐 Encrypt PRN
-                var encryptedPrn = AesEncryption.Encrypt(prn, _settings.SecretKey);
-
-                var prnHash = Convert.ToBase64String(
-                    SHA256.HashData(Encoding.UTF8.GetBytes(prn)));
-
-                _db.ESignTransactions.Add(new ESignTransaction
+                var content = new MultipartFormDataContent();
+                foreach (var prop in Signrequest.GetType().GetProperties())
                 {
-                    Id = Guid.NewGuid(),
-                    UserId = userId,
-                    EncryptedPrn = encryptedPrn,
-                    PrnHash = prnHash,
-                    Status = "INITIATED"
+                    var value = prop.GetValue(Signrequest);
+                    if (value == null) continue;
+
+                    content.Add(new StringContent(value.ToString()), prop.Name);
+                }
+                request.Content = content;
+
+                var response = await client.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+                if (!response.IsSuccessStatusCode)
+                    return null;
+
+                var json = await response.Content.ReadAsStringAsync();
+                return JsonSerializer.Deserialize<signingPdf_Response>(json, JsonOptions);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        // Only use this method for testing purpose, you can remove it later and directly post form data to signdocURL in StartEsign method 
+        public static string PostToPageView(string base64pfd)
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.Append("<html>");
+            sb.Append("<body style='background-color:#F0F0F0;'>");
+            sb.Append("<form name='form'>");
+            sb.Append("<div style='float:left; width:100%; height:100%;'>");
+            sb.AppendFormat("<object data='data:application/pdf;base64,{0}' type='application/pdf' width='100%' height='100%'></object>", base64pfd);
+            sb.Append("<div>");
+            sb.Append("</form>");
+            sb.Append("</body>");
+            sb.Append("</html>");
+            return sb.ToString();
+        }
+        // End of testing method
+        public static string PostToPage(string URL, string html)
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.Append("<html>");
+            sb.AppendFormat(@"<body style='background-color:#F0F0F0;' onload='document.forms[""form""].submit()'>");
+            sb.AppendFormat("<form name='form' enctype='multipart/form-data' action='{0}' method='post'>", URL);
+            sb.AppendFormat("<div style='float:left; width:100%; height:100%;'>");
+            sb.AppendFormat("<div style='float:left; width:100%; height:100%; margin-top:10%;'>	");
+            sb.AppendFormat("<div style='float:left; width:100%; text-align:center; font-size:30px; color:#525252; margin:0 0 50px 0;'>Please wait while you are being redirected to <span style='font-weight:bold;'>{0}</span> Application.</div>", "eSign");
+            sb.AppendFormat("<div style='float:left; width:100%; text-align:center;'>");
+            sb.AppendFormat("<img src='/images/loading.gif'  width='350px'/>");
+            sb.AppendFormat("</div>");
+            sb.AppendFormat("<textarea rows='20' cols='100' name='esignData' hidden='true'>" + Encoding.UTF8.GetString(Convert.FromBase64String(html)) + "</textarea>");
+            sb.AppendFormat("</div>");
+            sb.AppendFormat("<div>");
+            sb.Append("</form>");
+            sb.Append("</body>");
+            sb.Append("</html>");
+            return sb.ToString();
+        }
+        [Serializable]
+        public class EsignRequest
+        {
+            public string personName { get; set; }
+            public IFormFile file { get; set; }
+        }
+
+        [Serializable]
+        public class Token_Response
+        {
+            public string status { get; set; }
+            public string message { get; set; }
+            public ToeknData data { get; set; }
+        }
+        [Serializable]
+        public class ToeknData
+        {
+            public string ssoId { get; set; }
+            public string jwtId { get; set; }
+            public string encryptedToken { get; set; }
+        }
+        [Serializable]
+        public class generateSignedXml_Request
+        {
+            public string applicationCode { get; set; } = "RAJFABUAT";
+            public string aspId { get; set; } = "RISL";
+            public string xcord { get; set; } = "400";
+            public string ycord { get; set; } = "60";
+            public string prn { get; set; }
+            public string signatureOnPageNumber { get; set; } = "ALL";
+            public string personName { get; set; }
+            public string personDesignation { get; set; }
+            public string signatureSize { get; set; } = "M";
+            public string personLocation { get; set; }
+            public string responseUrl { get; set; }
+            // FILE
+            public byte[] pdfFile { get; set; }
+        }
+        [Serializable]
+        public class generateSignedXml_Response
+        {
+            public string status { get; set; }
+            public string message { get; set; }
+            public generateSignedXmlData data { get; set; }
+        }
+        [Serializable]
+        public class generateSignedXmlData
+        {
+            public string responseCode { get; set; }
+            public string responseMsg { get; set; }
+            public string signedXMLData { get; set; }
+            public string prn { get; set; }
+            public string txnId { get; set; }
+        }
+
+        [Serializable]
+        public class signingPdf_Request
+        {
+            public string esignResponse { get; set; }
+            public string prn { get; set; }
+            public string applicationCode { get; set; } = "RAJFABUAT";
+            public string txnId { get; set; }
+            public string aspId { get; set; } = "RISL";
+        }
+
+        [Serializable]
+        public class signingPdf_Response
+        {
+            public string status { get; set; }
+            public string message { get; set; }
+            public signingPdf_Data data { get; set; }
+        }
+
+        [Serializable]
+        public class signingPdf_Data
+        {
+            public string responseCode { get; set; }
+            public string responseMsg { get; set; }
+            public string signedPDFBase64 { get; set; }
+            public string prn { get; set; }
+            public string txnId { get; set; }
+        }
+
+        [Serializable]
+        public class EsignTempData
+        {
+            public string prn { get; set; }
+            public string txnId { get; set; }
+            public string authToken { get; set; }
+        }
+        private string BuildErrorRedirect(string message)
+        {
+            var encodedMessage = Uri.EscapeDataString(message);
+            return $"{_config["FrontendUrl"]}/error?details={encodedMessage}";
+        }
+
+        private async Task RecordESignFailureAsync(string prn, string errorMessage)
+        {
+            try
+            {
+                var appReg = await _db.Set<ApplicationRegistration>()
+                    .FirstOrDefaultAsync(r => r.ESignPrnNumberOccupier == prn || r.ESignPrnNumberManager == prn);
+                if (appReg == null) return;
+
+                var module = await _db.Set<FormModule>()
+                    .FirstOrDefaultAsync(m => m.Id == appReg.ModuleId);
+
+                _db.ApplicationHistories.Add(new ApplicationHistory
+                {
+                    ApplicationId = appReg.ApplicationId,
+                    ApplicationType = module?.Name ?? "",
+                    Action = "E-Sign Failed",
+                    PreviousStatus = null,
+                    NewStatus = "Pending",
+                    Comments = errorMessage,
+                    ActionBy = appReg.UserId.ToString(),
+                    ActionByName = "Applicant",
+                    ActionDate = DateTime.Now
                 });
                 await _db.SaveChangesAsync();
-
-                var request = new ESignRequest
-                {
-                    PdfFile = pdfFile,
-                    ApplicationCode = _settings.ApplicationCode,
-                    AspId = _settings.AspId,
-                    ResponseUrl = _settings.ResponseUrl,
-                    Xcord = 400,
-                    Ycord = 30,
-                    Prn = prn,
-                    SignatureOnPageNumber = "1",
-                    PersonName = user.FullName,
-                    SignatureSize = "M",
-                    SsoId = user.Username,
-                    SecretKey = _settings.SecretKey
-                };
-
-                var signedXml = await GenerateSignedXmlAsync(token, request);
-                return signedXml;
-
             }
             catch (Exception ex)
             {
-                throw ex;
+                _logger.LogError(ex, "Failed to record eSign failure history for PRN: {PRN}", prn);
             }
         }
+
+        public async Task<string> GenerateCertificateESignHtmlAsync(string certificateId)
+        {
+            _logger.LogInformation("GenerateCertificateESignHtmlAsync started for CertificateId: {CertificateId}", certificateId);
+
+            if (string.IsNullOrEmpty(certificateId))
+                throw new ArgumentException("Certificate ID is required");
+
+            if (!Guid.TryParse(certificateId, out var certGuid))
+                throw new ArgumentException("Invalid Certificate ID format");
+
+            var certificate = await _db.Certificates
+                .FirstOrDefaultAsync(c => c.Id == certGuid);
+
+            if (certificate == null)
+                throw new Exception("Certificate not found");
+
+            var fileName = Path.GetFileName(new Uri(certificate.CertificateUrl).AbsolutePath);
+            var physicalPath = Path.Combine(_environment.WebRootPath, "certificates", fileName);
+
+            if (!File.Exists(physicalPath))
+                throw new Exception("Certificate PDF not found on disk");
+
+            var pdfBytes = await File.ReadAllBytesAsync(physicalPath);
+
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == certificate.IssuedByUserId);
+            if (user == null)
+                throw new Exception("Issuing user not found");
+
+            var prnNumber = "RAJFAB" + string.Concat(Guid.NewGuid().ToString("N").Where(char.IsDigit));
+
+            certificate.ESignPrnNumber = prnNumber;
+            certificate.Status = "PendingESign";
+            await _db.SaveChangesAsync();
+
+            _logger.LogInformation("Requesting Auth Token from eSign provider for certificate");
+
+            var tokenResponse = await getAuthToken();
+            if (tokenResponse == null || tokenResponse.status != "SUCCESS")
+            {
+                _logger.LogError("Failed to get auth token for certificate eSign {@TokenResponse}", tokenResponse);
+                throw new Exception(tokenResponse?.message ?? "Failed to get auth token");
+            }
+
+            var authToken = tokenResponse.data.encryptedToken;
+
+            var signRequest = new generateSignedXml_Request
+            {
+                pdfFile = pdfBytes,
+                personName = user.FullName,
+                personDesignation = "Approval Authority",
+                personLocation = "Jaipur, Rajasthan",
+                responseUrl = $"{_config["ESignSettings:ResponseUrl"]}",
+                prn = prnNumber
+            };
+
+            _logger.LogInformation("Calling generateSignedXml API for certificate");
+
+            var signedXmlResponse = await generateSignedXml(signRequest, authToken);
+            if (signedXmlResponse == null || signedXmlResponse.status != "SUCCESS")
+            {
+                _logger.LogError("generateSignedXml failed for certificate {@Response}", signedXmlResponse);
+                throw new Exception("Failed to generate signed XML for certificate");
+            }
+
+            var esignTempData = new EsignTempData
+            {
+                prn = signedXmlResponse.data.prn,
+                txnId = signedXmlResponse.data.txnId,
+                authToken = authToken
+            };
+
+            _cache.Set(esignTempData.prn, esignTempData, TimeSpan.FromHours(1));
+
+            _logger.LogInformation("Certificate eSign initiated successfully. PRN: {PRN}", prnNumber);
+
+            return PostToPage(signdocURL, signedXmlResponse.data.signedXMLData);
+        }
+
+        public async Task<string> ManualESignVerifyAsync(string applicationId)
+        {
+            _logger.LogInformation("ProcessEsignResponseAsync started");
+
+            try
+            {
+                var prn = "RAJFAB" + string.Concat(Guid.NewGuid().ToString("N").Where(char.IsDigit));
+
+                var application = await _db.ApplicationRegistrations
+                    .FirstOrDefaultAsync(x => x.ApplicationId == applicationId);
+
+                if (application == null)
+                    return BuildErrorRedirect("Application not found");
+
+                // Route PRN to the correct slot (same logic as SavePRNNumber)
+                if (application.IsESignCompletedOccupier)
+                    application.ESignPrnNumberManager = prn;
+                else
+                    application.ESignPrnNumberOccupier = prn;
+                application.UpdatedDate = DateTime.Now;
+
+                var Module = await _db.Modules
+                    .FirstOrDefaultAsync(x => x.Id == application.ModuleId);
+
+                if (Module.Name == ApplicationTypeNames.NewEstablishment || Module.Name == ApplicationTypeNames.FactoryAmendment || Module.Name == ApplicationTypeNames.FactoryRenewal)
+                {
+                    var data = await _estRegService.GetAllEntitiesByRegistrationIdAsync(applicationId);
+                    var filePath = await _estRegService.GenerateEstablishmentPdf(data);
+                }
+                else if (Module.Name == ApplicationTypeNames.MapApproval || Module.Name == ApplicationTypeNames.MapApprovalAmendment)
+                {
+                    var response = await _factoryMapApprovalService.GetApplicationByIdAsync(applicationId);
+
+                    if (!response.Success || response.Data == null)
+                    {
+                        _logger.LogError("Map Approval data fetch failed. Message: {Message}",
+                            response.Message);
+
+                        throw new Exception(response.Message ?? "Unable to fetch application.");
+                    }
+
+                    var filePath = await _factoryMapApprovalService
+                        .GenerateFactoryMapApprovalPdf(response.Data);
+                }
+                else if (Module.Name == ApplicationTypeNames.FactoryLicense || Module.Name == ApplicationTypeNames.FactoryLicenseRenewal || Module.Name == ApplicationTypeNames.FactoryLicenseAmendment)
+                {
+                    var response = await _factoryLicenseService.GetByIdAsync(applicationId);
+
+                    if (response?.FactoryLicense == null)
+                    {
+                        _logger.LogError("Factory License data fetch failed");
+                        throw new Exception("Unable to fetch application.");
+                    }
+
+                    var filePath = await _factoryLicenseService
+                        .GenerateFactoryLicensePdf(response);
+                }
+                else if (Module.Name == ApplicationTypeNames.ManagerChange)
+                {
+                    if (Guid.TryParse(applicationId, out var mcGuid))
+                        await _managerChangeService.GenerateManagerChangePdfAsync(mcGuid);
+                }
+                else if (Module.Name == ApplicationTypeNames.BoilerRegistration)
+                {
+                    await _boilerRegistrationService.GenerateBoilerApplicationPdfAsync(applicationId);
+                }
+
+                // Use LogContext to automatically enrich all logs with Txn and PRN
+                using (LogContext.PushProperty("PRN", prn))
+                {
+                    var updateSuccess = await _applicationRegistrationService
+                        .UpdateApplicationESignData(prn);
+
+                    if (!updateSuccess)
+                    {
+                        _logger.LogError("DB update failed after signing");
+                        throw new Exception("Error updating application after signing.");
+                    }
+
+                    _logger.LogInformation("ProcessEsignResponseAsync completed successfully");
+
+                    return $"{_config["FrontendUrl"]}/user/track";
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unhandled exception in ProcessEsignResponseAsync");
+                throw;
+                //return BuildErrorRedirect("Unexpected server error");
+            }
+        }
+
     }
 }

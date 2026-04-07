@@ -2,8 +2,10 @@ using Microsoft.EntityFrameworkCore;
 using RajFabAPI.Data;
 using RajFabAPI.DTOs;
 using RajFabAPI.Models;
-using System.ComponentModel.DataAnnotations;
+using RajFabAPI.Models.FactoryModels;
 using RajFabAPI.Services.Interface;
+using System.ComponentModel.DataAnnotations;
+using static RajFabAPI.Constants.AppConstants;
 
 namespace RajFabAPI.Services
 {
@@ -306,6 +308,42 @@ namespace RajFabAPI.Services
             };
         }
 
+        /// <summary>
+        /// Finds the workflow level belonging to the highest-seniority role (highest SeniorityOrder)
+        /// in any active workflow for the given module + office. Used as a last-resort fallback
+        /// when no specific workflow matches the application's factory category.
+        /// </summary>
+        private async Task<ApplicationWorkFlowLevel?> GetFallbackLevelAsync(Guid moduleId, Guid officeId)
+        {
+            // Find all active workflow levels for this module + office
+            var levels = await _context.Set<ApplicationWorkFlowLevel>()
+                .Where(wfl => wfl.IsActive &&
+                              _context.Set<ApplicationWorkFlow>().Any(wf =>
+                                  wf.Id == wfl.ApplicationWorkFlowId &&
+                                  wf.ModuleId == moduleId &&
+                                  wf.OfficeId == officeId &&
+                                  wf.IsActive))
+                .ToListAsync();
+
+            if (!levels.Any())
+                return null;
+
+            // Pick the level whose Role has the highest Post.SeniorityOrder (most senior)
+            var roleIds = levels.Select(l => l.RoleId).Distinct().ToList();
+
+            var highestSeniorityRoleId = await _context.Set<Role>()
+                .Where(r => roleIds.Contains(r.Id))
+                .OrderByDescending(r => r.Post.SeniorityOrder)
+                .Select(r => (Guid?)r.Id)
+                .FirstOrDefaultAsync();
+
+            if (highestSeniorityRoleId == null)
+                return null;
+
+            // Return the first level that matches the highest-seniority role
+            return levels.FirstOrDefault(l => l.RoleId == highestSeniorityRoleId.Value);
+        }
+
         private static void ValidateLevels(int levelCount, List<int> levelNumbers)
         {
             if (levelCount != levelNumbers.Count)
@@ -318,5 +356,148 @@ namespace RajFabAPI.Services
                 .SequenceEqual(Enumerable.Range(1, levelCount)))
                 throw new ValidationException("Levels must be sequential starting from 1.");
         }
+
+        public async Task<bool> AddApplicationToWorkFlow(string applicationId)
+        {
+            // Load the application registration and module together
+            var appReg = await _context.Set<ApplicationRegistration>()
+                .FirstOrDefaultAsync(ar => ar.ApplicationId == applicationId);
+
+            if (appReg == null || appReg.ModuleId == Guid.Empty)
+                return false; // Early exit if application or module not found
+
+            var module = await _context.Set<FormModule>()
+                .FirstOrDefaultAsync(m => m.Id == appReg.ModuleId);
+
+            int totalWorkers = 0;
+            Guid factoryTypeIdGuid = Guid.Empty;
+            Guid? subDivisionId = null;
+
+            if (module?.Name == ApplicationTypeNames.NewEstablishment || module?.Name == ApplicationTypeNames.FactoryAmendment || module?.Name == ApplicationTypeNames.FactoryRenewal)
+            {
+                // Load establishment and details together
+                var estReg = await _context.Set<EstablishmentRegistration>()
+                    .FirstOrDefaultAsync(er => er.EstablishmentRegistrationId == applicationId);
+
+                if (estReg != null)
+                {
+                    var estDetails = await _context.Set<EstablishmentDetail>()
+                        .FirstOrDefaultAsync(ed => ed.Id == estReg.EstablishmentDetailId);
+
+                    var entityData = await _context.Set<EstablishmentEntityMapping>()
+                        .FirstOrDefaultAsync(ed => ed.EstablishmentRegistrationId == estReg.EstablishmentRegistrationId);
+
+                    if (entityData == null)
+                    {
+                        return false;
+                    }
+
+                    FactoryDetail? factorydata = null;
+
+                    if (entityData.EntityType == "Factory")
+                    {
+                        factorydata = await _context.Set<FactoryDetail>()
+                            .FirstOrDefaultAsync(f => f.Id == entityData.EntityId);
+                    }
+
+                    if (factorydata != null)
+                    {
+                        totalWorkers = factorydata.NumberOfWorker ?? 0;
+                        factoryTypeIdGuid = estDetails.FactoryTypeId ?? Guid.Empty;
+
+                        if (Guid.TryParse(factorydata.SubDivisionId, out var parsedSubDivision))
+                            subDivisionId = parsedSubDivision;
+                    }
+                }
+            }
+
+            // Early exit if subdivision not found
+            if (!subDivisionId.HasValue)
+                return false;
+
+            // Get worker range in a single query
+            var workerRange = await _context.Set<WorkerRange>()
+                .FirstOrDefaultAsync(wr => totalWorkers >= wr.MinWorkers && totalWorkers <= wr.MaxWorkers);
+
+            Guid? factoryCategoryId = null;
+
+            if (workerRange != null)
+            {
+                factoryCategoryId = await _context.Set<FactoryCategory>()
+                    .Where(fc => fc.WorkerRangeId == workerRange.Id && fc.FactoryTypeId == factoryTypeIdGuid)
+                    .Select(fc => (Guid?)fc.Id)
+                    .FirstOrDefaultAsync();
+            }
+
+            var officeApplicationArea = await _context.Set<OfficeApplicationArea>()
+                .Where(oaa => oaa.CityId == subDivisionId.Value)
+                .Select(oaa => new { oaa.OfficeId })
+                .FirstOrDefaultAsync();
+
+            if (officeApplicationArea == null)
+                return false;
+
+            // Get workflow and workflow level in a single query
+            var workflow = await _context.Set<ApplicationWorkFlow>()
+                .Where(wf => wf.ModuleId == appReg.ModuleId
+                          && wf.FactoryCategoryId == factoryCategoryId
+                          && wf.OfficeId == officeApplicationArea.OfficeId)
+                .FirstOrDefaultAsync();
+
+            // Fallback 1: same office + module, ignore factory category
+            if (workflow == null && factoryCategoryId.HasValue)
+            {
+                workflow = await _context.Set<ApplicationWorkFlow>()
+                    .Where(wf => wf.ModuleId == appReg.ModuleId
+                              && wf.OfficeId == officeApplicationArea.OfficeId
+                              && wf.IsActive)
+                    .FirstOrDefaultAsync();
+            }
+
+            // Fallback 2: any active workflow for the module — route to highest-seniority role in the office
+            if (workflow == null)
+            {
+                var fallbackLevel = await GetFallbackLevelAsync(appReg.ModuleId, officeApplicationArea.OfficeId);
+                if (fallbackLevel == null)
+                    return false;
+
+                var fallbackRequest = new ApplicationApprovalRequest
+                {
+                    ModuleId = appReg.ModuleId,
+                    ApplicationRegistrationId = appReg.Id,
+                    ApplicationWorkFlowLevelId = fallbackLevel.Id,
+                    Status = "Pending",
+                    Direction = "Forward",
+                    CreatedDate = DateTime.Now,
+                    UpdatedDate = DateTime.Now
+                };
+                _context.Set<ApplicationApprovalRequest>().Add(fallbackRequest);
+                return true;
+            }
+
+            var workflowLevel = await _context.Set<ApplicationWorkFlowLevel>()
+                .Where(wfl => wfl.ApplicationWorkFlowId == workflow.Id)
+                .OrderBy(wfl => wfl.LevelNumber)
+                .FirstOrDefaultAsync();
+
+            if (workflowLevel == null)
+                return false;
+
+            // Create approval request
+            var applicationApprovalRequest = new ApplicationApprovalRequest
+            {
+                ModuleId = appReg.ModuleId,
+                ApplicationRegistrationId = appReg.Id,
+                ApplicationWorkFlowLevelId = workflowLevel.Id,
+                Status = "Pending",
+                Direction = "Forward",
+                CreatedDate = DateTime.Now,
+                UpdatedDate = DateTime.Now
+            };
+
+            _context.Set<ApplicationApprovalRequest>().Add(applicationApprovalRequest);
+            return true;
+        }
+
     }
 }

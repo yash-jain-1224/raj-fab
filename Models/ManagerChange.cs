@@ -9,23 +9,17 @@ namespace RajFabAPI.Models
         public Guid Id { get; set; } = Guid.NewGuid();
 
         [Required]
-        public Guid FactoryRegistrationId { get; set; }
+        public string FactoryRegistrationNumber { get; set; }
 
         [Required]
-        [MaxLength(255)]
-        public string AcknowledgementNumber { get; set; }
+        [MaxLength(50)]
+        public string ApplicationNumber { get; set; }
 
         [Required]
         public Guid OldManagerId { get; set; }
 
         [Required]
         public Guid NewManagerId { get; set; }
-
-        // file path / url
-        public string? SignatureofOccupier { get; set; }
-
-        // file path / url
-        public string? SignatureOfNewManager { get; set; }
 
         [Required]
         public DateTime DateOfAppointment { get; set; }
@@ -41,5 +35,6 @@ namespace RajFabAPI.Models
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         public DateTime UpdatedAt { get; set; } = DateTime.Now;
         public bool IsActive { get; set; } = true;
+        public string? ApplicationPDFUrl { get; set; }
     }
 }

@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using RajFabAPI.Data;
 using RajFabAPI.DTOs;
 using RajFabAPI.Models;
@@ -24,7 +25,75 @@ namespace RajFabAPI.Services
             _environment = environment;
         }
 
-        public async Task<DocumentUploadDto> UploadAsync(IFormFile file, Guid userId)
+        public async Task<UserDocumentResultDto> GetDocumentsByUserAsync(Guid userId)
+{
+    if (userId == Guid.Empty)
+        throw new InvalidOperationException("Invalid user");
+
+    var documents = await _context.DocumentUploads
+        .Where(d => d.UserId == userId)
+        .Join(
+            _context.Modules,
+            doc => doc.ModuleId,
+            mod => mod.Id,
+            (doc, mod) => new
+            {
+                ModuleName = mod.Name,
+                doc.DocumentName,
+                doc.DocumentUrl,
+                doc.DocumentType,
+                doc.ModuleDocType,
+                doc.Version,
+                doc.CreatedAt
+            })
+        .ToListAsync();
+
+    var currentDocs = documents
+        .GroupBy(d => new { d.ModuleName, d.ModuleDocType })
+        .Select(g => g.OrderByDescending(x => x.Version).First())
+        .ToList();
+
+    var oldDocs = documents
+        .Except(currentDocs)
+        .ToList();
+
+    return new UserDocumentResultDto
+    {
+        CurrentDocuments = currentDocs
+            .GroupBy(d => d.ModuleName)
+            .Select(g => new UserDocumentsByModuleDto
+            {
+                ModuleName = g.Key,
+                Documents = g.Select(d => new DocumentListDto
+                {
+                    DocumentName = d.DocumentName,
+                    DocumentUrl = d.DocumentUrl,
+                    DocumentType = d.DocumentType,
+                    ModuleDocType = d.ModuleDocType,
+                    Version = d.Version,
+                    CreatedAt = d.CreatedAt
+                }).ToList()
+            }).ToList(),
+
+        OldDocuments = oldDocs
+            .GroupBy(d => d.ModuleName)
+            .Select(g => new UserDocumentsByModuleDto
+            {
+                ModuleName = g.Key,
+                Documents = g.Select(d => new DocumentListDto
+                {
+                    DocumentName = d.DocumentName,
+                    DocumentUrl = d.DocumentUrl,
+                    DocumentType = d.DocumentType,
+                    ModuleDocType = d.ModuleDocType,
+                    Version = d.Version,
+                    CreatedAt = d.CreatedAt
+                }).ToList()
+            }).ToList()
+    };
+}
+
+        public async Task<DocumentUploadDto> UploadAsync(IFormFile file, Guid userId, Guid moduleId, string moduleDocType)
         {
             if (userId == Guid.Empty)
                 throw new InvalidOperationException("Invalid user");
@@ -66,10 +135,23 @@ namespace RajFabAPI.Services
             var baseUrl = _config["BaseUrl"] ?? $"{request.Scheme}://{request.Host.Value}";
             var fileUrl = $"{baseUrl}/documents/{safeFileName}";
 
+            // --- Determine version ---
+            var lastDoc = await _context.DocumentUploads
+                .Where(d =>
+                    d.UserId == userId &&
+                    d.ModuleId == moduleId &&
+                    d.ModuleDocType == moduleDocType)
+                .OrderByDescending(d => d.Version)
+                .FirstOrDefaultAsync();
+
+            var newVersion = lastDoc != null ? lastDoc.Version + 1 : 1.0m;
+
             var entity = new DocumentUpload
             {
-                Id = documentId.ToString(),
-                UserId = userId.ToString(),
+                UserId = userId,
+                ModuleId = moduleId,
+                ModuleDocType = moduleDocType,
+                Version = newVersion,
                 DocumentName = originalFileName,
                 DocumentType = file.ContentType,
                 DocumentSize = file.Length,

@@ -1,11 +1,9 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using RajFabAPI.Controllers.Common;
 using RajFabAPI.DTOs;
 using RajFabAPI.Services.Interface;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace RajFabAPI.Controllers.FactoryControllers
 {
@@ -16,15 +14,18 @@ namespace RajFabAPI.Controllers.FactoryControllers
         private readonly IEstablishmentRegistrationService _service;
         private readonly IValidator<CreateEstablishmentRegistrationDto> _validator;
         private readonly ILogger<ApplicationRegistrationController> _logger;
+        private readonly IESignService _eSignService;
 
         public EstablishmentRegistrationController(
             IEstablishmentRegistrationService service,
             IValidator<CreateEstablishmentRegistrationDto> validator,
-            ILogger<ApplicationRegistrationController> logger)
+            ILogger<ApplicationRegistrationController> logger,
+            IESignService eSignService)
         {
             _service = service;
             _validator = validator;
             _logger = logger;
+            _eSignService = eSignService;
         }
 
         // POST: api/factoryobject/complete
@@ -58,15 +59,20 @@ namespace RajFabAPI.Controllers.FactoryControllers
 
             try
             {
-                var registrationId = await _service.SaveEstablishmentAsync(dto, userIdGuid);
-                return CreatedAtAction(null, new { id = registrationId }, new { registrationId });
+                var html = await _service.SaveEstablishmentAsync(dto, userIdGuid);
+                //return Content(html, "text/html");
+
+                return CreatedAtAction(null, new { html }, new { html });
             }
             catch (ArgumentException ex) { return BadRequest(ex.Message); }
             catch (KeyNotFoundException ex) { return NotFound(ex.Message); }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // log exception if you have logging; return generic error to client
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while saving the registration.");
+                Console.WriteLine("GetFeeAmountAsync exception: " + ex);
+                _logger.LogError("Error occurred while saving registration. Message: {ErrorMessage}", ex.Message);
+
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    "An error occurred while saving the registration.");
             }
         }
 
@@ -84,8 +90,9 @@ namespace RajFabAPI.Controllers.FactoryControllers
 
                 return Ok(new { success = true, data = details });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError("Error occurred while retrieving the registration details . Message: {ErrorMessage}", ex.Message);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while retrieving the registration details.");
             }
         }
@@ -93,12 +100,20 @@ namespace RajFabAPI.Controllers.FactoryControllers
         [HttpGet("establishmentDetails/{registrationId}")]
         public async Task<IActionResult> GetAllEntitiesByRegistrationId(string registrationId)
         {
-            if (string.IsNullOrWhiteSpace(registrationId))
-                return BadRequest("registrationId is required.");
-            var data = await _service.GetAllEntitiesByRegistrationIdAsync(registrationId);
-            if (data == null)
-                return NotFound();
-            return Ok(new { success = true, data });
+            try
+            {
+                if (string.IsNullOrWhiteSpace(registrationId))
+                    return BadRequest("registrationId is required.");
+                var data = await _service.GetAllEntitiesByRegistrationIdAsync(registrationId);
+                if (data == null)
+                    return NotFound();
+                return Ok(new { success = true, data });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Error occurred while retrieving the registration details. Message: {ErrorMessage}", ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while retrieving the registration details.");
+            }
         }
 
         [HttpGet("factoryDetails/{factoryRegistrationNumber}")]
@@ -132,28 +147,52 @@ namespace RajFabAPI.Controllers.FactoryControllers
         [HttpGet("all")]
         public async Task<IActionResult> GetAllEstablishmentDetails()
         {
-            var userIdClaim = User.FindFirst("userId")?.Value;
-            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+            try
             {
-                _logger.LogWarning("Invalid userId in token");
-                return BadRequest(new { success = false, message = "Invalid user ID in token." });
+                var userIdClaim = User.FindFirst("userId")?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                {
+                    _logger.LogWarning("Invalid userId in token");
+                    return BadRequest(new { success = false, message = "Invalid user ID in token." });
+                }
+                var details = await _service.GetAllEstablishmentDetailsAsync(userId);
+                return Ok(new { success = true, data = details });
             }
-            var details = await _service.GetAllEstablishmentDetailsAsync(userId);
-            return Ok(new { success = true, data = details });
+            catch (Exception ex)
+            {
+                _logger.LogError("Error occurred while retrieving list of registration . Message: {ErrorMessage}", ex.Message);
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = ex.Message
+                });
+            }
         }
 
         [Authorize]
         [HttpGet("getfactoryregistrationnumber")]
         public async Task<IActionResult> GetFactoryRegistrationNumberByUser()
         {
-            var userIdClaim = User.FindFirst("userId")?.Value;
-            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+            try
             {
-                _logger.LogWarning("Invalid userId in token");
-                return BadRequest(new { success = false, message = "Invalid user ID in token." });
+                var userIdClaim = User.FindFirst("userId")?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                {
+                    _logger.LogWarning("Invalid userId in token");
+                    return BadRequest(new { success = false, message = "Invalid user ID in token." });
+                }
+                var FactoryRegistrationNumber = await _service.GetFactoryRegistrationNumber(userId);
+                return Ok(new { success = true, FactoryRegistrationNumber });
             }
-            var FactoryRegistrationNumber = await _service.GetFactoryRegistrationNumber(userId);
-            return Ok(new { success = true, FactoryRegistrationNumber });
+            catch (Exception ex)
+            {
+                _logger.LogError("Error occurred while retrieving factory registration number. Message: {ErrorMessage}", ex.Message);
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = ex.Message
+                });
+            }
         }
 
         // PUT: api/establishment/{id}
@@ -191,9 +230,10 @@ namespace RajFabAPI.Controllers.FactoryControllers
             }
             catch (ArgumentException ex) { return BadRequest(ex.Message); }
             catch (KeyNotFoundException ex) { return NotFound(ex.Message); }
-            catch (Exception)
+            catch (Exception ex)
             {
                 // log exception if you have logging; return generic error to client
+                _logger.LogError("Error occurred while updating the registration. Message: {ErrorMessage}", ex.Message);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while updating the registration.");
             }
         }
@@ -201,34 +241,47 @@ namespace RajFabAPI.Controllers.FactoryControllers
         [HttpPost("{id}/documents")]
         public async Task<ActionResult<ApiResponseDto<EstablishmentRegistrationDocumentDto>>> UploadDocument(string id, IFormFile file, [FromForm] string documentType)
         {
-            if (file == null || file.Length == 0)
+            try
             {
-                return BadRequest(new ApiResponseDto<FactoryRegistrationDocumentDto>
+                if (file == null || file.Length == 0)
                 {
-                    Success = false,
-                    Message = "No file provided",
-                    Data = null
+                    return BadRequest(new ApiResponseDto<FactoryRegistrationDocumentDto>
+                    {
+                        Success = false,
+                        Message = "No file provided",
+                        Data = null
+                    });
+                }
+
+                if (string.IsNullOrEmpty(documentType))
+                {
+                    return BadRequest(new ApiResponseDto<EstablishmentRegistrationDocumentDto>
+                    {
+                        Success = false,
+                        Message = "Document type is required",
+                        Data = null
+                    });
+                }
+
+                var result = await _service.UploadDocumentAsync(id, file, documentType);
+
+                if (!result.Success)
+                {
+                    return BadRequest(result);
+                }
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Error occurred while document. Message: {ErrorMessage}", ex.Message);
+
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = ex.Message
                 });
             }
-
-            if (string.IsNullOrEmpty(documentType))
-            {
-                return BadRequest(new ApiResponseDto<EstablishmentRegistrationDocumentDto>
-                {
-                    Success = false,
-                    Message = "Document type is required",
-                    Data = null
-                });
-            }
-
-            var result = await _service.UploadDocumentAsync(id, file, documentType);
-
-            if (!result.Success)
-            {
-                return BadRequest(result);
-            }
-
-            return Ok(result);
         }
 
         [HttpPost("documents/{documentId}/delete")]
@@ -273,14 +326,15 @@ namespace RajFabAPI.Controllers.FactoryControllers
 
             try
             {
-                var registrationNumber = await _service.SaveEstablishmentAsync(dto, userIdGuid, "amendment", registrationId);
-                return CreatedAtAction(null, new { id = registrationNumber }, new { registrationNumber });
+                var html = await _service.SaveEstablishmentAsync(dto, userIdGuid, "amendment", registrationId);
+                return CreatedAtAction(null, new { html }, new { html });
             }
             catch (ArgumentException ex) { return BadRequest(ex.Message); }
             catch (KeyNotFoundException ex) { return NotFound(ex.Message); }
-            catch (Exception)
+            catch (Exception ex)
             {
                 // log exception if you have logging; return generic error to client
+                _logger.LogError("Error occurred while saving the registration. Message: {ErrorMessage}", ex.Message);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while saving the registration.");
             }
         }
@@ -294,13 +348,14 @@ namespace RajFabAPI.Controllers.FactoryControllers
 
             try
             {
-                var registrationNumber = await _service.RenewEstablishmentAsync(dto, userIdGuid, registrationId);
-                return CreatedAtAction(null, new { id = registrationNumber }, new { registrationNumber });
+                var html = await _service.RenewEstablishmentAsync(dto, userIdGuid, registrationId);
+                return CreatedAtAction(null, new { html }, new { html });
             }
             catch (ArgumentException ex) { return BadRequest(ex.Message); }
             catch (KeyNotFoundException ex) { return NotFound(ex.Message); }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError("Error occurred while saving the registration. Message: {ErrorMessage}", ex.Message);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while saving the registration.");
             }
         }
@@ -315,14 +370,16 @@ namespace RajFabAPI.Controllers.FactoryControllers
 
             try
             {
-                var certificateUrl = await _service.GenerateCertificateAsync(dto, userIdGuid, registrationId);
-                return CreatedAtAction(null, new { id = certificateUrl }, new { certificateUrl });
+                var certificateId = await _service.GenerateCertificateAsync(dto, userIdGuid, registrationId);
+                var html = await _eSignService.GenerateCertificateESignHtmlAsync(certificateId);
+                return Ok(new { html });
             }
             catch (ArgumentException ex) { return BadRequest(ex.Message); }
             catch (KeyNotFoundException ex) { return NotFound(ex.Message); }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while saving the registration.");
+                _logger.LogError("Error occurred while generating the certificate. Message: {ErrorMessage}", ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while generating the certificate.");
             }
         }
     }

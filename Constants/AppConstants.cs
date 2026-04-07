@@ -12,6 +12,8 @@ namespace RajFabAPI.Constants
             public const string Rejected = "Rejected";
             public const string Forwarded = "Forwarded";
             public const string ReturnedToApplicant = "Returned to applicant";
+            public const string PendingInspection = "Pending Inspection";
+            public const string SentBack = "Sent Back";
 
         }
 
@@ -34,6 +36,35 @@ namespace RajFabAPI.Constants
             public const string FactoryLicenseAmendment = "Factory License Amendment";
             public const string FactoryLicenseRenewal = "Factory License Renewal";
             public const string FactoryCommencementCessation = "Factory Commencement And Cessation";
+            public const string Appeal = "Appeal";
+            public const string BoilerRegistration = "Boiler Registration";
+            public const string BoilerAmendment = "Boiler Amendment";
+            public const string BoilerRenewal = "Boiler Renewal";
+            public const string BoilerManufactureRegistration = "Boiler Manufacture Registration";
+            public const string BoilerManufactureAmend= "Boiler Manufacture Amendment";
+            public const string BoilerManufactureRenewal = "Boiler Manufacture Renewal";
+            public const string Stplregistration = "Stpl Registration";
+            public const string StplAmendment = "Stpl Amendment";
+            public const string Stplrenew = "Stpl Renewal";
+            public const string EconomiserRegistration = "Economiser Registration";
+            public const string Economiserrenew = "Economiser Renewal";
+            public const string BoilerRepairerRegistration = "Boiler Repairer Registration";
+            public const string BoilerRepairerRenew = "Boiler Repairer Renewal";
+            public const string WelderRegistration = "Welder Registration";
+            public const string WelderRenew = "Welder Renewal";
+            public const string BoilerDrawingRegistration = "Boiler Drawing Registration";
+            public const string BoierDrawingRenewal = "Boier Drawing Renewal";
+            public const string BoilerInspection = "Boiler Inspection";
+        }
+
+        public static class BoilerApplicationType
+        {
+            public const string New = "new";
+            public const string Renew = "renew";
+            public const string Repair = "repair";
+            public const string Modification = "modification";
+            public const string Transfer = "transfer";
+            public const string Closure = "closure";
         }
 
         public static class UserTypeNames

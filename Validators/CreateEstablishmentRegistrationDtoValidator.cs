@@ -11,7 +11,7 @@ namespace RajFabAPI.Validators
 
             When(x => x.EstablishmentDetails != null, () =>
             {
-                RuleFor(x => x.EstablishmentDetails.EstablishmentName)
+                RuleFor(x => x.EstablishmentDetails.Name)
                     .NotEmpty().WithMessage("EstablishmentName is required.")
                     .MaximumLength(500);
                 RuleFor(x => x.EstablishmentDetails.LinNumber)

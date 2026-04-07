@@ -1,20 +1,47 @@
 using FluentValidation;
 using FluentValidation.AspNetCore;
-using RajFabAPI.DTOs;
-using RajFabAPI.Validators;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using RajFabAPI.Data;
+using RajFabAPI.DTOs;
+using RajFabAPI.Middlewares;
 using RajFabAPI.Services;
 using RajFabAPI.Services.Interface;
-using RajFabAPI.Middlewares;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.Extensions.FileProviders;
-using Microsoft.OpenApi.Models;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
+using RajFabAPI.Validators;
+using Serilog;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+
+var logFolder = Path.Combine(Directory.GetCurrentDirectory(), "Logs");
+
+if (!Directory.Exists(logFolder))
+{
+    Directory.CreateDirectory(logFolder);
+}
+
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .Enrich.FromLogContext()
+    .WriteTo.File(
+        Path.Combine(logFolder, "log-.txt"),
+        rollingInterval: RollingInterval.Day,
+        retainedFileCountLimit: 14,
+        shared: true,
+        outputTemplate:
+            "[{Timestamp:yyyy-MM-dd HH:mm:ss} {Level:u3}] " +
+            "{Message:lj} " +
+            "AppId={ApplicationId} PRN={PRN} Module={ModuleName} " +
+            "{NewLine}{Exception}"
+    )
+    .CreateLogger();
+
+builder.Host.UseSerilog();
+
 
 // Add services to the container.
 builder.Services.AddControllers()
@@ -24,8 +51,11 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
         options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
     });
-builder.Services.AddEndpointsApiExplorer(); 
-
+builder.Services.AddEndpointsApiExplorer();
+// builder.Services.AddControllers(options =>
+// {
+//     options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true;
+// });
 builder.Services.AddSwaggerGen(options =>
 {
     options.OperationFilter<FileUploadOperationFilter>();
@@ -80,21 +110,21 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddHttpClient();
 builder.Services.AddAuthorization();
-
+builder.Services.AddMemoryCache();
 // Add Entity Framework
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddScoped<JwtService>();
-builder.Services.AddScoped< RailwayStationService>();   // <-- required
-builder.Services.AddScoped< PoliceStationService>();
+builder.Services.AddScoped<RailwayStationService>();   // <-- required
+builder.Services.AddScoped<PoliceStationService>();
 builder.Services.AddScoped<IDivisionService, DivisionService>();
 builder.Services.AddScoped<IDistrictService, DistrictService>();
 builder.Services.AddScoped<IAreaService, AreaService>();
 builder.Services.AddScoped<IApplicationApprovalRequestService, ApplicationApprovalRequestService>();
 builder.Services.AddScoped<IApplicationRegistrationService, ApplicationRegistrationService>();
 // builder.Services.AddScoped<IOfficeService, OfficeService>();
-builder.Services.AddScoped< UserService>();
-builder.Services.AddScoped< UserHierarchyService>();
+builder.Services.AddScoped<UserService>();
+builder.Services.AddScoped<UserHierarchyService>();
 builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddScoped<IEnhancedPrivilegeService, EnhancedPrivilegeService>();
 builder.Services.AddScoped<IModuleService, ModuleService>();
@@ -129,6 +159,7 @@ builder.Services.AddScoped<IActService, ActService>();
 builder.Services.AddScoped<IRuleService, RuleService>();
 builder.Services.AddScoped<IOfficeService, OfficeService>();
 builder.Services.AddScoped<IUserRoleAssignmentService, UserRoleAssignmentService>();
+builder.Services.AddScoped<IInspectorApplicationAssignmentService, InspectorApplicationAssignmentService>();
 builder.Services.AddScoped<IPostService, PostService>();
 builder.Services.AddScoped<IWorkerRangeService, WorkerRangeService>();
 builder.Services.AddScoped<IFactoryCategoryService, FactoryCategoryService>();
@@ -141,6 +172,24 @@ builder.Services.AddScoped<ICertificateService, CertificateService>();
 builder.Services.AddScoped<IFactoryLicenseService, FactoryLicenseService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<IESignService, ESignService>();
+builder.Services.AddScoped<ITransactionService, TransactionService>();
+
+builder.Services.AddScoped<IBoilerRegistartionService, BoilerRegistrationService>();
+builder.Services.AddScoped<IBoilerNewService, BoilerNewService>();
+builder.Services.AddScoped<ISteamPipeLineApplicationService, SteamPipeLineApplicationService>();
+builder.Services.AddScoped<IBoilerManufactureService, BoilerManufactureService>();
+builder.Services.AddScoped<IBoilerRepairerService, BoilerRepairerService>();
+builder.Services.AddScoped<IEconomiserService, EconomiserService>();
+builder.Services.AddScoped<IWelderApplicationService, WelderApplicationService>();
+builder.Services.AddScoped<IBoilerDrawingService, BoilerDrawingService>();
+builder.Services.AddScoped<ICompetantPersonRegistartionService, CompetantPersonRegistartionService>();
+builder.Services.AddScoped<ICompetantPersonEquipmentRegistartionService, CompetantPersonEquipmentRegistartionService>();
+builder.Services.AddScoped<ISMTCRegistrationService, SMTCRegistrationService>();
+
+builder.Services.AddScoped<IBoilerWorkflowService, BoilerWorkflowService>();
+builder.Services.AddScoped<IBoilerCategoryService, BoilerCategoryService>();
+
+builder.Services.AddScoped<IDynamicPDFGenerationFormService, DynamicPDFGenerationFormService>();
 builder.Services.AddHttpContextAccessor();
 
 
@@ -149,14 +198,19 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
     {
-         policy.WithOrigins(
-                "http://10.68.108.29",
-                "http://localhost:8080",
-                 "http://10.68.108.29:8080"
-            )
-            .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials();
+        policy.WithOrigins(
+               "http://10.68.108.29",
+                "http://10.68.108.29:8080",
+               "http://10.68.211.24",
+               "http://10.68.211.24:8080",
+               "http://10.70.234.214",
+               "http://10.70.234.214:8080",
+               "http://localhost:8080",
+               "*"
+           )
+           .AllowAnyHeader()
+           .AllowAnyMethod()
+           .AllowCredentials();
     });
 });
 
@@ -167,11 +221,48 @@ builder.Services.AddHttpClient();
 
 var app = builder.Build();
 
+// app.Use(async (context, next) =>
+// {
+//     context.Response.Headers.Remove("Server");
+//     context.Response.Headers.Remove("X-Powered-By");
+//     await next();
+// });
+
+// app.Use(async (context, next) =>
+// {
+//     context.Response.Headers.Add("X-Frame-Options", "DENY");
+//     context.Response.Headers.Add("X-Content-Type-Options", "nosniff");
+//     context.Response.Headers.Add("X-XSS-Protection", "1; mode=block");
+//     context.Response.Headers["Referrer-Policy"] = "no-referrer";
+//     context.Response.Headers["Permissions-Policy"] = "geolocation=(), microphone=()";
+//     await next();
+// });
+
+// app.Use(async (context, next) =>
+// {
+//     context.Response.Headers.Add("Content-Security-Policy",
+//         "default-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'; frame-ancestors 'none'; img-src 'self' data:;");
+//     await next();
+// });
+
+// app.Use(async (context, next) =>
+// {
+//     var allowedMethods = new[] { "GET", "POST" };
+
+//     if (!allowedMethods.Contains(context.Request.Method))
+//     {
+//         context.Response.StatusCode = 405;
+//         await context.Response.WriteAsync("Method Not Allowed");
+//         return;
+//     }
+
+//     await next();
+// });
+
 // Auto-migrate database on startup
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    
     // Apply pending migrations with error handling
     try
     {
@@ -762,8 +853,8 @@ BEGIN CATCH
 END CATCH
 ");
 
-    // Ensure Offices table exists
-    context.Database.ExecuteSqlRaw(@"
+        // Ensure Offices table exists
+        context.Database.ExecuteSqlRaw(@"
 BEGIN TRY
     IF OBJECT_ID(N'[dbo].[Offices]', N'U') IS NULL
     BEGIN
@@ -815,33 +906,43 @@ if (app.Environment.IsDevelopment())
 
 var webRootPath = env.WebRootPath;
 
-// Ensure wwwroot path is not null or empty
 if (string.IsNullOrWhiteSpace(webRootPath))
 {
     throw new InvalidOperationException("wwwroot path is not configured.");
 }
 
-// Define folders inside wwwroot
-var documentsPath = Path.Combine(webRootPath, "documents");
-var certificatesPath = Path.Combine(webRootPath, "certificates");
-
-// Create the folders if they do not exist
-if (!Directory.Exists(documentsPath))
+var folders = new[]
 {
-    Directory.CreateDirectory(documentsPath);
-}
+    "Logs",
+    "documents",
+    "certificates",
+    "factory-establishment-forms",
+    "factory-map-forms",
+    "factory-license-forms",
+    "boiler-registration-forms",
+    "objection-letters",
+};
 
-if (!Directory.Exists(certificatesPath))
+foreach (var folder in folders)
 {
-    Directory.CreateDirectory(certificatesPath);
+    var fullPath = Path.Combine(webRootPath, folder);
+
+    if (!Directory.Exists(fullPath))
+    {
+        Directory.CreateDirectory(fullPath);
+    }
 }
 
 app.UseStaticFiles();
-
+app.UseSerilogRequestLogging();
 //app.UseHttpsRedirection();
 app.UseCors("AllowReactApp");
+app.UseExceptionHandler("/error");
+app.UseHsts();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+app.MapGet("/", () => Results.Redirect("/swagger/index.html"));
 
 app.Run();

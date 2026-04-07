@@ -16,5 +16,6 @@ namespace RajFabAPI.Services.Interface
         Task<CreateUserDto?> UpdateCategoryAsync(Guid id, UpdateUserCategoryDto dto);
         Task<CreateUserDto?> UpdateUserFieldAsync(UpdateUserFieldDto dto);
         Task<bool> DeleteAsync(Guid id);
+        string Encrypt(string plainText, string encryptionKey);
     }
 }

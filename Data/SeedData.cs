@@ -31,8 +31,8 @@ namespace RajFabAPI.Data
                     Name = "Non Hazardous Factories (workers more than 50)",
                     Description = "Factory with non-hazardous processes employing more than 50 workers",
                     IsActive = true,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.Now,
+                    UpdatedAt = DateTime.Now
                 },
 
                 // Factories Carrying out Hazardous Process
@@ -42,8 +42,8 @@ namespace RajFabAPI.Data
                     Name = "Factories Carrying out Hazardous Process",
                     Description = "Factory carrying out hazardous manufacturing processes",
                     IsActive = true,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.Now,
+                    UpdatedAt = DateTime.Now
                 },
 
                 // Factories Carrying out Dangerous Operations
@@ -53,8 +53,8 @@ namespace RajFabAPI.Data
                     Name = "Factories Carrying out Dangerous Operations",
                     Description = "Factory carrying out dangerous manufacturing operations",
                     IsActive = true,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.Now,
+                    UpdatedAt = DateTime.Now
                 },
 
                 // Factories (MAH) Covered Under RCIMAH Rules, 1991
@@ -64,8 +64,8 @@ namespace RajFabAPI.Data
                     Name = "Factories (MAH) Covered Under RCIMAH Rules, 1991",
                     Description = "Major Accident Hazard factories covered under RCIMAH Rules",
                     IsActive = true,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.Now,
+                    UpdatedAt = DateTime.Now
                 }
             };
 
@@ -94,8 +94,8 @@ namespace RajFabAPI.Data
                     Module = "Factory",
                     ServiceType = "Registration",
                     IsActive = true,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.Now,
+                    UpdatedAt = DateTime.Now
                 },
                 new DocumentType
                 {
@@ -159,8 +159,8 @@ namespace RajFabAPI.Data
                     Module = "Factory",
                     ServiceType = "Registration",
                     IsActive = true,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.Now,
+                    UpdatedAt = DateTime.Now
                 },
                 new DocumentType
                 {
@@ -172,8 +172,8 @@ namespace RajFabAPI.Data
                     Module = "Factory",
                     ServiceType = "Registration",
                     IsActive = true,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.Now,
+                    UpdatedAt = DateTime.Now
                 }
             };
 

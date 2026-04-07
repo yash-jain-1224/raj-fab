@@ -114,7 +114,7 @@ namespace RajFabAPI.Services
                 // Increment amendment count and save history
                 renewal.AmendmentCount++;
                 
-                var history = new ApplicationHistory
+                var history = new Models.ApplicationHistory
                 {
                     ApplicationId = renewal.Id,
                     ApplicationType = "LicenseRenewal",

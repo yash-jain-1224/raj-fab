@@ -11,6 +11,7 @@ namespace RajFabAPI.Models
         [Required]
         [MaxLength(255)]
         public string AcknowledgementNumber { get; set; }
+        public string ApplicationNumber { get; set; }
 
         [Required]
         [StringLength(200)]
@@ -25,14 +26,20 @@ namespace RajFabAPI.Models
         [Required]
         public int MaxWorkerMale { get; set; }
 
+        [Required]
+        [Range(1, 10, ErrorMessage = "No of shifts must be at least 1")]
+        public int NoOfShifts { get; set; } = 1;
+
         [Column(TypeName = "decimal(3,1)")]
         public decimal Version { get; set; } = 1.0m;
         public bool IsNew { get; set; } = true;
 
         [Required]
         public int MaxWorkerFemale { get; set; }
+        public int MaxWorkerTransgender { get; set; }
         public decimal AreaFactoryPremise { get; set; }
         public int? NoOfFactoriesIfCommonPremise { get; set; }
+        public string? PremiseOwnerDetails { get; set; }
         public string? PremiseOwnerName { get; set; }
         public string? PremiseOwnerContactNo { get; set; }
         public string? PremiseOwnerAddressPlotNo { get; set; }
@@ -43,21 +50,30 @@ namespace RajFabAPI.Models
         public string? PremiseOwnerAddressPinCode { get; set; }
         public string? Place { get; set; }
         public DateTime? Date { get; set; }
+        public bool IsESignCompleted { get; set; } = false;
+        public string? ApplicationPDFUrl { get; set; } = string.Empty;
+        public string? ObjectionLetterUrl { get; set; }
 
         [StringLength(20)]
         public string Status { get; set; } = "Pending"; // Pending, Approved, Rejected
+
+        // Set when a FactoryRegistration is created against this map approval
+        [StringLength(100)]
+        public string? FactoryRegistrationNumber { get; set; }
+
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         public DateTime UpdatedAt { get; set; } = DateTime.Now;
 
-        // Navigation properties
-        public MapApprovalFactoryDetail MapApprovalFactoryDetails { get; set; }
-        public MapApprovalOccupierDetail MapApprovalOccupierDetails { get; set; }
         //public List<FactoryMapDocument> Documents { get; set; } = new List<FactoryMapDocument>();
+
+        public FactoryMapApprovalFile File { get; set; }
         public List<FactoryMapRawMaterial> RawMaterials { get; set; } = new List<FactoryMapRawMaterial>();
         public List<FactoryMapIntermediateProduct> IntermediateProducts { get; set; } = new List<FactoryMapIntermediateProduct>();
         public List<FactoryMapFinishGood> FinishGoods { get; set; } = new List<FactoryMapFinishGood>();
         //public List<FactoryMapDangerousOperation> DangerousOperations { get; set; } = new List<FactoryMapDangerousOperation>();
         public List<FactoryMapApprovalChemical> Chemicals { get; set; } = new List<FactoryMapApprovalChemical>();
+        public string FactoryDetails { get; set; }
+        public string OccupierDetails { get; set; }
     }
 
     public class MapApprovalFactoryDetail
@@ -181,6 +197,9 @@ namespace RajFabAPI.Models
         [StringLength(100)]
         public string? MaxStorageQuantity { get; set; }
 
+        [StringLength(50)]
+        public string? Unit { get; set; }
+
         public DateTime CreatedAt { get; set; } = DateTime.Now;
     }
 
@@ -194,6 +213,9 @@ namespace RajFabAPI.Models
         public string ProductName { get; set; } = string.Empty;
 
         public string? MaxStorageQuantity { get; set; }
+
+        [StringLength(50)]
+        public string? Unit { get; set; }
 
         
         public DateTime CreatedAt { get; set; } = DateTime.Now;
@@ -217,7 +239,59 @@ namespace RajFabAPI.Models
         [StringLength(200)]
         public string MaxStorageQuantity { get; set; }
 
+        [StringLength(50)]
+        public string? Unit { get; set; }
+
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         public DateTime UpdatedAt { get; set; } = DateTime.Now;
+    }
+
+    public class FactoryMapApprovalFile
+    {
+        public string Id { get; set; } = Guid.NewGuid().ToString();
+
+        [Required]
+        public string FactoryMapApprovalId { get; set; }
+
+        [StringLength(500)]
+        public string? LandOwnershipDocumentUrl { get; set; }
+
+        [StringLength(500)]
+        public string? ApprovedLandPlanUrl { get; set; }
+
+        [StringLength(500)]
+        public string? ManufacturingProcessDescriptionUrl { get; set; }
+
+        [StringLength(500)]
+        public string? ProcessFlowChartUrl { get; set; }
+
+        [StringLength(500)]
+        public string? RawMaterialsListUrl { get; set; }
+
+        [StringLength(500)]
+        public string? HazardousProcessesListUrl { get; set; }
+
+        [StringLength(500)]
+        public string? EmergencyPlanUrl { get; set; }
+
+        [StringLength(500)]
+        public string? SafetyHealthPolicyUrl { get; set; }
+
+        [StringLength(500)]
+        public string? FactoryPlanDrawingUrl { get; set; }
+
+        [StringLength(500)]
+        public string? SafetyPolicyApplicableUrl { get; set; }
+
+        [StringLength(500)]
+        public string? OccupierPhotoIdProofUrl { get; set; }
+
+        [StringLength(500)]
+        public string? OccupierAddressProofUrl { get; set; }
+
+        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime? UpdatedAt { get; set; }
+
+        public FactoryMapApproval FactoryMapApproval { get; set; }
     }
 }

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using RajFabAPI.Data;
 using RajFabAPI.DTOs;
 using RajFabAPI.Models;
@@ -89,9 +90,11 @@ namespace RajFabAPI.Services
 
         public async Task<bool> AssignRolePrivilegesAsync(AssignRolePrivilegesDto dto)
         {
-            await using var tx = await _context.Database.BeginTransactionAsync();
+            using var tx = await _context.Database.BeginTransactionAsync();
+
             try
             {
+                // 1. Load role with existing privileges
                 var role = await _context.Roles
                     .Include(r => r.Privileges)
                     .FirstOrDefaultAsync(r => r.Id == dto.RoleId);
@@ -99,27 +102,80 @@ namespace RajFabAPI.Services
                 if (role == null)
                     return false;
 
+                // 2. Clear existing privileges
                 if (role.Privileges.Any())
                     _context.RolePrivileges.RemoveRange(role.Privileges);
 
-                var privilegeIds = new List<Guid>();
+                // 3. Validate incoming permissions
+                var validModulePermissions = dto.ModulePermissions
+                    .Where(mp => mp.Permissions != null && mp.Permissions.Any())
+                    .ToList();
 
-                foreach (var mp in dto.ModulePermissions)
+                if (!validModulePermissions.Any())
                 {
-                    if (mp.Permissions == null || mp.Permissions.Count == 0)
-                        continue;
-
-                    // Force materialization (IMPORTANT for SQL 2014)
-                    var permissionsList = mp.Permissions.ToList(); // materialize
-                    var ids = _context.Privileges
-                        .AsEnumerable() // forces evaluation in memory
-                        .Where(p => p.ModuleId == mp.ModuleId && permissionsList.Contains(p.Action))
-                        .Select(p => p.Id)
-                        .ToList();
-
-                    privilegeIds.AddRange(ids);
+                    await _context.SaveChangesAsync();
+                    await tx.CommitAsync();
+                    return true;
                 }
 
+                // 4. Fetch matching privilege IDs using raw SQL
+                //    Bypasses EF Core 8 CTE generation — safe for SQL Server 2014
+                var privilegeIds = new List<Guid>();
+                var conn = _context.Database.GetDbConnection();
+
+                if (conn.State != System.Data.ConnectionState.Open)
+                    await conn.OpenAsync();
+
+                foreach (var mp in validModulePermissions)
+                {
+                    var permissionList = mp.Permissions
+                        .Where(p => !string.IsNullOrWhiteSpace(p))
+                        .Distinct()
+                        .ToList();
+
+                    if (!permissionList.Any())
+                        continue;
+
+                    // Build: @p0, @p1, @p2 ...
+                    var paramNames = permissionList
+                        .Select((_, i) => $"@p{i}")
+                        .ToList();
+
+                    var sql = $@"
+                SELECT Id 
+                FROM Privileges 
+                WHERE ModuleId = @moduleId 
+                AND Action IN ({string.Join(", ", paramNames)})";
+
+                    using var cmd = conn.CreateCommand();
+                    cmd.Transaction = tx.GetDbTransaction();
+                    cmd.CommandText = sql;
+
+                    // Add ModuleId param
+                    var moduleParam = new Microsoft.Data.SqlClient.SqlParameter(
+                        "@moduleId", System.Data.SqlDbType.UniqueIdentifier)
+                    {
+                        Value = mp.ModuleId
+                    };
+                    cmd.Parameters.Add(moduleParam);
+
+                    // Add Action params
+                    for (int i = 0; i < permissionList.Count; i++)
+                    {
+                        var actionParam = new Microsoft.Data.SqlClient.SqlParameter(
+                            $"@p{i}", System.Data.SqlDbType.NVarChar, 256)
+                        {
+                            Value = permissionList[i]
+                        };
+                        cmd.Parameters.Add(actionParam);
+                    }
+
+                    using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                        privilegeIds.Add(reader.GetGuid(0));
+                }
+
+                // 5. Insert new RolePrivileges
                 if (privilegeIds.Any())
                 {
                     var newPrivileges = privilegeIds
@@ -128,10 +184,13 @@ namespace RajFabAPI.Services
                         {
                             RoleId = role.Id,
                             PrivilegeId = pid
-                        });
+                        })
+                        .ToList();
 
                     await _context.RolePrivileges.AddRangeAsync(newPrivileges);
                 }
+
+                // 6. Save and commit
                 await _context.SaveChangesAsync();
                 await tx.CommitAsync();
                 return true;
@@ -142,7 +201,6 @@ namespace RajFabAPI.Services
                 throw;
             }
         }
-
         public async Task<bool> RemoveRoleModulePrivilegesAsync(Guid roleId, Guid moduleId)
         {
             var privileges = await _context.RolePrivileges

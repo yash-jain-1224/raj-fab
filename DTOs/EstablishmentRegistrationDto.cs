@@ -14,28 +14,35 @@ namespace RajFabAPI.DTOs
         public Guid? EstablishmentDetailId { get; set; }
 
         // Workflow / processing status (e.g. "Pending", "Approved", "Rejected")
-        public string? Status { get; set; }
+        public string? Status { get; set; } 
+        public string? ApplicationId { get; set; }
+
+        public bool AutoRenewal { get; set; }
 
         public string? Place { get; set; }
+        public decimal Amount { get; set; }
         public string? Signature { get; set; }
         public DateTime? Date { get; set; }
         public string ApplicationRegistrationNumber { get; set; }
+        public string ApplicationPDFUrl { get; set; }
+        public string? CertificatePDFUrl { get; set; }
+        public string? ObjectionLetterUrl { get; set; }
 
         // Audit
         public DateTime? CreatedDate { get; set; }
         public DateTime? UpdatedDate { get; set; }
+        public string OccupierIdProof { get; set; }
+        public string PartnershipDeed { get; set; }
+        public string ManagerIdProof { get; set; }
+        public string LoadSanctionCopy { get; set; }
     }
     public class EstablishmentCertificateRequestDto
     {
         public string Remarks { get; set; }
-        public DateTime StartDate { get; set; }
-        public DateTime EndDate { get; set; }
-        public string Place { get; set; }
-        public string Signature { get; set; }
-        public DateTime? IssuedAt { get; set; }
     }
     public class EstablishmentCertificatePdfRequestDto : CreateEstablishmentRegistrationDto
     {
+        public string ApplicationId { get; set; }
         public string ApplicationRegistrationNumber { get; set; }
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
@@ -48,6 +55,7 @@ namespace RajFabAPI.DTOs
         public ContractorDetailDto? ContractorDetails { get; set; }
         public int? InterStateWorkers { get; set; }
 
+        public string FactoryManufacturingType { get; set; }
         public string FactoryManufacturingDetail { get; set; }
         public string FactorySituation { get; set; }
         public string FactoryAddress { get; set; }
@@ -61,6 +69,8 @@ namespace RajFabAPI.DTOs
         public string ManagerAddress { get; set; }
 
         public int? MaxWorkers { get; set; }
+        public int? NumberOfContractors { get; set; }
+        public string Remarks { get; set; }
         public decimal? RegistrationFeesPaid { get; set; }
 
         public string DeclarationPlace { get; set; }

@@ -11,6 +11,7 @@ namespace RajFabAPI.Models
         public string ApplicationRegistrationId { get; set; } = string.Empty;
         public Guid ApplicationWorkFlowLevelId { get; set; }
         public string Status { get; set; } = string.Empty;
+        public string Direction { get; set; } = "Forward";
         public string? Remarks { get; set; }
         public string CreatedBy { get; set; } = string.Empty;
         public DateTime CreatedDate { get; set; } = DateTime.Now;

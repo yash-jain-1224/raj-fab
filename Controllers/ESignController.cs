@@ -1,91 +1,62 @@
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using RajFabAPI.DTOs;
+using Org.BouncyCastle.Tls;
 using RajFabAPI.Services.Interface;
-using System.Text;
+using System.Net;
 
 namespace RajFabAPI.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("[controller]")]
     public class ESignController : ControllerBase
     {
-        private readonly IESignService _service;
-
-        public ESignController(IESignService eSignService)
+        private readonly IESignService _esignService;
+        public ESignController(IESignService esignService)
         {
-            _service = eSignService;
+            _esignService = esignService;
         }
 
-        [HttpPost("start")]
-        public async Task<IActionResult> StartEsign([FromForm] IFormFile file)
+        [Authorize]
+        [HttpGet("/api/esign/{*applicationId}")]
+        public async Task<IActionResult> ESign(string applicationId)
         {
-            var html = await _service.StartEsignAsync(file);
-            return Content(html, "text/html");
-        }
-
-        // STEP-2: ESP Callback
-        [HttpPost("callback")]
-        public async Task<IActionResult> EsignCallback()
-        {
-            var esignData = Request.Form["esignData"].ToString();
-            var result = await _service.CompleteEsignAsync(esignData);
-
-            return File(result.SignedPdfBytes, "application/pdf", "signed.pdf");
-        }
-
-        [HttpPost("generate-esign-token")]
-        public async Task<IActionResult> GenerateEsignToken()
-        {
-            var token = await _service.GenerateEsignToken();
-
-            return Ok(new
-            {
-                token
-            });
-        }
-
-        [HttpPost("generate-signed-xml")]
-        public async Task<IActionResult> GenerateESignedXml(
-            [FromForm] IFormFile file,
-            [FromHeader(Name = "Authorization")] string bearerToken)
-        {
-            if (string.IsNullOrWhiteSpace(bearerToken))
-                return BadRequest("Missing Authorization header");
-
-            // Remove "Bearer "
-            var token = bearerToken.Replace("Bearer ", "", StringComparison.OrdinalIgnoreCase);
-
-            var result = await _service.GenerateESignedXmlAsync(file, token);
-
-            return Ok(result);
-        }
-
-
-        [HttpPost("start-esign")]
-        public IActionResult StartEsignPostman([FromBody] Base64Request request)
-        {
-            if (string.IsNullOrWhiteSpace(request.SignedXMLData))
-                return BadRequest("SignedXMLData is required");
-
-            string decodedXml;
             try
             {
-                decodedXml = Encoding.UTF8.GetString(Convert.FromBase64String(request.SignedXMLData));
+                var html = await _esignService.GenerateESignHtmlAsync(applicationId);
+                return Ok(new { html });
             }
-            catch
+            catch (Exception ex)
             {
-                return BadRequest("Invalid Base64 string");
+                return BadRequest(ex.Message);
             }
-
-            // No await needed since method returns string
-            var html = _service.GenerateEspRedirectHtml(decodedXml);
-            return Content(html, "text/html");
         }
 
-
-        public class Base64Request
+        [HttpPost("response")]
+        public async Task<IActionResult> GetAadhaarEsign([FromForm] string esignData)
         {
-            public string SignedXMLData { get; set; }
+            try
+            {
+                var redirectUrl = await _esignService.ProcessEsignResponseAsync(esignData);
+                return Redirect(redirectUrl);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpGet("/api/esign/verify/{*applicationId}")]
+        public async Task<IActionResult> ManualESignVerify(string applicationId)
+        {
+            try
+            {
+                var result = await _esignService.ManualESignVerifyAsync(WebUtility.UrlDecode(applicationId));
+                return CreatedAtAction(null, new { message = "Esign Completed" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
     }
 }

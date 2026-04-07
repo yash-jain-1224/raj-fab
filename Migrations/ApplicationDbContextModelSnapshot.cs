@@ -22,16 +22,456 @@ namespace RajFabAPI.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("RajFabAPI.DTOs.FeeResult", b =>
+                {
+                    b.Property<decimal?>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.ToTable("FeeResults");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.Act", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("ImplementationYear")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Acts");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.AnnualReturn", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FactoryRegistrationNumber")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("FormData")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Version")
+                        .HasColumnType("decimal(3,1)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("AnnualReturns");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.Appeal", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("AppealApplicationNumber")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("AppealRegistrationNumber")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("ApplicationPDFUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ChallanNumber")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("Date")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DateOfAccident")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DateOfInspection")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ESignPrnNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ESignPrnNumberManager")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ESignPrnNumberOccupier")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("EnclosureDetails1")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EnclosureDetails2")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FactoryRegistrationNumber")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("FactsAndGrounds")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsESignCompleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsESignCompletedManager")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsESignCompletedOccupier")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("NoticeDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("NoticeNumber")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("OrderDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("OrderNumber")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Place")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ReliefSought")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Signature")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SignatureOfOccupier")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Version")
+                        .HasColumnType("decimal(3,1)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Appeals");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.ApplicationApprovalRequest", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ApplicationRegistrationId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("ApplicationWorkFlowLevelId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("ModuleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Remarks")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Direction")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("Forward");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ApplicationApprovalRequests");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.ApplicationHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ActionBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ActionByName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("ActionDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ApplicationId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ApplicationType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Comments")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ForwardedTo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ForwardedToName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("NewStatus")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PreviousStatus")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ApplicationHistories");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.ApplicationObjectionLetter", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ApplicationId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FileUrl")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("GeneratedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("GeneratedByName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("ModuleName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("SignatoryDesignation")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("SignatoryLocation")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Subject")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ApplicationObjectionLetters");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.ApplicationRegistration", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ApplicationId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ApplicationRegistrationNumber")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ESignPrnNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<Guid>("ModuleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ApplicationRegistrations");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.ApplicationWorkFlow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("FactoryCategoryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("LevelCount")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("ModuleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("OfficeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FactoryCategoryId");
+
+                    b.HasIndex("ModuleId");
+
+                    b.HasIndex("OfficeId");
+
+                    b.ToTable("ApplicationWorkFlows");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.ApplicationWorkFlowLevel", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ApplicationWorkFlowId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("LevelNumber")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApplicationWorkFlowId");
+
+                    b.ToTable("ApplicationWorkFlowLevels");
+                });
+
             modelBuilder.Entity("RajFabAPI.Models.Area", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid>("DistrictId")
+                    b.Property<Guid?>("CityId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid?>("DistrictId1")
+                    b.Property<Guid>("DistrictId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Name")
@@ -41,11 +481,2214 @@ namespace RajFabAPI.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CityId");
+
                     b.HasIndex("DistrictId");
 
-                    b.HasIndex("DistrictId1");
-
                     b.ToTable("Areas");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.AudioVisualWork", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AddressLine1")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AddressLine2")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Area")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DateOfCompletion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("EmployerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("ManagerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("MaxNumberOfWorkerAnyDay")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Mobile")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Pincode")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SubDivisionId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TehsilId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Telephone")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("AudioVisualWorks");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BeediCigarWork", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AddressLine1")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AddressLine2")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Area")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("EmployerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("ManagerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ManufacturingDetail")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ManufacturingType")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("MaxNumberOfWorkerAnyDay")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Mobile")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("NumberOfHomeWorker")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Pincode")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Situation")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SubDivisionId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TehsilId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Telephone")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("BeediCigarWorks");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerApplication", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ApplicantName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("ApplicationData")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ApplicationNumber")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ApplicationType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<Guid?>("BoilerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Comments")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("CompletionDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ContactPerson")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DocumentPaths")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Mobile")
+                        .IsRequired()
+                        .HasMaxLength(15)
+                        .HasColumnType("nvarchar(15)");
+
+                    b.Property<string>("OrganizationName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("ProcessedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime?>("ProcessingDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("SubmissionDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BoilerId");
+
+                    b.ToTable("BoilerApplications");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerApplicationState", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ApplicationId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("AssignedInspectorId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("AuthorityForwardedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CertificatePath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("ChiefCycleCount")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CurrentLevel")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CurrentPart")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CurrentStatus")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("InspectorActionsEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("LastChiefActionValue")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RegistrationNumber")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssignedInspectorId");
+
+                    b.ToTable("BoilerApplicationStates");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerCertificate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CertificateNumber")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("CertificateType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExpiryDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("InspectorId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("InspectorName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("IssueDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("BoilerCertificates");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerDocumentType", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(36)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(36)");
+
+                    b.Property<string>("BoilerServiceType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("ConditionalField")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ConditionalValue")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("DocumentTypeId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(36)");
+
+                    b.Property<bool>("IsRequired")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("OrderIndex")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BoilerServiceType");
+
+                    b.HasIndex("DocumentTypeId");
+
+                    b.ToTable("BoilerDocumentTypes");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerInspectionHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BoilerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("CertificateIssued")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Findings")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("InspectionDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("InspectionId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("InspectionType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("InspectorName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("NextInspectionDue")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Recommendations")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BoilerId");
+
+                    b.ToTable("BoilerInspectionHistories");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerLocation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AreaId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CityId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("DistrictId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("DivisionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("FactoryLicenseNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("FactoryName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<decimal?>("Latitude")
+                        .HasColumnType("decimal(10,8)");
+
+                    b.Property<string>("Locality")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<decimal?>("Longitude")
+                        .HasColumnType("decimal(11,8)");
+
+                    b.Property<string>("Pincode")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<string>("PlotNumber")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Street")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AreaId");
+
+                    b.HasIndex("CityId");
+
+                    b.HasIndex("DistrictId");
+
+                    b.HasIndex("DivisionId");
+
+                    b.ToTable("BoilerLocations");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerModels.BoilerClosure", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ApplicationId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("BoilerRegistrationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("BoilerRegistrationNo")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("ClosureDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ClosureReportPath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ClosureType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Reasons")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Remarks")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ToStateName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BoilerRegistrationId");
+
+                    b.ToTable("BoilerClosures");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerModels.BoilerDetail", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AddressLine1")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AddressLine2")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Area")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BoilerAttendantCertificatePath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("BoilerCategory")
+                        .HasColumnType("int");
+
+                    b.Property<string>("BoilerOperationEngineerCertificatePath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("BoilerRegistrationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("BoilerType")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CastingCertificatePath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("DishedEndsInspectionPath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("DistrictId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("DrawingsPath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool?>("Economiser")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal?>("EconomiserOutletTemp")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("ErectionTypeId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("EvaporationCapacity")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("EvaporationUnit")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ForgingCertificatePath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FormIV_APath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FormI_B_CPath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FormI_DPath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FormI_EPath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FormV_APath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("FurnaceType")
+                        .HasColumnType("int");
+
+                    b.Property<string>("HeadersCertificatePath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal?>("HeatingSurfaceArea")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("IntendedWorkingPressure")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("MakerNumber")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Mobile")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("PinCode")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PipesCertificatesPath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PressureUnit")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("RenewalYears")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SpecificationPath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("SubDivisionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool?>("Superheater")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal?>("SuperheaterOutletTemp")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid?>("TehsilId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Telephone")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TestCertificatesPath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TubesCertificatesPath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("ValidUpto")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("WeldRepairChartsPath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("YearOfMake")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BoilerRegistrationId")
+                        .IsUnique();
+
+                    b.ToTable("BoilerDetails");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerModels.BoilerDrawingApplication", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ApplicationId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BoilerDrawing")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BoilerDrawingRegistrationNo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BoilerType")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DrawingNo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EvaporationCapacity")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FactoryDetailjson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FactoryRegistrationNumber")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FeedPipelineDrawing")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("HeatingSurfaceArea")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("IntendedWorkingPressure")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("MakerNameAndAddress")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("MakerNumber")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PressurePartCalculation")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Type")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ValidFrom")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ValidUpto")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Version")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("BoilerDrawingApplications");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerModels.BoilerDrawingClosure", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ApplicationId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BoilerDrawingRegistrationNo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("ClosureDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ClosureReason")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DocumentPath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Remarks")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Type")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("BoilerDrawingClosures");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerModels.BoilerManufactureClosure", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ApplicationId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("ClosureDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ClosureReason")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DocumentPath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ManufactureRegistrationNo")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Remarks")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Type")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("BoilerManufactureClosures");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerModels.BoilerManufactureRegistration", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ApplicationId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BmClassification")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CoveredArea")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DetailInternalQualityjson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EstablishmentJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FactoryRegistrationNo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ManufactureRegistrationNo")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ManufacturingFacilityjson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("OtherReleventInformationjson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Type")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ValidFrom")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ValidUpto")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Version")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("BoilerManufactureRegistrations");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerModels.BoilerRegistration", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("ApplicationId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ApplicationPDFUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("BoilerRegistrationNo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("FactoryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsESignCompleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsPaymentCompleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("OldRegistrationNo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("OldStateName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Type")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Version")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("BoilerRegistrations");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerModels.BoilerRepairModification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ApplicationId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AttendantCertificatePath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("BoilerRegistrationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("BoilerRegistrationNo")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("OperationEngineerCertificatePath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("PersonDetailId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("RenewalApplicationId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RepairDocumentPath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RepairType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PersonDetailId");
+
+                    b.ToTable("BoilerRepairModifications");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerModels.BoilerRepairerClosure", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ApplicationId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("ClosureDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ClosureReason")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DocumentPath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Remarks")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RepairerRegistrationNo")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Type")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("BoilerRepairerClosures");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerModels.BoilerRepairerEngineer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BoilerRepairerRegistrationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Designation")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("DocumentPath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("ExperienceYears")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Qualification")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BoilerRepairerRegistrationId");
+
+                    b.ToTable("BoilerRepairerEngineers");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerModels.BoilerRepairerRegistration", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool?>("AcceptsRegulations")
+                        .HasColumnType("bit");
+
+                    b.Property<bool?>("AcceptsResponsibility")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ApplicationId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ApprovalHistoryJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BrClassification")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool?>("CanSupplyMaterial")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DocumentEvidence")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EstablishmentJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FactoryRegistrationNo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("JobsExecutedJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("QualityControlDetailsjson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("QualityControlType")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RejectedHistoryJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RepairerRegistrationNo")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("SimultaneousSites")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool?>("ToolsAvailable")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Type")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ValidFrom")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ValidUpto")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Version")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("BoilerRepairerRegistrations");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerModels.BoilerRepairerWelder", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BoilerRepairerRegistrationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CertificatePath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Designation")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("ExperienceYears")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BoilerRepairerRegistrationId");
+
+                    b.ToTable("BoilerRepairerWelders");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerModels.DesignFacility", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AddressLine1")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AddressLine2")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("Area")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("BoilerManufactureRegistrationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("DistrictId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Document")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("PinCode")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("SubDivisionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("TehsilId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BoilerManufactureRegistrationId")
+                        .IsUnique();
+
+                    b.ToTable("DesignFacilities");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerModels.EconomiserClosure", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ApplicationId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("ClosureDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ClosureReason")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DocumentPath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EconomiserRegistrationNo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Remarks")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Type")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("EconomiserClosures");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerModels.EconomiserRegistration", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ApplicationId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AttendantCertificate")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Drawings")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EconomiserRegistrationNo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EngineerCertificate")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ErectionType")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FactoryDetailJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FactoryRegistrationNumber")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FormIB")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FormIC")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FormIVA")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FormIVB")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FormIVC")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FormIVD")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FormVA")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FormXV")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FormXVI")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("MakersAddress")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("MakersName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("MakersNumber")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("NumberOfHeaders")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("NumberOfTubes")
+                        .HasColumnType("int");
+
+                    b.Property<string>("OutletTemperature")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PressureFrom")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PressureTo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TotalHeatingSurfaceArea")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ValidFrom")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ValidUpto")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Version")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("YearOfMake")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("EconomiserRegistrations");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerModels.NDTPersonnel", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BoilerManufactureRegistrationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Certificate")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Qualification")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BoilerManufactureRegistrationId");
+
+                    b.ToTable("NDTPersonnels");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerModels.QualifiedWelder", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BoilerManufactureRegistrationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Certificate")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Qualification")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BoilerManufactureRegistrationId");
+
+                    b.ToTable("QualifiedWelders");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerModels.RDFacility", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AddressLine1")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AddressLine2")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("Area")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("BoilerManufactureRegistrationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("DistrictId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("PinCode")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RDFacilityJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("SubDivisionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("TehsilId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BoilerManufactureRegistrationId")
+                        .IsUnique();
+
+                    b.ToTable("RDFacilities");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerModels.TechnicalManpower", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BoilerManufactureRegistrationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ExperienceInCommissioningDoc")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ExperienceInErectionDoc")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FatherName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("MinimumFiveYearsExperienceDoc")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Qualification")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BoilerManufactureRegistrationId");
+
+                    b.ToTable("TechnicalManpowers");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerModels.TestingFacility", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AddressLine1")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AddressLine2")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("Area")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("BoilerManufactureRegistrationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("DistrictId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("PinCode")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("SubDivisionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("TehsilId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("TestingFacilityJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BoilerManufactureRegistrationId")
+                        .IsUnique();
+
+                    b.ToTable("TestingFacilities");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerModels.WelderApplication", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ApplicationId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Status")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Type")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ValidFrom")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ValidUpto")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Version")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("WelderRegistrationNo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("WelderApplications");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerModels.WelderClosure", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ApplicationId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("ClosureDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ClosureReason")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DocumentPath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Remarks")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Type")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("WelderRegistrationNo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("WelderClosures");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerModels.WelderDetail", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AddressLine1")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AddressLine2")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Area")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DOB")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DateOfTest")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("District")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ElectrodeGrouping")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EmployerSign")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ExperienceCertificate")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ExperienceDetails")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ExperienceYears")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FatherName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Height")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("IdentificationMark")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("MaterialGrouping")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("MaterialType")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Materials")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Mobile")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Photo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Pincode")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ProcessOfWelding")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Radiography")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Tehsil")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Telephone")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TestPieceXrayed")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TestType")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Thumb")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TypePosition")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Weight")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("WeldWithBacking")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("WelderApplicationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("WelderSign")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WelderApplicationId")
+                        .IsUnique();
+
+                    b.ToTable("WelderDetails");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerModels.WelderEmployer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AddressLine1")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AddressLine2")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Area")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("District")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("EmployedFrom")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("EmployedTo")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("EmployerName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EmployerType")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FirmName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Mobile")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Pincode")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Tehsil")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Telephone")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("WelderApplicationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WelderApplicationId")
+                        .IsUnique();
+
+                    b.ToTable("WelderEmployers");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerSafetyFeatures", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("BlowdownValves")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("EmergencyShutoff")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("FeedwaterSystem")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int?>("FusiblePlugs")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PressureGauges")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SafetyValves")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("WaterGauges")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("BoilerSafetyFeatures");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerSpecifications", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal?>("AirPreheaterArea")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<string>("BoilerType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("DesignPressure")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<decimal?>("EconomiserArea")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<string>("FuelType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<decimal>("HeatingArea")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<string>("Manufacturer")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("SerialNumber")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<decimal>("SteamCapacity")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<decimal?>("SuperheaterArea")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("WorkingPressure")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<int>("YearOfManufacture")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("BoilerSpecifications");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerWorkflowLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ActionType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ApplicationId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ChiefActionValue")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("CycleNumber")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("FromLevel")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("FromUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Part")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Remarks")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("ToLevel")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("ToUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("BoilerWorkflowLogs");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BuildingAndConstructionWork", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DateOfCompletion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ExpectedPeriodOfCommencementOfWork")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("LocalAuthorityApprovalDetail")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ProbablePeriodOfCommencementOfWork")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("WorkType")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("BuildingAndConstructionWorks");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.Certificate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ApplicationId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CertificateUrl")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("CertificateVersion")
+                        .HasColumnType("decimal(3,1)");
+
+                    b.Property<string>("ESignPrnNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("EndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsESignCompleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("IssuedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("IssuedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ModuleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("RegistrationNumber")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Remarks")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Certificates");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.ChiefInspectionScrutinyRemark", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("RemarkText")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ChiefInspectionScrutinyRemarks");
                 });
 
             modelBuilder.Entity("RajFabAPI.Models.City", b =>
@@ -68,6 +2711,370 @@ namespace RajFabAPI.Migrations
                     b.ToTable("Cities");
                 });
 
+            modelBuilder.Entity("RajFabAPI.Models.CommencementCessationApplication", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ApplicationId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
+
+                    b.Property<string>("ApplicationPDFUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ApproxDurationOfWork")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DateOfCessation")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FactoryRegistrationNumber")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("FromDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsESignCompleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("OnDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Version")
+                        .HasColumnType("decimal(3,1)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("CommencementCessationApplication");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.CompetentPerson.CompetantEstablishmentDetail", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AddressLine1")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AddressLine2")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Area")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("DistrictId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EstablishmentName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Mobile")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Pincode")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("RegistrationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("SdoId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("TehsilId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Telephone")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RegistrationId")
+                        .IsUnique();
+
+                    b.ToTable("CompetantEstablishmentDetails");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.CompetentPerson.CompetantOccupierDetail", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AddressLine1")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AddressLine2")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("City")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Designation")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("DistrictId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Mobile")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Pincode")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("RegistrationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Relation")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("SdoId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("TehsilId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Telephone")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RegistrationId")
+                        .IsUnique();
+
+                    b.ToTable("CompetantOccupierDetails");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.CompetentPerson.CompetantPersonDetail", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Address")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AttachmentPath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DOB")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Engineering")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("Experience")
+                        .HasColumnType("int");
+
+                    b.Property<string>("FatherName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Mobile")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PhotoPath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Qualification")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("RegistrationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("SignPath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RegistrationId");
+
+                    b.ToTable("CompetantPersonDetails");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.CompetentPerson.CompetentEquipmentRegistration", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ApplicationId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CompetentEquipmentRegistrationNo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CompetentRegistrationNo")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("RenewalYears")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ValidUpto")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Version")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("CompetentEquipmentRegistrations");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.CompetentPerson.CompetentPersonEquipment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CalibrationCertificateNumber")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CalibrationCertificatePath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("CalibrationValidity")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("CompetentPersonId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DateOfCalibration")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("EquipmentName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("EquipmentRegistrationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("EquipmentType")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("IdentificationNumber")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EquipmentRegistrationId");
+
+                    b.ToTable("CompetentPersonEquipments");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.CompetentPerson.CompetentPersonRegistration", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ApplicationId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CompetentRegistrationNo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("RegistrationType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("RenewalYears")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ValidUpto")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Version")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("CompetentPersonRegistrations");
+                });
+
             modelBuilder.Entity("RajFabAPI.Models.District", b =>
                 {
                     b.Property<Guid>("Id")
@@ -79,11 +3086,14 @@ namespace RajFabAPI.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.HasKey("Id");
 
                     b.HasIndex("DivisionId");
+
+                    b.HasIndex("Name");
 
                     b.ToTable("Districts");
                 });
@@ -109,7 +3119,17 @@ namespace RajFabAPI.Migrations
             modelBuilder.Entity("RajFabAPI.Models.DocumentType", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("nvarchar(450)");
+                        .HasMaxLength(36)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(36)");
+
+                    b.Property<string>("ConditionalField")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ConditionalValue")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -127,13 +3147,26 @@ namespace RajFabAPI.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsConditional")
+                        .HasColumnType("bit");
+
                     b.Property<int>("MaxSizeMB")
                         .HasColumnType("int");
+
+                    b.Property<string>("Module")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("ServiceType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -142,7 +3175,56 @@ namespace RajFabAPI.Migrations
 
                     b.HasIndex("Name");
 
+                    b.HasIndex("Module", "ServiceType");
+
                     b.ToTable("DocumentTypes");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.DocumentUpload", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DocumentName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long>("DocumentSize")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("DocumentType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("DocumentUrl")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ModuleDocType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("ModuleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Version")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("DocumentUploads");
                 });
 
             modelBuilder.Entity("RajFabAPI.Models.DynamicForm", b =>
@@ -184,6 +3266,710 @@ namespace RajFabAPI.Migrations
                     b.ToTable("Forms");
                 });
 
+            modelBuilder.Entity("RajFabAPI.Models.ESignTransaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("EncryptedPrn")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PrnHash")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SignedPdfPath")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TxnId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ESignTransactions");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.EstablishmentDetail", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AddressLine1")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AddressLine2")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Area")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BrnNumber")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EstablishmentName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid?>("FactoryTypeId")
+                        .IsRequired()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("LinNumber")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Mobile")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PanNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Pincode")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SubDivisionId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TehsilId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Telephone")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("TotalNumberOfContractEmployee")
+                        .HasMaxLength(100)
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TotalNumberOfEmployee")
+                        .HasMaxLength(100)
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TotalNumberOfInterstateWorker")
+                        .HasMaxLength(100)
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("EstablishmentDetails");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.EstablishmentRegistration", b =>
+                {
+                    b.Property<string>("EstablishmentRegistrationId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("ApplicationId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("ApplicationPDFUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("AutoRenewal")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("Date")
+                        .HasColumnType("datetime");
+
+                    b.Property<string>("ESignPrnNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid?>("EstablishmentDetailId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("FactoryCategoryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsESignCompleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsPaymentCompleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("LoadSanctionCopy")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid?>("MainOwnerDetailId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ManagerIdProof")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid?>("ManagerOrAgentDetailId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ObjectionLetterUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("OccupierIdProof")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("PartnershipDeed")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Place")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("RegistrationNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Signature")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Status")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Version")
+                        .HasColumnType("decimal(3,1)");
+
+                    b.HasKey("EstablishmentRegistrationId");
+
+                    b.ToTable("EstablishmentRegistrations");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.EstablishmentRegistrationDocument", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("DocumentType")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("EstablishmentRegistrationId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("EstablishmentRegistrationId1")
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("FileExtension")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("FilePath")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<long>("FileSize")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("UploadedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EstablishmentRegistrationId");
+
+                    b.HasIndex("EstablishmentRegistrationId1");
+
+                    b.ToTable("EstablishmentRegistrationDocuments");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.EstablishmentUserDetail", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AddressLine1")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("AddressLine2")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Area")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Designation")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("District")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Mobile")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Pincode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("RelationType")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RelativeName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RoleType")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Tehsil")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("Telephone")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("TypeOfEmployer")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("EstablishmentUserDetails");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.FactoryCategory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("FactoryTypeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("WorkerRangeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FactoryTypeId");
+
+                    b.HasIndex("WorkerRangeId");
+
+                    b.ToTable("FactoryCategories");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.FactoryClosure", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("AssignedTo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AssignedToName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("ClosedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ClosureDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ClosureNumber")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Comments")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CurrentStage")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FactoryAddress")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FactoryName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FactoryRegistrationId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<decimal>("FeesDue")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("InspectingOfficerName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("InspectionDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("InspectionRemarks")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("LastRenewalDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("OccupierName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ReasonForClosure")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RegistrationNumber")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ReviewedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FactoryRegistrationId");
+
+                    b.ToTable("FactoryClosures");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.FactoryClosureDocument", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("DocumentType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FactoryClosureId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("FileExtension")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FilePath")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long>("FileSize")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("UploadedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FactoryClosureId");
+
+                    b.ToTable("FactoryClosureDocuments");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.FactoryDetail", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ActivityAsPerNIC")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AddressLine1")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AddressLine2")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Area")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("EmployerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("IdentificationOfEstablishment")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("ManagerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ManufacturingDetail")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ManufacturingType")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Mobile")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("NICCodeDetail")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("NumberOfWorker")
+                        .HasColumnType("int");
+
+                    b.Property<string>("OwnershipSector")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("OwnershipType")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Pincode")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal?>("SanctionedLoad")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("SanctionedLoadUnit")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Situation")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SubDivisionId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TehsilId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Telephone")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("FactoryDetails");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.FactoryLicense", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("ApplicationPDFUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AuthorisedSignature")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ESignPrnNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ESignPrnNumberManager")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ESignPrnNumberOccupier")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("FactoryLicenseNumber")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("FactoryRegistrationNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsESignCompleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsESignCompletedManager")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsESignCompletedOccupier")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsPaymentCompleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ManagerSignature")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("NoOfYears")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ObjectionLetterUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("OccupierSignature")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Place")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ValidFrom")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ValidTo")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Version")
+                        .HasColumnType("decimal(3,1)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("FactoryLicenses");
+                });
+
             modelBuilder.Entity("RajFabAPI.Models.FactoryMapApproval", b =>
                 {
                     b.Property<string>("Id")
@@ -194,64 +3980,93 @@ namespace RajFabAPI.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<string>("Address")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                    b.Property<string>("ApplicationPDFUrl")
+                        .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("ApplicantName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<decimal>("BuildingArea")
+                    b.Property<decimal>("AreaFactoryPremise")
                         .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("Comments")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("District")
+                    b.Property<DateTime?>("Date")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FactoryDetails")
                         .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FactoryRegistrationNumber")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<string>("Email")
+                    b.Property<bool>("IsESignCompleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsNew")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ManufacturingProcess")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("MaxWorkerFemale")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxWorkerMale")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxWorkerTransgender")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("NoOfFactoriesIfCommonPremise")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ObjectionLetterUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("OccupierDetails")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Place")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PlantParticulars")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
-                    b.Property<string>("FactoryName")
+                    b.Property<string>("PremiseOwnerAddressCity")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PremiseOwnerAddressDistrict")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PremiseOwnerAddressPinCode")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PremiseOwnerAddressPlotNo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PremiseOwnerAddressState")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PremiseOwnerAddressStreet")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PremiseOwnerContactNo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PremiseOwnerDetails")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PremiseOwnerName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ProductName")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<string>("FactoryTypeId")
-                        .HasMaxLength(450)
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("MobileNo")
-                        .IsRequired()
-                        .HasMaxLength(15)
-                        .HasColumnType("nvarchar(15)");
-
-                    b.Property<string>("Pincode")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
-
-                    b.Property<decimal>("PlotArea")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<DateTime?>("ReviewedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("ReviewedBy")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -261,18 +4076,86 @@ namespace RajFabAPI.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<decimal>("Version")
+                        .HasColumnType("decimal(3,1)");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("AcknowledgementNumber")
-                        .IsUnique();
-
-                    b.HasIndex("Email");
-
-                    b.HasIndex("FactoryTypeId");
-
-                    b.HasIndex("Status");
-
                     b.ToTable("FactoryMapApprovals");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.FactoryMapApprovalChemical", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("ChemicalName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FactoryMapApprovalId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("MaxStorageQuantity")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("TradeName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Unit")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FactoryMapApprovalId");
+
+                    b.ToTable("FactoryMapApprovalChemicals");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.FactoryMapDangerousOperation", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("ChemicalName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Comments")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FactoryMapApprovalId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("OrganicInorganicDetails")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FactoryMapApprovalId");
+
+                    b.ToTable("FactoryMapDangerousOperations");
                 });
 
             modelBuilder.Entity("RajFabAPI.Models.FactoryMapDocument", b =>
@@ -317,13 +4200,332 @@ namespace RajFabAPI.Migrations
                     b.ToTable("FactoryMapDocuments");
                 });
 
+            modelBuilder.Entity("RajFabAPI.Models.FactoryMapFinishGood", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FactoryMapApprovalId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<decimal?>("MaxStorageCapacity")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("ProductName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<decimal>("QuantityPerDay")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Remarks")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("StorageMethod")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FactoryMapApprovalId");
+
+                    b.ToTable("FactoryMapFinishGoods");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.FactoryMapIntermediateProduct", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FactoryMapApprovalId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("MaxStorageQuantity")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("ProductName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Unit")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FactoryMapApprovalId");
+
+                    b.ToTable("FactoryMapIntermediateProducts");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.FactoryMapRawMaterial", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FactoryMapApprovalId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("MaterialName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("MaxStorageQuantity")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Unit")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FactoryMapApprovalId");
+
+                    b.ToTable("FactoryMapRawMaterials");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.FactoryModels.ContractorDetail", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("ContractorPersonalDetailId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DateOfCommencement")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DateOfCompletion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("MaxContractWorkerCountFemale")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("MaxContractWorkerCountMale")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("MaxContractWorkerCountTransgender")
+                        .HasColumnType("int");
+
+                    b.Property<string>("NameOfWork")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContractorPersonalDetailId");
+
+                    b.ToTable("ContractorDetails");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.FactoryModels.EstablishmentEntityMapping", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("EntityId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EstablishmentRegistrationId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EstablishmentRegistrationId");
+
+                    b.ToTable("EstablishmentEntityMapping");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.FactoryModels.FactoryContractorMapping", b =>
+                {
+                    b.Property<string>("EstablishmentRegistrationId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid>("ContractorDetailId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("EstablishmentRegistrationId", "ContractorDetailId");
+
+                    b.HasIndex("ContractorDetailId");
+
+                    b.ToTable("FactoryContractorMapping");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.FactoryModels.NonHazardousFactoryRegistration", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ApplicantAddress")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("ApplicantName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("ApplicantSignature")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<DateTime>("ApplicationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ApplicationPlace")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("AreaId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("DeclarationAccepted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("DistrictId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("DivisionId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("FactoryAddress")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("FactoryName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("FactoryPincode")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<string>("RegistrationNo")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("RelationName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("RelationType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("RequiredInfoAccepted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("VerifierSignature")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<bool>("VerifyAccepted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("VerifyDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("VerifyPlace")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("WorkersLimitAccepted")
+                        .HasColumnType("bit");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("NonHazardousFactoryRegistrations");
+                });
+
             modelBuilder.Entity("RajFabAPI.Models.FactoryRegistration", b =>
                 {
                     b.Property<string>("Id")
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<int>("AmendmentCount")
+                        .HasColumnType("int");
+
                     b.Property<string>("Area")
                         .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AssignedTo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AssignedToName")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime?>("BuildingPlanApprovalDate")
@@ -333,7 +4535,6 @@ namespace RajFabAPI.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("CityTown")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Comments")
@@ -341,6 +4542,9 @@ namespace RajFabAPI.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("CurrentStage")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("DeclarationAccepted")
                         .HasColumnType("bit");
@@ -358,7 +4562,6 @@ namespace RajFabAPI.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("FactoryManagerCityTown")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("FactoryManagerDistrict")
@@ -380,6 +4583,10 @@ namespace RajFabAPI.Migrations
                     b.Property<string>("FactoryManagerName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FactoryManagerPanCard")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
 
                     b.Property<string>("FactoryManagerPincode")
                         .IsRequired()
@@ -408,7 +4615,6 @@ namespace RajFabAPI.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("LandOwnerCityTown")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("LandOwnerDistrict")
@@ -490,7 +4696,6 @@ namespace RajFabAPI.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("OccupierCityTown")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("OccupierDistrict")
@@ -512,6 +4717,10 @@ namespace RajFabAPI.Migrations
                     b.Property<string>("OccupierName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("OccupierPanCard")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
 
                     b.Property<string>("OccupierPincode")
                         .IsRequired()
@@ -632,7 +4841,105 @@ namespace RajFabAPI.Migrations
                     b.ToTable("FactoryRegistrationDocuments");
                 });
 
+            modelBuilder.Entity("RajFabAPI.Models.FactoryRegistrationFee", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CalculatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("ElectricityFee")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("FactoryFee")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("FactoryRegistrationId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("FeeBreakdown")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("TotalFee")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("TotalPowerHP")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("TotalPowerKW")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("TotalWorkers")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FactoryRegistrationId");
+
+                    b.ToTable("FactoryRegistrationFees");
+                });
+
             modelBuilder.Entity("RajFabAPI.Models.FactoryType", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("FactoryTypes");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.FactoryTypeDocument", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("DocumentTypeId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(36)");
+
+                    b.Property<string>("FactoryTypeId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FactoryTypeOldId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<bool>("IsRequired")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DocumentTypeId");
+
+                    b.HasIndex("FactoryTypeOldId");
+
+                    b.ToTable("FactoryTypeDocuments");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.FactoryTypeOld", b =>
                 {
                     b.Property<string>("Id")
                         .HasColumnType("nvarchar(450)");
@@ -663,38 +4970,13 @@ namespace RajFabAPI.Migrations
                     b.ToTable("FactoryTypes_Old");
                 });
 
-            modelBuilder.Entity("RajFabAPI.Models.FactoryTypeDocument", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("DocumentTypeId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("FactoryTypeId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<bool>("IsRequired")
-                        .HasColumnType("bit");
-
-                    b.Property<int>("Order")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DocumentTypeId");
-
-                    b.HasIndex("FactoryTypeId");
-
-                    b.ToTable("FactoryTypeDocuments");
-                });
-
             modelBuilder.Entity("RajFabAPI.Models.FormModule", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ActId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Category")
@@ -718,12 +5000,20 @@ namespace RajFabAPI.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<Guid>("RuleId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Category");
+                    b.HasIndex("ActId");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.HasIndex("RuleId");
 
                     b.ToTable("Modules");
                 });
@@ -809,6 +5099,658 @@ namespace RajFabAPI.Migrations
                     b.ToTable("Submissions");
                 });
 
+            modelBuilder.Entity("RajFabAPI.Models.InspectionFormSubmission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ApplicationId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Documents")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ESignData")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FormData")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("GeneratedPdfPath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("InspectorId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Photos")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("PreviewGeneratedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("SubmittedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InspectorId");
+
+                    b.ToTable("InspectionFormSubmissions");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.InspectionSchedule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ApplicationId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("EstimatedDuration")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("InspectionDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<TimeSpan>("InspectionTime")
+                        .HasColumnType("time");
+
+                    b.Property<string>("InspectionType")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("InspectorId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("InspectorNotes")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsLocked")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("PlaceAddress")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InspectorId");
+
+                    b.ToTable("InspectionSchedules");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.InspectionScrutinyLevel", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsPrefilled")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("LevelNumber")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("OfficePostId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("PrefillSource")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("WorkflowId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WorkflowId");
+
+                    b.ToTable("InspectionScrutinyLevels");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.InspectionScrutinyWorkflow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsBidirectional")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("LevelCount")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("OfficeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OfficeId");
+
+                    b.ToTable("InspectionScrutinyWorkflows");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.InspectorApplicationAssignment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ApplicationRegistrationId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ApplicationRegistrationNumber")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ApplicationTitle")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ApplicationType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("AssignedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("AssignedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("AssignedToUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Remarks")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssignedByUserId");
+
+                    b.HasIndex("AssignedToUserId");
+
+                    b.ToTable("InspectorApplicationAssignments");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.InspectorApplicationInspection", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AirPressureGaugeCondition")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AllowedWorkingPressure")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BlowDownCondition")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BoilerAttendantCertNo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BoilerAttendantName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BoilerCondition")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ChallanNumber")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CrownCondition")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("DefectDetails")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("DefectsFound")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("EconomiserCondition")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FeeAmount")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FeedCheckCondition")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FireTubesCondition")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FireboxCondition")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FlueFurnaceCondition")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FusiblePlugCondition")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("HydraulicTestDuration")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("HydraulicTestPressure")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("InspectionDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("InspectionReportNumber")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("InspectorApplicationAssignmentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("JointsCondition")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("MaxAllowableWorkingPressure")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Observations")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PlatingCondition")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PressureGaugeCondition")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("ProvisionalOrderDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ProvisionalOrderNumber")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RivetsCondition")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SafetyValveCondition")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SmokeBoxCondition")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("StaysCondition")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SteamDrumCondition")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("StopValveCondition")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SuperheaterCondition")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InspectorApplicationAssignmentId");
+
+                    b.ToTable("InspectorApplicationInspections");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.LicenseRenewal", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("AmendmentCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Area")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("BuildingPlanApprovalDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("BuildingPlanReferenceNumber")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CityTown")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Comments")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("Declaration1Accepted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("Declaration2Accepted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("Declaration3Accepted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("DeclarationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("District")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FactoryManagerAddress")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FactoryManagerFatherName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FactoryManagerName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FactoryName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FactoryRegistrationNumber")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("LandOwnerAddress")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("LandOwnerName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("LicenseRenewalFrom")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("LicenseRenewalTo")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ManufacturingProcess")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ManufacturingProcessLast12Months")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ManufacturingProcessNext12Months")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("MaxWorkersFemaleEmployed")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxWorkersFemaleProposed")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxWorkersMaleEmployed")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxWorkersMaleProposed")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxWorkersTransgenderEmployed")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxWorkersTransgenderProposed")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("MaximumPowerToBeUsed")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Mobile")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("OccupierAddress")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("OccupierFatherName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("OccupierName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("OccupierType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("OriginalRegistrationId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("OriginalRegistrationNumber")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("PaymentAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime?>("PaymentDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PaymentStatus")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PaymentTransactionId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Pincode")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Place")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PlotNumber")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ProductDetailsLast12Months")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("ProductionStartDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("RenewalNumber")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("RenewalYears")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ReviewedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("StreetLocality")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("TotalRatedHorsePower")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("WasteDisposalApprovalDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("WasteDisposalAuthority")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("WasteDisposalReferenceNumber")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("WorkersFemaleOrdinary")
+                        .HasColumnType("int");
+
+                    b.Property<int>("WorkersMaleOrdinary")
+                        .HasColumnType("int");
+
+                    b.Property<int>("WorkersTransgenderOrdinary")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("LicenseRenewals");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.LicenseRenewalDocument", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("DocumentType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FileExtension")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FilePath")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long>("FileSize")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("RenewalId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("UploadedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RenewalId");
+
+                    b.ToTable("LicenseRenewalDocuments");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.ManagerChange", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AcknowledgementNumber")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("DateOfAppointment")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("FactoryRegistrationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("NewManagerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("OldManagerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("SignatureOfNewManager")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SignatureofOccupier")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Version")
+                        .HasColumnType("decimal(3,1)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ManagerChanges");
+                });
+
             modelBuilder.Entity("RajFabAPI.Models.ManufacturingProcessType", b =>
                 {
                     b.Property<string>("Id")
@@ -842,6 +5784,340 @@ namespace RajFabAPI.Migrations
                     b.HasIndex("FactoryTypeId");
 
                     b.ToTable("ManufacturingProcessTypes");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.MapApprovalFactoryDetail", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("AreaId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ContactNo")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("DistrictId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("DivisionId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FactoryMapApprovalId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("FactoryName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FactoryPincode")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FactoryPlotNo")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FactorySituation")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Website")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FactoryMapApprovalId");
+
+                    b.ToTable("MapApprovalFactoryDetails");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.MapApprovalOccupierDetail", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("FactoryMapApprovalId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("OccupierEmail")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("OccupierMobile")
+                        .HasMaxLength(15)
+                        .HasColumnType("nvarchar(15)");
+
+                    b.Property<string>("OfficeAddressCity")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("OfficeAddressDistrict")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("OfficeAddressPinCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("OfficeAddressPlotno")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("OfficeAddressState")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("OfficeAddressStreet")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int?>("RelationTypeId")
+                        .IsRequired()
+                        .HasColumnType("int");
+
+                    b.Property<string>("RelativeName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ResidentialAddressCity")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ResidentialAddressDistrict")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ResidentialAddressPinCode")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<string>("ResidentialAddressPlotno")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ResidentialAddressState")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ResidentialAddressStreet")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FactoryMapApprovalId");
+
+                    b.ToTable("MapApprovalOccupierDetails");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.Master", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ComboName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("OptionId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("OptionValue")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Masters");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.ModulePermission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("ModuleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("PermissionCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("PermissionName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ModuleId", "PermissionCode")
+                        .IsUnique();
+
+                    b.ToTable("ModulePermissions");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.MotorTransportService", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AddressLine1")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AddressLine2")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Area")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("EmployerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("ManagerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("MaxNumberOfWorkerDuringRegistration")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Mobile")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("NatureOfService")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Pincode")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Situation")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SubDivisionId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TehsilId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Telephone")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("TotalNumberOfVehicles")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("MotorTransportServices");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.NewsPaperEstablishment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AddressLine1")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AddressLine2")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Area")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DateOfCompletion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("EmployerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("ManagerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("MaxNumberOfWorkerAnyDay")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Mobile")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Pincode")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SubDivisionId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TehsilId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Telephone")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("NewsPaperEstablishments");
                 });
 
             modelBuilder.Entity("RajFabAPI.Models.Occupier", b =>
@@ -894,6 +6170,10 @@ namespace RajFabAPI.Migrations
                         .HasMaxLength(15)
                         .HasColumnType("nvarchar(15)");
 
+                    b.Property<string>("PanCard")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
                     b.Property<string>("Pincode")
                         .IsRequired()
                         .HasMaxLength(10)
@@ -927,6 +6207,294 @@ namespace RajFabAPI.Migrations
                     b.ToTable("Occupiers");
                 });
 
+            modelBuilder.Entity("RajFabAPI.Models.Office", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("CityId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("DistrictId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsHeadOffice")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("LevelCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Pincode")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CityId");
+
+                    b.HasIndex("DistrictId");
+
+                    b.HasIndex("Name", "CityId");
+
+                    b.ToTable("Offices");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.OfficeApplicationArea", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CityId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("OfficeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CityId");
+
+                    b.HasIndex("OfficeId");
+
+                    b.ToTable("OfficeApplicationAreas");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.OfficeInspectionArea", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CityId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("OfficeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CityId");
+
+                    b.HasIndex("OfficeId");
+
+                    b.ToTable("OfficeInspectionAreas");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.OfficeLevel", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("LevelOrder")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("OfficeLevels");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.OfficePostLevel", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("OfficeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("OfficeLevelId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("OfficePostLevels");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.PersonDetail", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AddressLine1")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("AddressLine2")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Area")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid?>("BoilerRegistrationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Designation")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("District")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Mobile")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Pincode")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RelationType")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RelativeName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Role")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Tehsil")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("Telephone")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TypeOfEmployer")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BoilerRegistrationId");
+
+                    b.ToTable("PersonDetails");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.Plantation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AddressLine1")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AddressLine2")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Area")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DateOfCompletion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("EmployerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("ManagerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("MaxNumberOfWorkerAnyDay")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Mobile")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Pincode")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SubDivisionId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TehsilId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Telephone")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Plantations");
+                });
+
             modelBuilder.Entity("RajFabAPI.Models.PoliceStation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -955,6 +6523,29 @@ namespace RajFabAPI.Migrations
                     b.ToTable("PoliceStations");
                 });
 
+            modelBuilder.Entity("RajFabAPI.Models.Post", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("SeniorityOrder")
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Posts");
+                });
+
             modelBuilder.Entity("RajFabAPI.Models.Privilege", b =>
                 {
                     b.Property<Guid>("Id")
@@ -966,14 +6557,12 @@ namespace RajFabAPI.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<string>("Module")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                    b.Property<Guid>("ModuleId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Module", "Action")
+                    b.HasIndex("ModuleId", "Action")
                         .IsUnique();
 
                     b.ToTable("Privileges");
@@ -994,17 +6583,16 @@ namespace RajFabAPI.Migrations
 
                     b.Property<string>("DocumentTypeId")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                        .HasMaxLength(36)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(36)");
 
                     b.Property<bool>("IsRequired")
                         .HasColumnType("bit");
 
                     b.Property<string>("ManufacturingProcessTypeId")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("ProcessTypeId")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.HasKey("Id");
 
@@ -1043,23 +6631,768 @@ namespace RajFabAPI.Migrations
                     b.ToTable("RailwayStations");
                 });
 
+            modelBuilder.Entity("RajFabAPI.Models.RegisteredBoiler", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("AreaId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("CurrentCertificateId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("LastModified")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("LocationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("OperatorCertificateExpiry")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("OperatorCertificateNumber")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("OperatorName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("OwnerId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("OwnerName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("RegistrationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("RegistrationNumber")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid>("SafetyFeaturesId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("SpecificationsId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AreaId");
+
+                    b.HasIndex("CurrentCertificateId");
+
+                    b.HasIndex("SafetyFeaturesId");
+
+                    b.HasIndex("SpecificationsId");
+
+                    b.ToTable("RegisteredBoilers");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.RegisteredBoilerNew", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AddressLine1")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AddressLine2")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("ApplicationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AreaId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("BoilerClosureOrTransferType")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BoilerRegistrationNo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BoilerType")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("ClosureOrTransferDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ClosureOrTransferDocument")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ClosureOrTransferRemarks")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("DistrictId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("DivisionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ErectionType")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal?>("EvaporationCapacity")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("FactoryName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FactoryRegistrationNumber")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal?>("HeatingSurfaceArea")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("IntendedWorkingPressure")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("MakerAddress")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("MakerName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("MakerNo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("MobileNo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("OwnerName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Pincode")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RepairModificationAddress")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RepairModificationName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RepairModificationType")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Type")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Version")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int?>("YearOfMake")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("RegisteredBoilerNews");
+                });
+
             modelBuilder.Entity("RajFabAPI.Models.Role", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("OfficeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("PostId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Name")
-                        .IsUnique();
+                    b.HasIndex("OfficeId");
+
+                    b.HasIndex("PostId");
 
                     b.ToTable("Roles");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.RoleInspectionPrivilege", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("FactoryCategoryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FactoryCategoryId");
+
+                    b.HasIndex("RoleId");
+
+                    b.ToTable("RoleInspectionPrivileges");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.RolePrivilege", b =>
+                {
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("PrivilegeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("RoleId", "PrivilegeId");
+
+                    b.HasIndex("PrivilegeId");
+
+                    b.ToTable("RolePrivileges");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.Rule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ActId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<int?>("ImplementationYear")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActId");
+
+                    b.ToTable("Rules");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.SMTCRegistration", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ApplicationId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool?>("AudioVideoFacility")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Comments")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FactoryRegistrationNo")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("SMTCRegistrationNo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("SeatingCapacity")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("TrainingCenterAvailable")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("TrainingCenterPhotoPath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ValidUpto")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Version")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SMTCRegistrations");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.SMTCTrainerDetail", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("DegreeDocumentPath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Mobile")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PhotoPath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("SMTCRegistrationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("TotalYearsExperience")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TrainerName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SMTCRegistrationId");
+
+                    b.ToTable("SMTCTrainerDetails");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.SMTCTrainerEducationDetail", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Course")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Degree")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EducationType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("PassingYear")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Specialization")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("TrainerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("UniversityCollege")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TrainerId");
+
+                    b.ToTable("SMTCTrainerEducationDetails");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.ScheduleA_FactoryFees", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("FeeUpTo1000HP")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("FeeUpTo100HP")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("FeeUpTo1500HP")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("FeeUpTo2000HP")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("FeeUpTo20HP")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("FeeUpTo250HP")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("FeeUpTo3000HP")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("FeeUpTo500HP")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("FeeUpTo50HP")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("FeeUpTo750HP")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("FeeUpTo9HP")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("MaxWorkers")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MinWorkers")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ScheduleA_FactoryFees");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.ScheduleB_ElectricityFees", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("CapacityKW")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("GeneratingFee")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("TransformingFee")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("TransmittingFee")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ScheduleB_ElectricityFees");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.SteamPipeLineApplication", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ApplicationId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BoilerApplicationNo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BoilerMakerRegistrationNo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ConsentLetterProvided")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DrawingPath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ErectorName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FactoryRegistrationNumber")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Factorydetailjson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FormIIIAPath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FormIIIBPath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FormIIIPath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FormIIPath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FormIVAPath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FormIVPath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("NoOfDeSuperHeaters")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("NoOfFeedHeaters")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("NoOfSeparatelyFiredSuperHeaters")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("NoOfSteamReceivers")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("PipeLengthAbove100mm")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("PipeLengthUpTo100mm")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("ProposedLayoutDescription")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("RenewalYears")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SteamPipeLineDrawingNo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SteamPipeLineRegistrationNo")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SupportingDocumentsPath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ValidFrom")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ValidUpto")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Version")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SteamPipeLineApplications");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.SteamPipeLineClosure", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ApplicationId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ReasonForClosure")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SteamPipeLineRegistrationNo")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SupportingDocumentPath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Version")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SteamPipeLineClosures");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.Tehsil", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("DistrictId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("NameHindi")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DistrictId");
+
+                    b.ToTable("Tehsils");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.Transaction", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("ApplicationId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("MerchantCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Message")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("ModuleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal?>("PaidAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("PaymentReq")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PaymentRes")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PrnNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("RPPTXNID")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Remarks")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("ReqTimeStamp")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Transactions");
                 });
 
             modelBuilder.Entity("RajFabAPI.Models.User", b =>
@@ -1067,6 +7400,12 @@ namespace RajFabAPI.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("BRNNumber")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CitizenCategory")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Email")
                         .IsRequired()
@@ -1078,16 +7417,24 @@ namespace RajFabAPI.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<string>("Gender")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
+
+                    b.Property<string>("LINNumber")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Mobile")
                         .IsRequired()
                         .HasMaxLength(15)
                         .HasColumnType("nvarchar(15)");
 
-                    b.Property<Guid>("RoleId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<string>("UserType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Username")
                         .IsRequired()
@@ -1099,32 +7446,226 @@ namespace RajFabAPI.Migrations
                     b.HasIndex("Email")
                         .IsUnique();
 
-                    b.HasIndex("RoleId");
-
                     b.HasIndex("Username")
                         .IsUnique();
 
                     b.ToTable("Users");
+
+                    b.HasAnnotation("SqlServer:UseSqlOutputClause", false);
                 });
 
-            modelBuilder.Entity("RajFabAPI.Models.UserPrivilege", b =>
+            modelBuilder.Entity("RajFabAPI.Models.UserAreaAssignment", b =>
                 {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AreaId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ModuleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid>("PrivilegeId")
+                    b.HasKey("Id");
+
+                    b.HasIndex("AreaId");
+
+                    b.HasIndex("ModuleId");
+
+                    b.HasIndex("UserId", "AreaId", "ModuleId")
+                        .IsUnique()
+                        .HasFilter("[ModuleId] IS NOT NULL");
+
+                    b.ToTable("UserAreaAssignments");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.UserHierarchy", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid?>("UserId1")
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("EmergencyReportToId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.HasKey("UserId", "PrivilegeId");
+                    b.Property<Guid?>("ReportsToId")
+                        .HasColumnType("uniqueidentifier");
 
-                    b.HasIndex("PrivilegeId");
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
 
-                    b.HasIndex("UserId1");
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
 
-                    b.ToTable("UserPrivileges");
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmergencyReportToId");
+
+                    b.HasIndex("ReportsToId");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("UserHierarchies");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.UserLocationAssignment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("AreaId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("DistrictId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("DivisionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("ModuleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("RoleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AreaId");
+
+                    b.HasIndex("DistrictId");
+
+                    b.HasIndex("DivisionId");
+
+                    b.HasIndex("ModuleId");
+
+                    b.HasIndex("RoleId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UserLocationAssignments");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.UserModulePermission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("ModuleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Permissions")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ModuleId");
+
+                    b.HasIndex("UserId", "ModuleId")
+                        .IsUnique();
+
+                    b.ToTable("UserModulePermissions");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.UserRole", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsInspector")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("JoiningDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("JoiningDetail")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("JoiningType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoleId");
+
+                    b.HasIndex("UserId", "RoleId")
+                        .IsUnique();
+
+                    b.ToTable("UserRoles");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.WorkerRange", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("MaxWorkers")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MinWorkers")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("WorkerRanges");
                 });
 
             modelBuilder.Entity("RajFabAPI.Models.WorkflowConfig", b =>
@@ -1180,19 +7721,314 @@ namespace RajFabAPI.Migrations
                     b.ToTable("WorkflowConfigs");
                 });
 
+            modelBuilder.Entity("RoleLocationAssignment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("AreaId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("DistrictId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("DivisionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ModuleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AreaId");
+
+                    b.HasIndex("DistrictId");
+
+                    b.HasIndex("DivisionId");
+
+                    b.HasIndex("ModuleId");
+
+                    b.HasIndex("RoleId");
+
+                    b.ToTable("RoleLocationAssignments");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.ApplicationWorkFlow", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.FactoryCategory", "FactoryCategory")
+                        .WithMany()
+                        .HasForeignKey("FactoryCategoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RajFabAPI.Models.FormModule", "Module")
+                        .WithMany()
+                        .HasForeignKey("ModuleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RajFabAPI.Models.Office", "Office")
+                        .WithMany()
+                        .HasForeignKey("OfficeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("FactoryCategory");
+
+                    b.Navigation("Module");
+
+                    b.Navigation("Office");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.ApplicationWorkFlowLevel", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.ApplicationWorkFlow", "ApplicationWorkFlow")
+                        .WithMany("Levels")
+                        .HasForeignKey("ApplicationWorkFlowId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ApplicationWorkFlow");
+                });
+
             modelBuilder.Entity("RajFabAPI.Models.Area", b =>
                 {
+                    b.HasOne("RajFabAPI.Models.City", "City")
+                        .WithMany()
+                        .HasForeignKey("CityId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("RajFabAPI.Models.District", "District")
+                        .WithMany("Areas")
+                        .HasForeignKey("DistrictId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("City");
+
+                    b.Navigation("District");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerApplication", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.RegisteredBoiler", "Boiler")
+                        .WithMany("Applications")
+                        .HasForeignKey("BoilerId");
+
+                    b.Navigation("Boiler");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerApplicationState", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.User", "AssignedInspector")
+                        .WithMany()
+                        .HasForeignKey("AssignedInspectorId");
+
+                    b.Navigation("AssignedInspector");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerDocumentType", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.DocumentType", "DocumentType")
+                        .WithMany()
+                        .HasForeignKey("DocumentTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("DocumentType");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerInspectionHistory", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.RegisteredBoiler", "Boiler")
+                        .WithMany("InspectionHistory")
+                        .HasForeignKey("BoilerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Boiler");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerLocation", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.Area", "Area")
+                        .WithMany()
+                        .HasForeignKey("AreaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RajFabAPI.Models.City", "City")
+                        .WithMany()
+                        .HasForeignKey("CityId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("RajFabAPI.Models.District", "District")
                         .WithMany()
                         .HasForeignKey("DistrictId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("RajFabAPI.Models.District", null)
-                        .WithMany("Areas")
-                        .HasForeignKey("DistrictId1");
+                    b.HasOne("RajFabAPI.Models.Division", "Division")
+                        .WithMany()
+                        .HasForeignKey("DivisionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Area");
+
+                    b.Navigation("City");
 
                     b.Navigation("District");
+
+                    b.Navigation("Division");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerModels.BoilerClosure", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.BoilerModels.BoilerRegistration", "BoilerRegistration")
+                        .WithMany()
+                        .HasForeignKey("BoilerRegistrationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("BoilerRegistration");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerModels.BoilerDetail", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.BoilerModels.BoilerRegistration", null)
+                        .WithOne("BoilerDetail")
+                        .HasForeignKey("RajFabAPI.Models.BoilerModels.BoilerDetail", "BoilerRegistrationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerModels.BoilerRepairModification", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.PersonDetail", "PersonDetail")
+                        .WithMany()
+                        .HasForeignKey("PersonDetailId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PersonDetail");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerModels.BoilerRepairerEngineer", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.BoilerModels.BoilerRepairerRegistration", null)
+                        .WithMany("BoilerRepairerEngineers")
+                        .HasForeignKey("BoilerRepairerRegistrationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerModels.BoilerRepairerWelder", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.BoilerModels.BoilerRepairerRegistration", null)
+                        .WithMany("BoilerRepairerWelders")
+                        .HasForeignKey("BoilerRepairerRegistrationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerModels.DesignFacility", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.BoilerModels.BoilerManufactureRegistration", "BoilerManufactureRegistration")
+                        .WithOne("DesignFacility")
+                        .HasForeignKey("RajFabAPI.Models.BoilerModels.DesignFacility", "BoilerManufactureRegistrationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("BoilerManufactureRegistration");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerModels.NDTPersonnel", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.BoilerModels.BoilerManufactureRegistration", "BoilerManufactureRegistration")
+                        .WithMany("NDTPersonnels")
+                        .HasForeignKey("BoilerManufactureRegistrationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("BoilerManufactureRegistration");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerModels.QualifiedWelder", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.BoilerModels.BoilerManufactureRegistration", "BoilerManufactureRegistration")
+                        .WithMany("QualifiedWelders")
+                        .HasForeignKey("BoilerManufactureRegistrationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("BoilerManufactureRegistration");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerModels.RDFacility", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.BoilerModels.BoilerManufactureRegistration", "BoilerManufactureRegistration")
+                        .WithOne("RDFacility")
+                        .HasForeignKey("RajFabAPI.Models.BoilerModels.RDFacility", "BoilerManufactureRegistrationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("BoilerManufactureRegistration");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerModels.TechnicalManpower", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.BoilerModels.BoilerManufactureRegistration", "BoilerManufactureRegistration")
+                        .WithMany("TechnicalManpowers")
+                        .HasForeignKey("BoilerManufactureRegistrationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("BoilerManufactureRegistration");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerModels.TestingFacility", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.BoilerModels.BoilerManufactureRegistration", "BoilerManufactureRegistration")
+                        .WithOne("TestingFacility")
+                        .HasForeignKey("RajFabAPI.Models.BoilerModels.TestingFacility", "BoilerManufactureRegistrationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("BoilerManufactureRegistration");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerModels.WelderDetail", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.BoilerModels.WelderApplication", "WelderApplication")
+                        .WithOne("WelderDetail")
+                        .HasForeignKey("RajFabAPI.Models.BoilerModels.WelderDetail", "WelderApplicationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("WelderApplication");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerModels.WelderEmployer", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.BoilerModels.WelderApplication", "WelderApplication")
+                        .WithOne("WelderEmployer")
+                        .HasForeignKey("RajFabAPI.Models.BoilerModels.WelderEmployer", "WelderApplicationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("WelderApplication");
                 });
 
             modelBuilder.Entity("RajFabAPI.Models.City", b =>
@@ -1204,6 +8040,50 @@ namespace RajFabAPI.Migrations
                         .IsRequired();
 
                     b.Navigation("District");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.CompetentPerson.CompetantEstablishmentDetail", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.CompetentPerson.CompetentPersonRegistration", "Registration")
+                        .WithOne("Establishment")
+                        .HasForeignKey("RajFabAPI.Models.CompetentPerson.CompetantEstablishmentDetail", "RegistrationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Registration");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.CompetentPerson.CompetantOccupierDetail", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.CompetentPerson.CompetentPersonRegistration", "Registration")
+                        .WithOne("Occupier")
+                        .HasForeignKey("RajFabAPI.Models.CompetentPerson.CompetantOccupierDetail", "RegistrationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Registration");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.CompetentPerson.CompetantPersonDetail", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.CompetentPerson.CompetentPersonRegistration", "Registration")
+                        .WithMany("Persons")
+                        .HasForeignKey("RegistrationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Registration");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.CompetentPerson.CompetentPersonEquipment", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.CompetentPerson.CompetentEquipmentRegistration", "EquipmentRegistration")
+                        .WithMany("Equipments")
+                        .HasForeignKey("EquipmentRegistrationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("EquipmentRegistration");
                 });
 
             modelBuilder.Entity("RajFabAPI.Models.District", b =>
@@ -1228,20 +8108,75 @@ namespace RajFabAPI.Migrations
                     b.Navigation("Module");
                 });
 
-            modelBuilder.Entity("RajFabAPI.Models.FactoryMapApproval", b =>
+            modelBuilder.Entity("RajFabAPI.Models.EstablishmentRegistrationDocument", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.EstablishmentRegistration", "EstablishmentRegistration")
+                        .WithMany()
+                        .HasForeignKey("EstablishmentRegistrationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RajFabAPI.Models.EstablishmentRegistration", null)
+                        .WithMany("Documents")
+                        .HasForeignKey("EstablishmentRegistrationId1");
+
+                    b.Navigation("EstablishmentRegistration");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.FactoryCategory", b =>
                 {
                     b.HasOne("RajFabAPI.Models.FactoryType", "FactoryType")
                         .WithMany()
                         .HasForeignKey("FactoryTypeId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RajFabAPI.Models.WorkerRange", "WorkerRange")
+                        .WithMany()
+                        .HasForeignKey("WorkerRangeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("FactoryType");
+
+                    b.Navigation("WorkerRange");
                 });
 
-            modelBuilder.Entity("RajFabAPI.Models.FactoryMapDocument", b =>
+            modelBuilder.Entity("RajFabAPI.Models.FactoryClosure", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.FactoryRegistration", "FactoryRegistration")
+                        .WithMany()
+                        .HasForeignKey("FactoryRegistrationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("FactoryRegistration");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.FactoryClosureDocument", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.FactoryClosure", "FactoryClosure")
+                        .WithMany("Documents")
+                        .HasForeignKey("FactoryClosureId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("FactoryClosure");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.FactoryMapApprovalChemical", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.FactoryMapApproval", null)
+                        .WithMany("Chemicals")
+                        .HasForeignKey("FactoryMapApprovalId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.FactoryMapDangerousOperation", b =>
                 {
                     b.HasOne("RajFabAPI.Models.FactoryMapApproval", "FactoryMapApproval")
-                        .WithMany("Documents")
+                        .WithMany()
                         .HasForeignKey("FactoryMapApprovalId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -1249,10 +8184,94 @@ namespace RajFabAPI.Migrations
                     b.Navigation("FactoryMapApproval");
                 });
 
+            modelBuilder.Entity("RajFabAPI.Models.FactoryMapDocument", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.FactoryMapApproval", "FactoryMapApproval")
+                        .WithMany()
+                        .HasForeignKey("FactoryMapApprovalId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("FactoryMapApproval");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.FactoryMapFinishGood", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.FactoryMapApproval", "FactoryMapApproval")
+                        .WithMany("FinishGoods")
+                        .HasForeignKey("FactoryMapApprovalId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("FactoryMapApproval");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.FactoryMapIntermediateProduct", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.FactoryMapApproval", null)
+                        .WithMany("IntermediateProducts")
+                        .HasForeignKey("FactoryMapApprovalId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.FactoryMapRawMaterial", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.FactoryMapApproval", null)
+                        .WithMany("RawMaterials")
+                        .HasForeignKey("FactoryMapApprovalId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.FactoryModels.ContractorDetail", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.PersonDetail", "ContractorPersonalDetail")
+                        .WithMany()
+                        .HasForeignKey("ContractorPersonalDetailId");
+
+                    b.Navigation("ContractorPersonalDetail");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.FactoryModels.EstablishmentEntityMapping", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.EstablishmentRegistration", null)
+                        .WithMany()
+                        .HasForeignKey("EstablishmentRegistrationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.FactoryModels.FactoryContractorMapping", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.PersonDetail", null)
+                        .WithMany()
+                        .HasForeignKey("ContractorDetailId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RajFabAPI.Models.EstablishmentRegistration", null)
+                        .WithMany()
+                        .HasForeignKey("EstablishmentRegistrationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("RajFabAPI.Models.FactoryRegistrationDocument", b =>
                 {
                     b.HasOne("RajFabAPI.Models.FactoryRegistration", "FactoryRegistration")
                         .WithMany("Documents")
+                        .HasForeignKey("FactoryRegistrationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("FactoryRegistration");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.FactoryRegistrationFee", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.FactoryRegistration", "FactoryRegistration")
+                        .WithMany()
                         .HasForeignKey("FactoryRegistrationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -1268,13 +8287,30 @@ namespace RajFabAPI.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("RajFabAPI.Models.FactoryType", null)
+                    b.HasOne("RajFabAPI.Models.FactoryTypeOld", null)
                         .WithMany("RequiredDocuments")
-                        .HasForeignKey("FactoryTypeId")
+                        .HasForeignKey("FactoryTypeOldId");
+
+                    b.Navigation("DocumentType");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.FormModule", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.Act", "Act")
+                        .WithMany()
+                        .HasForeignKey("ActId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("DocumentType");
+                    b.HasOne("RajFabAPI.Models.Rule", "Rule")
+                        .WithMany()
+                        .HasForeignKey("RuleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Act");
+
+                    b.Navigation("Rule");
                 });
 
             modelBuilder.Entity("RajFabAPI.Models.FormSection", b =>
@@ -1299,13 +8335,197 @@ namespace RajFabAPI.Migrations
                     b.Navigation("Form");
                 });
 
+            modelBuilder.Entity("RajFabAPI.Models.InspectionFormSubmission", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.User", "Inspector")
+                        .WithMany()
+                        .HasForeignKey("InspectorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Inspector");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.InspectionSchedule", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.User", "Inspector")
+                        .WithMany()
+                        .HasForeignKey("InspectorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Inspector");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.InspectionScrutinyLevel", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.InspectionScrutinyWorkflow", "Workflow")
+                        .WithMany("Levels")
+                        .HasForeignKey("WorkflowId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Workflow");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.InspectionScrutinyWorkflow", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.Office", "Office")
+                        .WithMany()
+                        .HasForeignKey("OfficeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Office");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.InspectorApplicationAssignment", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.User", "AssignedBy")
+                        .WithMany()
+                        .HasForeignKey("AssignedByUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RajFabAPI.Models.User", "AssignedTo")
+                        .WithMany()
+                        .HasForeignKey("AssignedToUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AssignedBy");
+
+                    b.Navigation("AssignedTo");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.InspectorApplicationInspection", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.InspectorApplicationAssignment", "Assignment")
+                        .WithMany()
+                        .HasForeignKey("InspectorApplicationAssignmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Assignment");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.LicenseRenewalDocument", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.LicenseRenewal", "Renewal")
+                        .WithMany("Documents")
+                        .HasForeignKey("RenewalId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Renewal");
+                });
+
             modelBuilder.Entity("RajFabAPI.Models.ManufacturingProcessType", b =>
                 {
-                    b.HasOne("RajFabAPI.Models.FactoryType", null)
+                    b.HasOne("RajFabAPI.Models.FactoryTypeOld", null)
                         .WithMany("AllowedProcessTypes")
                         .HasForeignKey("FactoryTypeId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.MapApprovalFactoryDetail", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.FactoryMapApproval", "FactoryMapApproval")
+                        .WithMany()
+                        .HasForeignKey("FactoryMapApprovalId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("FactoryMapApproval");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.MapApprovalOccupierDetail", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.FactoryMapApproval", "FactoryMapApproval")
+                        .WithMany()
+                        .HasForeignKey("FactoryMapApprovalId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("FactoryMapApproval");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.ModulePermission", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.FormModule", "Module")
+                        .WithMany("AvailablePermissions")
+                        .HasForeignKey("ModuleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Module");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.Office", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.City", "City")
+                        .WithMany()
+                        .HasForeignKey("CityId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RajFabAPI.Models.District", "District")
+                        .WithMany()
+                        .HasForeignKey("DistrictId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("City");
+
+                    b.Navigation("District");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.OfficeApplicationArea", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.City", "City")
+                        .WithMany()
+                        .HasForeignKey("CityId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RajFabAPI.Models.Office", "Office")
+                        .WithMany("ApplicationArea")
+                        .HasForeignKey("OfficeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("City");
+
+                    b.Navigation("Office");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.OfficeInspectionArea", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.City", "City")
+                        .WithMany()
+                        .HasForeignKey("CityId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RajFabAPI.Models.Office", "Office")
+                        .WithMany("InspectionArea")
+                        .HasForeignKey("OfficeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("City");
+
+                    b.Navigation("Office");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.PersonDetail", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.BoilerModels.BoilerRegistration", "BoilerRegistration")
+                        .WithMany("Persons")
+                        .HasForeignKey("BoilerRegistrationId");
+
+                    b.Navigation("BoilerRegistration");
                 });
 
             modelBuilder.Entity("RajFabAPI.Models.PoliceStation", b =>
@@ -1327,6 +8547,17 @@ namespace RajFabAPI.Migrations
                     b.Navigation("District");
                 });
 
+            modelBuilder.Entity("RajFabAPI.Models.Privilege", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.FormModule", "Module")
+                        .WithMany()
+                        .HasForeignKey("ModuleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Module");
+                });
+
             modelBuilder.Entity("RajFabAPI.Models.ProcessDocument", b =>
                 {
                     b.HasOne("RajFabAPI.Models.DocumentType", null)
@@ -1337,7 +8568,9 @@ namespace RajFabAPI.Migrations
 
                     b.HasOne("RajFabAPI.Models.ManufacturingProcessType", null)
                         .WithMany("RequiredDocuments")
-                        .HasForeignKey("ManufacturingProcessTypeId");
+                        .HasForeignKey("ManufacturingProcessTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("RajFabAPI.Models.RailwayStation", b =>
@@ -1359,18 +8592,78 @@ namespace RajFabAPI.Migrations
                     b.Navigation("District");
                 });
 
-            modelBuilder.Entity("RajFabAPI.Models.User", b =>
+            modelBuilder.Entity("RajFabAPI.Models.RegisteredBoiler", b =>
                 {
-                    b.HasOne("RajFabAPI.Models.Role", "Role")
-                        .WithMany("Users")
-                        .HasForeignKey("RoleId")
+                    b.HasOne("RajFabAPI.Models.BoilerLocation", "Location")
+                        .WithMany()
+                        .HasForeignKey("AreaId");
+
+                    b.HasOne("RajFabAPI.Models.BoilerCertificate", "CurrentCertificate")
+                        .WithMany()
+                        .HasForeignKey("CurrentCertificateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RajFabAPI.Models.BoilerSafetyFeatures", "SafetyFeatures")
+                        .WithMany()
+                        .HasForeignKey("SafetyFeaturesId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RajFabAPI.Models.BoilerSpecifications", "Specifications")
+                        .WithMany()
+                        .HasForeignKey("SpecificationsId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CurrentCertificate");
+
+                    b.Navigation("Location");
+
+                    b.Navigation("SafetyFeatures");
+
+                    b.Navigation("Specifications");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.Role", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.Office", "Office")
+                        .WithMany()
+                        .HasForeignKey("OfficeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("RajFabAPI.Models.Post", "Post")
+                        .WithMany()
+                        .HasForeignKey("PostId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Office");
+
+                    b.Navigation("Post");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.RoleInspectionPrivilege", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.FactoryCategory", "FactoryCategory")
+                        .WithMany()
+                        .HasForeignKey("FactoryCategoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RajFabAPI.Models.Role", "Role")
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("FactoryCategory");
 
                     b.Navigation("Role");
                 });
 
-            modelBuilder.Entity("RajFabAPI.Models.UserPrivilege", b =>
+            modelBuilder.Entity("RajFabAPI.Models.RolePrivilege", b =>
                 {
                     b.HasOne("RajFabAPI.Models.Privilege", "Privilege")
                         .WithMany()
@@ -1378,17 +8671,192 @@ namespace RajFabAPI.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("RajFabAPI.Models.Role", "Role")
+                        .WithMany("Privileges")
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Privilege");
+
+                    b.Navigation("Role");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.Rule", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.Act", "Act")
+                        .WithMany()
+                        .HasForeignKey("ActId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Act");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.SMTCTrainerDetail", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.SMTCRegistration", "SMTCRegistration")
+                        .WithMany("Trainers")
+                        .HasForeignKey("SMTCRegistrationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("SMTCRegistration");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.SMTCTrainerEducationDetail", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.SMTCTrainerDetail", "Trainer")
+                        .WithMany("EducationDetails")
+                        .HasForeignKey("TrainerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Trainer");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.Tehsil", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.District", "District")
+                        .WithMany()
+                        .HasForeignKey("DistrictId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("District");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.UserAreaAssignment", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.Area", "Area")
+                        .WithMany("UserAssignments")
+                        .HasForeignKey("AreaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RajFabAPI.Models.FormModule", "Module")
+                        .WithMany("AreaAssignments")
+                        .HasForeignKey("ModuleId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("RajFabAPI.Models.User", "User")
+                        .WithMany("AreaAssignments")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Area");
+
+                    b.Navigation("Module");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.UserHierarchy", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.User", "EmergencyReportTo")
+                        .WithMany()
+                        .HasForeignKey("EmergencyReportToId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("RajFabAPI.Models.User", "ReportsTo")
+                        .WithMany()
+                        .HasForeignKey("ReportsToId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("RajFabAPI.Models.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("RajFabAPI.Models.User", null)
-                        .WithMany("Privileges")
-                        .HasForeignKey("UserId1");
+                    b.Navigation("EmergencyReportTo");
 
-                    b.Navigation("Privilege");
+                    b.Navigation("ReportsTo");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.UserLocationAssignment", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.Area", "Area")
+                        .WithMany()
+                        .HasForeignKey("AreaId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("RajFabAPI.Models.District", "District")
+                        .WithMany()
+                        .HasForeignKey("DistrictId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("RajFabAPI.Models.Division", "Division")
+                        .WithMany()
+                        .HasForeignKey("DivisionId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("RajFabAPI.Models.FormModule", "Module")
+                        .WithMany()
+                        .HasForeignKey("ModuleId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("RajFabAPI.Models.Role", "Role")
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("RajFabAPI.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Area");
+
+                    b.Navigation("District");
+
+                    b.Navigation("Division");
+
+                    b.Navigation("Module");
+
+                    b.Navigation("Role");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.UserModulePermission", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.FormModule", "Module")
+                        .WithMany("UserPermissions")
+                        .HasForeignKey("ModuleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RajFabAPI.Models.User", "User")
+                        .WithMany("ModulePermissions")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Module");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.UserRole", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.Role", "Role")
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RajFabAPI.Models.User", "User")
+                        .WithMany("UserRoles")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Role");
 
                     b.Navigation("User");
                 });
@@ -1402,6 +8870,103 @@ namespace RajFabAPI.Migrations
                         .IsRequired();
 
                     b.Navigation("Form");
+                });
+
+            modelBuilder.Entity("RoleLocationAssignment", b =>
+                {
+                    b.HasOne("RajFabAPI.Models.Area", "Area")
+                        .WithMany()
+                        .HasForeignKey("AreaId");
+
+                    b.HasOne("RajFabAPI.Models.District", "District")
+                        .WithMany()
+                        .HasForeignKey("DistrictId");
+
+                    b.HasOne("RajFabAPI.Models.Division", "Division")
+                        .WithMany()
+                        .HasForeignKey("DivisionId");
+
+                    b.HasOne("RajFabAPI.Models.FormModule", "Module")
+                        .WithMany()
+                        .HasForeignKey("ModuleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RajFabAPI.Models.Role", "Role")
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Area");
+
+                    b.Navigation("District");
+
+                    b.Navigation("Division");
+
+                    b.Navigation("Module");
+
+                    b.Navigation("Role");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.ApplicationWorkFlow", b =>
+                {
+                    b.Navigation("Levels");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.Area", b =>
+                {
+                    b.Navigation("UserAssignments");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerModels.BoilerManufactureRegistration", b =>
+                {
+                    b.Navigation("DesignFacility");
+
+                    b.Navigation("NDTPersonnels");
+
+                    b.Navigation("QualifiedWelders");
+
+                    b.Navigation("RDFacility");
+
+                    b.Navigation("TechnicalManpowers");
+
+                    b.Navigation("TestingFacility");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerModels.BoilerRegistration", b =>
+                {
+                    b.Navigation("BoilerDetail");
+
+                    b.Navigation("Persons");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerModels.BoilerRepairerRegistration", b =>
+                {
+                    b.Navigation("BoilerRepairerEngineers");
+
+                    b.Navigation("BoilerRepairerWelders");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.BoilerModels.WelderApplication", b =>
+                {
+                    b.Navigation("WelderDetail");
+
+                    b.Navigation("WelderEmployer");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.CompetentPerson.CompetentEquipmentRegistration", b =>
+                {
+                    b.Navigation("Equipments");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.CompetentPerson.CompetentPersonRegistration", b =>
+                {
+                    b.Navigation("Establishment");
+
+                    b.Navigation("Occupier");
+
+                    b.Navigation("Persons");
                 });
 
             modelBuilder.Entity("RajFabAPI.Models.District", b =>
@@ -1425,9 +8990,25 @@ namespace RajFabAPI.Migrations
                     b.Navigation("WorkflowConfig");
                 });
 
-            modelBuilder.Entity("RajFabAPI.Models.FactoryMapApproval", b =>
+            modelBuilder.Entity("RajFabAPI.Models.EstablishmentRegistration", b =>
                 {
                     b.Navigation("Documents");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.FactoryClosure", b =>
+                {
+                    b.Navigation("Documents");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.FactoryMapApproval", b =>
+                {
+                    b.Navigation("Chemicals");
+
+                    b.Navigation("FinishGoods");
+
+                    b.Navigation("IntermediateProducts");
+
+                    b.Navigation("RawMaterials");
                 });
 
             modelBuilder.Entity("RajFabAPI.Models.FactoryRegistration", b =>
@@ -1435,7 +9016,7 @@ namespace RajFabAPI.Migrations
                     b.Navigation("Documents");
                 });
 
-            modelBuilder.Entity("RajFabAPI.Models.FactoryType", b =>
+            modelBuilder.Entity("RajFabAPI.Models.FactoryTypeOld", b =>
                 {
                     b.Navigation("AllowedProcessTypes");
 
@@ -1444,7 +9025,23 @@ namespace RajFabAPI.Migrations
 
             modelBuilder.Entity("RajFabAPI.Models.FormModule", b =>
                 {
+                    b.Navigation("AreaAssignments");
+
+                    b.Navigation("AvailablePermissions");
+
                     b.Navigation("Forms");
+
+                    b.Navigation("UserPermissions");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.InspectionScrutinyWorkflow", b =>
+                {
+                    b.Navigation("Levels");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.LicenseRenewal", b =>
+                {
+                    b.Navigation("Documents");
                 });
 
             modelBuilder.Entity("RajFabAPI.Models.ManufacturingProcessType", b =>
@@ -1452,14 +9049,42 @@ namespace RajFabAPI.Migrations
                     b.Navigation("RequiredDocuments");
                 });
 
+            modelBuilder.Entity("RajFabAPI.Models.Office", b =>
+                {
+                    b.Navigation("ApplicationArea");
+
+                    b.Navigation("InspectionArea");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.RegisteredBoiler", b =>
+                {
+                    b.Navigation("Applications");
+
+                    b.Navigation("InspectionHistory");
+                });
+
             modelBuilder.Entity("RajFabAPI.Models.Role", b =>
                 {
-                    b.Navigation("Users");
+                    b.Navigation("Privileges");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.SMTCRegistration", b =>
+                {
+                    b.Navigation("Trainers");
+                });
+
+            modelBuilder.Entity("RajFabAPI.Models.SMTCTrainerDetail", b =>
+                {
+                    b.Navigation("EducationDetails");
                 });
 
             modelBuilder.Entity("RajFabAPI.Models.User", b =>
                 {
-                    b.Navigation("Privileges");
+                    b.Navigation("AreaAssignments");
+
+                    b.Navigation("ModulePermissions");
+
+                    b.Navigation("UserRoles");
                 });
 #pragma warning restore 612, 618
         }

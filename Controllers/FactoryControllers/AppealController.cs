@@ -1,7 +1,8 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RajFabAPI.Dtos;
 using RajFabAPI.Services;
-using Microsoft.AspNetCore.Authorization;
+using RajFabAPI.Services.Interface;
 
 namespace RajFabAPI.Controllers
 {
@@ -11,10 +12,12 @@ namespace RajFabAPI.Controllers
     public class AppealController : ControllerBase
     {
         private readonly IAppealService _service;
+        private readonly IESignService _eSignService;
 
-        public AppealController(IAppealService service)
+        public AppealController(IAppealService service, IESignService eSignService)
         {
             _service = service;
+            _eSignService = eSignService;
         }
 
         // CREATE
@@ -22,9 +25,11 @@ namespace RajFabAPI.Controllers
         public async Task<IActionResult> Create([FromBody] AppealCreateDto dto)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
-
-            var result = await _service.CreateAsync(dto);
-            return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+            var applicationId = await _service.CreateAsync(dto);
+            if (applicationId == null)
+                throw new Exception("Application not created");
+            var html = await _eSignService.GenerateESignHtmlAsync(applicationId);
+            return Ok(new { html });
         }
 
         // GET ALL

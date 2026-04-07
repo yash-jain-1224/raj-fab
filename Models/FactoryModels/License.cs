@@ -17,6 +17,7 @@ namespace RajFabAPI.Models
 
         [MaxLength(100)]
         public string? FactoryRegistrationNumber { get; set; }
+        public string ApplicationNumber { get; set; }
 
         public int NoOfYears { get; set; } = 1;
 
@@ -26,16 +27,6 @@ namespace RajFabAPI.Models
         [Required]
         public DateTime ValidTo { get; set; }
 
-        [Required]
-        [MaxLength(255)]
-        public string Place { get; set; } = string.Empty;
-
-        [Required]
-        public DateTime Date { get; set; }
-
-        public string? ManagerSignature { get; set; }
-        public string? OccupierSignature { get; set; }
-        public string? AuthorisedSignature { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         public DateTime UpdatedAt { get; set; } = DateTime.Now;
@@ -52,5 +43,39 @@ namespace RajFabAPI.Models
         [Required]
         [MaxLength(20)]
         public string Type { get; set; } = "New";
+        
+        public bool IsPaymentCompleted { get; set; } = false;
+        
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal Amount { get; set; }
+        public string? ApplicationPDFUrl { get; set; }
+        public string? ObjectionLetterUrl { get; set; } = "";
+
+
+        // Workers employed
+        public int? WorkersProposedMale { get; set; }
+        public int? WorkersProposedFemale { get; set; }
+        public int? WorkersProposedTransgender { get; set; }
+        public int? WorkersLastYearMale { get; set; }
+        public int? WorkersLastYearFemale { get; set; }
+        public int? WorkersLastYearTransgender { get; set; }
+        public int? WorkersOrdinaryMale { get; set; }
+        public int? WorkersOrdinaryFemale { get; set; }
+        public int? WorkersOrdinaryTransgender { get; set; }
+
+        // Power details
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal? SanctionedLoad { get; set; }
+        public string? SanctionedLoadUnit { get; set; }
+
+        // Manufacturing process
+        public string? ManufacturingProcessLast12Months { get; set; }
+        public string? ManufacturingProcessNext12Months { get; set; }
+        public string? DateOfStartProduction { get; set; }
+
+        // JSON snapshot of factory + map approval data at submission time
+        // Used to back-propagate changes to source tables on approval
+        public string? FactoryData { get; set; }      // { factoryName, managerDetail, employerDetail }
+        public string? MapApprovalData { get; set; }  // { premiseOwnerDetails }
     }
 }

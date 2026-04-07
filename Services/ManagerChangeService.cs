@@ -407,7 +407,7 @@ namespace RajFabAPI.Services
             }
         }
 
-        public async Task<ManagerChangeGetResponseDto> GetByIdAsync(Guid managerChangeId)
+        public async Task<ManagerChangeApplicationDto> GetByIdAsync(Guid managerChangeId)
         {
             // Single query approach: all joins, null-safe, one DB round-trip
             var managerChangeDto = await (
@@ -468,7 +468,8 @@ namespace RajFabAPI.Services
                     Status = mc.Status,
                     DateOfAppointment = mc.DateOfAppointment,
                     SubmittedDate = mc.CreatedAt,
-
+                    ApplicationPDFUrl = mc.ApplicationPDFUrl,
+                    ObjectionLetterUrl = mc.ObjectionLetterUrl,
                     // Factory DTO
                     Factory = (factory == null && establishment == null) ? null : new FactoryBasicDto
                     {
@@ -532,10 +533,28 @@ namespace RajFabAPI.Services
                 }
             ).FirstOrDefaultAsync();
 
+            var activeCertificate = await _context.Set<Certificate>()
+                        .AsNoTracking()
+                        .Where(c => c.ApplicationId == managerChangeDto.ManagerChangeId.ToString())
+                        .OrderByDescending(c => c.CertificateVersion)
+                        .FirstOrDefaultAsync();
+
             if (managerChangeDto == null)
                 throw new Exception("Manager change application not found");
 
-            return managerChangeDto;
+            var applicationHistory = await _context.Set<ApplicationHistory>()
+                    .AsNoTracking()
+                    .Where(x => x.ApplicationId == managerChangeDto.ManagerChangeId.ToString())
+                    .OrderByDescending(x => x.ActionDate)
+                    .ToListAsync();
+
+            managerChangeDto.CertificatePDFUrl = activeCertificate?.CertificateUrl;
+
+            return new ManagerChangeApplicationDto
+            {
+                ApplicationDetails = managerChangeDto,
+                ApplicationHistory = applicationHistory,
+            };
         }
 
         //public async Task<ManagerChangeGetResponseDto> GetByIdAsync(Guid managerChangeId)
@@ -694,7 +713,8 @@ namespace RajFabAPI.Services
 
         public async Task<string> GenerateManagerChangePdfAsync(Guid managerChangeId)
         {
-            var data = await GetByIdAsync(managerChangeId);
+            var res = await GetByIdAsync(managerChangeId);
+            var data = res.ApplicationDetails;
 
             var folderName = "manager-change-forms";
             var folderPath = Path.Combine(_environment.WebRootPath, folderName);
@@ -715,7 +735,8 @@ namespace RajFabAPI.Services
             var regularFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA);
 
             DateOnly footerDate = DateOnly.FromDateTime(DateTime.Today);
-            pdf.AddEventHandler(PdfDocumentEvent.END_PAGE, new PageBorderAndFooterEventHandler(boldFont, regularFont, footerDate));
+            pdf.AddEventHandler(PdfDocumentEvent.END_PAGE,
+                new ManagerChangePageBorderAndFooterEventHandler(boldFont, regularFont, DateTime.Now.ToString("dd/MM/yyyy")));
 
             using var document = new PdfDoc(pdf);
             document.SetMargins(40, 40, 40, 40); // top, right, bottom, left
@@ -738,12 +759,12 @@ namespace RajFabAPI.Services
                 .SetFontSize(10)
                 .SetTextAlignment(TextAlignment.CENTER)
                 .SetMarginBottom(8));
-
+        document.Add(new Paragraph("\n").SetFontSize(10));
 
             void AddTwoPartSection(
-    string title,
-    (string Label, string? Value)[] leftRows,
-    (string Label, string? Value)[] rightRows)
+                string title,
+                (string Label, string? Value)[] leftRows,
+                (string Label, string? Value)[] rightRows)
             {
                 // Title spans full width
                 document.Add(new Paragraph(title)
@@ -786,193 +807,121 @@ namespace RajFabAPI.Services
                 document.Add(containerTable);
             }
 
-// ─────────────────────────────────────────────
-// SECTION 1 – Factory Details
-// ─────────────────────────────────────────────
-document.Add(new Paragraph("1. Factory Details")
-    .SetFont(boldFont)
-    .SetFontSize(10)
-    .SetMarginBottom(4));
+            var headerTable = new PdfTable(new float[] { 360f, 160f })
+                .UseAllAvailableWidth()
+                .SetBorder(Border.NO_BORDER);
 
-var factoryTable = new PdfTable(new float[] { 260f, 260f })
-    .UseAllAvailableWidth()
-    .SetBorder(Border.NO_BORDER);
+            headerTable.AddCell(new PdfCell()
+                .Add(new Paragraph($"Manager Change Application No.: {data.ApplicationNumber}")
+                    .SetFont(boldFont)
+                    .SetFontSize(10))
+                .SetBorder(Border.NO_BORDER));
 
-// Left column cells
-var factoryLeft = new (string Label, string? Value)[]
-{
-    ("Factory Name:", data.Factory?.FactoryName),
-    ("Factory Registration No.:", data.Factory?.FactoryRegistrationNumber?.ToString()),
-    ("Application No.:", data.ApplicationNumber),
-};
+            headerTable.AddCell(new PdfCell()
+                .Add(new Paragraph($"Date: {DateTime.Now:dd-MM-yyyy}")
+                    .SetFont(boldFont)
+                    .SetFontSize(10)
+                    .SetTextAlignment(TextAlignment.RIGHT))
+                .SetBorder(Border.NO_BORDER));
 
-// Right column cells
-var factoryRight = new (string Label, string? Value)[]
-{
-    ("Address:", $"{data.Factory?.AddressLine1}, {data.Factory?.AddressLine2}"),
-    ("District:", data.Factory?.DistrictName),
-    ("Pincode:", data.Factory?.Pincode),
-};
+            document.Add(headerTable);
+        document.Add(new Paragraph("\n").SetFontSize(5));
+            // ─────────────────────────────────────────────
+            // SECTION 1 – Factory Details
+            // ─────────────────────────────────────────────
+            var factoryTable = new PdfTable(new float[] { 260f, 260f })
+                .UseAllAvailableWidth()
+                .SetBorder(Border.NO_BORDER);
 
-// Add left column cells (label + value)
-foreach (var (label, value) in factoryLeft)
-{
-    factoryTable.AddCell(new PdfCell()
-        .Add(new Paragraph(label).SetFont(boldFont).SetFontSize(9))
-        .SetBorder(Border.NO_BORDER).SetPaddingLeft(4));
-    factoryTable.AddCell(new PdfCell()
-        .Add(new Paragraph(value ?? "—").SetFont(regularFont).SetFontSize(9))
-        .SetBorder(Border.NO_BORDER));
-}
+            var factoryLeft = new List<(string Label, string? Value)>
+            {
+                ("Factory Name:", data.Factory?.FactoryName),
+                ("Factory Registration No.:", data.Factory?.FactoryRegistrationNumber?.ToString()),
+                  ("Address:", $"{data.Factory?.AddressLine1}, {data.Factory?.AddressLine2}"),
+                ("District:", data.Factory?.DistrictName),
+                ("Sub-division:", data.Factory?.SubDivisionName),
+                ("Tehsil:", data.Factory?.TehsilName),
+                ("Area:", data.Factory?.Area),
+                ("Pincode:", data.Factory?.Pincode),
+                ("Email:", data.Factory?.Email),
+                ("Mobile:", data.Factory?.Mobile),
+            };
 
-// Add right column cells (label + value)
-foreach (var (label, value) in factoryRight)
-{
-    factoryTable.AddCell(new PdfCell()
-        .Add(new Paragraph(label).SetFont(boldFont).SetFontSize(9))
-        .SetBorder(Border.NO_BORDER).SetPaddingLeft(4));
-    factoryTable.AddCell(new PdfCell()
-        .Add(new Paragraph(value ?? "—").SetFont(regularFont).SetFontSize(9))
-        .SetBorder(Border.NO_BORDER));
-}
+            if (!string.IsNullOrWhiteSpace(data.Factory?.Telephone))
+                factoryLeft.Add(("Telephone:", data.Factory.Telephone));
 
-document.Add(factoryTable);
-document.Add(new Paragraph("\n").SetFontSize(4)); // spacing
+            AddTwoColumnSection(document, "1. Factory Details", factoryLeft, boldFont, regularFont);
 
-// ─────────────────────────────────────────────
-// SECTION 2 – Outgoing Manager
-// ─────────────────────────────────────────────
-document.Add(new Paragraph("2. Outgoing Manager")
-    .SetFont(boldFont)
-    .SetFontSize(10)
-    .SetMarginBottom(4));
+            var outgoingLeft = new List<(string Label, string? Value)>
+            {
+                ("Name:", data.OldManager?.Name),
+                ("Designation:", data.OldManager?.Designation),
+                ($"{Capitalize(data.OldManager?.RelationType)}'s Name:", data.OldManager?.RelativeName),
+                ("Address:", $"{data.OldManager?.AddressLine1}, {data.OldManager?.AddressLine2}"),
+                                ("District:", data.OldManager?.District),
+                ("Tehsil:", data.OldManager?.Tehsil),
+                ("Area:", data.OldManager?.Area),
+                ("Pincode:", data.OldManager?.Pincode),
+                ("Email:", data.OldManager?.Email),
+                ("Mobile:", data.OldManager?.Mobile),
+            };
 
-var outgoingTable = new PdfTable(new float[] { 260f, 260f })
-    .UseAllAvailableWidth()
-    .SetBorder(Border.NO_BORDER);
+            if (!string.IsNullOrWhiteSpace(data.OldManager?.Telephone))
+                outgoingLeft.Add(("Telephone:", data.OldManager.Telephone));
 
-var outgoingLeft = new (string Label, string? Value)[]
-{
-    ("Name:", data.OldManager?.Name),
-    ("Designation:", data.OldManager?.Designation),
-    ($"{data.OldManager?.RelationType?.ToUpper()} Name:", data.OldManager?.RelativeName),
-    ("Address:", $"{data.OldManager?.AddressLine1}, {data.OldManager?.AddressLine2}"),
-};
+            AddTwoColumnSection(document, "2. Outgoing Manager", outgoingLeft, boldFont, regularFont);
 
-var outgoingRight = new (string Label, string? Value)[]
-{
-    ("District:", data.OldManager?.District),
-    ("Tehsil:", data.OldManager?.Tehsil),
-    ("Area:", data.OldManager?.Area),
-    ("Pincode:", data.OldManager?.Pincode),
-    ("Mobile:", data.OldManager?.Mobile),
-};
+            var newManagerLeft = new List<(string Label, string? Value)>
+            {
+                ("Name:", data.NewManager?.Name),
+                ("Designation:", data.NewManager?.Designation),
+                ($"{Capitalize(data.NewManager?.RelationType)}'s Name:", data.NewManager?.RelativeName),
+                ("Address:", $"{data.NewManager?.AddressLine1}, {data.NewManager?.AddressLine2}"),
+                                ("District:", data.NewManager?.District),
+                ("Tehsil:", data.NewManager?.Tehsil),
+                ("Area:", data.NewManager?.Area),
+                ("Pincode:", data.NewManager?.Pincode),
+                ("Email:", data.NewManager?.Email),
+                ("Mobile:", data.NewManager?.Mobile),
+            };
 
-foreach (var (label, value) in outgoingLeft)
-{
-    outgoingTable.AddCell(new PdfCell()
-        .Add(new Paragraph(label).SetFont(boldFont).SetFontSize(9))
-        .SetBorder(Border.NO_BORDER).SetPaddingLeft(4));
-    outgoingTable.AddCell(new PdfCell()
-        .Add(new Paragraph(value ?? "—").SetFont(regularFont).SetFontSize(9))
-        .SetBorder(Border.NO_BORDER));
-}
+            if (!string.IsNullOrWhiteSpace(data.NewManager?.Telephone))
+                newManagerLeft.Add(("Telephone:", data.NewManager.Telephone));
 
-foreach (var (label, value) in outgoingRight)
-{
-    outgoingTable.AddCell(new PdfCell()
-        .Add(new Paragraph(label).SetFont(boldFont).SetFontSize(9))
-        .SetBorder(Border.NO_BORDER).SetPaddingLeft(4));
-    outgoingTable.AddCell(new PdfCell()
-        .Add(new Paragraph(value ?? "—").SetFont(regularFont).SetFontSize(9))
-        .SetBorder(Border.NO_BORDER));
-}
+            document.Add(new Paragraph("\n").SetFontSize(110)); // spacing
 
-document.Add(outgoingTable);
-document.Add(new Paragraph("\n").SetFontSize(4)); // spacing
+            AddTwoColumnSection(document, "3. New Manager", newManagerLeft, boldFont, regularFont);
 
-// ─────────────────────────────────────────────
-// SECTION 3 – New Manager
-// ─────────────────────────────────────────────
-document.Add(new Paragraph("3. New Manager")
-    .SetFont(boldFont)
-    .SetFontSize(10)
-    .SetMarginBottom(4));
+            // ─────────────────────────────────────────────
+            // SECTION 4 – Date of Appointment
+            // ─────────────────────────────────────────────
+            document.Add(new Paragraph("4. Date of Appointment")
+                .SetFont(boldFont)
+                .SetFontSize(10)
+                .SetMarginBottom(4));
 
-var newManagerTable = new PdfTable(new float[] { 260f, 260f })
-    .UseAllAvailableWidth()
-    .SetBorder(Border.NO_BORDER);
+            var dateTable = new PdfTable(new float[] { 260f, 260f })
+                .UseAllAvailableWidth()
+                .SetBorder(Border.NO_BORDER);
 
-var newManagerLeft = new (string Label, string? Value)[]
-{
-    ("Name:", data.NewManager?.Name),
-    ("Designation:", data.NewManager?.Designation),
-    ($"{data.NewManager?.RelationType?.ToUpper()} Name:", data.NewManager?.RelativeName),
-    ("Address:", $"{data.NewManager?.AddressLine1}, {data.NewManager?.AddressLine2}"),
-};
+            dateTable.AddCell(new PdfCell()
+                .Add(new Paragraph("Date of Appointment of New Manager:")
+                    .SetFont(boldFont).SetFontSize(9))
+                .SetBorder(Border.NO_BORDER).SetPaddingLeft(4));
+            dateTable.AddCell(new PdfCell()
+                .Add(new Paragraph(data.DateOfAppointment.ToString("dd MMM yyyy"))
+                    .SetFont(regularFont).SetFontSize(9))
+                .SetBorder(Border.NO_BORDER));
 
-var newManagerRight = new (string Label, string? Value)[]
-{
-    ("District:", data.NewManager?.District),
-    ("Tehsil:", data.NewManager?.Tehsil),
-    ("Area:", data.NewManager?.Area),
-    ("Pincode:", data.NewManager?.Pincode),
-    ("Mobile:", data.NewManager?.Mobile),
-};
+            dateTable.AddCell(new PdfCell()  // empty cell to keep two-column layout balanced
+                .Add(new Paragraph("").SetFont(boldFont).SetFontSize(9))
+                .SetBorder(Border.NO_BORDER));
+            dateTable.AddCell(new PdfCell()
+                .Add(new Paragraph("").SetFont(regularFont).SetFontSize(9))
+                .SetBorder(Border.NO_BORDER));
 
-foreach (var (label, value) in newManagerLeft)
-{
-    newManagerTable.AddCell(new PdfCell()
-        .Add(new Paragraph(label).SetFont(boldFont).SetFontSize(9))
-        .SetBorder(Border.NO_BORDER).SetPaddingLeft(4));
-    newManagerTable.AddCell(new PdfCell()
-        .Add(new Paragraph(value ?? "—").SetFont(regularFont).SetFontSize(9))
-        .SetBorder(Border.NO_BORDER));
-}
-
-foreach (var (label, value) in newManagerRight)
-{
-    newManagerTable.AddCell(new PdfCell()
-        .Add(new Paragraph(label).SetFont(boldFont).SetFontSize(9))
-        .SetBorder(Border.NO_BORDER).SetPaddingLeft(4));
-    newManagerTable.AddCell(new PdfCell()
-        .Add(new Paragraph(value ?? "—").SetFont(regularFont).SetFontSize(9))
-        .SetBorder(Border.NO_BORDER));
-}
-
-document.Add(newManagerTable);
-document.Add(new Paragraph("\n").SetFontSize(4)); // spacing
-
-// ─────────────────────────────────────────────
-// SECTION 4 – Date of Appointment
-// ─────────────────────────────────────────────
-document.Add(new Paragraph("4. Date of Appointment")
-    .SetFont(boldFont)
-    .SetFontSize(10)
-    .SetMarginBottom(4));
-
-var dateTable = new PdfTable(new float[] { 260f, 260f })
-    .UseAllAvailableWidth()
-    .SetBorder(Border.NO_BORDER);
-
-dateTable.AddCell(new PdfCell()
-    .Add(new Paragraph("Date of Appointment of New Manager:")
-        .SetFont(boldFont).SetFontSize(9))
-    .SetBorder(Border.NO_BORDER).SetPaddingLeft(4));
-dateTable.AddCell(new PdfCell()
-    .Add(new Paragraph(data.DateOfAppointment.ToString("dd MMM yyyy"))
-        .SetFont(regularFont).SetFontSize(9))
-    .SetBorder(Border.NO_BORDER));
-
-dateTable.AddCell(new PdfCell()  // empty cell to keep two-column layout balanced
-    .Add(new Paragraph("").SetFont(boldFont).SetFontSize(9))
-    .SetBorder(Border.NO_BORDER));
-dateTable.AddCell(new PdfCell()
-    .Add(new Paragraph("").SetFont(regularFont).SetFontSize(9))
-    .SetBorder(Border.NO_BORDER));
-
-document.Add(dateTable);
-document.Add(new Paragraph("\n").SetFontSize(4)); // spacing
+            document.Add(dateTable);
+            document.Add(new Paragraph("\n").SetFontSize(4)); // spacing
             // _ = document.Add(new Paragraph("\n\n\n\n\n\n"));
 
             // Save the URL to the ManagerChange record so manager eSign can reuse this PDF
@@ -984,6 +933,50 @@ document.Add(new Paragraph("\n").SetFontSize(4)); // spacing
             }
 
             return filePath;
+        }
+
+        void AddTwoColumnSection(
+      Document document,
+      string title,
+      IEnumerable<(string Label, string? Value)> leftData,
+      PdfFont boldFont,
+      PdfFont regularFont)
+        {
+            document.Add(new Paragraph(title)
+                .SetFont(boldFont)
+                .SetFontSize(10)
+                .SetMarginBottom(4));
+
+            var table = new PdfTable(new float[] { 260f, 260f })
+                .UseAllAvailableWidth()
+                .SetBorder(Border.NO_BORDER);
+
+            var left = leftData.ToList();
+            int maxRows = left.Count;
+
+            for (int i = 0; i < maxRows; i++)
+            {
+                // LEFT COLUMN
+                if (i < left.Count)
+                {
+                    var l = left[i];
+                    table.AddCell(new PdfCell()
+                        .Add(new Paragraph(l.Label).SetFont(boldFont).SetFontSize(9))
+                        .SetBorder(Border.NO_BORDER)
+                        .SetPaddingLeft(4));
+                    table.AddCell(new PdfCell()
+                        .Add(new Paragraph(l.Value ?? "—").SetFont(regularFont).SetFontSize(9))
+                        .SetBorder(Border.NO_BORDER));
+                }
+                else
+                {
+                    table.AddCell(new PdfCell().SetBorder(Border.NO_BORDER));
+                    table.AddCell(new PdfCell().SetBorder(Border.NO_BORDER));
+                }
+            }
+
+            document.Add(table);
+            document.Add(new Paragraph("\n").SetFontSize(4)); // spacing
         }
 
         public async Task<AreaHierarchyDto?> GetAreaHierarchyAsync(string? areaIdStr)
@@ -1022,9 +1015,6 @@ document.Add(new Paragraph("\n").SetFontSize(4)); // spacing
             };
         }
 
-        // ─────────────────────────────────────────────────────────────────────────────
-        // Draws a border rectangle on every page
-        // ─────────────────────────────────────────────────────────────────────────────
         private sealed class PageBorderEventHandler : AbstractPdfDocumentEventHandler
         {
             protected override void OnAcceptedEvent(AbstractPdfDocumentEvent @event)
@@ -1034,7 +1024,7 @@ document.Add(new Paragraph("\n").SetFontSize(4)); // spacing
                 var rect = page.GetPageSize();
                 var canvas = new PdfCanvas(page);
                 canvas
-                    .SetStrokeColor(new DeviceRgb(20, 57, 92))
+                    .SetStrokeColor(ColorConstants.BLACK)
                     .SetLineWidth(1.5f)
                     .Rectangle(25, 25, rect.GetWidth() - 50, rect.GetHeight() - 50)
                     .Stroke();
@@ -1042,131 +1032,114 @@ document.Add(new Paragraph("\n").SetFontSize(4)); // spacing
             }
         }
 
-
-        private sealed class PageBorderAndFooterEventHandler : AbstractPdfDocumentEventHandler
+        private sealed class ManagerChangePageBorderAndFooterEventHandler : AbstractPdfDocumentEventHandler
         {
             private readonly PdfFont _boldFont;
             private readonly PdfFont _regularFont;
-            private readonly DateOnly _date;
-            private readonly string _postName;
-            private readonly string _userName;
-            private readonly byte[]? _qrBytes;
+            private readonly string _date;
 
-            public PageBorderAndFooterEventHandler(PdfFont boldFont, PdfFont regularFont, DateOnly date, byte[]? qrBytes = null, string postName = "", string userName = "")
+            public ManagerChangePageBorderAndFooterEventHandler(PdfFont boldFont, PdfFont regularFont, string date)
             {
                 _boldFont = boldFont;
                 _regularFont = regularFont;
                 _date = date;
-                _qrBytes = qrBytes;
-                _postName = postName;
-                _userName = userName;
             }
 
             protected override void OnAcceptedEvent(AbstractPdfDocumentEvent @event)
             {
                 if (@event is not PdfDocumentEvent docEvent) return;
+
                 var pdfDoc = docEvent.GetDocument();
                 var page = docEvent.GetPage();
                 var rect = page.GetPageSize();
-                var canvas = new PdfCanvas(page);
 
-                // ───── Page Border
-                canvas
+                float pageWidth = rect.GetWidth();
+                float footerY = 35f;
+                float lineY = 65f;
+
+                float rightMargin = 30f;
+                float signBlockWidth = 120f;
+                float signBlockHeight = 30f;
+                float gap = 8f;
+
+                float occupierX = pageWidth - rightMargin - signBlockWidth;
+                float managerX = occupierX - gap - signBlockWidth;
+
+                int pageNumber = pdfDoc.GetPageNumber(page);
+
+                // ── Single PdfCanvas for ALL drawing on this page ─────────────────────
+                var pdfCanvas = new PdfCanvas(page);
+
+                // ───── Border
+                pdfCanvas
                     .SetStrokeColor(ColorConstants.BLACK)
                     .SetLineWidth(1.5f)
-                    .Rectangle(25, 25, rect.GetWidth() - 50, rect.GetHeight() - 50)
+                    .Rectangle(25, 25, pageWidth - 50, rect.GetHeight() - 50)
                     .Stroke();
 
-                // ───── Separator Line (above footer)
-                float lineY = 70f;
-                canvas
+                // ───── Separator line
+                pdfCanvas
                     .SetStrokeColor(new DeviceRgb(180, 180, 180))
                     .SetLineWidth(0.5f)
                     .MoveTo(30, lineY)
-                    .LineTo(rect.GetWidth() - 30, lineY)
+                    .LineTo(pageWidth - 30, lineY)
                     .Stroke();
 
-                canvas.Release();
-
-                // ─────────────────────────────────────────────────────────────────────
-                // ABOVE SEPARATOR: [Scanner image same height and widht as above(left)] | [Signature dashed box (right)]
-                // ─────────────────────────────────────────────────────────────────────
-                float scannerHeight = 65f;
-                float zoneY = lineY + 4f;
-                float pageWidth = rect.GetWidth();
-                float signColWidth = 180f;
-                float zoneWidth = pageWidth - 60f;
-                float scanColWidth = zoneWidth - signColWidth - 8f; // 8pt gap
-
-                // Left: QR image — same height and width as scannerHeight
-                if (_qrBytes != null)
+                // ───── LEFT: Date
+                using (var left = new Canvas(pdfCanvas,
+                    new iText.Kernel.Geom.Rectangle(30, footerY, 150, signBlockHeight)))
                 {
-                    using var scannerCanvas = new Canvas(new PdfCanvas(page),
-                        new iText.Kernel.Geom.Rectangle(30f, zoneY, scannerHeight, scannerHeight));
-                    scannerCanvas.Add(new PdfImage(ImageDataFactory.Create(_qrBytes))
-                        .ScaleToFit(scannerHeight, scannerHeight)
-                        .SetHorizontalAlignment(HorizontalAlignment.LEFT));
-                }
-
-                // Right: signature box — no border, no background (empty space)
-                float signBoxX = 30f + scanColWidth + 8f;
-
-                // ─────────────────────────────────────────────────────────────────────
-                // BELOW SEPARATOR: Dated (left) | Page N (center) | Signature label (right)
-                // ─────────────────────────────────────────────────────────────────────
-                float belowY = lineY - 4f - scannerHeight;
-                int pageNumber = pdfDoc.GetPageNumber(page);
-
-                // Left: Dated
-                using (var leftCanvas = new Canvas(new PdfCanvas(page),
-                    new iText.Kernel.Geom.Rectangle(30f, belowY, scanColWidth / 2f, scannerHeight)))
-                {
-                    leftCanvas.Add(new Paragraph($"Dated: {_date}")
-                        .SetFont(_regularFont).SetFontSize(7.5f).SetMargin(0f).SetPaddingTop(6f));
-                }
-
-                // Center: Page N
-                using (var centerCanvas = new Canvas(new PdfCanvas(page),
-                    new iText.Kernel.Geom.Rectangle(0f, belowY, pageWidth, scannerHeight)))
-                {
-                    centerCanvas.Add(new Paragraph($"Page {pageNumber}")
-                        .SetFont(_regularFont).SetFontSize(7.5f)
-                        .SetTextAlignment(TextAlignment.CENTER)
-                        .SetMargin(0f).SetPaddingTop(6f));
-                }
-
-                // Right: signature label — aligned under the signature box above
-                using (var signLabelCanvas = new Canvas(new PdfCanvas(page),
-                    new iText.Kernel.Geom.Rectangle(signBoxX, belowY, signColWidth, scannerHeight)))
-                {
-                    if (!string.IsNullOrWhiteSpace(_userName))
-                    {
-                        // Name (top)
-                        signLabelCanvas.Add(new Paragraph($"({_userName ?? "-"})")
-                            .SetFont(_boldFont)
-                            .SetFontSize(7f)
-                            .SetTextAlignment(TextAlignment.CENTER)
-                            .SetMargin(0f)
-                            .SetPaddingTop(4f));
-                    }
-                    if (!string.IsNullOrWhiteSpace(_postName))
-                    {
-                        // Post name (middle)
-                        signLabelCanvas.Add(new Paragraph(_postName ?? "-")
-                            .SetFont(_regularFont)
-                            .SetFontSize(6.5f)
-                            .SetTextAlignment(TextAlignment.CENTER)
-                            .SetMargin(0f)
-                            .SetPaddingTop(1f));
-                    }
-                    // Signature label (bottom)
-                    signLabelCanvas.Add(new Paragraph("Signature / E-sign / Digital sign")
+                    left.Add(new Paragraph($"Dated: {_date}")
                         .SetFont(_regularFont)
-                        .SetFontSize(6.5f)
-                        .SetTextAlignment(TextAlignment.CENTER)
-                        .SetMargin(0f));
+                        .SetFontSize(9)
+                        .SetMargin(0));
                 }
+
+                // ───── CENTER: Page number
+                using (var center = new Canvas(pdfCanvas,
+                    new iText.Kernel.Geom.Rectangle(0, footerY, pageWidth, signBlockHeight)))
+                {
+                    center.Add(new Paragraph($"Page {pageNumber}")
+                        .SetFont(_regularFont)
+                        .SetFontSize(9)
+                        .SetTextAlignment(TextAlignment.CENTER)
+                        .SetMargin(0));
+                }
+
+                // ───── RIGHT: Manager signature
+                using (var manager = new Canvas(pdfCanvas,
+                    new iText.Kernel.Geom.Rectangle(managerX, footerY, signBlockWidth, signBlockHeight)))
+                {
+                    manager.Add(new Paragraph("e-sign / Signature of\nManager")
+                        .SetFont(_regularFont)
+                        .SetFontSize(9)
+                        .SetTextAlignment(TextAlignment.CENTER)
+                        .SetMargin(0));
+                }
+
+                // ───── FAR RIGHT: Occupier signature
+                using (var occupier = new Canvas(pdfCanvas,
+                    new iText.Kernel.Geom.Rectangle(occupierX, footerY, signBlockWidth, signBlockHeight)))
+                {
+                    occupier.Add(new Paragraph("e-sign / Signature of\nOccupier")
+                        .SetFont(_regularFont)
+                        .SetFontSize(9)
+                        .SetTextAlignment(TextAlignment.CENTER)
+                        .SetMargin(0));
+                }
+
+                // ── Release ONCE after all drawing is complete ────────────────────────
+                pdfCanvas.Release();
             }
+        }
+
+        string Capitalize(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+                return string.Empty;
+
+            input = input.ToLower();
+            return char.ToUpper(input[0]) + input.Substring(1);
         }
     };
 };

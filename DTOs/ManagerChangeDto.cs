@@ -4,7 +4,7 @@ namespace RajFabAPI.DTOs
 {
     public class CreateManagerChangeRequestDto
     {
-       required public string FactoryRegistrationNumber { get; set; }
+        required public string FactoryRegistrationNumber { get; set; }
         public Guid OldManagerId { get; set; }
 
         // ?? New Manager Details
@@ -103,13 +103,16 @@ namespace RajFabAPI.DTOs
         public string Email { get; set; }
         public string Telephone { get; set; }
         public string Mobile { get; set; }
-        
+        public decimal? SanctionedLoad { get; set; }
+        public string? SanctionedLoadUnit { get; set; }
+        public int? NumberOfWorker { get; set; }
+        public string? ManufacturingDetail { get; set; }
     }
 
     public class EstablishmentRegistrationDetails
     {
         public Guid FactoryRegistrationId { get; set; }
-    public Guid EstablishmentDetailId { get; set; }
+        public Guid EstablishmentDetailId { get; set; }
     }
 
     public class PersonBasicDto

@@ -82,6 +82,15 @@ namespace RajFabAPI.DTOs
         public string? SignatoryDesignation { get; set; }
         public string? SignatoryLocation { get; set; }
     }
+    
+    public class ManagerChangeObjectionLetterDto
+    {
+        public List<string> Objections { get; set; } = new();
+        public string? SignatoryName { get; set; }
+        public string? SignatoryDesignation { get; set; }
+        public string? SignatoryLocation { get; set; }
+        public ManagerChangeGetResponseDto ManagerChangeData { get; set; }
+    }
 
     public class BoilerObjectionLetterDto
     {

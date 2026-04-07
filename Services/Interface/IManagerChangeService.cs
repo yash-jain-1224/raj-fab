@@ -10,6 +10,7 @@ namespace RajFabAPI.Services.Interface
         Task<ManagerChangeApplicationDto> GetByIdAsync(Guid managerChangeId);
         Task<ManagerChangeResponseDto> UpdateAsync(Guid managerChangeId, UpdateManagerChangeRequestDto dto);
         Task<string> GenerateManagerChangePdfAsync(Guid managerChangeId);
+        Task<string> GenerateObjectionLetter(ManagerChangeObjectionLetterDto dto, string applicationId);
     }
 }
 

@@ -24,6 +24,7 @@ using Text = iText.Layout.Element.Text;
 using RajFabAPI.Constants;
 using iText.Kernel.Pdf.Event;
 using iText.Kernel.Pdf.Canvas;
+using System.Text.Json;
 
 namespace RajFabAPI.Services
 {
@@ -473,6 +474,11 @@ namespace RajFabAPI.Services
                     // Factory DTO
                     Factory = (factory == null && establishment == null) ? null : new FactoryBasicDto
                     {
+                        ManufacturingDetail = factory.ManufacturingDetail,
+                        NumberOfWorker = factory.NumberOfWorker,
+                        SanctionedLoad = factory.SanctionedLoad,
+                        SanctionedLoadUnit = factory.SanctionedLoadUnit,
+
                         FactoryRegistrationNumber = mc.FactoryRegistrationNumber,
 
                         // Name from Establishment
@@ -759,7 +765,7 @@ namespace RajFabAPI.Services
                 .SetFontSize(10)
                 .SetTextAlignment(TextAlignment.CENTER)
                 .SetMarginBottom(8));
-        document.Add(new Paragraph("\n").SetFontSize(10));
+            document.Add(new Paragraph("\n").SetFontSize(10));
 
             void AddTwoPartSection(
                 string title,
@@ -825,7 +831,7 @@ namespace RajFabAPI.Services
                 .SetBorder(Border.NO_BORDER));
 
             document.Add(headerTable);
-        document.Add(new Paragraph("\n").SetFontSize(5));
+            document.Add(new Paragraph("\n").SetFontSize(5));
             // ─────────────────────────────────────────────
             // SECTION 1 – Factory Details
             // ─────────────────────────────────────────────
@@ -935,12 +941,254 @@ namespace RajFabAPI.Services
             return filePath;
         }
 
+        // ─────────────────────────────────────────────────────────────────────────────
+        // Generate Objection Letter — Manager Change
+        // ─────────────────────────────────────────────────────────────────────────────
+        public async Task<string> GenerateObjectionLetter(ManagerChangeObjectionLetterDto dto, string applicationId)
+        {
+            if (dto == null) throw new ArgumentNullException(nameof(dto));
+
+            var fileName = $"objection_manager_change_{applicationId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+            var webRootPath = _environment.WebRootPath;
+            if (string.IsNullOrWhiteSpace(webRootPath))
+                throw new InvalidOperationException("wwwroot is not configured.");
+
+            var uploadPath = Path.Combine(webRootPath, "objection-letters");
+            _ = Directory.CreateDirectory(uploadPath);
+            var filePath = Path.Combine(uploadPath, fileName);
+
+            var httpContext = _httpContextAccessor.HttpContext
+                ?? throw new InvalidOperationException("HTTP context unavailable");
+            var request = httpContext.Request;
+            var baseUrl = _config["BaseUrl"] ?? $"{request.Scheme}://{request.Host}";
+            var fileUrl = $"{baseUrl}/objection-letters/{fileName}";
+
+            // ── Fonts ─────────────────────────────────────────────────────────────────
+            var boldFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA_BOLD);
+            var regularFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA);
+
+            // ── PDF setup ─────────────────────────────────────────────────────────────
+            using var writer = new PdfWriter(filePath);
+            using var pdf = new PdfDocument(writer);
+            pdf.AddEventHandler(PdfDocumentEvent.END_PAGE, new PageBorderEventHandler());
+            using var document = new PdfDoc(pdf);
+            document.SetMargins(50, 50, 65, 50);
+
+            var rawLoad = dto.ManagerChangeData.Factory.SanctionedLoad ?? 0;
+            var loadUnit = (dto.ManagerChangeData.Factory.SanctionedLoadUnit ?? "HP").ToUpper();
+
+            // Normalize any unit to KW first, then convert to target
+            decimal ToKW(decimal val, string unit) => unit switch
+            {
+                "HP" => val * 0.746m,
+                "KW" => val,
+                "KVA" => val,          // assuming power factor = 1
+                "MW" => val * 1000m,
+                "MVA" => val * 1000m,
+                _ => val
+            };
+            decimal ConvertToHP(decimal val, string unit) => ToKW(val, unit) / 0.746m;
+
+            var Type = "-";
+            var power = ConvertToHP(rawLoad, loadUnit); // in H.P. This is a placeholder. The actual power value should come from the application data (e.g., dto.PowerInHP).
+
+            if (dto.ManagerChangeData.Factory.NumberOfWorker < 20)
+            {
+                Type = "Section 85";
+            }
+            else if (dto.ManagerChangeData.Factory.NumberOfWorker > 40 && power == 0)
+            {
+                Type = "2 (1)(w)(ii)";
+            }
+            else if (dto.ManagerChangeData.Factory.NumberOfWorker >= 20 && power > 0)
+            {
+                Type = "2 (1)(w)(i)";
+            }
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // HEADER
+            // ═════════════════════════════════════════════════════════════════════════
+            _ = document.Add(new Paragraph("Government of Rajasthan")
+                .SetFont(boldFont).SetFontSize(14)
+                .SetTextAlignment(TextAlignment.CENTER)
+                .SetMarginBottom(1f));
+
+            _ = document.Add(new Paragraph("Factories and Boilers Inspection Department")
+                .SetFont(boldFont).SetFontSize(13)
+                .SetTextAlignment(TextAlignment.CENTER)
+                .SetMarginBottom(1f));
+
+            _ = document.Add(new Paragraph("6-C, Jhalana Institutional Area, Jaipur, 302004")
+                .SetFont(regularFont).SetFontSize(12)
+                .SetTextAlignment(TextAlignment.CENTER)
+                .SetMarginBottom(10f));
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // Application Id  +  Dated
+            // ═════════════════════════════════════════════════════════════════════════
+            var topRow = new PdfTable(new float[] { 1f, 1f })
+                .UseAllAvailableWidth().SetBorder(Border.NO_BORDER).SetMarginBottom(12f);
+
+            _ = topRow.AddCell(new PdfCell()
+                .Add(new Paragraph($"Manager Change Application No.:-  P-{dto.ManagerChangeData.ApplicationNumber ?? "-"}")
+                    .SetFont(boldFont).SetFontSize(12))
+                .SetBorder(Border.NO_BORDER));
+
+            _ = topRow.AddCell(new PdfCell()
+                .Add(new Paragraph($"Dated:-  {DateTime.Now.ToString("dd/MM/yyyy")}")
+                    .SetFont(boldFont).SetFontSize(12)
+                    .SetTextAlignment(TextAlignment.RIGHT))
+                .SetBorder(Border.NO_BORDER));
+
+            _ = document.Add(topRow);
+
+            var factoryAddress = $"{dto.ManagerChangeData.Factory?.AddressLine1}, {dto.ManagerChangeData.Factory?.AddressLine2},\n{dto.ManagerChangeData.Factory?.Area}, {dto.ManagerChangeData.Factory?.TehsilName},\n{dto.ManagerChangeData.Factory?.SubDivisionName}, {dto.ManagerChangeData.Factory?.DistrictName}, {dto.ManagerChangeData.Factory?.Pincode}";
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // Factory name + address
+            // ═════════════════════════════════════════════════════════════════════════
+            if (!string.IsNullOrWhiteSpace(dto.ManagerChangeData.Factory.FactoryName))
+            {
+                _ = document.Add(new Paragraph(dto.ManagerChangeData.Factory.FactoryName)
+                    .SetFont(boldFont).SetFontSize(12)
+                    .SetMarginBottom(1f));
+            }
+            if (!string.IsNullOrWhiteSpace(factoryAddress))
+            {
+                _ = document.Add(new Paragraph(factoryAddress)
+                    .SetFont(regularFont).SetFontSize(12)
+                    .SetMarginBottom(8f));
+            }
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // Sub:-
+            // ═════════════════════════════════════════════════════════════════════════
+            var subPara = new Paragraph();
+            subPara.Add(new Text("Sub:- ").SetFont(boldFont).SetFontSize(12));
+            subPara.Add(new Text("Regarding approval of your Manager Change Application").SetFont(regularFont).SetFontSize(12));
+            _ = document.Add(subPara.SetMarginBottom(4f));
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // Intro line
+            // ═════════════════════════════════════════════════════════════════════════
+            _ = document.Add(new Paragraph(
+                    "The details of your factory as per application, drawings and documents are shown below:-")
+                .SetFont(regularFont).SetFontSize(12)
+                .SetMarginBottom(4f));
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // Factory details table (red border)
+            // ═════════════════════════════════════════════════════════════════════════
+            var detailsTable = new PdfTable(new float[] { 150f, 1f })
+                .UseAllAvailableWidth().SetMarginBottom(12f);
+
+            PdfCell RedCell(string text, PdfFont font, float fontSize = 12f)
+            {
+                var border = new iText.Layout.Borders.SolidBorder(new DeviceRgb(220, 0, 0), 1.5f);
+                return new PdfCell()
+                    .Add(new Paragraph(text ?? "-").SetFont(font).SetFontSize(fontSize))
+                    .SetBorderTop(border).SetBorderBottom(border)
+                    .SetBorderLeft(border).SetBorderRight(border)
+                    .SetPadding(5f);
+            }
+
+            _ = detailsTable.AddCell(RedCell("Manufacturing Process", boldFont));
+            _ = detailsTable.AddCell(RedCell(dto.ManagerChangeData.Factory.ManufacturingDetail ?? "-", regularFont));
+
+            _ = detailsTable.AddCell(RedCell("Workers", boldFont));
+            _ = detailsTable.AddCell(RedCell(dto.ManagerChangeData.Factory.NumberOfWorker.ToString() ?? "-", regularFont));
+
+            _ = document.Add(detailsTable);
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // Objections heading
+            // ═════════════════════════════════════════════════════════════════════════
+            _ = document.Add(new Paragraph("Following objections are need to be removed related to your factory - ")
+                .SetFont(regularFont).SetFontSize(12)
+                .SetMarginBottom(12f));
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // Numbered objections list
+            // ═══════════════════════════════════════════════════════════════════════
+            if (dto.Objections != null && dto.Objections.Any())
+            {
+                for (int i = 0; i < dto.Objections.Count; i++)
+                {
+                    _ = document.Add(new Paragraph($"{i + 1}.{dto.Objections[i]}")
+                        .SetFont(regularFont).SetFontSize(12)
+                        .SetMarginBottom(6f));
+                }
+            }
+
+            _ = document.Add(new Paragraph("").SetMarginBottom(10f));
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // Closing line
+            // ═════════════════════════════════════════════════════════════════════════
+            _ = document.Add(new Paragraph(
+                    "Please comply with the above observations and submit relevant details/documents")
+                .SetFont(regularFont).SetFontSize(12)
+                .SetMarginBottom(30f));
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // Signature block (right-aligned)
+            // ═════════════════════════════════════════════════════════════════════════
+            var imageData = ImageDataFactory.Create("wwwroot/chief_signature.jpg");
+
+            var sigOuterTable = new PdfTable(new float[] { 1f, 1f })
+                .UseAllAvailableWidth().SetBorder(Border.NO_BORDER).SetMarginBottom(8f);
+
+            sigOuterTable.AddCell(new PdfCell().SetBorder(Border.NO_BORDER));
+
+            var sigCell = new PdfCell().SetBorder(Border.NO_BORDER).SetTextAlignment(TextAlignment.RIGHT);
+
+            var innerDiv = new Div()
+                .SetWidth(250)
+                .SetTextAlignment(TextAlignment.CENTER)
+                .SetHorizontalAlignment(HorizontalAlignment.RIGHT);
+
+            innerDiv.Add(new PdfImage(imageData).ScaleToFit(150, 50).SetHorizontalAlignment(HorizontalAlignment.CENTER));
+            innerDiv.Add(new Paragraph($"( {dto.SignatoryName} )").SetFont(regularFont).SetFontSize(12).SetMarginTop(2f));
+            innerDiv.Add(new Paragraph(dto.SignatoryDesignation).SetFont(regularFont).SetFontSize(12).SetMarginTop(2f));
+            innerDiv.Add(new Paragraph(dto.SignatoryLocation).SetFont(regularFont).SetFontSize(12).SetMarginTop(0f));
+
+            sigCell.Add(innerDiv);
+            sigOuterTable.AddCell(sigCell);
+            document.Add(sigOuterTable);
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // Footer disclaimer
+            // ═════════════════════════════════════════════════════════════════════════
+            var pageWidth = pdf.GetDefaultPageSize().GetWidth();
+            _ = document.Add(new Paragraph(
+                    "This is a computer generated certificate and bears scanned signature. No physical signature is required on this document. You " +
+                    "can verify this document by visiting rajnivesh.rajasthan.gov.in or rajfab.rajasthan.gov.in and entering Application No./ID after clicking the link for " +
+                    "verification on the page.")
+                .SetFont(regularFont).SetFontSize(7)
+                .SetFontColor(ColorConstants.GRAY)
+                .SetTextAlignment(TextAlignment.JUSTIFIED)
+                .SetFixedPosition(35, 33, pageWidth - 70));
+
+            document.Close();
+
+            // ── Save URL to FactoryMapApprovals ───────────────────────────────────────
+            var mapApp = await _context.FactoryMapApprovals
+                .FirstOrDefaultAsync(x => x.Id == applicationId);
+            if (mapApp != null)
+            {
+                mapApp.ObjectionLetterUrl = fileUrl;
+                await _context.SaveChangesAsync();
+            }
+
+            return fileUrl;
+        }
+
         void AddTwoColumnSection(
-      Document document,
-      string title,
-      IEnumerable<(string Label, string? Value)> leftData,
-      PdfFont boldFont,
-      PdfFont regularFont)
+            Document document,
+            string title,
+            IEnumerable<(string Label, string? Value)> leftData,
+            PdfFont boldFont,
+            PdfFont regularFont)
         {
             document.Add(new Paragraph(title)
                 .SetFont(boldFont)

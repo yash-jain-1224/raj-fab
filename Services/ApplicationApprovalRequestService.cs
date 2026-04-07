@@ -18,6 +18,7 @@ namespace RajFabAPI.Services
         private readonly ICommencementCessationService _commencementCessationService;
         private readonly IFactoryMapApprovalService _factoryMapApprovalService;
         private readonly IFactoryLicenseService _factoryLicenseService;
+        private readonly IManagerChangeService _managerChangeService;
         private readonly IBoilerRegistartionService _boilerRegistrationService;
         private readonly IHttpContextAccessor _httpContextAccessor;
 
@@ -26,6 +27,7 @@ namespace RajFabAPI.Services
             ICommencementCessationService commencementCessationService,
             IFactoryMapApprovalService factoryMapApprovalService,
             IFactoryLicenseService factoryLicenseService,
+            IManagerChangeService managerChangeService,
             IHttpContextAccessor httpContextAccessor
             )
         {
@@ -36,6 +38,7 @@ namespace RajFabAPI.Services
             _factoryMapApprovalService = factoryMapApprovalService;
             _factoryLicenseService = factoryLicenseService;
             _httpContextAccessor = httpContextAccessor;
+            _managerChangeService = managerChangeService;
         }
 
         public async Task<int> CreateAsync(CreateApplicationApprovalRequestDto dto)
@@ -445,7 +448,7 @@ namespace RajFabAPI.Services
                         var oldManagerDetails = _db.ManagerChanges
                             .FirstOrDefault(x => x.Id == managerChange.NewManagerId);
                         var estReg = _db.EstablishmentRegistrations
-                            .FirstOrDefault(x => x.EstablishmentRegistrationId == managerChange.FactoryRegistrationNumber.ToString());
+                            .FirstOrDefault(x => x.RegistrationNumber == managerChange.FactoryRegistrationNumber);
                         var estDetails = _db.EstablishmentDetails
                             .FirstOrDefault(x => x.Id == estReg.EstablishmentDetailId);
 
@@ -873,6 +876,22 @@ namespace RajFabAPI.Services
                         SignatoryDesignation = signatoryDesignation,
                         SignatoryLocation = signatoryLocation
                     }, applicationId);
+            }
+            else if (moduleName == ApplicationTypeNames.ManagerChange)
+            {
+               var managerChangeData = await _managerChangeService.GetByIdAsync(Guid.Parse(applicationId));
+                if (managerChangeData == null) return;
+
+                var ManagerChangeObjectionLetterData = new ManagerChangeObjectionLetterDto
+                {
+                    ManagerChangeData = managerChangeData.ApplicationDetails,
+                    Objections = objections,
+                    SignatoryName = signatoryName,
+                    SignatoryDesignation = signatoryDesignation,
+                    SignatoryLocation = signatoryLocation
+                };
+
+                fileUrl = await _managerChangeService.GenerateObjectionLetter(ManagerChangeObjectionLetterData, applicationId);
             }
             else if (moduleName == ApplicationTypeNames.BoilerRegistration)
             {

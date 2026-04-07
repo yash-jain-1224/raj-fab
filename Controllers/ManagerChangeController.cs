@@ -118,7 +118,7 @@ namespace RajFabAPI.Controllers
                 var html = await _eSignService.GenerateESignHtmlAsync(applicationId.ToString());
                 _logger.LogInformation("[POST] CreateApplication � e-sign HTML generated, applicationId: {AppId}", applicationId);
 
-                return Ok(new { success = true, data = html });
+                return Ok(new { success = true, data = new { html } });
             }
             catch (Exception ex)
             {

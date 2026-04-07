@@ -13,9 +13,6 @@ namespace RajFabAPI.Models
         public string? AddressLine1 { get; set; }
         public string? AddressLine2 { get; set; }
         public string? SubDivisionId { get; set; }
-        public string? SubDivisionName { get; set; }
-        public string? TehsilName { get; set; }
-        public string? DistrictName { get; set; }
         public string? TehsilId { get; set; }
         public string? Area { get; set; }
         public string? Pincode { get; set; }
@@ -27,7 +24,6 @@ namespace RajFabAPI.Models
         public string? SanctionedLoadUnit { get; set; }
         public Guid EmployerId { get; set; }
         public Guid ManagerId { get; set; }
-
         public string? OwnershipType { get; internal set; }
         public string? OwnershipSector { get; internal set; }
         public string? ActivityAsPerNIC { get; internal set; }

@@ -445,7 +445,7 @@ namespace RajFabAPI.Services
                         var oldManagerDetails = _db.ManagerChanges
                             .FirstOrDefault(x => x.Id == managerChange.NewManagerId);
                         var estReg = _db.EstablishmentRegistrations
-                            .FirstOrDefault(x => x.EstablishmentRegistrationId == managerChange.FactoryRegistrationId.ToString());
+                            .FirstOrDefault(x => x.EstablishmentRegistrationId == managerChange.FactoryRegistrationNumber.ToString());
                         var estDetails = _db.EstablishmentDetails
                             .FirstOrDefault(x => x.Id == estReg.EstablishmentDetailId);
 
@@ -459,7 +459,7 @@ namespace RajFabAPI.Services
                                 CreatedDate = appRegistration.CreatedDate,
                                 ApplicationType = appRegistration.ApplicationTypeName,
                                 ApplicationTitle = estDetails.EstablishmentName,
-                                ApplicationRegistrationNumber = managerChange.AcknowledgementNumber,
+                                ApplicationRegistrationNumber = managerChange.ApplicationNumber,
                                 Status = item.Status,
                                 TotalEmployees = 0
                             });
@@ -760,7 +760,7 @@ namespace RajFabAPI.Services
 
                 EstablishmentRegistration? estReg = null;
                 EstablishmentDetail? estDetail = null;
-                FactoryDetail? factoryDetail = null;
+                FactoryDetailsDto? factoryDetail = null;
                 FactoryMapApproval? mapApprovalDetail = null;
                 string? factoryTypeName = null;
 
@@ -795,7 +795,7 @@ namespace RajFabAPI.Services
                                 on districtDetail.DivisionId equals division.Id into divisionJoin
                             from divisionDetail in divisionJoin.DefaultIfEmpty()
 
-                            select new FactoryDetail
+                            select new FactoryDetailsDto
                             {
                                 Id = f.Id,
                                 ManufacturingType = f.ManufacturingType,

@@ -2103,3 +2103,76 @@ VALUES
 (2600, 18900),
 (2800, 20400),
 (3000, 21600);
+ALTER TABLE FactoryLicenses
+DROP COLUMN 
+    Place,
+    Date,
+    ManagerSignature,
+    OccupierSignature,
+    AuthorisedSignature,
+    ESignPrnNumber,
+    IsESignCompleted;
+
+ALTER TABLE FactoryLicenses
+    ADD ApplicationId NVARCHAR(50) NOT NULL DEFAULT '';
+
+ALTER TABLE BoilerRegistrations
+    ADD ObjectionLetterUrl NVARCHAR(500) NOT NULL DEFAULT '';
+
+ALTER TABLE FactoryMapApprovals
+    DROP COLUMN
+        ApplicationId;
+        
+ALTER TABLE FactoryMapApprovals
+    ADD ApplicationNumber NVARCHAR(50) NOT NULL DEFAULT '';
+
+ALTER TABLE EstablishmentRegistrations
+    ADD Form32 NVARCHAR(500) NOT NULL DEFAULT '';
+ALTER TABLE EstablishmentRegistrations
+    ADD ListOfPartners NVARCHAR(500) NOT NULL DEFAULT '';
+
+ALTER TABLE ApplicationRegistrations
+    DROP COLUMN ESignPrnNumber;
+
+ALTER TABLE ApplicationRegistrations
+ADD 
+    ESignPrnNumberOccupier NVARCHAR(50) NULL,
+    ESignPrnNumberManager NVARCHAR(50) NULL;
+
+    
+ALTER TABLE EstablishmentRegistrations
+DROP COLUMN
+    Date,
+    Signature,
+    IsESignCompleted,
+    ESignPrnNumber;
+
+ALTER TABLE ApplicationRegistrations
+ADD
+    IsESignCompletedOccupier BIT NOT NULL DEFAULT 0,
+    IsESignCompletedManager  BIT NOT NULL DEFAULT 0;
+
+ALTER TABLE ManagerChanges
+    ADD ApplicationPDFUrl NVARCHAR(MAX) NULL DEFAULT '';
+
+ALTER TABLE FactoryLicenses
+DROP COLUMN
+    IsESignCompletedOccupier,
+    ESignPrnNumberOccupier,
+    IsESignCompletedManager,
+    ESignPrnNumberManager;
+
+ALTER TABLE ManagerChanges
+DROP COLUMN
+    SignatureofOccupier,
+    SignatureOfNewManager,
+    FactoryRegistrationId,
+    AcknowledgementNumber;
+
+ALTER TABLE ManagerChanges
+ADD
+    ApplicationNumber NVARCHAR(50) NULL DEFAULT '',
+    FactoryRegistrationNumber NVARCHAR(50) NULL DEFAULT '';
+
+ALTER TABLE ManagerChanges
+ADD ObjectionLetterUrl NVARCHAR(500) NOT NULL DEFAULT '';

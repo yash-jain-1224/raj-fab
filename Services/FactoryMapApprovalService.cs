@@ -265,6 +265,7 @@ namespace RajFabAPI.Services
             {
                 decimal newVersion;
                 string acknowledgementNumber;
+                var applicationNumber = await GenerateApplicationNumberAsync();
 
                 if (isNew == false && !string.IsNullOrWhiteSpace(factoryMapApprovalId))
                 {
@@ -281,7 +282,7 @@ namespace RajFabAPI.Services
                 }
                 else
                 {
-                    acknowledgementNumber = GenerateAcknowledgementNumber();
+                    acknowledgementNumber = applicationNumber;
                     newVersion = 1.0m;
                 }
 
@@ -290,6 +291,7 @@ namespace RajFabAPI.Services
                 {
                     Id = Guid.NewGuid().ToString(),
                     AcknowledgementNumber = acknowledgementNumber,
+                    ApplicationNumber = applicationNumber,
                     PlantParticulars = request.PlantParticulars,
                     ProductName = request.FactoryTypeId,
                     ManufacturingProcess = request.ManufacturingProcess,
@@ -303,6 +305,7 @@ namespace RajFabAPI.Services
                     FactoryDetails = request.FactoryDetails,
                     NoOfShifts = request.NoOfShifts,
                     IsNew = isNew ?? true,
+                    FactoryRegistrationNumber = request.FactoryRegistrationNumber,
                     Version = newVersion
                 };
 
@@ -697,6 +700,41 @@ namespace RajFabAPI.Services
             var year = DateTime.Now.Year;
             var sequence = DateTime.Now.Ticks.ToString().Substring(8, 6);
             return $"FMA{year}{sequence}";
+        }
+
+        private async Task<string> GenerateApplicationNumberAsync()
+        {
+            var year = DateTime.Now.Year;
+            string prefix = $"P-";
+
+            // Get latest application number
+            var lastApp = await _context.FactoryMapApprovals
+                .Where(x => x.AcknowledgementNumber.StartsWith(prefix)
+                        && x.AcknowledgementNumber.Contains($"/CIFB/{year}"))
+                .OrderByDescending(x => x.CreatedAt)
+                .Select(x => x.AcknowledgementNumber)
+                .FirstOrDefaultAsync();
+
+            int nextNumber = 1;
+
+            if (!string.IsNullOrEmpty(lastApp))
+            {
+                // Format: P-482193/CIFB/2026
+                int dashIndex = lastApp.IndexOf('-');
+                int slashIndex = lastApp.IndexOf("/CIFB");
+
+                if (dashIndex != -1 && slashIndex != -1)
+                {
+                    var numberPart = lastApp.Substring(dashIndex + 1, slashIndex - (dashIndex + 1));
+
+                    if (int.TryParse(numberPart, out int lastNumber))
+                    {
+                        nextNumber = lastNumber + 1;
+                    }
+                }
+            }
+
+            return $"{prefix}{nextNumber}/CIFB/{year}";
         }
 
         private async Task<Dictionary<string, string>> LoadDistricts(IEnumerable<string?> districtIds)
@@ -1715,7 +1753,7 @@ namespace RajFabAPI.Services
         {
             if (dto == null) throw new ArgumentNullException(nameof(dto));
 
-            var fileName = $"objection_map_{applicationId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+            var fileName = $"objection_map_approval_{applicationId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
             var webRootPath = _environment.WebRootPath;
             if (string.IsNullOrWhiteSpace(webRootPath))
                 throw new InvalidOperationException("wwwroot is not configured.");

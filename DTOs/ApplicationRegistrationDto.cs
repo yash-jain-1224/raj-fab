@@ -35,6 +35,7 @@ namespace RajFabAPI.DTOs
     {
         public string ApplicationRegistrationId { get; set; }
         public int ApprovalRequestId { get; set; }
+        public string? ApplicationNumber { get; set; } = null;
         public Guid ModuleId { get; set; }
         public string ApplicationId { get; set; }
         public string ApplicationTitle { get; set; }
@@ -43,7 +44,8 @@ namespace RajFabAPI.DTOs
         public DateTime CreatedDate { get; set; }
         public bool? IsPaymentCompleted { get; set; }
         public bool? IsPaymentPending { get; set; }
-        public bool? IsESignCompleted{ get; set; }
+        public bool? IsESignCompletedOccupier{ get; set; }
+        public bool? IsESignCompletedManager{ get; set; }
     }
 
     public class RemarkDetailsDto

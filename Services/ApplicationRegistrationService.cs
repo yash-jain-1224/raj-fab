@@ -138,6 +138,8 @@ namespace RajFabAPI.Services
                                            appReg.ApplicationId,
                                            appReg.CreatedDate,
                                            appReg.ModuleId,
+                                           appReg.IsESignCompletedOccupier,
+                                           appReg.IsESignCompletedManager,
                                        };
             var appRegistrations = await appRegistrationQuery.ToListAsync();
 
@@ -153,8 +155,9 @@ namespace RajFabAPI.Services
                                         estRegistration.Status,
                                         estRegistration.CreatedDate,
                                         establishmentDetail.EstablishmentName,
-                                        estRegistration.IsESignCompleted,
-                                        estRegistration.IsPaymentCompleted
+                                        appRegistration.IsESignCompletedOccupier,
+                                        estRegistration.IsPaymentCompleted,
+                                        estRegistration.ApplicationId
                                     };
                     var estDetailSingle = await estDetail.FirstOrDefaultAsync();
                     var latestStatus = await _db.Transactions
@@ -170,9 +173,10 @@ namespace RajFabAPI.Services
                         Status = estDetailSingle.Status,
                         CreatedDate = appRegistration.CreatedDate,
                         ApplicationId = appRegistration.ApplicationId,
+                        ApplicationNumber = estDetailSingle.ApplicationId,
                         ApplicationTitle = estDetailSingle != null ? estDetailSingle.EstablishmentName : "",
                         IsPaymentCompleted = estDetailSingle.IsPaymentCompleted,
-                        IsESignCompleted = estDetailSingle.IsESignCompleted,
+                        IsESignCompletedOccupier = appRegistration.IsESignCompletedOccupier,
                         IsPaymentPending = latestStatus == "PENDING"
                     });
                 }
@@ -197,9 +201,10 @@ namespace RajFabAPI.Services
                             ApplicationType = appRegistration.ApplicationTypeName,
                             Status = mapApproval.Status,
                             CreatedDate = appRegistration.CreatedDate,
+                            ApplicationNumber = mapApproval.AcknowledgementNumber,
                             ApplicationId = appRegistration.ApplicationId,
                             ApplicationTitle = factoryDetails != null ? factoryDetails.name : "",
-                            IsESignCompleted = mapApproval.IsESignCompleted,
+                            IsESignCompletedOccupier = appRegistration.IsESignCompletedOccupier,
                         });
                     }
                 }
@@ -221,7 +226,7 @@ namespace RajFabAPI.Services
                             CreatedDate = appRegistration.CreatedDate,
                             ApplicationId = appRegistration.ApplicationId,
                             ApplicationTitle = estDetails != null ? estDetails.EstablishmentName : "",
-                            IsESignCompleted = commCess.IsESignCompleted,
+                            IsESignCompletedOccupier = appRegistration.IsESignCompletedOccupier,
                         });
                     }
                 }
@@ -234,7 +239,7 @@ namespace RajFabAPI.Services
                     var managerChange = _db.ManagerChanges
                         .FirstOrDefault(x => x.Id == managerChangeId);
                     var estReg = _db.EstablishmentRegistrations
-                        .FirstOrDefault(x => x.EstablishmentRegistrationId == managerChange.FactoryRegistrationId.ToString());
+                        .FirstOrDefault(x => x.RegistrationNumber == managerChange.FactoryRegistrationNumber.ToString());
                     var estDetails = _db.EstablishmentDetails
                         .FirstOrDefault(x => x.Id == estReg.EstablishmentDetailId);
 
@@ -246,8 +251,11 @@ namespace RajFabAPI.Services
                             ApplicationType = ApplicationTypeNames.ManagerChange,
                             Status = managerChange.Status,
                             CreatedDate = appRegistration.CreatedDate,
+                            ApplicationNumber = managerChange.ApplicationNumber,
                             ApplicationId = appRegistration.ApplicationId,
-                            ApplicationTitle = estDetails.EstablishmentName
+                            ApplicationTitle = estDetails.EstablishmentName,
+                            IsESignCompletedOccupier = appRegistration.IsESignCompletedOccupier,
+                            IsESignCompletedManager = appRegistration.IsESignCompletedManager,
                         });
                     }
                 }
@@ -277,11 +285,12 @@ namespace RajFabAPI.Services
                         ApplicationType = appRegistration.ApplicationTypeName, // FactoryLicense / Amendment / Renewal
                         Status = factoryLicense.Status,
                         CreatedDate = appRegistration.CreatedDate,
+                        ApplicationNumber = factoryLicense.ApplicationNumber,
                         ApplicationId = factoryLicense.Id,
                         ApplicationTitle = estDetails?.EstablishmentName ?? "Factory License",
                         IsPaymentCompleted = factoryLicense.IsPaymentCompleted,
-                        //IsESignCompleted = factoryLicense.IsESignCompletedManager && factoryLicense.IsESignCompletedOccupier
-                        IsESignCompleted = factoryLicense.IsESignCompletedOccupier
+                        IsESignCompletedOccupier = appRegistration.IsESignCompletedOccupier,
+                        IsESignCompletedManager = appRegistration.IsESignCompletedManager,
                     });
                 }
                 else if (appRegistration.ApplicationTypeName == ApplicationTypeNames.BoilerRegistration)
@@ -307,7 +316,7 @@ namespace RajFabAPI.Services
                         ApplicationId = appRegistration.ApplicationId,
                         ApplicationTitle = boilerReg.BoilerRegistrationNo ?? "Boiler Registration",
                         IsPaymentCompleted = boilerReg.IsPaymentCompleted,
-                        IsESignCompleted = boilerReg.IsESignCompleted,
+                        IsESignCompletedOccupier = appRegistration.IsESignCompletedOccupier,
                         IsPaymentPending = latestStatus == "PENDING"
                     });
                 }
@@ -337,7 +346,7 @@ namespace RajFabAPI.Services
                         CreatedDate = appRegistration.CreatedDate,
                         ApplicationId = appeal.Id,
                         ApplicationTitle = estDetails?.EstablishmentName ?? "Appeal",
-                        IsESignCompleted = appeal.IsESignCompleted
+                        IsESignCompletedOccupier = appRegistration.IsESignCompletedOccupier
                     });
                 }
             }
@@ -452,8 +461,16 @@ namespace RajFabAPI.Services
 
                     _logger.LogInformation("Fetching ApplicationRegistration for PRN: {PRN}", prnNumber);
 
+                    bool isManagerSign = false;
                     var appReg = await _db.Set<ApplicationRegistration>()
-                        .FirstOrDefaultAsync(r => r.ESignPrnNumber == prnNumber);
+                        .FirstOrDefaultAsync(r => r.ESignPrnNumberOccupier == prnNumber);
+
+                    if (appReg == null)
+                    {
+                        appReg = await _db.Set<ApplicationRegistration>()
+                            .FirstOrDefaultAsync(r => r.ESignPrnNumberManager == prnNumber);
+                        isManagerSign = true;
+                    }
 
                     if (appReg == null)
                     {
@@ -568,7 +585,6 @@ namespace RajFabAPI.Services
                             subDivisionId
                         );
 
-                        estReg.IsESignCompleted = true;
                         estReg.UpdatedDate = DateTime.Now;
                         applicationUrl = estReg.ApplicationPDFUrl;
                     }
@@ -680,11 +696,71 @@ namespace RajFabAPI.Services
                             subDivisionId
                         );
 
-                        factoryLicenseReg.IsESignCompletedOccupier = true;
-                        factoryLicenseReg.UpdatedAt = DateTime.Now;
+                        if (isManagerSign)
+                            appReg.IsESignCompletedManager = true;
+                        else
+                            appReg.IsESignCompletedOccupier = true;
+                        appReg.UpdatedDate = DateTime.Now;
                         applicationUrl = factoryLicenseReg.ApplicationPDFUrl;
 
-                        _logger.LogInformation("FactoryLicense ESign completed for ApplicationId: {ApplicationId}", appReg.ApplicationId);
+                        _logger.LogInformation("FactoryLicense ESign (isManagerSign={IsManager}) completed for ApplicationId: {ApplicationId}", isManagerSign, appReg.ApplicationId);
+                    }
+
+                    else if (module.Name == ApplicationTypeNames.ManagerChange)
+                    {
+                        _logger.LogInformation("Processing ManagerChange workflow for ApplicationId: {ApplicationId}", appReg.ApplicationId);
+
+                        if (!Guid.TryParse(appReg.ApplicationId, out var mcGuid))
+                        {
+                            _logger.LogWarning("Invalid ManagerChange ApplicationId: {ApplicationId}", appReg.ApplicationId);
+                            return false;
+                        }
+
+                        var managerChangeReg = await _db.Set<ManagerChange>()
+                            .FirstOrDefaultAsync(x => x.Id == mcGuid);
+
+                        if (managerChangeReg == null)
+                        {
+                            _logger.LogWarning("ManagerChange record not found for ApplicationId: {ApplicationId}", appReg.ApplicationId);
+                            return false;
+                        }
+
+                        var estDetailId = await _db.Set<EstablishmentRegistration>()
+                            .Where(m => m.EstablishmentRegistrationId == managerChangeReg.FactoryRegistrationNumber.ToString())
+                            .Select(m => m.EstablishmentDetailId)
+                            .FirstOrDefaultAsync();
+
+                        var establishmentDetail = await _db.Set<EstablishmentDetail>()
+                            .FirstOrDefaultAsync(m => m.Id == estDetailId);
+
+                        if (establishmentDetail == null)
+                        {
+                            _logger.LogWarning("EstablishmentDetail not found for ManagerChange ApplicationId: {ApplicationId}", appReg.ApplicationId);
+                            return false;
+                        }
+
+                        if (!Guid.TryParse(establishmentDetail.SubDivisionId, out Guid parsedSubDiv))
+                        {
+                            _logger.LogWarning("Invalid SubDivisionId for ManagerChange: {SubDivisionId}", establishmentDetail.SubDivisionId);
+                            return false;
+                        }
+
+                        totalWorkers =
+                           (establishmentDetail?.TotalNumberOfEmployee ?? 0) +
+                           (establishmentDetail?.TotalNumberOfContractEmployee ?? 0) +
+                           (establishmentDetail?.TotalNumberOfInterstateWorker ?? 0);
+
+                        factoryTypeId = establishmentDetail.FactoryTypeId;
+                        subDivisionId = parsedSubDiv;
+
+                        if (isManagerSign)
+                            appReg.IsESignCompletedManager = true;
+                        else
+                            appReg.IsESignCompletedOccupier = true;
+                        appReg.UpdatedDate = DateTime.Now;
+                        applicationUrl = managerChangeReg.ApplicationPDFUrl;
+
+                        _logger.LogInformation("ManagerChange ESign (isManagerSign={IsManager}) completed for ApplicationId: {ApplicationId}", isManagerSign, appReg.ApplicationId);
                     }
 
                     else if (module.Name == ApplicationTypeNames.FactoryCommencementCessation)
@@ -839,6 +915,32 @@ namespace RajFabAPI.Services
                         applicationUrl = boilerReg.ApplicationPDFUrl;
 
                         _logger.LogInformation("BoilerRegistration ESign completed for ApplicationId: {ApplicationId}", appReg.ApplicationId);
+                    }
+
+                    // Mark eSign completion on the central ApplicationRegistration record
+                    if (isManagerSign)
+                        appReg.IsESignCompletedManager = true;
+                    else
+                        appReg.IsESignCompletedOccupier = true;
+                    appReg.UpdatedDate = DateTime.Now;
+
+                    // For dual-eSign modules (FactoryLicense, ManagerChange), the workflow is only
+                    // assigned after BOTH eSigns are complete (i.e., after manager eSign).
+                    // On occupier eSign, just save status and return — manager eSign will trigger workflow.
+                    bool isDualESignModule =
+                        module.Name == ApplicationTypeNames.FactoryLicense ||
+                        module.Name == ApplicationTypeNames.FactoryLicenseAmendment ||
+                        module.Name == ApplicationTypeNames.FactoryLicenseRenewal ||
+                        module.Name == ApplicationTypeNames.ManagerChange;
+
+                    if (isDualESignModule && !isManagerSign)
+                    {
+                        _logger.LogInformation("Occupier eSign done for dual-eSign module. Saving status; workflow will be assigned after manager eSign.");
+                        if (pdfBytes != null && !string.IsNullOrEmpty(applicationUrl))
+                            await OverwriteExistingPdfAsync(applicationUrl, pdfBytes);
+                        await _db.SaveChangesAsync();
+                        await transaction.CommitAsync();
+                        return true;
                     }
 
                     _logger.LogInformation("Determining WorkerRange for workers: {Workers}", totalWorkers);
@@ -996,7 +1098,13 @@ namespace RajFabAPI.Services
                 .FirstOrDefaultAsync(r => r.ApplicationId == registrationId);
             if (appReg == null)
                 return false;
-            appReg.ESignPrnNumber = prnNumber;
+
+            // If occupier already completed their eSign, this is the manager's turn
+            if (appReg.IsESignCompletedOccupier)
+                appReg.ESignPrnNumberManager = prnNumber;
+            else
+                appReg.ESignPrnNumberOccupier = prnNumber;
+
             appReg.UpdatedDate = DateTime.Now;
             await _db.SaveChangesAsync();
             return true;

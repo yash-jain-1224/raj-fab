@@ -51,24 +51,16 @@ namespace RajFabAPI.Services
             _logger = logger;
         }
 
-        private async Task<string> GenerateApplicationNumberAsync(string type)
+        private async Task<string> GenerateApplicationNumberAsync()
         {
             var year = DateTime.Now.Year;
+            string prefix = $"R-";
 
-            // Switch to handle the prefix logic
-            string prefix = type.ToLower() switch
-            {
-                "new" => $"FR{year}/CIFB/",
-                "amendment" => $"FAMEND{year}/CIFB/",
-                "renew" => $"FREN{year}/CIFB/",
-                "closure" => $"FCLS{year}/CIFB/",
-                _ => throw new ArgumentException("Invalid factory application type")
-            };
-
-            // Get the highest number for this specific prefix
+            // Get latest application number
             var lastApp = await _db.EstablishmentRegistrations
-                .Where(x => x.ApplicationId.StartsWith(prefix))
-                .OrderBy(x => x.CreatedDate)
+                .Where(x => x.ApplicationId.StartsWith(prefix)
+                        && x.ApplicationId.Contains($"/CIFB/{year}"))
+                .OrderByDescending(x => x.CreatedDate)
                 .Select(x => x.ApplicationId)
                 .FirstOrDefaultAsync();
 
@@ -76,25 +68,27 @@ namespace RajFabAPI.Services
 
             if (!string.IsNullOrEmpty(lastApp))
             {
-                // Use LastIndexOf for better performance than Split().Last()
-                int lastSlashIndex = lastApp.LastIndexOf('/');
-                if (lastSlashIndex != -1)
+                // Format: R-482193/CIFB/2026
+                int dashIndex = lastApp.IndexOf('-');
+                int slashIndex = lastApp.IndexOf("/CIFB");
+
+                if (dashIndex != -1 && slashIndex != -1)
                 {
-                    var lastNumberPart = lastApp.Substring(lastSlashIndex + 1);
-                    if (int.TryParse(lastNumberPart, out int lastNumber))
+                    var numberPart = lastApp.Substring(dashIndex + 1, slashIndex - (dashIndex + 1));
+
+                    if (int.TryParse(numberPart, out int lastNumber))
                     {
                         nextNumber = lastNumber + 1;
                     }
                 }
             }
 
-            // :D4 ensures leading zeros (e.g., 0001, 0045, 0123)
-            return $"{prefix}{nextNumber:D4}";
+            return $"{prefix}{nextNumber:D6}/CIFB/{year}";
         }
 
         // Create full registration and persist all sub-objects in a single transaction.
         // Uses EF Core instead of raw SQL for inserts.
-        public async Task<string> SaveEstablishmentAsync(CreateEstablishmentRegistrationDto dto, Guid userId, string? type, string? establishmentRegistrationId)
+        public async Task<string> SaveEstablishmentAsync(CreateEstablishmentRegistrationDto dto, Guid userId, string? type, string? applicationNumber)
         {
             if (dto == null) throw new ArgumentNullException(nameof(dto));
             if (string.IsNullOrWhiteSpace(dto.EstablishmentDetails?.Name))
@@ -105,12 +99,12 @@ namespace RajFabAPI.Services
             decimal newVersion;
             string finalRegistrationNumber;
 
-            if (type == "amendment" && !string.IsNullOrWhiteSpace(establishmentRegistrationId))
+            if (type == "amendment" && !string.IsNullOrWhiteSpace(applicationNumber))
             {
                 // Get latest approved registration
                 var lastApproved = await _db.EstablishmentRegistrations
                     .Where(r =>
-                        r.EstablishmentRegistrationId == establishmentRegistrationId &&
+                        r.ApplicationId == applicationNumber &&
                         r.Status == ApplicationStatus.Approved)
                     .OrderByDescending(r => r.Version)
                     .FirstOrDefaultAsync();
@@ -128,15 +122,26 @@ namespace RajFabAPI.Services
                 newVersion = 1.0m;
             }
 
-            var factoryType = _db.FactoryTypes.FirstOrDefault(x => x.Name == "Not Applicable");
-            var factoryTypeIdGuid = dto.EstablishmentDetails.FactoryTypeId ?? factoryType?.Id;
+            int totalWorkers = dto?.Factory?.NumberOfWorker ?? 0;
 
-            // Calculate total workers
-            // int totalWorkers =
-            //     (dto?.EstablishmentDetails.TotalNumberOfEmployee ?? 0)
-            //     + (dto?.EstablishmentDetails.TotalNumberOfContractEmployee ?? 0)
-            //     + (dto?.EstablishmentDetails.TotalNumberOfInterstateWorker ?? 0);
-            int totalWorkers = dto?.Factory.NumberOfWorker ?? 0;
+            var factoryTypeId = dto?.EstablishmentDetails?.FactoryTypeId 
+                ?? await _db.FactoryTypes
+                    .Where(x => x.Name == "Not Applicable")
+                    .Select(x => x.Id)
+                    .FirstOrDefaultAsync();
+
+            var workerRangeId = await _db.WorkerRanges
+                .Where(x => x.MinWorkers <= totalWorkers && x.MaxWorkers >= totalWorkers)
+                .Select(x => x.Id)
+                .FirstOrDefaultAsync();
+
+            if (factoryTypeId == null || workerRangeId == null)
+                throw new Exception("Invalid Factory Type or Worker Range.");
+
+            var factoryCategory = await _db.FactoryCategories
+                .FirstOrDefaultAsync(x =>
+                    x.FactoryTypeId == factoryTypeId &&
+                    x.WorkerRangeId == workerRangeId);
 
             var manuType = (dto.Factory?.ManufacturingType ?? "manufacture").ToLower().Replace(" ", "");
             bool isElectricGen = manuType == "electricgeneration";
@@ -200,28 +205,28 @@ namespace RajFabAPI.Services
                     feeResult = await GetFeeAmountAsync(feeReq) ?? 0;
                 }
             }
-            var applicationNumber = await GenerateApplicationNumberAsync(type);
+            var NewApplicationNumber = await GenerateApplicationNumberAsync();
             await using var tx = await _db.Database.BeginTransactionAsync();
             try
             {
                 // 1) create top-level registration (container)
                 var registration = new EstablishmentRegistration
                 {
-                    EstablishmentRegistrationId = Guid.NewGuid().ToString().ToUpper(),
                     Status = ApplicationStatus.Pending,
-                    ApplicationId = applicationNumber,
+                    ApplicationId = NewApplicationNumber,
+                    RegistrationNumber = finalRegistrationNumber,
                     CreatedDate = DateTime.Now,
                     UpdatedDate = DateTime.Now,
-                    Date = dto.Date,
                     Version = newVersion,
                     Type = type,
                     Amount = feeResult,
+                    FactoryCategoryId = factoryCategory.Id,
                     OccupierIdProof = dto.OccupierIdProof,
                     PartnershipDeed = dto.PartnershipDeed,
                     ManagerIdProof = dto.ManagerIdProof,
                     LoadSanctionCopy = dto.LoadSanctionCopy,
-                    RegistrationNumber = finalRegistrationNumber,
-                    Signature = dto.Signature,
+                    ListOfPartners = dto.ListOfPartners,
+                    Form32 = dto.Form32,
                     AutoRenewal = dto.AutoRenewal,
                 };
 
@@ -252,7 +257,7 @@ namespace RajFabAPI.Services
                         TotalNumberOfInterstateWorker = dto.EstablishmentDetails.TotalNumberOfInterstateWorker,
                         CreatedAt = DateTime.Now,
                         UpdatedAt = DateTime.Now,
-                        FactoryTypeId = factoryTypeIdGuid
+                        FactoryTypeId = factoryTypeId
                     };
                     _ = _db.Set<EstablishmentDetail>().Add(estDetail);
                     _ = await _db.SaveChangesAsync();
@@ -903,9 +908,6 @@ namespace RajFabAPI.Services
                 // Persist person ids onto registration
                 registration.MainOwnerDetailId = mainOwnerId;
                 registration.ManagerOrAgentDetailId = managerAgentId;
-                registration.Place = dto.Place;
-                //registration.Date = dto.Date;
-                // update registration metadata and commit
                 registration.UpdatedDate = DateTime.Now;
                 _db.Entry(registration).State = EntityState.Modified;
                 _ = await _db.SaveChangesAsync();
@@ -1459,10 +1461,7 @@ namespace RajFabAPI.Services
                     dto.RegistrationDetail = new EstablishmentRegistrationDto
                     {
                         EstablishmentRegistrationId = reg.EstablishmentRegistrationId,
-                        Place = reg.Place,
-                        Date = reg.Date,
                         Status = reg.Status,
-                        Signature = reg.Signature,
                         AutoRenewal = reg.AutoRenewal,
                         ApplicationId = reg.ApplicationId,
                         Amount = reg.Amount,
@@ -2912,9 +2911,6 @@ namespace RajFabAPI.Services
                 existingReg.MainOwnerDetailId = mainOwnerId;
                 existingReg.ManagerOrAgentDetailId = managerAgentId;
                 //existingReg.ContractorDetailId = contractorId;
-                existingReg.Place = dto.Place;
-                existingReg.Date = dto.Date;
-                existingReg.Signature = dto.Signature;
                 existingReg.Status = "Pending";
                 existingReg.OccupierIdProof = dto.OccupierIdProof;
                 existingReg.PartnershipDeed = dto.PartnershipDeed;
@@ -3038,7 +3034,6 @@ namespace RajFabAPI.Services
                     Status = ApplicationStatus.Pending,
                     CreatedDate = DateTime.Now,
                     UpdatedDate = DateTime.Now,
-                    Date = (lastApproved.Date ?? DateTime.Today).AddYears(dto.NoOfYears),
                     Version = newVersion,
                     Type = "renew",
                     Amount = feeResult,
@@ -3050,7 +3045,6 @@ namespace RajFabAPI.Services
                     //ContractorDetailId = lastApproved.ContractorDetailId,
                     MainOwnerDetailId = lastApproved.MainOwnerDetailId,
                     ManagerOrAgentDetailId = lastApproved.ManagerOrAgentDetailId,
-                    Place = lastApproved.Place,
                 };
 
                 var estDetail = await _db.Set<EstablishmentDetail>()
@@ -3324,17 +3318,6 @@ namespace RajFabAPI.Services
 
             // Join with comma
             return string.Join(", ", nonEmptyParts);
-        }
-
-        public async Task<string?> getFilePathByPrn(string prnNumber)
-        {
-            var existingReg = await _db.Set<EstablishmentRegistration>()
-                .FirstOrDefaultAsync(r => r.ESignPrnNumber == prnNumber);
-
-            if (existingReg == null)
-                return null;
-
-            return existingReg.ApplicationPDFUrl;
         }
 
         private async Task<decimal?> GetFeeAmountAsync(FeeRequest request)
@@ -4473,7 +4456,7 @@ namespace RajFabAPI.Services
         {
             if (dto == null) throw new ArgumentNullException(nameof(dto));
 
-            var fileName = $"objection_{registrationId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+            var fileName = $"objection_establishment_registration_{registrationId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
             var webRootPath = _environment.WebRootPath;
             if (string.IsNullOrWhiteSpace(webRootPath))
                 throw new InvalidOperationException("wwwroot is not configured.");

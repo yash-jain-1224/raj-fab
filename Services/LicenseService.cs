@@ -24,6 +24,8 @@ using PdfDoc = iText.Layout.Document;
 using PdfTable = iText.Layout.Element.Table;
 using Text = iText.Layout.Element.Text;
 using System.Text.Json;
+using Microsoft.Data.SqlClient;
+using System.Data;
 
 namespace RajFabAPI.Services
 {
@@ -110,10 +112,11 @@ namespace RajFabAPI.Services
                 .FirstOrDefaultAsync(u => u.Id == userId);
             decimal newVersion;
             string finalFactoryLicenseNumber;
+            var applicationNumber = await GenerateApplicationNumberAsync();
 
             if (type == "new" && string.IsNullOrEmpty(FactoryLicenseNumber))
             {
-                finalFactoryLicenseNumber = GenerateLicenseNumber();
+                finalFactoryLicenseNumber = applicationNumber;
                 newVersion = 1.0m;
             }
             else if (type == "amendment" || type == "renewal")
@@ -133,7 +136,90 @@ namespace RajFabAPI.Services
             {
                 throw new ArgumentException("Invalid registration type or missing Factory License ID for amendment/renewal.");
             }
-            var amount = 100;
+            var factoryData = await (
+                from reg in _context.Set<EstablishmentRegistration>().AsNoTracking()
+                join map in _context.Set<EstablishmentEntityMapping>().AsNoTracking()
+                    on reg.ApplicationId equals map.EstablishmentRegistrationId
+                join f in _context.Set<FactoryDetail>().AsNoTracking()
+                    on map.EntityId equals f.Id
+
+                where reg.RegistrationNumber == dto.FactoryRegistrationNumber
+                    && reg.Status == ApplicationStatus.Approved
+                    && map.EntityType == "Factory"
+
+                orderby reg.Version descending
+
+                select new
+                {
+                    f.ManufacturingType,
+                    f.NumberOfWorker
+                }
+            )
+            .FirstOrDefaultAsync();
+
+            int totalWorkers = factoryData?.NumberOfWorker ?? 0;
+            var rawLoad = dto.SanctionedLoad ?? 0;
+            var loadUnit = (dto.SanctionedLoadUnit ?? "HP").ToUpper();
+
+            var manuType = (factoryData?.ManufacturingType ?? "manufacture").ToLower().Replace(" ", "");
+            bool isElectricGen = manuType == "electricgeneration";
+            bool isElectricTrans = manuType == "electrictransforming";
+            bool isBoth = manuType == "both";
+            bool isElectric = isElectricGen || isElectricTrans;
+
+            decimal ToKW(decimal val, string unit) => unit switch
+            {
+                "HP" => val * 0.746m,
+                "KW" => val,
+                "KVA" => val,          // assuming power factor = 1
+                "MW" => val * 1000m,
+                "MVA" => val * 1000m,
+                _ => val
+            };
+            decimal ConvertToKW(decimal val, string unit) => ToKW(val, unit);
+            decimal ConvertToHP(decimal val, string unit) => ToKW(val, unit) / 0.746m;
+
+            decimal feeResult = 100;
+            if (type == "new")
+            {
+                if (isBoth)
+                {
+                    // Non Electric (HP) + Electric (KW, both generating and transforming)
+                    var feeHP = await GetFeeAmountAsync(new FeeRequest
+                    {
+                        FormCategory = "Non Electric",
+                        FormType = "Registration",
+                        CategorySubType = null,
+                        GivenHP = ConvertToHP(rawLoad, loadUnit),
+                        TotalPerson = totalWorkers,
+                        Type = type
+                    });
+                    var feeKW = await GetFeeAmountAsync(new FeeRequest
+                    {
+                        FormCategory = "Electric",
+                        FormType = "Registration",
+                        CategorySubType = null,
+                        GivenHP = ConvertToKW(rawLoad, loadUnit),
+                        TotalPerson = totalWorkers,
+                        Type = type
+                    });
+                    feeResult = (feeHP ?? 0) + (feeKW ?? 0);
+                }
+                else
+                {
+                    var feeReq = new FeeRequest
+                    {
+                        FormCategory = isElectric ? "Electric" : "Non Electric",
+                        FormType = "Registration",
+                        CategorySubType = isElectricGen ? "Generating" : isElectricTrans ? "Transforming" : null,
+                        GivenHP = isElectric ? ConvertToKW(rawLoad, loadUnit) : ConvertToHP(rawLoad, loadUnit),
+                        TotalPerson = totalWorkers,
+                        Type = type
+                    };
+                    feeResult = await GetFeeAmountAsync(feeReq) ?? 0;
+                }
+            }
+
             await using var tx = await _context.Database.BeginTransactionAsync();
             try
             {
@@ -145,16 +231,11 @@ namespace RajFabAPI.Services
                     NoOfYears = dto.NoOfYears ?? 1,
                     ValidFrom = dto.ValidFrom,
                     ValidTo = dto.ValidTo,
-                    Place = dto.Place.Trim(),
-                    Date = dto.Date,
-                    ManagerSignature = dto.ManagerSignature,
-                    OccupierSignature = dto.OccupierSignature,
-                    AuthorisedSignature = dto.AuthorisedSignature,
                     CreatedAt = DateTime.Now,
                     UpdatedAt = DateTime.Now,
                     Version = newVersion,
                     Status = "Pending",
-                    Amount = amount,
+                    Amount = feeResult,
                     Type = string.IsNullOrEmpty(type) ? "new" : type,
                     WorkersProposedMale = dto.WorkersProposedMale,
                     WorkersProposedFemale = dto.WorkersProposedFemale,
@@ -172,6 +253,7 @@ namespace RajFabAPI.Services
                     DateOfStartProduction = dto.DateOfStartProduction,
                     FactoryData = dto.FactoryData,
                     MapApprovalData = dto.MapApprovalData,
+                    ApplicationNumber = applicationNumber
                 };
                 _context.FactoryLicenses.Add(license);
 
@@ -275,7 +357,7 @@ namespace RajFabAPI.Services
                 await _context.SaveChangesAsync();
                 await tx.CommitAsync();
 
-                var html = await _payment.ActionRequestPaymentRPP(amount, User.FullName, User.Mobile, User.Email, User.Username, "4157FE34BBAE3A958D8F58CCBFAD7", "UWf6a7cDCP", license.Id, module.Id.ToString(), userId.ToString());
+                var html = await _payment.ActionRequestPaymentRPP(feeResult, User.FullName, User.Mobile, User.Email, User.Username, "4157FE34BBAE3A958D8F58CCBFAD7", "UWf6a7cDCP", license.Id, module.Id.ToString(), userId.ToString());
                 return html;
 
                 //return finalFactoryLicenseNumber;
@@ -284,6 +366,75 @@ namespace RajFabAPI.Services
             {
                 await tx.RollbackAsync();
                 throw;
+            }
+        }
+
+        private async Task<string> GenerateApplicationNumberAsync()
+        {
+            var year = DateTime.Now.Year;
+            string prefix = $"L-";
+
+            // Get latest application number
+            var lastApp = await _context.FactoryLicenses
+                .Where(x => x.ApplicationNumber.StartsWith(prefix)
+                        && x.ApplicationNumber.Contains($"/CIFB/{year}"))
+                .OrderByDescending(x => x.CreatedAt)
+                .Select(x => x.ApplicationNumber)
+                .FirstOrDefaultAsync();
+
+            int nextNumber = 1;
+
+            if (!string.IsNullOrEmpty(lastApp))
+            {
+                // Format: L-482193/CIFB/2026
+                int dashIndex = lastApp.IndexOf('-');
+                int slashIndex = lastApp.IndexOf("/CIFB");
+
+                if (dashIndex != -1 && slashIndex != -1)
+                {
+                    var numberPart = lastApp.Substring(dashIndex + 1, slashIndex - (dashIndex + 1));
+
+                    if (int.TryParse(numberPart, out int lastNumber))
+                    {
+                        nextNumber = lastNumber + 1;
+                    }
+                }
+            }
+
+            return $"{prefix}{nextNumber:D6}/CIFB/{year}";
+        }
+
+
+        private async Task<decimal?> GetFeeAmountAsync(FeeRequest request)
+        {
+            try
+            {
+                // Stored proc signature expects: @FormCategory, @FormType, @CategorySubType, @GivenHP, @TotalPerson, @Type
+                var parameters = new[]
+                {
+                    new SqlParameter("@FormCategory", SqlDbType.NVarChar, 150) { Value = (object?)request.FormCategory ?? DBNull.Value },
+                    new SqlParameter("@FormType", SqlDbType.NVarChar, 150) { Value = (object?)request.FormType ?? DBNull.Value },
+                    new SqlParameter("@CategorySubType", SqlDbType.NVarChar, 150) { Value = (object?)request.CategorySubType ?? DBNull.Value },
+                    // SP expects BIGINT - pass a long (rounding decimal HP to nearest whole number)
+                    new SqlParameter("@GivenHP", SqlDbType.BigInt) { Value = Convert.ToInt64(Math.Round(request.GivenHP)) },
+                    new SqlParameter("@TotalPerson", SqlDbType.BigInt) { Value = Convert.ToInt64(request.TotalPerson) },
+                    new SqlParameter("@Type", SqlDbType.NVarChar, 20) { Value = (object?)request.Type ?? DBNull.Value }
+                };
+
+                var result = await _context.FeeResults
+                    .FromSqlRaw(
+                        "EXEC [dbo].[GetFeeAmount] @FormCategory, @FormType, @CategorySubType, @GivenHP, @TotalPerson, @Type",
+                        parameters
+                    )
+                    .AsNoTracking()
+                    .ToListAsync();
+
+                return result.FirstOrDefault()?.Amount;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("GetFeeAmountAsync exception: " + ex);
+                return null;
             }
         }
 
@@ -297,12 +448,7 @@ namespace RajFabAPI.Services
             license.NoOfYears = dto.NoOfYears ?? license.NoOfYears;
             license.ValidFrom = dto.ValidFrom;
             license.ValidTo = dto.ValidTo;
-            license.Place = dto.Place;
             license.Status = "Pending";
-            license.Date = dto.Date;
-            license.ManagerSignature = dto.ManagerSignature;
-            license.OccupierSignature = dto.OccupierSignature;
-            license.AuthorisedSignature = dto.AuthorisedSignature;
             license.WorkersProposedMale = dto.WorkersProposedMale;
             license.WorkersProposedFemale = dto.WorkersProposedFemale;
             license.WorkersProposedTransgender = dto.WorkersProposedTransgender;
@@ -671,7 +817,7 @@ namespace RajFabAPI.Services
             using var writer = new PdfWriter(filePath);
             using var pdf = new PdfDocument(writer);
             pdf.AddEventHandler(PdfDocumentEvent.END_PAGE,
-                new MapApprovalPageBorderAndFooterEventHandler(boldFont, regularFont, appData.Date.ToString("dd/MM/yyyy")));
+                new FactoryLicensePageBorderAndFooterEventHandler(boldFont, regularFont, DateTime.Now.ToString("dd/MM/yyyy")));
             using var document = new PdfDoc(pdf);
             document.SetMargins(40, 40, 130, 40);
 
@@ -702,7 +848,7 @@ namespace RajFabAPI.Services
                     .SetFont(boldFont).SetFontSize(9))
                 .SetBorder(Border.NO_BORDER).SetPaddingLeft(4));
             _ = licNoRow.AddCell(new PdfCell()
-                .Add(new Paragraph($"Date:  {appData.Date:dd/MM/yyyy}")
+                .Add(new Paragraph($"Date:  {DateTime.Now:dd/MM/yyyy}")
                     .SetFont(boldFont).SetFontSize(9)
                     .SetTextAlignment(TextAlignment.RIGHT))
                 .SetBorder(Border.NO_BORDER));
@@ -1035,7 +1181,7 @@ namespace RajFabAPI.Services
                 await _context.SaveChangesAsync();
             }
 
-            return fileUrl;
+            return filePath;
         }
 
         // ─────────────────────────────────────────────────────────────────────────────
@@ -1045,7 +1191,7 @@ namespace RajFabAPI.Services
         {
             if (dto == null) throw new ArgumentNullException(nameof(dto));
 
-            var fileName = $"objection_license_{licenseId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+            var fileName = $"objection_factory_license_{licenseId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
             var webRootPath = _environment.WebRootPath;
             if (string.IsNullOrWhiteSpace(webRootPath))
                 throw new InvalidOperationException("wwwroot is not configured.");
@@ -1364,13 +1510,13 @@ namespace RajFabAPI.Services
             }
         }
 
-        private sealed class MapApprovalPageBorderAndFooterEventHandler : AbstractPdfDocumentEventHandler
+        private sealed class FactoryLicensePageBorderAndFooterEventHandler : AbstractPdfDocumentEventHandler
         {
             private readonly PdfFont _boldFont;
             private readonly PdfFont _regularFont;
             private readonly string _date;
 
-            public MapApprovalPageBorderAndFooterEventHandler(PdfFont boldFont, PdfFont regularFont, string date)
+            public FactoryLicensePageBorderAndFooterEventHandler(PdfFont boldFont, PdfFont regularFont, string date)
             {
                 _boldFont = boldFont;
                 _regularFont = regularFont;
@@ -1464,6 +1610,5 @@ namespace RajFabAPI.Services
                 pdfCanvas.Release();
             }
         }
-
     }
 }

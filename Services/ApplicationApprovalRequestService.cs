@@ -974,6 +974,10 @@ namespace RajFabAPI.Services
             {
                 await _factoryLicenseService.UpdateStatusAndRemark(regId, status);
             }
+            else if (module.Name == ApplicationTypeNames.ManagerChange)
+            {
+                await _managerChangeService.UpdateStatusAndRemark(regId, status);
+            }
             else if (module.Name == ApplicationTypeNames.BoilerRegistration)
             {
                 var boilerReg = await _db.BoilerRegistrations

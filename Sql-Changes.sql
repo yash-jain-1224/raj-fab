@@ -2143,3 +2143,6 @@ ALTER TABLE ManagerChanges
 ADD
     ApplicationNumber NVARCHAR(50) NULL DEFAULT '',
     FactoryRegistrationNumber NVARCHAR(50) NULL DEFAULT '';
+
+ALTER TABLE ManagerChanges
+ADD ObjectionLetterUrl NVARCHAR(500) NOT NULL DEFAULT '';

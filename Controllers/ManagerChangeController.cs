@@ -59,7 +59,7 @@ namespace RajFabAPI.Controllers
 
                 _logger.LogInformation("[GET] GetById - Success for id: {Id}", id);
 
-                return Ok(new ApiResponseDto<ManagerChangeGetResponseDto>
+                return Ok(new ApiResponseDto<ManagerChangeApplicationDto>
                 {
                     Success = true,
                     Message = "Manager change details fetched successfully",
@@ -116,7 +116,7 @@ namespace RajFabAPI.Controllers
                 _logger.LogInformation("[POST] Create - Created successfully, applicationId: {AppId}", applicationId);
 
                 var html = await _eSignService.GenerateESignHtmlAsync(applicationId.ToString());
-                _logger.LogInformation("[POST] CreateApplication — e-sign HTML generated, applicationId: {AppId}", applicationId);
+                _logger.LogInformation("[POST] CreateApplication ï¿½ e-sign HTML generated, applicationId: {AppId}", applicationId);
 
                 return Ok(new { success = true, data = html });
             }

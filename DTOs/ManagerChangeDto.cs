@@ -1,3 +1,5 @@
+using RajFabAPI.Models;
+
 namespace RajFabAPI.DTOs
 {
     public class CreateManagerChangeRequestDto
@@ -61,11 +63,19 @@ namespace RajFabAPI.DTOs
         public string Message { get; set; } = "Manager changed successfully";
         // public string? Html { get; set; } = string.Empty;
     }
+    public class ManagerChangeApplicationDto
+    {
+        public ManagerChangeGetResponseDto ApplicationDetails { get; set; }
+        public List<ApplicationHistory> ApplicationHistory { get; set; }
+    }
 
     public class ManagerChangeGetResponseDto
     {
         public Guid ManagerChangeId { get; set; }
         public string ApplicationNumber { get; set; }
+        public string? ApplicationPDFUrl { get; set; }
+        public string? CertificatePDFUrl { get; set; }
+        public string? ObjectionLetterUrl { get; set; }
         public string Status { get; set; }
         public DateTime SubmittedDate { get; set; }
         public DateTime DateOfAppointment { get; set; }

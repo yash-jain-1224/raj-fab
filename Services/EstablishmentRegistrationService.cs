@@ -104,7 +104,7 @@ namespace RajFabAPI.Services
                 // Get latest approved registration
                 var lastApproved = await _db.EstablishmentRegistrations
                     .Where(r =>
-                        r.ApplicationId == applicationNumber &&
+                        r.EstablishmentRegistrationId == applicationNumber &&
                         r.Status == ApplicationStatus.Approved)
                     .OrderByDescending(r => r.Version)
                     .FirstOrDefaultAsync();

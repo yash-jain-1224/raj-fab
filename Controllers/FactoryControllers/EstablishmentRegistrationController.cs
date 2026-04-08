@@ -363,7 +363,7 @@ namespace RajFabAPI.Controllers.FactoryControllers
         [Authorize]
         [HttpPost("generateCertificate/{registrationId}")]
         public async Task<IActionResult> GenerateCertificate(
-            [FromBody] EstablishmentCertificateRequestDto dto, string registrationId)
+            [FromBody] CertificateRequestDto dto, string registrationId)
         {
             var userId = User.FindFirst("userId")?.Value;
             var userIdGuid = Guid.TryParse(userId, out var parsedGuid) ? parsedGuid : Guid.Empty;

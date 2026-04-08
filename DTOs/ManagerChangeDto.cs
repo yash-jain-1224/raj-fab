@@ -4,7 +4,7 @@ namespace RajFabAPI.DTOs
 {
     public class CreateManagerChangeRequestDto
     {
-       required public string FactoryRegistrationNumber { get; set; }
+        required public string FactoryRegistrationNumber { get; set; }
         public Guid OldManagerId { get; set; }
 
         // ?? New Manager Details
@@ -21,6 +21,9 @@ namespace RajFabAPI.DTOs
         public string NewManagerEmail { get; set; } = string.Empty;
         public string NewManagerTelephone { get; set; } = string.Empty;
         public string NewManagerMobile { get; set; } = string.Empty;
+        public required string NewManagerIdentity { get; set; }
+
+        public required string NewManagerAddressProof { get; set; }
 
         public DateTime NewManagerDateOfAppointment { get; set; }
     }
@@ -47,10 +50,10 @@ namespace RajFabAPI.DTOs
         public string? NewManagerPincode { get; set; }
         public DateTime? NewManagerDateOfAppointment { get; set; }
 
-        // Signatures and Status
-        public string? SignatureofOccupier { get; set; }
-        public string? SignatureOfNewManager { get; set; }
         public string? Status { get; set; }
+        public required string NewManagerIdentity { get; set; }
+
+        public required string NewManagerAddressProof { get; set; }
     }
 
 
@@ -83,9 +86,9 @@ namespace RajFabAPI.DTOs
         public FactoryBasicDto Factory { get; set; }
         public PersonBasicDto OldManager { get; set; }
         public PersonBasicDto NewManager { get; set; }
+        public string IdentityProof { get; set; }
 
-        public string SignatureOfOccupier { get; set; }
-        public string SignatureOfNewManager { get; set; }
+        public string AddressProof { get; set; }
     }
 
 
@@ -103,13 +106,18 @@ namespace RajFabAPI.DTOs
         public string Email { get; set; }
         public string Telephone { get; set; }
         public string Mobile { get; set; }
-        
+        public decimal? SanctionedLoad { get; set; }
+        public string? SanctionedLoadUnit { get; set; }
+        public int? NumberOfWorker { get; set; }
+        public string? ManufacturingDetail { get; set; }
+        public Guid? FactoryTypeId { get; set; }
+        public string? FactoryTypeName { get; set; }
     }
 
     public class EstablishmentRegistrationDetails
     {
         public Guid FactoryRegistrationId { get; set; }
-    public Guid EstablishmentDetailId { get; set; }
+        public Guid EstablishmentDetailId { get; set; }
     }
 
     public class PersonBasicDto

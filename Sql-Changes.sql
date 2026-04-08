@@ -2176,3 +2176,8 @@ ADD
 
 ALTER TABLE ManagerChanges
 ADD ObjectionLetterUrl NVARCHAR(500) NOT NULL DEFAULT '';
+
+ALTER TABLE ManagerChanges
+ADD
+    IdentityProof NVARCHAR(500) NULL DEFAULT '',
+    AddressProof NVARCHAR(500) NULL DEFAULT '';

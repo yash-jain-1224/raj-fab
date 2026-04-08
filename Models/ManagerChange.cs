@@ -37,5 +37,9 @@ namespace RajFabAPI.Models
         public bool IsActive { get; set; } = true;
         public string? ApplicationPDFUrl { get; set; }
         public string? ObjectionLetterUrl { get; set; } = null;
+        [MaxLength(500)]
+        public string IdentityProof { get; set; } = string.Empty;
+        [MaxLength(500)]
+        public string AddressProof { get; set; } = string.Empty;
     }
 }

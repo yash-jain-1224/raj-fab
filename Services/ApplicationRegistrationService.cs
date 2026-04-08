@@ -570,10 +570,6 @@ namespace RajFabAPI.Services
                         }
 
                         totalWorkers = factorydata.NumberOfWorker ?? 0;
-                        //totalWorkers =
-                        //    (estDetails.TotalNumberOfEmployee ?? 0) +
-                        //    (estDetails.TotalNumberOfContractEmployee ?? 0) +
-                        //    (estDetails.TotalNumberOfInterstateWorker ?? 0);
 
                         factoryTypeId = estDetails.FactoryTypeId ?? Guid.Empty;
                         subDivisionId = parsedSubDiv;
@@ -681,10 +677,34 @@ namespace RajFabAPI.Services
                             return false;
                         }
 
-                        totalWorkers =
-                           (establishmentDetail?.TotalNumberOfEmployee ?? 0) +
-                           (establishmentDetail?.TotalNumberOfContractEmployee ?? 0) +
-                           (establishmentDetail?.TotalNumberOfInterstateWorker ?? 0);
+                        var factoryData = await (
+                                from reg in _db.Set<EstablishmentRegistration>().AsNoTracking()
+                                join map in _db.Set<EstablishmentEntityMapping>().AsNoTracking()
+                                    on reg.EstablishmentRegistrationId equals map.EstablishmentRegistrationId
+                                join f in _db.Set<FactoryDetail>().AsNoTracking()
+                                    on map.EntityId equals f.Id
+
+                                where reg.RegistrationNumber == factoryLicenseReg.FactoryRegistrationNumber.ToString()
+                                    && reg.Status == ApplicationStatus.Approved
+                                    && map.EntityType == "Factory"
+
+                                orderby reg.Version descending
+
+                                select new
+                                {
+                                    f.ManufacturingType,
+                                    f.NumberOfWorker
+                                }
+                            )
+                            .FirstOrDefaultAsync();
+
+                        if (factoryData == null)
+                        {
+                            _logger.LogWarning("Factory Data not found for Factory License ApplicationId: {ApplicationId}", appReg.ApplicationId);
+                            return false;
+                        }
+
+                        totalWorkers = factoryData.NumberOfWorker ?? 0;
 
                         factoryTypeId = establishmentDetail.FactoryTypeId;
                         subDivisionId = parsedSubDiv;
@@ -726,7 +746,7 @@ namespace RajFabAPI.Services
                         }
 
                         var estDetailId = await _db.Set<EstablishmentRegistration>()
-                            .Where(m => m.EstablishmentRegistrationId == managerChangeReg.FactoryRegistrationNumber.ToString())
+                            .Where(m => m.RegistrationNumber == managerChangeReg.FactoryRegistrationNumber.ToString())
                             .Select(m => m.EstablishmentDetailId)
                             .FirstOrDefaultAsync();
 
@@ -745,10 +765,34 @@ namespace RajFabAPI.Services
                             return false;
                         }
 
-                        totalWorkers =
-                           (establishmentDetail?.TotalNumberOfEmployee ?? 0) +
-                           (establishmentDetail?.TotalNumberOfContractEmployee ?? 0) +
-                           (establishmentDetail?.TotalNumberOfInterstateWorker ?? 0);
+                        var factoryData = await (
+                                from reg in _db.Set<EstablishmentRegistration>().AsNoTracking()
+                                join map in _db.Set<EstablishmentEntityMapping>().AsNoTracking()
+                                    on reg.EstablishmentRegistrationId equals map.EstablishmentRegistrationId
+                                join f in _db.Set<FactoryDetail>().AsNoTracking()
+                                    on map.EntityId equals f.Id
+
+                                where reg.RegistrationNumber == managerChangeReg.FactoryRegistrationNumber.ToString()
+                                    && reg.Status == ApplicationStatus.Approved
+                                    && map.EntityType == "Factory"
+
+                                orderby reg.Version descending
+
+                                select new
+                                {
+                                    f.ManufacturingType,
+                                    f.NumberOfWorker
+                                }
+                            )
+                            .FirstOrDefaultAsync();
+
+                        if (factoryData == null)
+                        {
+                            _logger.LogWarning("Factory Data not found for ManagerChange ApplicationId: {ApplicationId}", appReg.ApplicationId);
+                            return false;
+                        }
+
+                        totalWorkers = factoryData.NumberOfWorker ?? 0;
 
                         factoryTypeId = establishmentDetail.FactoryTypeId;
                         subDivisionId = parsedSubDiv;
@@ -938,6 +982,19 @@ namespace RajFabAPI.Services
                         _logger.LogInformation("Occupier eSign done for dual-eSign module. Saving status; workflow will be assigned after manager eSign.");
                         if (pdfBytes != null && !string.IsNullOrEmpty(applicationUrl))
                             await OverwriteExistingPdfAsync(applicationUrl, pdfBytes);
+                        var historyy = new ApplicationHistory
+                        {
+                            ApplicationId = appReg.ApplicationId,
+                            ApplicationType = module.Name,
+                            Action = "E-Sign Successful",
+                            PreviousStatus = null,
+                            NewStatus = "",
+                            Comments = "Application E-Signed By Occupier",
+                            ActionBy = appReg.UserId.ToString(),
+                            ActionByName = "Applicant(Occupier)",
+                            ActionDate = DateTime.Now
+                        };
+                        _db.ApplicationHistories.Add(historyy);
                         await _db.SaveChangesAsync();
                         await transaction.CommitAsync();
                         return true;
@@ -1025,7 +1082,7 @@ namespace RajFabAPI.Services
                         Action = "E-Sign Successful",
                         PreviousStatus = null,
                         NewStatus = "",
-                        Comments = "Application E-Signed and sent to " + roleInfo.Name + " for Verification",
+                        Comments = "Application E-Signed" + (isDualESignModule && isManagerSign ? " by Manager" : "") + " and sent to " + roleInfo.Name + " for Verification",
                         ActionBy = appReg.UserId.ToString(),
                         ActionByName = "Applicant",
                         ActionDate = DateTime.Now

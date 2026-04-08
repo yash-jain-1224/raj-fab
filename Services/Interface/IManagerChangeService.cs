@@ -12,6 +12,7 @@ namespace RajFabAPI.Services.Interface
         Task<string> GenerateManagerChangePdfAsync(Guid managerChangeId);
         Task<bool> UpdateStatusAndRemark(string applicationId, string status);
         Task<string> GenerateObjectionLetter(ManagerChangeObjectionLetterDto dto, string applicationId);
+        Task<string> GenerateCertificateAsync(CertificateRequestDto dto, Guid userId, string registrationId);
     }
 }
 

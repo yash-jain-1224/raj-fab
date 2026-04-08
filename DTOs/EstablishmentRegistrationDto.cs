@@ -36,7 +36,7 @@ namespace RajFabAPI.DTOs
         public string ManagerIdProof { get; set; }
         public string LoadSanctionCopy { get; set; }
     }
-    public class EstablishmentCertificateRequestDto
+    public class CertificateRequestDto
     {
         public string Remarks { get; set; }
     }

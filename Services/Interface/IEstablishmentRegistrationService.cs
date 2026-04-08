@@ -14,7 +14,7 @@ namespace RajFabAPI.Services.Interface
         Task<bool> UpdateStatusAndRemark(string registrationId, string status);
         Task<EstablishmentRegistrationDetailsDto?> GetFactoryDetailsByFactoryRegistrationNumberAsync(string factoryRegistrationNumber);
         Task<string> RenewEstablishmentAsync( RenewEstablishmentDto dto, Guid userId,  string registrationId);
-        Task<string> GenerateCertificateAsync(EstablishmentCertificateRequestDto  dto, Guid userId, string registrationId);
+        Task<string> GenerateCertificateAsync(CertificateRequestDto  dto, Guid userId, string registrationId);
         Task<string?> GetFactoryRegistrationNumber(Guid userId);
         Task<string> GenerateEstablishmentPdf(EstablishmentApplicationDto dto);
         Task<string> GenerateObjectionLetter(EstablishmentObjectionLetterDto dto, string registrationId);

@@ -574,7 +574,7 @@ namespace RajFabAPI.Services
         {
             try
             {
-                 var managerChange = await _context.ManagerChanges.FirstOrDefaultAsync(x => x.Id == Guid.Parse(applicationId));
+                var managerChange = await _context.ManagerChanges.FirstOrDefaultAsync(x => x.Id == Guid.Parse(applicationId));
                 if (managerChange == null)
                     return false;
                 managerChange.Status = status;
@@ -1213,93 +1213,113 @@ namespace RajFabAPI.Services
             return fileUrl;
         }
 
-
-      public async Task<string> GenerateCertificateAsync(MapApprovalCertificateRequestDto dto, Guid userId, string applicationId)
+        public async Task<string> GenerateCertificateAsync(CertificateRequestDto dto, Guid userId, string applicationId)
         {
+            try
+            {
+                if (dto == null)
+                    throw new ArgumentNullException(nameof(dto));
+                var appId = applicationId.ToLower();
+                var appReg = await _context.ApplicationRegistrations
+                    .FirstOrDefaultAsync(r => r.ApplicationId.ToLower() == appId);
 
-             var res = await GetByIdAsync(Guid.Parse(applicationId));
-            var application = res.ApplicationDetails;
+                if (appReg == null)
+                    throw new KeyNotFoundException("Application registration not found");
 
-            if (application == null)
-                throw new KeyNotFoundException("Application not found.");
+                var managerChangeData = await GetByIdAsync(Guid.Parse(applicationId));
+                if (managerChangeData == null) throw new Exception("Manager change application not found");
 
-            // Get user details (Approval Authority - the signer)
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
-            if (user == null)
-                throw new KeyNotFoundException("User not found");
+                // Get user details (Approval Authority - the signer)
+                var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+                if (user == null)
+                    throw new KeyNotFoundException("User not found");
 
-            var officePost = await (
-                from ur in _context.UserRoles
-                join r in _context.Roles on ur.RoleId equals r.Id
-                join p in _context.Posts on r.PostId equals p.Id
-                join o in _context.Offices on r.OfficeId equals o.Id
-                join c in _context.Cities on o.CityId equals c.Id
-                where ur.UserId == userId
-                select new
+                var officePost = await (
+                    from ur in _context.UserRoles
+                    join r in _context.Roles on ur.RoleId equals r.Id
+                    join p in _context.Posts on r.PostId equals p.Id
+                    join o in _context.Offices on r.OfficeId equals o.Id
+                    join c in _context.Cities on o.CityId equals c.Id
+                    where ur.UserId == userId
+                    select new
+                    {
+                        OfficeName = o.Name,
+                        PostName = p.Name,
+                        CityName = c.Name,
+                        PostId = p.Id
+                    }
+                ).FirstOrDefaultAsync();
+
+                if (officePost == null)
                 {
-                    OfficeName = o.Name,
-                    PostName = p.Name,
-                    CityName = c.Name,
-                    PostId = p.Id
+                    throw new Exception("No office post found for this user");
                 }
-            ).FirstOrDefaultAsync();
 
-            if (officePost == null)
-            {
-                throw new Exception("No office post found for this user");
+                var certificateUrl = await GenerateCertificatePdf(dto, applicationId, officePost.PostName + ", " + officePost.CityName, user.FullName, managerChangeData.ApplicationDetails);
+                var module = await _context.Modules
+                .Where(m => m.Name == ApplicationTypeNames.NewEstablishment)
+                .FirstOrDefaultAsync();
+
+                if (module == null || module.Id == Guid.Empty)
+                {
+                    throw new Exception("Module not found");
+                }
+
+                var certificate = new Certificate
+                {
+                    Id = Guid.NewGuid(),
+                    RegistrationNumber = managerChangeData.ApplicationDetails.ApplicationNumber,
+                    ApplicationId = appReg.ApplicationId,
+                    CertificateVersion = 1.0m,
+                    CertificateUrl = certificateUrl,
+                    IssuedAt = DateTime.Now,
+                    IssuedByUserId = userId,
+                    Status = "PendingESign",
+                    ModuleId = module.Id,
+                    StartDate = DateTime.Today,
+                    EndDate = null, // Certificates can be evergreen or have fixed validity based on requirements
+                    Remarks = dto.Remarks
+                };
+
+                _ = _context.Certificates.Add(certificate);
+
+                // Create application history with dynamic ActionBy
+                var history = new ApplicationHistory
+                {
+                    ApplicationId = appReg.ApplicationId,
+                    ApplicationType = module.Name,
+                    Action = "Certificate Generated",
+                    PreviousStatus = null,
+                    NewStatus = "",
+                    Comments = $"Certificate Generated by {officePost.PostName}, {officePost.CityName}",
+                    ActionBy = officePost.PostId.ToString(),
+                    ActionByName = $"{officePost.PostName}, {officePost.CityName}",
+                    ActionDate = DateTime.Now
+                };
+
+                _context.ApplicationHistories.Add(history);
+
+                _ = await _context.SaveChangesAsync();
+
+                return certificate.Id.ToString();
             }
-
-            var certificateUrl = await GenerateMapApprovalCertificatePdf(application, dto, officePost.PostName + ", " + officePost.CityName, user.FullName);
-
-            var module = await _context.Set<FormModule>().FirstOrDefaultAsync(m => m.Name == ApplicationTypeNames.MapApproval);
-            if (module == null)
-                throw new InvalidOperationException("MapApproval module not found.");
-
-            var certificate = new Certificate
+            catch
             {
-                RegistrationNumber = application.ApplicationNumber,
-                CertificateVersion = 1.0m,
-                StartDate = DateTime.TryParse(dto.StartDate, out var start) ? start : DateTime.Now,
-                // EndDate = DateTime.TryParse(dto.EndDate, out var end) ? end : DateTime.Now.AddYears(1),
-                CertificateUrl = certificateUrl,
-                IssuedByUserId = userId,
-                IssuedAt = DateTime.TryParse(dto.IssuedAt, out var issuedAt) ? issuedAt : DateTime.Now,
-                Status = "PendingESign",
-                ModuleId = module.Id,
-                Remarks = dto.Remarks,
-                ApplicationId = applicationId,
-                IsESignCompleted = false
-            };
-            _context.Set<Certificate>().Add(certificate);
-
-            var history = new Models.ApplicationHistory
-            {
-                ApplicationId = applicationId,
-                ApplicationType = "FactoryMapApproval",
-                Action = "Certificate Generated",
-                PreviousStatus = application.Status,
-                NewStatus = application.Status,
-                Comments = "Certificate generated and sent for e-sign",
-                ActionBy = userId.ToString(),
-                ActionDate = DateTime.Now
-            };
-            _context.ApplicationHistories.Add(history);
-
-            await _context.SaveChangesAsync();
-
-            return certificate.Id.ToString();
+                throw;
+            }
         }
 
-        private async Task<string> GenerateMapApprovalCertificatePdf(ManagerChangeGetResponseDto application, MapApprovalCertificateRequestDto dto, string postName, string userName)
+        public async Task<string> GenerateCertificatePdf(CertificateRequestDto dto, string applicationId, string postName, string userName, ManagerChangeGetResponseDto managerChangeData)
         {
-            var fileName = $"map_approval_certificate_{application.ApplicationNumber}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+            if (dto == null) throw new ArgumentNullException(nameof(dto));
 
+            var fileName = $"certificate_manager_change_{applicationId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
             var webRootPath = _environment.WebRootPath;
             if (string.IsNullOrWhiteSpace(webRootPath))
                 throw new InvalidOperationException("wwwroot is not configured.");
 
             var uploadPath = Path.Combine(webRootPath, "certificates");
-            Directory.CreateDirectory(uploadPath);
+            _ = Directory.CreateDirectory(uploadPath);
             var filePath = Path.Combine(uploadPath, fileName);
 
             var httpContext = _httpContextAccessor.HttpContext
@@ -1307,146 +1327,196 @@ namespace RajFabAPI.Services
             var request = httpContext.Request;
             var baseUrl = _config["BaseUrl"] ?? $"{request.Scheme}://{request.Host}";
             var fileUrl = $"{baseUrl}/certificates/{fileName}";
+            
+            // ── Fonts ─────────────────────────────────────────────────────────────────
+            var boldFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA_BOLD);
+            var regularFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA);
 
-            var boldFont = PdfFontFactory.CreateFont(StandardFonts.HELVETICA_BOLD);
-            var regularFont = PdfFontFactory.CreateFont(StandardFonts.HELVETICA);
+            // ── PDF setup ─────────────────────────────────────────────────────────────
+            using var writer = new PdfWriter(filePath);
+            using var pdf = new PdfDocument(writer);
+            pdf.AddEventHandler(PdfDocumentEvent.END_PAGE, new PageBorderEventHandler());
+            using var document = new PdfDoc(pdf);
+            document.SetMargins(50, 50, 65, 50);
 
-            int totalWorkers = application.Factory?.NumberOfWorker ?? 0;
-            string? factoryTypeName = null;
-            var ft = await _context.FactoryTypes.FindAsync(application.Factory.FactoryTypeId);
-                factoryTypeName = ft?.Name;
+            var rawLoad = managerChangeData.Factory.SanctionedLoad ?? 0;
+            var loadUnit = (managerChangeData.Factory.SanctionedLoadUnit ?? "HP").ToUpper();
 
-            DateOnly footerDate = DateOnly.FromDateTime(DateTime.Today);
-
-            using (var writer = new PdfWriter(filePath))
-            using (var pdf = new PdfDocument(writer))
-            using (var document = new Document(pdf))
+            // Normalize any unit to KW first, then convert to target
+            decimal ToKW(decimal val, string unit) => unit switch
             {
-                pdf.AddEventHandler(PdfDocumentEvent.END_PAGE,
-                    new PageBorderAndFooterEventHandler(
-                        boldFont, regularFont,
-                        footerDate, "wwwroot/chief_signature.jpg", postName, userName));
+                "HP" => val * 0.746m,
+                "KW" => val,
+                "KVA" => val,          // assuming power factor = 1
+                "MW" => val * 1000m,
+                "MVA" => val * 1000m,
+                _ => val
+            };
+            decimal ConvertToHP(decimal val, string unit) => ToKW(val, unit) / 0.746m;
 
-                document.SetMargins(40, 40, 130, 40);
+            var Type = "-";
+            var power = ConvertToHP(rawLoad, loadUnit); // in H.P. This is a placeholder. The actual power value should come from the application data (e.g., dto.PowerInHP).
 
-                // ─── HEADER ──────────────────────────────────────────────────────────
-                var headerTable = new Table(new float[] { 90f, 320f, 90f })
-                    .UseAllAvailableWidth()
-                    .SetBorder(Border.NO_BORDER)
-                    .SetMarginBottom(6f);
-
-                headerTable.AddCell(new Cell().SetBorder(Border.NO_BORDER));
-
-                var centerCell = new Cell()
-                    .SetBorder(Border.NO_BORDER)
-                    .SetTextAlignment(TextAlignment.CENTER);
-                centerCell.Add(new Paragraph("Government of Rajasthan")
-                    .SetFont(boldFont).SetFontSize(12).SetTextAlignment(TextAlignment.CENTER).SetMarginBottom(1f));
-                centerCell.Add(new Paragraph("Factories and Boilers Inspection Department")
-                    .SetFont(boldFont).SetFontSize(11).SetTextAlignment(TextAlignment.CENTER).SetMarginBottom(1f));
-                centerCell.Add(new Paragraph("6-C, Jhalana Institutional Area, Jaipur, 302004")
-                    .SetFont(regularFont).SetFontSize(9).SetTextAlignment(TextAlignment.CENTER).SetMarginBottom(4f));
-                headerTable.AddCell(centerCell);
-
-                headerTable.AddCell(new Cell().SetBorder(Border.NO_BORDER));
-                document.Add(headerTable);
-
-                // ─── Application Id + Date ────────────────────────────────────────────
-                var topRow = new Table(new float[] { 1f, 1f })
-                    .UseAllAvailableWidth()
-                    .SetBorder(Border.NO_BORDER)
-                    .SetMarginBottom(2f);
-                topRow.AddCell(new Cell()
-                    .Add(new Paragraph($"Manager Change Application No.:-  P-{application.ApplicationNumber}")
-                        .SetFont(boldFont).SetFontSize(10))
-                    .SetBorder(Border.NO_BORDER));
-                topRow.AddCell(new Cell()
-                    .Add(new Paragraph($"Dated:-  {DateTime.Now.ToString("dd/MM/yyyy")}")
-                        .SetFont(boldFont).SetFontSize(10).SetTextAlignment(TextAlignment.RIGHT))
-                    .SetBorder(Border.NO_BORDER));
-                document.Add(topRow);
-
-                // ─── Factory name + address ───────────────────────────────────────────
-                if (application.Factory != null)
-                {
-                    document.Add(new Paragraph(application.Factory.FactoryName ?? "-")
-                        .SetFont(boldFont).SetFontSize(11).SetMarginBottom(1f));
-
-                    var line1 = string.Join(", ", new[] { application.Factory.AddressLine1, application.Factory.AddressLine2 }
-                        .Where(s => !string.IsNullOrWhiteSpace(s)));
-                    var line2 = string.Join(", ", new[] { application.Factory.Area, application.Factory.TehsilName, application.Factory.SubDivisionName }
-                        .Where(s => !string.IsNullOrWhiteSpace(s)));
-                    var line3 = string.Join(", ", new[] { application.Factory.DistrictName, application.Factory.Pincode }
-                        .Where(s => !string.IsNullOrWhiteSpace(s)));
-
-                    var fullAddress = string.Join("\n", new[] { line1, line2, line3 }
-                        .Where(s => !string.IsNullOrWhiteSpace(s)));
-
-                    document.Add(new Paragraph(fullAddress)
-                        .SetFont(regularFont).SetFontSize(11).SetMarginBottom(8f));
-                }
-
-                // ─── Sub heading ──────────────────────────────────────────────────────
-                document.Add(new Paragraph("Sub:-  Approval of Factory Building drawings")
-                    .SetFont(boldFont).SetFontSize(11).SetMarginBottom(2f));
-                document.Add(new Paragraph("The details of your factory as per application, drawings and documents are shown below:-")
-                    .SetFont(regularFont).SetFontSize(11).SetMarginBottom(6f));
-
-                // ─── Details table ────────────────────────────────────────────────────
-                var blackBorder = new SolidBorder(new DeviceRgb(0, 0, 0), 0.75f);
-
-                Cell BlackCell(string text, PdfFont font, float size = 10f)
-                    => new Cell()
-                        .Add(new Paragraph(text ?? "-").SetFont(font).SetFontSize(size))
-                        .SetBorderTop(blackBorder).SetBorderBottom(blackBorder)
-                        .SetBorderLeft(blackBorder).SetBorderRight(blackBorder)
-                        .SetPadding(5f);
-
-                var detailsTable = new Table(new float[] { 150f, 350f })
-                    .UseAllAvailableWidth()
-                    .SetMarginBottom(10f);
-
-                detailsTable.AddCell(BlackCell("Manufacturing Process", boldFont));
-                detailsTable.AddCell(BlackCell(application.Factory.ManufacturingDetail ?? "-", regularFont));
-                detailsTable.AddCell(BlackCell("Type", boldFont));
-                detailsTable.AddCell(BlackCell("-", regularFont));
-                detailsTable.AddCell(BlackCell("Category", boldFont));
-                detailsTable.AddCell(BlackCell(factoryTypeName ?? "-", regularFont));
-                detailsTable.AddCell(BlackCell("Workers", boldFont));
-                detailsTable.AddCell(BlackCell(totalWorkers.ToString(), regularFont));
-
-                document.Add(detailsTable);
-
-                document.Add(new Paragraph(
-                        "Drawings of your factory are approved under Section 119 of The Occupational Safety Health and Working Conditions Code, 2020 with the following conditions:-")
-                    .SetFont(regularFont).SetFontSize(11).SetMarginBottom(4f));
-
-                var conditions = new[]
-                {
-                    "Certificate of Stability obtained from a competent person shall be submitted as per OSH Code 2020 and the rules, regulations made there under.",
-                    "Disposal of the trade waste effluents shall be as per OSH Code 2020 and the rules, regulations made there under.",
-                    "Disposal of the waste from latrines & urinals shall be as per OSH Code 2020 and the rules, regulations made there under.",
-                    "Drinking water facilities should be provided as per OSH Code 2020 and the rules, regulations made there under.",
-                    "Fire fighting arrangement should be provided as per OSH Code 2020 and the rules, regulations made there under.",
-                };
-
-                for (int i = 0; i < conditions.Length; i++)
-                    document.Add(new Paragraph($"{i + 1}. {conditions[i]}")
-                        .SetFont(regularFont).SetFontSize(11).SetMarginBottom(0f));
-
-                // ─── Footer disclaimer (fixed position) ───────────────────────────────
-                var pageWidth = pdf.GetDefaultPageSize().GetWidth();
-                document.Add(new Paragraph(
-                        "This is a computer generated certificate and bears scanned signature. No physical signature is required on this approval. You " +
-                        "can verify this approval by visiting www.rajfab.rajasthan.gov.in and entering Application No./ID after clicking the link for " +
-                        "verification on the page.")
-                    .SetFont(regularFont).SetFontSize(6.5f)
-                    .SetFontColor(ColorConstants.GRAY)
-                    .SetTextAlignment(TextAlignment.JUSTIFIED)
-                    .SetMultipliedLeading(1.1f)
-                    .SetFixedPosition(35, 8, pageWidth - 70));
-
+            if (managerChangeData.Factory.NumberOfWorker < 20)
+            {
+                Type = "Section 85";
             }
+            else if (managerChangeData.Factory.NumberOfWorker > 40 && power == 0)
+            {
+                Type = "2 (1)(w)(ii)";
+            }
+            else if (managerChangeData.Factory.NumberOfWorker >= 20 && power > 0)
+            {
+                Type = "2 (1)(w)(i)";
+            }
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // HEADER
+            // ═════════════════════════════════════════════════════════════════════════
+            _ = document.Add(new Paragraph("Government of Rajasthan")
+                .SetFont(boldFont).SetFontSize(14)
+                .SetTextAlignment(TextAlignment.CENTER)
+                .SetMarginBottom(1f));
+
+            _ = document.Add(new Paragraph("Factories and Boilers Inspection Department")
+                .SetFont(boldFont).SetFontSize(13)
+                .SetTextAlignment(TextAlignment.CENTER)
+                .SetMarginBottom(1f));
+
+            _ = document.Add(new Paragraph("6-C, Jhalana Institutional Area, Jaipur, 302004")
+                .SetFont(regularFont).SetFontSize(12)
+                .SetTextAlignment(TextAlignment.CENTER)
+                .SetMarginBottom(10f));
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // Application Id  +  Dated
+            // ═════════════════════════════════════════════════════════════════════════
+            var topRow = new PdfTable(new float[] { 1f, 1f })
+                .UseAllAvailableWidth().SetBorder(Border.NO_BORDER).SetMarginBottom(12f);
+
+            _ = topRow.AddCell(new PdfCell()
+                .Add(new Paragraph($"Manager Change Application No.:- {managerChangeData.ApplicationNumber ?? "-"}")
+                    .SetFont(boldFont).SetFontSize(10))
+                .SetBorder(Border.NO_BORDER));
+
+            _ = topRow.AddCell(new PdfCell()
+                .Add(new Paragraph($"Dated:-  {DateTime.Now.ToString("dd/MM/yyyy")}")
+                    .SetFont(boldFont).SetFontSize(10)
+                    .SetTextAlignment(TextAlignment.RIGHT))
+                .SetBorder(Border.NO_BORDER));
+
+            _ = document.Add(topRow);
+
+            var factoryAddress = $"{managerChangeData.Factory?.AddressLine1}, {managerChangeData.Factory?.AddressLine2},\n{managerChangeData.Factory?.Area}, {managerChangeData.Factory?.TehsilName},\n{managerChangeData.Factory?.SubDivisionName}, {managerChangeData.Factory?.DistrictName}, {managerChangeData.Factory?.Pincode}";
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // Factory name + address
+            // ═════════════════════════════════════════════════════════════════════════
+            if (!string.IsNullOrWhiteSpace(managerChangeData.Factory.FactoryName))
+            {
+                _ = document.Add(new Paragraph(managerChangeData.Factory.FactoryName)
+                    .SetFont(boldFont).SetFontSize(12)
+                    .SetMarginBottom(1f));
+            }
+            if (!string.IsNullOrWhiteSpace(factoryAddress))
+            {
+                _ = document.Add(new Paragraph(factoryAddress)
+                    .SetFont(regularFont).SetFontSize(12)
+                    .SetMarginBottom(8f));
+            }
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // Sub:-
+            // ═════════════════════════════════════════════════════════════════════════
+            var subPara = new Paragraph();
+            subPara.Add(new Text("Sub:- ").SetFont(boldFont).SetFontSize(12));
+            subPara.Add(new Text("Certificate of your Manager Change Application").SetFont(regularFont).SetFontSize(12));
+            _ = document.Add(subPara.SetMarginBottom(4f));
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // Intro line
+            // ═════════════════════════════════════════════════════════════════════════
+            _ = document.Add(new Paragraph(
+                    "The details of your factory as per application, drawings and documents are shown below:-")
+                .SetFont(regularFont).SetFontSize(12)
+                .SetMarginBottom(4f));
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // Factory details table (red border)
+            // ═════════════════════════════════════════════════════════════════════════
+            var detailsTable = new PdfTable(new float[] { 150f, 1f })
+                .UseAllAvailableWidth().SetMarginBottom(12f);
+
+            PdfCell RedCell(string text, PdfFont font, float fontSize = 12f)
+            {
+                var border = new iText.Layout.Borders.SolidBorder(new DeviceRgb(220, 0, 0), 1.5f);
+                return new PdfCell()
+                    .Add(new Paragraph(text ?? "-").SetFont(font).SetFontSize(fontSize))
+                    .SetBorderTop(border).SetBorderBottom(border)
+                    .SetBorderLeft(border).SetBorderRight(border)
+                    .SetPadding(5f);
+            }
+
+            _ = detailsTable.AddCell(RedCell("Manufacturing Process", boldFont));
+            _ = detailsTable.AddCell(RedCell(managerChangeData.Factory.ManufacturingDetail ?? "-", regularFont));
+
+            _ = detailsTable.AddCell(RedCell("Type", boldFont));
+            _ = detailsTable.AddCell(RedCell(Type, regularFont));
+
+            _ = detailsTable.AddCell(RedCell("Category", boldFont));
+            _ = detailsTable.AddCell(RedCell(managerChangeData.Factory.FactoryTypeName ?? "-", regularFont));
+
+            _ = detailsTable.AddCell(RedCell("Workers", boldFont));
+            _ = detailsTable.AddCell(RedCell(managerChangeData.Factory.NumberOfWorker.ToString() ?? "-", regularFont));
+
+            _ = document.Add(detailsTable);
+
+             _ = document.Add(new Paragraph("Remarks of registering officers:" +
+                    $" {dto.Remarks}")
+                .SetFont(regularFont).SetFontSize(10)
+                .SetMarginBottom(16f));
+
+            _ = document.Add(new Paragraph("").SetMarginBottom(10f));
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // Signature block (right-aligned)
+            // ═════════════════════════════════════════════════════════════════════════
+            var imageData = ImageDataFactory.Create("wwwroot/chief_signature.jpg");
+
+            var sigOuterTable = new PdfTable(new float[] { 1f, 1f })
+                .UseAllAvailableWidth().SetBorder(Border.NO_BORDER).SetMarginBottom(8f);
+
+            sigOuterTable.AddCell(new PdfCell().SetBorder(Border.NO_BORDER));
+
+            var sigCell = new PdfCell().SetBorder(Border.NO_BORDER).SetTextAlignment(TextAlignment.RIGHT);
+
+            var innerDiv = new Div()
+                .SetWidth(250)
+                .SetTextAlignment(TextAlignment.CENTER)
+                .SetHorizontalAlignment(HorizontalAlignment.RIGHT);
+
+            innerDiv.Add(new PdfImage(imageData).ScaleToFit(150, 50).SetHorizontalAlignment(HorizontalAlignment.CENTER));
+            innerDiv.Add(new Paragraph($"( {userName} )").SetFont(regularFont).SetFontSize(12).SetMarginTop(2f));
+            innerDiv.Add(new Paragraph(postName).SetFont(regularFont).SetFontSize(12).SetMarginTop(2f));
+
+            sigCell.Add(innerDiv);
+            sigOuterTable.AddCell(sigCell);
+            document.Add(sigOuterTable);
+
+            // ═════════════════════════════════════════════════════════════════════════
+            // Footer disclaimer
+            // ═════════════════════════════════════════════════════════════════════════
+            var pageWidth = pdf.GetDefaultPageSize().GetWidth();
+            _ = document.Add(new Paragraph(
+                    "This is a computer generated certificate and bears scanned signature. No physical signature is required on this document. You " +
+                    "can verify this document by visiting rajnivesh.rajasthan.gov.in or rajfab.rajasthan.gov.in and entering Application No./ID after clicking the link for " +
+                    "verification on the page.")
+                .SetFont(regularFont).SetFontSize(7)
+                .SetFontColor(ColorConstants.GRAY)
+                .SetTextAlignment(TextAlignment.JUSTIFIED)
+                .SetFixedPosition(35, 33, pageWidth - 70));
+
+            document.Close();
 
             return fileUrl;
         }
@@ -1531,7 +1601,6 @@ namespace RajFabAPI.Services
             };
         }
 
-
         private sealed class PageBorderAndFooterEventHandler : AbstractPdfDocumentEventHandler
         {
             private readonly PdfFont _boldFont;
@@ -1592,21 +1661,6 @@ namespace RajFabAPI.Services
                 int pageNumber = pdfDoc.GetPageNumber(page);
 
                 // ── All Canvas wrappers share the same PdfCanvas ──────────────────────
-
-                // Left: ONLY LAYOUT APPROVED stamp box
-                using (var stampCanvas = new Canvas(pdfCanvas,
-                    new iText.Kernel.Geom.Rectangle(30f, zoneY, stampBoxWidth, zoneHeight)))
-                {
-                    var stampTable = new Table(new float[] { 1f }).UseAllAvailableWidth()
-                        .SetBorder(new iText.Layout.Borders.SolidBorder(ColorConstants.BLACK, 1f));
-                    stampTable.AddCell(new Cell()
-                        .Add(new Paragraph("ONLY LAYOUT APPROVED")
-                            .SetFont(_boldFont).SetFontSize(9).SetTextAlignment(TextAlignment.CENTER))
-                        .Add(new Paragraph("NOTE : STRUCTURAL DESIGN/STABILITY NOT VERIFIED")
-                            .SetFont(_regularFont).SetFontSize(7).SetTextAlignment(TextAlignment.CENTER))
-                        .SetBorder(Border.NO_BORDER).SetPadding(6f));
-                    stampCanvas.Add(stampTable);
-                }
 
                 // Right: Signature image
                 if (!string.IsNullOrWhiteSpace(_signatureUrl))
@@ -1676,7 +1730,6 @@ namespace RajFabAPI.Services
                 pdfCanvas.Release();
             }
         }
-
 
         private sealed class PageBorderEventHandler : AbstractPdfDocumentEventHandler
         {
@@ -1794,6 +1847,17 @@ namespace RajFabAPI.Services
                 // ── Release ONCE after all drawing is complete ────────────────────────
                 pdfCanvas.Release();
             }
+        }
+
+        // ─────────────────────────────────────────────────────────────────────────────
+        // Certificate helper cells  (add alongside your existing BuildHeaderCell etc.)
+        // ─────────────────────────────────────────────────────────────────────────────
+        private static byte[] GenerateQrCodePng(string url)
+        {
+            using var qrGenerator = new QRCoder.QRCodeGenerator();
+            using var qrData = qrGenerator.CreateQrCode(url, QRCoder.QRCodeGenerator.ECCLevel.Q);
+            using var qrCode = new QRCoder.PngByteQRCode(qrData);
+            return qrCode.GetGraphic(5);
         }
 
         string Capitalize(string input)

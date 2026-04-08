@@ -3123,7 +3123,7 @@ namespace RajFabAPI.Services
         }
 
         public async Task<string> GenerateCertificateAsync(
-            EstablishmentCertificateRequestDto dto,
+            CertificateRequestDto dto,
             Guid userId,
             string registrationId)
         {

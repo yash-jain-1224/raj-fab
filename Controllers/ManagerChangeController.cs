@@ -173,5 +173,28 @@ namespace RajFabAPI.Controllers
                 return StatusCode(500, new { success = false, message = ex.Message });
             }
         }
+
+        [Authorize]
+        [HttpPost("generateCertificate/{applicationId}")]
+        public async Task<IActionResult> GenerateCertificate(
+            [FromBody] CertificateRequestDto dto, string applicationId)
+        {
+            var userId = User.FindFirst("userId")?.Value;
+            var userIdGuid = Guid.TryParse(userId, out var parsedGuid) ? parsedGuid : Guid.Empty;
+
+            try
+            {
+                var certificateId = await _managerChangeService.GenerateCertificateAsync(dto, userIdGuid, applicationId);
+                var html = await _eSignService.GenerateCertificateESignHtmlAsync(certificateId);
+                return Ok(new { html });
+            }
+            catch (ArgumentException ex) { return BadRequest(ex.Message); }
+            catch (KeyNotFoundException ex) { return NotFound(ex.Message); }
+            catch (Exception ex)
+            {
+                _logger.LogError("Error occurred while generating the certificate. Message: {ErrorMessage}", ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while generating the certificate.");
+            }
+        }
     }
 }

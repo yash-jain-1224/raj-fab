@@ -29,5 +29,6 @@ namespace RajFabAPI.Services.Interface
         Task<string> GenerateBoilerApplicationPdfAsync(string applicationId);
         Task<string> GenerateBoilerRegistrationNoAsync();
         Task<string> GenerateObjectionLetter(BoilerObjectionLetterDto dto, string registrationId);
+        Task<string> GenerateBoilerCertificateAsync(BoilerCertificateRequestDto request, Guid userId, string registrationId);
     }
 }

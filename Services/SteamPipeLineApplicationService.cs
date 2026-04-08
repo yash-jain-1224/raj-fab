@@ -533,7 +533,7 @@ namespace RajFabAPI.Services
         public async Task<SteamPipeLineFullResponseDto?> GetLatestApprovedByRegistrationNoAsync(string registrationNo)
         {
             var latest = await _dbcontext.SteamPipeLineApplications
-                .Where(x => x.SteamPipeLineRegistrationNo == registrationNo)
+                .Where(x => x.ApplicationId == registrationNo)
                 .OrderByDescending(x => x.Version)
                 .FirstOrDefaultAsync();
 

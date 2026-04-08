@@ -205,4 +205,34 @@ public class BoilerRepairResponseDto
 
         public PersonDetailDto? RepairerDetail { get; set; }
     }
+
+    public class BoilerCertificateDto
+    {
+        public string? ApplicationId { get; set; }
+        public string? BoilerRegistrationNo { get; set; }
+
+        public string? BoilerType { get; set; }
+        public decimal? HeatingSurfaceArea { get; set; }
+        public string? YearOfMake { get; set; }
+
+        public string? EvaporationCapacity { get; set; }
+
+        public string? OwnerName { get; set; }
+        public string? Address { get; set; }
+
+        public string? Repairs { get; set; }
+        public string? Remarks { get; set; }
+
+        public decimal? MaxPressure { get; set; }
+        public DateTime? StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+
+        public decimal? SafetyValvePressure { get; set; }
+
+        public decimal? Fee { get; set; }
+    }
+    public class BoilerCertificateRequestDto
+    {
+        public string? Remarks { get; set; }
+    }
 }

@@ -34,18 +34,18 @@ namespace RajFabAPI.Controllers.SteamPipeLineApplicationControllers
             if (userIdGuid == Guid.Empty)
                 return Unauthorized("Invalid user.");
 
-            var applicationId = await _service.SaveSteamPipeLineAsync(  dto, userIdGuid, "new",  null);
+            var paymentHtml = await _service.SaveSteamPipeLineAsync(  dto, userIdGuid, "new",  null);
 
             return Ok(new
             {
                 Message = "Steam Pipe Line application created successfully.",
-                ApplicationId = applicationId
+                ApplicationId = paymentHtml
             });
         }
 
       
 
-        [HttpPost("amend/{steamPipeLineRegistrationNo}")]
+        [HttpPost("amend/{*steamPipeLineRegistrationNo}")]
         public async Task<IActionResult> Amend(  string steamPipeLineRegistrationNo,  [FromBody] CreateSteamPipeLineDto dto)
         {
             if (string.IsNullOrWhiteSpace(steamPipeLineRegistrationNo))
@@ -84,7 +84,7 @@ namespace RajFabAPI.Controllers.SteamPipeLineApplicationControllers
             });
         }
 
-        [HttpGet("by-application/{applicationId}")]
+        [HttpGet("by-application/{*applicationId}")]
         public async Task<IActionResult> GetByApplicationId(string applicationId)
         {
             if (string.IsNullOrWhiteSpace(applicationId))
@@ -101,7 +101,7 @@ namespace RajFabAPI.Controllers.SteamPipeLineApplicationControllers
 
       
 
-        [HttpGet("by-registration/{registrationNo}")]
+        [HttpGet("by-registration/{*registrationNo}")]
         
         public async Task<IActionResult> GetLatestApproved(string registrationNo)
         {
@@ -120,7 +120,7 @@ namespace RajFabAPI.Controllers.SteamPipeLineApplicationControllers
             return Ok(result);
         }
 
-        [HttpPost("update/{applicationId}")]
+        [HttpPost("update/{*applicationId}")]
         public async Task<IActionResult> Update(  string applicationId,   [FromBody] CreateSteamPipeLineDto dto)
         {
             if (!ModelState.IsValid)

@@ -13,10 +13,12 @@ namespace RajFabAPI.Controllers.BoilerControllers
     public class BoilerRegisterController : ControllerBase
     {
         private readonly IBoilerRegistartionService _boilerService;
+        private readonly IESignService _eSignService;
 
-        public BoilerRegisterController(IBoilerRegistartionService boilerService)
+        public BoilerRegisterController(IBoilerRegistartionService boilerService, IESignService eSignService)
         {
             _boilerService = boilerService;
+            _eSignService = eSignService;
         }
 
         [HttpPost("create")]
@@ -236,6 +238,19 @@ namespace RajFabAPI.Controllers.BoilerControllers
             await _boilerService.UpdateRepairAsync(WebUtility.UrlDecode(applicationId), dto, userId);
 
             return Ok(new { message = "Repair updated successfully." });
+        }
+
+        [HttpPost("generate-boiler-certificate/{*registrationId}")]
+        public async Task<IActionResult> GenerateBoilerCertificate(  [FromBody] BoilerCertificateRequestDto dto,  string registrationId)
+        {
+            var userId = User.FindFirst("userId")?.Value;
+            var userGuid = Guid.TryParse(userId, out var g) ? g : Guid.Empty;
+
+            var certId = await _boilerService.GenerateBoilerCertificateAsync(dto, userGuid, WebUtility.UrlDecode(registrationId));
+
+            //var html = await _eSignService.GenerateCertificateESignHtmlAsync(certId);
+
+            return Ok(new { certId });
         }
     }
 }

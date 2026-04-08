@@ -126,6 +126,8 @@ namespace RajFabAPI.Services
                             Status = mc.Status,
                             DateOfAppointment = mc.DateOfAppointment,
                             SubmittedDate = mc.CreatedAt,
+                            AddressProof = mc.AddressProof,
+                            IdentityProof = mc.IdentityProof,
                             OldManager = oldManager == null ? null : new PersonBasicDto
                             {
                                 Id = oldManager.Id,
@@ -215,6 +217,8 @@ namespace RajFabAPI.Services
                     Version = 1.0m,  // default version
                     CreatedAt = DateTime.Now,
                     UpdatedAt = DateTime.Now,
+                    IdentityProof = dto.NewManagerIdentity,
+                    AddressProof = dto.NewManagerAddressProof,
                     IsActive = true
                 };
 
@@ -305,6 +309,8 @@ namespace RajFabAPI.Services
                 if (dto.OldManagerId.HasValue && dto.OldManagerId != Guid.Empty)
                     managerChange.OldManagerId = dto.OldManagerId.Value;
 
+                managerChange.IdentityProof = dto.NewManagerIdentity ?? managerChange.IdentityProof;
+                managerChange.AddressProof = dto.NewManagerAddressProof ?? managerChange.AddressProof;
                 managerChange.DateOfAppointment = dto.NewManagerDateOfAppointment ?? managerChange.DateOfAppointment;
                 managerChange.Status = dto.Status ?? managerChange.Status;
 
@@ -476,6 +482,8 @@ namespace RajFabAPI.Services
                     SubmittedDate = mc.CreatedAt,
                     ApplicationPDFUrl = mc.ApplicationPDFUrl,
                     ObjectionLetterUrl = mc.ObjectionLetterUrl,
+                    AddressProof = mc.AddressProof,
+                    IdentityProof = mc.IdentityProof,
                     // Factory DTO
                     Factory = (factory == null && establishment == null) ? null : new FactoryBasicDto
                     {
@@ -1847,17 +1855,6 @@ namespace RajFabAPI.Services
                 // ── Release ONCE after all drawing is complete ────────────────────────
                 pdfCanvas.Release();
             }
-        }
-
-        // ─────────────────────────────────────────────────────────────────────────────
-        // Certificate helper cells  (add alongside your existing BuildHeaderCell etc.)
-        // ─────────────────────────────────────────────────────────────────────────────
-        private static byte[] GenerateQrCodePng(string url)
-        {
-            using var qrGenerator = new QRCoder.QRCodeGenerator();
-            using var qrData = qrGenerator.CreateQrCode(url, QRCoder.QRCodeGenerator.ECCLevel.Q);
-            using var qrCode = new QRCoder.PngByteQRCode(qrData);
-            return qrCode.GetGraphic(5);
         }
 
         string Capitalize(string input)

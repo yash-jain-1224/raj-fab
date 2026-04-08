@@ -21,6 +21,9 @@ namespace RajFabAPI.DTOs
         public string NewManagerEmail { get; set; } = string.Empty;
         public string NewManagerTelephone { get; set; } = string.Empty;
         public string NewManagerMobile { get; set; } = string.Empty;
+        public required string NewManagerIdentity { get; set; }
+
+        public required string NewManagerAddressProof { get; set; }
 
         public DateTime NewManagerDateOfAppointment { get; set; }
     }
@@ -47,10 +50,10 @@ namespace RajFabAPI.DTOs
         public string? NewManagerPincode { get; set; }
         public DateTime? NewManagerDateOfAppointment { get; set; }
 
-        // Signatures and Status
-        public string? SignatureofOccupier { get; set; }
-        public string? SignatureOfNewManager { get; set; }
         public string? Status { get; set; }
+        public required string NewManagerIdentity { get; set; }
+
+        public required string NewManagerAddressProof { get; set; }
     }
 
 
@@ -83,9 +86,9 @@ namespace RajFabAPI.DTOs
         public FactoryBasicDto Factory { get; set; }
         public PersonBasicDto OldManager { get; set; }
         public PersonBasicDto NewManager { get; set; }
+        public string IdentityProof { get; set; }
 
-        public string SignatureOfOccupier { get; set; }
-        public string SignatureOfNewManager { get; set; }
+        public string AddressProof { get; set; }
     }
 
 

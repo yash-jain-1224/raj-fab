@@ -107,6 +107,8 @@ namespace RajFabAPI.DTOs
         public string? SanctionedLoadUnit { get; set; }
         public int? NumberOfWorker { get; set; }
         public string? ManufacturingDetail { get; set; }
+        public Guid? FactoryTypeId { get; set; }
+        public string? FactoryTypeName { get; set; }
     }
 
     public class EstablishmentRegistrationDetails

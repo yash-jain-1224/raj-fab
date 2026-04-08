@@ -11,39 +11,72 @@ namespace RajFabAPI.Controllers.FactoryControllers
         private readonly INonHazardousFactoryRegistrationService _service;
 
         public NonHazardousFactoryRegistrationController(INonHazardousFactoryRegistrationService service)
-        {
-            _service = service;
-        }
+            => _service = service;
 
         [HttpGet]
-        public async Task<ActionResult<List<NonHazardousFactoryRegistrationDto>>> GetAll()
+        public async Task<IActionResult> GetAll()
         {
-            var result = await _service.GetAllAsync();
-            return Ok(result);
+            try
+            {
+                var result = await _service.GetAllAsync();
+                return Ok(new { success = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<NonHazardousFactoryRegistrationDto>> GetById(Guid id)
+        public async Task<IActionResult> Get(Guid id)
         {
-            var result = await _service.GetByIdAsync(id);
-            if (result == null) return NotFound();
-            return Ok(result);
+            try
+            {
+                var result = await _service.GetByIdAsync(id);
+                if (result == null)
+                    return NotFound(new { success = false, message = "Record not found" });
+
+                return Ok(new { success = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
         }
 
         [HttpPost]
-        public async Task<ActionResult<NonHazardousFactoryRegistrationDto>> Create([FromBody] CreateNonHazardousFactoryRegistrationRequest request)
+        public async Task<IActionResult> Create(CreateNonHazardousFactoryRegistrationRequest dto)
         {
-            if (!ModelState.IsValid) return BadRequest(ModelState);
-            var result = await _service.CreateAsync(request);
-            return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+            try
+            {
+                var result = await _service.CreateAsync(dto);
+                return Ok(new { success = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
         }
 
-        [HttpDelete("{id}")]
+        [HttpPost("{id}/delete")]
         public async Task<IActionResult> Delete(Guid id)
         {
-            var deleted = await _service.DeleteAsync(id);
-            if (!deleted) return NotFound();
-            return NoContent();
+            try
+            {
+                var success = await _service.DeleteAsync(id);
+                if (!success)
+                    return NotFound(new { success = false, message = "Record not found" });
+
+                return Ok(new { success = true, data = success });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
         }
     }
 }

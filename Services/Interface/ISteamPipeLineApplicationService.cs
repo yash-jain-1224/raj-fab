@@ -12,6 +12,7 @@ namespace RajFabAPI.Services.Interface
         Task<SteamPipeLineFullResponseDto?> GetSteamPipeLineByApplicationIdAsync(string applicationId);
         Task<string> UpdateSteamPipeLineAsync(string applicationId, CreateSteamPipeLineDto dto);
         Task<string> CloseSteamPipeLineAsync(CreateSteamPipeLineCloseDto dto);
+        //Task<string> GenerateSteamPipeLinePdfAsync(string applicationId);
     }
 
 

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using RajFabAPI.DTOs;
 using RajFabAPI.Services.Interface;
+using System.Net;
 
 namespace RajFabAPI.Controllers.FactoryControllers
 {
@@ -49,13 +50,28 @@ namespace RajFabAPI.Controllers.FactoryControllers
         {
             try
             {
-                var result = await _service.CreateAsync(dto);
+               
+                var userIdClaim = User.FindFirst("UserId")?.Value;
+
+                if (!Guid.TryParse(userIdClaim, out var userId))
+                    return Unauthorized("Invalid UserId");
+
+                var result = await _service.CreateAsync(dto, userId);
+
                 return Ok(new { success = true, data = result });
             }
             catch (Exception ex)
             {
                 return BadRequest(new { success = false, message = ex.Message });
             }
+        }
+
+        [HttpGet("details/{applicationId}")]
+        public async Task<IActionResult> GetDetails(string applicationId)
+        {
+            var result = await _service.GetByApplicationIdAsync(WebUtility.UrlDecode(applicationId));
+
+            return Ok(result);
         }
 
         [HttpPost("{id}/delete")]
@@ -72,6 +88,26 @@ namespace RajFabAPI.Controllers.FactoryControllers
             catch (InvalidOperationException ex)
             {
                 return BadRequest(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost("update/{applicationId}")]
+        public async Task<IActionResult> Update(string applicationId, CreateNonHazardousFactoryRegistrationRequest dto)
+        {
+            try
+            {
+                var userIdClaim = User.FindFirst("UserId")?.Value;
+
+                if (!Guid.TryParse(userIdClaim, out var userId))
+                    return Unauthorized("Invalid User");
+
+                var result = await _service.UpdateAsync(WebUtility.UrlDecode(applicationId), dto, userId);
+
+                return Ok(new { success = true, data = result });
             }
             catch (Exception ex)
             {

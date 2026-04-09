@@ -2188,3 +2188,36 @@ ADD ObjectionLetterUrl NVARCHAR(500) NULL,
 
 ALTER TABLE CommencementCessationApplication
 DROP COLUMN IsESignCompleted, ApplicationId;
+
+
+ALTER TABLE NonHazardousFactoryRegistrations
+DROP COLUMN 
+    ApplicantAddress,
+    AreaId,
+    DistrictId,
+    DivisionId,
+    FactoryAddress,
+    FactoryPincode,
+    ApplicationDate,
+    ApplicationPlace,
+    ApplicantSignature,
+    VerifyDate,
+    VerifyPlace,
+    VerifierSignature;
+ 
+
+ ALTER TABLE NonHazardousFactoryRegistrations
+ADD
+    ApplicantAddressLine1 NVARCHAR(500) NULL,
+    ApplicantAddressLine2 NVARCHAR(500) NULL,
+    SubdivisionName NVARCHAR(100) NOT NULL DEFAULT '',
+    TehsilName NVARCHAR(100) NOT NULL DEFAULT '',
+    DistrictName NVARCHAR(100) NULL,
+    Area NVARCHAR(100) NULL,
+    Pincode NVARCHAR(500) NULL;
+
+	ALTER TABLE NonHazardousFactoryRegistrations
+ADD  ApplicationNumber NVARCHAR(100) NULL,
+    ApplicationPDFUrl NVARCHAR(500) NULL,
+    ObjectionLetterUrl NVARCHAR(500) NULL,
+   Version DECIMAL(3,1) NOT NULL;

@@ -55,6 +55,7 @@ namespace RajFabAPI.Constants
             public const string BoilerDrawingRegistration = "Boiler Drawing Registration";
             public const string BoierDrawingRenewal = "Boier Drawing Renewal";
             public const string BoilerInspection = "Boiler Inspection";
+            public const string FactoryNonHazardous = "Factory Non-Hazardous";
         }
 
         public static class BoilerApplicationType

@@ -14,13 +14,13 @@ namespace RajFabAPI.Controllers.SteamPipeLineApplicationControllers
     {
         private readonly ISteamPipeLineApplicationService _service;
 
-        public SteamPipeLineApplicationController( ISteamPipeLineApplicationService service)
+        public SteamPipeLineApplicationController(ISteamPipeLineApplicationService service)
         {
             _service = service;
         }
 
         [HttpPost("create")]
-        public async Task<IActionResult> Create( [FromBody] CreateSteamPipeLineDto dto)
+        public async Task<IActionResult> Create([FromBody] CreateSteamPipeLineDto dto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
@@ -34,7 +34,7 @@ namespace RajFabAPI.Controllers.SteamPipeLineApplicationControllers
             if (userIdGuid == Guid.Empty)
                 return Unauthorized("Invalid user.");
 
-            var paymentHtml = await _service.SaveSteamPipeLineAsync(  dto, userIdGuid, "new",  null);
+            var paymentHtml = await _service.SaveSteamPipeLineAsync(dto, userIdGuid, "new", null);
 
             return Ok(new
             {
@@ -43,10 +43,10 @@ namespace RajFabAPI.Controllers.SteamPipeLineApplicationControllers
             });
         }
 
-      
+
 
         [HttpPost("amend/{*steamPipeLineRegistrationNo}")]
-        public async Task<IActionResult> Amend(  string steamPipeLineRegistrationNo,  [FromBody] CreateSteamPipeLineDto dto)
+        public async Task<IActionResult> Amend(string steamPipeLineRegistrationNo, [FromBody] CreateSteamPipeLineDto dto)
         {
             if (string.IsNullOrWhiteSpace(steamPipeLineRegistrationNo))
                 return BadRequest("SteamPipeLineRegistrationNo is required.");
@@ -59,7 +59,7 @@ namespace RajFabAPI.Controllers.SteamPipeLineApplicationControllers
             if (userIdGuid == Guid.Empty)
                 return Unauthorized("Invalid user.");
 
-            var newAppId = await _service.SaveSteamPipeLineAsync(  dto, userIdGuid,  "amend",   steamPipeLineRegistrationNo);
+            var newAppId = await _service.SaveSteamPipeLineAsync(dto, userIdGuid, "amend", steamPipeLineRegistrationNo);
 
             return Ok(new
             {
@@ -69,7 +69,7 @@ namespace RajFabAPI.Controllers.SteamPipeLineApplicationControllers
         }
 
         [HttpPost("renew")]
-        public async Task<IActionResult> Renew( [FromBody] RenewSteamPipeLineDto dto)
+        public async Task<IActionResult> Renew([FromBody] RenewSteamPipeLineDto dto)
         {
             var userId = User.FindFirst("userId")?.Value;
             var userIdGuid = Guid.TryParse(userId, out var parsedGuid)
@@ -99,10 +99,10 @@ namespace RajFabAPI.Controllers.SteamPipeLineApplicationControllers
             return Ok(result);
         }
 
-      
+
 
         [HttpGet("by-registration/{*registrationNo}")]
-        
+
         public async Task<IActionResult> GetLatestApproved(string registrationNo)
         {
             var result = await _service.GetLatestApprovedByRegistrationNoAsync(WebUtility.UrlDecode(registrationNo));
@@ -121,7 +121,7 @@ namespace RajFabAPI.Controllers.SteamPipeLineApplicationControllers
         }
 
         [HttpPost("update/{*applicationId}")]
-        public async Task<IActionResult> Update(  string applicationId,   [FromBody] CreateSteamPipeLineDto dto)
+        public async Task<IActionResult> Update(string applicationId, [FromBody] CreateSteamPipeLineDto dto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
@@ -137,7 +137,7 @@ namespace RajFabAPI.Controllers.SteamPipeLineApplicationControllers
         }
 
         [HttpPost("close")]
-        public async Task<IActionResult> Close(  [FromBody] CreateSteamPipeLineCloseDto dto)
+        public async Task<IActionResult> Close([FromBody] CreateSteamPipeLineCloseDto dto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
@@ -151,5 +151,32 @@ namespace RajFabAPI.Controllers.SteamPipeLineApplicationControllers
                 ApplicationId = applicationId
             });
         }
+
+        //[HttpGet("generate-pdf/{*applicationId}")]
+        //public async Task<IActionResult> GeneratePdf(string applicationId)
+        //{
+        //    try
+        //    {
+        //        var filePath = await _service.GenerateSteamPipeLinePdfAsync(WebUtility.UrlDecode(applicationId));
+
+        //        if (!System.IO.File.Exists(filePath))
+        //            return NotFound("PDF not found");
+
+        //        var fileBytes = await System.IO.File.ReadAllBytesAsync(filePath);
+
+        //        return File(fileBytes, "application/pdf", Path.GetFileName(filePath));
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return BadRequest(new
+        //        {
+        //            message = ex.Message,
+        //            inner = ex.InnerException?.Message,
+        //            stack = ex.StackTrace
+        //        });
+        //    }
+
+        //}
+        
     }
 }

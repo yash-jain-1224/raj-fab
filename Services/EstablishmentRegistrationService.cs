@@ -989,6 +989,9 @@ namespace RajFabAPI.Services
                    join division in _db.Set<Division>().AsNoTracking()
                        on districtDetail.DivisionId equals division.Id into divisionJoin
                    from divisionDetail in divisionJoin.DefaultIfEmpty()
+                   join factoryType in _db.Set<FactoryType>().AsNoTracking()
+                    on estDetail.FactoryTypeId equals factoryType.Id into factoryTypeJoin
+                   from factoryTypeDetail in factoryTypeJoin.DefaultIfEmpty()
                    select new EstablishmentRegistrationDetailsDto
                    {
                        Id = reg.EstablishmentRegistrationId,
@@ -1015,6 +1018,7 @@ namespace RajFabAPI.Services
                            Email = estDetail != null ? estDetail.Email : null,
                            Mobile = estDetail != null ? estDetail.Mobile : null,
                            Telephone = estDetail != null ? estDetail.Telephone : null,
+                           FactoryTypeName = factoryTypeDetail != null ? factoryTypeDetail.Name : null,
                        },
                        MainOwnerDetail = new PersonDetailDto
                        {

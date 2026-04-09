@@ -893,6 +893,22 @@ namespace RajFabAPI.Services
 
                 fileUrl = await _managerChangeService.GenerateObjectionLetter(ManagerChangeObjectionLetterData, applicationId);
             }
+            else if (moduleName == ApplicationTypeNames.FactoryCommencementCessation)
+            {
+                var commencementCessationData = await _commencementCessationService.GetByIdAsync(applicationId);
+                if (commencementCessationData == null) return;
+
+                var CommencementCessationObjectionLetterData = new CommencementCessationObjectionLetterDto
+                {
+                    CommencementCessationData = commencementCessationData,
+                    Objections = objections,
+                    SignatoryName = signatoryName,
+                    SignatoryDesignation = signatoryDesignation,
+                    SignatoryLocation = signatoryLocation
+                };
+
+                fileUrl = await _commencementCessationService.GenerateObjectionLetter(CommencementCessationObjectionLetterData, applicationId);
+            }
             else if (moduleName == ApplicationTypeNames.BoilerRegistration)
             {
                 var app = await _db.BoilerRegistrations.FindAsync(applicationId);

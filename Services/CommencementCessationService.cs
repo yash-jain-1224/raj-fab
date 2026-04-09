@@ -437,7 +437,7 @@ namespace RajFabAPI.Services
             {
                 ("Application Type", Capitalize(appData?.Type)),
                 ("Approx. Duration", appData?.ApproxDurationOfWork),
-                ("Reason", appData?.Reason),
+                ("Reason",  MapReason(appData?.Reason)),
                 ("Cessation Intimation Date", appData?.FromDate?.ToString("dd/MM/yyyy")),
                 ("Cessation Effective Date", appData?.OnDate?.ToString("dd/MM/yyyy")),
                 ("Status", appData?.Status),
@@ -458,6 +458,19 @@ namespace RajFabAPI.Services
             }
 
             return filePath;
+        }
+
+        public static string? MapReason(string? reason)
+        {
+            return reason?.ToLower() switch
+            {
+                "business_closed"     => "Business Closed",
+                "ownership_transfer"  => "Transfer of Ownership",
+                "relocation"          => "Relocation",
+                "merger"              => "Merger / Amalgamation",
+                "other"               => "Other",
+                _                     => reason
+            };
         }
 
         // ─────────────────────────────────────────────────────────────────────────────
@@ -549,7 +562,7 @@ namespace RajFabAPI.Services
                 .UseAllAvailableWidth().SetBorder(Border.NO_BORDER).SetMarginBottom(12f);
 
             _ = topRow.AddCell(new PdfCell()
-                .Add(new Paragraph($"Commencement/Cessation Application No.:- {dto.CommencementCessationData.CommencementCessationData.ApplicationNumber ?? "-"}")
+                .Add(new Paragraph($"{Capitalize(dto?.CommencementCessationData?.CommencementCessationData?.Type)} Application No.:- {dto.CommencementCessationData.CommencementCessationData.ApplicationNumber ?? "-"}")
                     .SetFont(boldFont).SetFontSize(10))
                 .SetBorder(Border.NO_BORDER));
 
@@ -584,7 +597,7 @@ namespace RajFabAPI.Services
             // ═════════════════════════════════════════════════════════════════════════
             var subPara = new Paragraph();
             subPara.Add(new Text("Sub:- ").SetFont(boldFont).SetFontSize(12));
-            subPara.Add(new Text("Regarding approval of Commencement Cessation Application").SetFont(regularFont).SetFontSize(12));
+            subPara.Add(new Text("Regarding approval of " + Capitalize(dto?.CommencementCessationData?.CommencementCessationData?.Type) +" Application").SetFont(regularFont).SetFontSize(12));
             _ = document.Add(subPara.SetMarginBottom(4f));
 
             // ═════════════════════════════════════════════════════════════════════════

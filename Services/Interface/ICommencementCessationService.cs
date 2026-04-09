@@ -13,5 +13,6 @@ namespace RajFabAPI.Services.Interface
         Task<bool> UpdateStatusAndRemark(string registrationId, string status);
         Task<string> GenerateCommencementCessationPdf(CommencementCessationResDto dto);
         Task<string> GenerateCertificateAsync(CertificateRequestDto dto, Guid userId, string applicationId);
+        Task<string> GenerateObjectionLetter(CommencementCessationObjectionLetterDto dto, string applicationId);
     }
 }

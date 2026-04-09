@@ -76,6 +76,7 @@ namespace RajFabAPI.DTOs
     {
         public string? Id { get; set; }
         public Guid? FactoryTypeId { get; set; }
+        public string? FactoryTypeName { get; set; }
         public string? LinNumber { get; set; }
         public string BrnNumber { get; set; }
         public string? PanNumber { get; set; }

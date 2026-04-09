@@ -1097,6 +1097,11 @@ namespace RajFabAPI.Services
                     if (Guid.TryParse(applicationId, out var mcGuid))
                         await _managerChangeService.GenerateManagerChangePdfAsync(mcGuid);
                 }
+                else if (Module.Name == ApplicationTypeNames.FactoryCommencementCessation)
+                {
+                    var data = await _commencementCessationService.GetByIdAsync(applicationId);
+                    await _commencementCessationService.GenerateCommencementCessationPdf(data);
+                }
                 else if (Module.Name == ApplicationTypeNames.BoilerRegistration)
                 {
                     await _boilerRegistrationService.GenerateBoilerApplicationPdfAsync(applicationId);

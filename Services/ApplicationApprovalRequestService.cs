@@ -413,7 +413,7 @@ namespace RajFabAPI.Services
                     else if (appRegistration != null && appRegistration.ApplicationTypeName == ApplicationTypeNames.FactoryCommencementCessation)
                     {
                         var commCess = _db.CommencementCessationApplication
-                            .FirstOrDefault(x => x.ApplicationId == appRegistration.ApplicationId);
+                            .FirstOrDefault(x => x.Id == Guid.Parse(appRegistration.ApplicationId));
                         var estReg = _db.EstablishmentRegistrations
                             .FirstOrDefault(x => x.RegistrationNumber == commCess.FactoryRegistrationNumber);
                         var estDetails = _db.EstablishmentDetails
@@ -428,7 +428,7 @@ namespace RajFabAPI.Services
                                 CreatedDate = appRegistration.CreatedDate,
                                 ApplicationType = appRegistration.ApplicationTypeName,
                                 ApplicationTitle = estDetails != null ? estDetails.EstablishmentName : "",
-                                ApplicationRegistrationNumber = "",
+                                ApplicationRegistrationNumber = commCess.ApplicationNumber,
                                 Status = item.Status,
                                 TotalEmployees = (estDetails.TotalNumberOfEmployee + estDetails.TotalNumberOfContractEmployee + estDetails.TotalNumberOfInterstateWorker) ?? 0
 

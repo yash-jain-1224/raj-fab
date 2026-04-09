@@ -14,8 +14,8 @@ namespace RajFabAPI.Models
         public string Type { get; set; }
 
         [Required]
-        [StringLength(36)]
-        public string ApplicationId { get; set; }
+        [StringLength(50)]
+        public string ApplicationNumber { get; set; }
 
         [Required]
         [StringLength(100)]
@@ -35,8 +35,8 @@ namespace RajFabAPI.Models
         [StringLength(50)]
         public string? ApproxDurationOfWork { get; set; }
 
-        public bool IsESignCompleted { get; set; } = false;
         public string? ApplicationPDFUrl { get; set; }
+        public string? ObjectionLetterUrl { get; set; } = string.Empty;
 
         [Required]
         [StringLength(50)]

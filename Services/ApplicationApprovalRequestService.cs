@@ -413,7 +413,7 @@ namespace RajFabAPI.Services
                     else if (appRegistration != null && appRegistration.ApplicationTypeName == ApplicationTypeNames.FactoryCommencementCessation)
                     {
                         var commCess = _db.CommencementCessationApplication
-                            .FirstOrDefault(x => x.ApplicationId == appRegistration.ApplicationId);
+                            .FirstOrDefault(x => x.Id == Guid.Parse(appRegistration.ApplicationId));
                         var estReg = _db.EstablishmentRegistrations
                             .FirstOrDefault(x => x.RegistrationNumber == commCess.FactoryRegistrationNumber);
                         var estDetails = _db.EstablishmentDetails
@@ -428,7 +428,7 @@ namespace RajFabAPI.Services
                                 CreatedDate = appRegistration.CreatedDate,
                                 ApplicationType = appRegistration.ApplicationTypeName,
                                 ApplicationTitle = estDetails != null ? estDetails.EstablishmentName : "",
-                                ApplicationRegistrationNumber = "",
+                                ApplicationRegistrationNumber = commCess.ApplicationNumber,
                                 Status = item.Status,
                                 TotalEmployees = (estDetails.TotalNumberOfEmployee + estDetails.TotalNumberOfContractEmployee + estDetails.TotalNumberOfInterstateWorker) ?? 0
 
@@ -892,6 +892,22 @@ namespace RajFabAPI.Services
                 };
 
                 fileUrl = await _managerChangeService.GenerateObjectionLetter(ManagerChangeObjectionLetterData, applicationId);
+            }
+            else if (moduleName == ApplicationTypeNames.FactoryCommencementCessation)
+            {
+                var commencementCessationData = await _commencementCessationService.GetByIdAsync(applicationId);
+                if (commencementCessationData == null) return;
+
+                var CommencementCessationObjectionLetterData = new CommencementCessationObjectionLetterDto
+                {
+                    CommencementCessationData = commencementCessationData,
+                    Objections = objections,
+                    SignatoryName = signatoryName,
+                    SignatoryDesignation = signatoryDesignation,
+                    SignatoryLocation = signatoryLocation
+                };
+
+                fileUrl = await _commencementCessationService.GenerateObjectionLetter(CommencementCessationObjectionLetterData, applicationId);
             }
             else if (moduleName == ApplicationTypeNames.BoilerRegistration)
             {

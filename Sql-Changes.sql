@@ -2151,3 +2151,10 @@ ALTER TABLE ManagerChanges
 ADD
     IdentityProof NVARCHAR(500) NULL DEFAULT '',
     AddressProof NVARCHAR(500) NULL DEFAULT '';
+
+ALTER TABLE CommencementCessationApplication
+ADD ObjectionLetterUrl NVARCHAR(500) NULL,
+    ApplicationNumber NVARCHAR(50) NOT NULL DEFAULT '';
+
+ALTER TABLE CommencementCessationApplication
+DROP COLUMN IsESignCompleted, ApplicationId;

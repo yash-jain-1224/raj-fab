@@ -211,7 +211,7 @@ namespace RajFabAPI.Services
                 else if (appRegistration.ApplicationTypeName == ApplicationTypeNames.FactoryCommencementCessation)
                 {
                     var commCess = _db.CommencementCessationApplication
-                            .FirstOrDefault(x => x.ApplicationId == appRegistration.ApplicationId);
+                            .FirstOrDefault(x => x.Id == Guid.Parse(appRegistration.ApplicationId));
                     var estReg = _db.EstablishmentRegistrations
                             .FirstOrDefault(x => x.RegistrationNumber == commCess.FactoryRegistrationNumber);
                     var estDetails = _db.EstablishmentDetails
@@ -224,6 +224,7 @@ namespace RajFabAPI.Services
                             ApplicationType = ApplicationTypeNames.FactoryCommencementCessation,
                             Status = commCess.Status,
                             CreatedDate = appRegistration.CreatedDate,
+                            ApplicationNumber = commCess.ApplicationNumber,
                             ApplicationId = appRegistration.ApplicationId,
                             ApplicationTitle = estDetails != null ? estDetails.EstablishmentName : "",
                             IsESignCompletedOccupier = appRegistration.IsESignCompletedOccupier,
@@ -812,7 +813,7 @@ namespace RajFabAPI.Services
                         _logger.LogInformation("Processing FactoryCommencementCessation workflow for ApplicationId: {ApplicationId}", appReg.ApplicationId);
 
                         var comReg = await _db.Set<CommencementCessationApplication>()
-                            .FirstOrDefaultAsync(x => x.ApplicationId == appReg.ApplicationId);
+                            .FirstOrDefaultAsync(x => x.Id == Guid.Parse(appReg.ApplicationId));
 
                         if (comReg == null)
                         {
@@ -857,7 +858,6 @@ namespace RajFabAPI.Services
                             subDivisionId
                         );
 
-                        comReg.IsESignCompleted = true;
                         comReg.UpdatedDate = DateTime.Now;
                         applicationUrl = comReg.ApplicationPDFUrl;
 

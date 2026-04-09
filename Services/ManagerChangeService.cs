@@ -247,10 +247,6 @@ namespace RajFabAPI.Services
                 _context.ApplicationRegistrations.Add(appReg);
                 await _context.SaveChangesAsync();
 
-                // Workflow / ApprovalRequest is created AFTER both eSigns complete
-                // (occupier first, then manager) via UpdateApplicationESignData.
-                // Do NOT create it here to avoid duplicate entries.
-
                 await tx.CommitAsync();
                 return new ManagerChangeResponseDto
                 {
@@ -800,52 +796,6 @@ namespace RajFabAPI.Services
                 .SetMarginBottom(8));
             document.Add(new Paragraph("\n").SetFontSize(10));
 
-            void AddTwoPartSection(
-                string title,
-                (string Label, string? Value)[] leftRows,
-                (string Label, string? Value)[] rightRows)
-            {
-                // Title spans full width
-                document.Add(new Paragraph(title)
-                    .SetFont(boldFont)
-                    .SetFontSize(11)
-                    .SetMarginBottom(6f));
-
-                // Create left table (2 columns)
-                var leftTable = new PdfTable(new float[] { 2, 3 }).UseAllAvailableWidth();
-                foreach (var (label, value) in leftRows)
-                {
-                    _ = leftTable.AddCell(new PdfCell()
-                        .Add(new Paragraph(label).SetFont(boldFont).SetFontSize(9))
-                        .SetBorder(new SolidBorder(0.5f)));
-
-                    _ = leftTable.AddCell(new PdfCell()
-                        .Add(new Paragraph(value ?? "—").SetFont(regularFont).SetFontSize(9))
-                        .SetBorder(new SolidBorder(0.5f)));
-                }
-
-                // Create right table (2 columns)
-                var rightTable = new PdfTable(new float[] { 2, 3 }).UseAllAvailableWidth();
-                foreach (var (label, value) in rightRows)
-                {
-                    _ = rightTable.AddCell(new PdfCell()
-                        .Add(new Paragraph(label).SetFont(boldFont).SetFontSize(9))
-                        .SetBorder(new SolidBorder(0.5f)));
-
-                    _ = rightTable.AddCell(new PdfCell()
-                        .Add(new Paragraph(value ?? "—").SetFont(regularFont).SetFontSize(9))
-                        .SetBorder(new SolidBorder(0.5f)));
-                }
-
-                // Create container table with two equal-width columns
-                var containerTable = new PdfTable(new float[] { 1, 1 }).UseAllAvailableWidth();
-                _ = containerTable.AddCell(new PdfCell().Add(leftTable).SetBorder(Border.NO_BORDER));
-                _ = containerTable.AddCell(new PdfCell().Add(rightTable).SetBorder(Border.NO_BORDER));
-
-                // Add container table to document
-                document.Add(containerTable);
-            }
-
             var headerTable = new PdfTable(new float[] { 360f, 160f })
                 .UseAllAvailableWidth()
                 .SetBorder(Border.NO_BORDER);
@@ -876,7 +826,7 @@ namespace RajFabAPI.Services
             {
                 ("Factory Name:", data.Factory?.FactoryName),
                 ("Factory Registration No.:", data.Factory?.FactoryRegistrationNumber?.ToString()),
-                  ("Address:", $"{data.Factory?.AddressLine1}, {data.Factory?.AddressLine2}"),
+                ("Address:", $"{data.Factory?.AddressLine1}, {data.Factory?.AddressLine2}"),
                 ("District:", data.Factory?.DistrictName),
                 ("Sub-division:", data.Factory?.SubDivisionName),
                 ("Tehsil:", data.Factory?.TehsilName),

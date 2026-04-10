@@ -349,7 +349,7 @@ namespace RajFabAPI.Services
                 .SetBorder(Border.NO_BORDER);
 
             headerTable.AddCell(new Cell()
-                .Add(new Paragraph($"{Capitalize(appData.Type)} No: {appData?.ApplicationNumber}")
+                .Add(new Paragraph($"{Capitalize(appData.Type)} Application No: {appData?.ApplicationNumber}")
                     .SetFont(boldFont).SetFontSize(10))
                 .SetBorder(Border.NO_BORDER));
 
@@ -435,15 +435,145 @@ namespace RajFabAPI.Services
             // ─────────────────────────────────────────────
             var appRows = new List<(string, string?)>
             {
-                ("Application Type", Capitalize(appData?.Type)),
-                ("Approx. Duration", appData?.ApproxDurationOfWork),
+                // ("Application Type", Capitalize(appData?.Type)),
+                // ("Approx. Duration", appData?.ApproxDurationOfWork),
                 ("Reason",  MapReason(appData?.Reason)),
-                ("Cessation Intimation Date", appData?.FromDate?.ToString("dd/MM/yyyy")),
-                ("Cessation Effective Date", appData?.OnDate?.ToString("dd/MM/yyyy")),
-                ("Status", appData?.Status),
+                // ("Cessation Intimation Date", appData?.FromDate?.ToString("dd/MM/yyyy")),
+                // ("Cessation Effective Date", appData?.OnDate?.ToString("dd/MM/yyyy")),
+                // ("Status", appData?.Status),
             };
+            if (appData?.Type == "cessation")
+            {
+                appRows.Add(("Date Of Cessation",
+                 appData?.DateOfCessation.HasValue == true
+                     ? appData.DateOfCessation.Value.ToString("dd/MM/yyyy")
+                     : null));
+            }
+            else
+            {
+                appRows.Add(("Approx. Duration", appData?.ApproxDurationOfWork));
+            }
+
             document.Add(new AreaBreak());
             AddTwoColumnSection("3. Application Details", appRows);
+
+
+            var sectionTable = new Table(1).UseAllAvailableWidth();
+
+            // Heading
+            sectionTable.AddCell(new Cell()
+                .Add(new Paragraph($"{Capitalize(appData.Type)} Verification")
+                    .SetFont(boldFont)
+                    .SetFontSize(12))
+                .SetBorder(Border.NO_BORDER));
+            // ─────────────────────────────────────────────
+            // Checkbox + text (Verification Section) - FIXED
+            // ─────────────────────────────────────────────
+            var zapfFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.ZAPFDINGBATS);
+            var isChecked = true;
+
+            var verificationTable = new PdfTable(new float[] { 12f, 468f })
+                .UseAllAvailableWidth()
+                .SetBorder(Border.NO_BORDER)
+                .SetMarginTop(5);
+
+            // ✅ Checkbox (same as working one)
+            var checkCell = new PdfCell()
+                .SetBorder(Border.NO_BORDER)
+                .SetPadding(0.5f)
+                .SetVerticalAlignment(VerticalAlignment.TOP)
+                .SetTextAlignment(TextAlignment.CENTER);
+
+            checkCell.Add(new Paragraph(isChecked ? "4" : " ")
+                .SetFont(isChecked ? zapfFont : regularFont)
+                .SetBorder(new SolidBorder(ColorConstants.BLACK, 0.8f))
+                .SetFontSize(7)
+                .SetMargin(0));
+
+            verificationTable.AddCell(checkCell);
+
+            // Dates
+            string createdDate = factoryData?.CreatedAt.HasValue == true
+                ? factoryData.CreatedAt.Value.ToString("dd/MM/yyyy")
+                : "________";
+
+            string fromDate = appData?.FromDate.HasValue == true
+                ? appData.FromDate.Value.ToString("dd/MM/yyyy")
+                : "dd/mm/yyyy";
+
+            string onDate = appData?.OnDate.HasValue == true
+                ? appData.OnDate.Value.ToString("dd/MM/yyyy")
+                : "dd/mm/yyyy";
+
+            // ✅ Text Cell (same structure)
+            var textCell = new PdfCell()
+                .SetBorder(Border.NO_BORDER)
+                .SetPaddingLeft(6)
+                .SetVerticalAlignment(VerticalAlignment.TOP);
+
+            // ✅ Paragraph with bold parts
+            var paragraph = new Paragraph()
+                .SetFont(regularFont)
+                .SetFontSize(9);
+
+            paragraph.Add("I/We hereby intimate that the work of factory or establishment having registration No. ");
+
+            paragraph.Add(new Text($"{appData?.FactoryRegistrationNumber ?? "________"} dated {createdDate}")
+                .SetFont(boldFont)); // Bold
+
+            paragraph.Add(" is likely to cease work with effect from ");
+
+            paragraph.Add(new Text($"{fromDate} / On {onDate} (Date)")
+                .SetFont(boldFont)); // Bold
+
+            paragraph.Add(".");
+
+            textCell.Add(paragraph);
+
+            verificationTable.AddCell(textCell);
+
+            // ✅ Add to document
+            document.Add(verificationTable);
+            // ─────────────────────────────────────────────
+            // Declaration Section (Only for Cessation)
+            // ─────────────────────────────────────────────
+            if (string.Equals(appData?.Type, "cessation", StringComparison.OrdinalIgnoreCase))
+            {
+
+                var declarationTable = new Table(new float[] { 12f, 468f })
+                    .UseAllAvailableWidth()
+                    .SetMarginTop(10)
+                    .SetBorder(Border.NO_BORDER);
+
+                // ✅ Checkbox (same as working one)
+                var checkCell1 = new PdfCell()
+                    .SetBorder(Border.NO_BORDER)
+                    .SetPadding(0.5f)
+                    .SetVerticalAlignment(VerticalAlignment.TOP)
+                    .SetTextAlignment(TextAlignment.CENTER);
+
+                checkCell1.Add(new Paragraph(isChecked ? "4" : " ")
+                    .SetFont(isChecked ? zapfFont : regularFont)
+                    .SetBorder(new SolidBorder(ColorConstants.BLACK, 0.8f))
+                    .SetFontSize(7)
+                    .SetMargin(0));
+
+                declarationTable.AddCell(checkCell1);
+
+                // ✅ Declaration Text
+                var textCell1 = new Cell()
+                    .SetBorder(Border.NO_BORDER)
+                    .SetPaddingLeft(6);
+
+                textCell1.Add(new Paragraph(
+                    "I/We hereby certify that the payment of all dues to the workers employed in the establishment have been made and the premises are kept free from storage of hazardous chemicals and substances.")
+                    .SetFont(regularFont)
+                    .SetFontSize(9));
+
+                declarationTable.AddCell(textCell1);
+
+                document.Add(declarationTable);
+            }
 
             document.Close();
 
@@ -464,12 +594,12 @@ namespace RajFabAPI.Services
         {
             return reason?.ToLower() switch
             {
-                "business_closed"     => "Business Closed",
-                "ownership_transfer"  => "Transfer of Ownership",
-                "relocation"          => "Relocation",
-                "merger"              => "Merger / Amalgamation",
-                "other"               => "Other",
-                _                     => reason
+                "business_closed" => "Business Closed",
+                "ownership_transfer" => "Transfer of Ownership",
+                "relocation" => "Relocation",
+                "merger" => "Merger / Amalgamation",
+                "other" => "Other",
+                _ => reason
             };
         }
 
@@ -597,7 +727,7 @@ namespace RajFabAPI.Services
             // ═════════════════════════════════════════════════════════════════════════
             var subPara = new Paragraph();
             subPara.Add(new Text("Sub:- ").SetFont(boldFont).SetFontSize(12));
-            subPara.Add(new Text("Regarding approval of " + Capitalize(dto?.CommencementCessationData?.CommencementCessationData?.Type) +" Application").SetFont(regularFont).SetFontSize(12));
+            subPara.Add(new Text("Regarding approval of " + Capitalize(dto?.CommencementCessationData?.CommencementCessationData?.Type) + " Application").SetFont(regularFont).SetFontSize(12));
             _ = document.Add(subPara.SetMarginBottom(4f));
 
             // ═════════════════════════════════════════════════════════════════════════
@@ -820,7 +950,7 @@ namespace RajFabAPI.Services
         {
             if (dto == null) throw new ArgumentNullException(nameof(dto));
 
-            var fileName = $"certificate_manager_change_{applicationId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+            var fileName = $"certificate_commencement_cessation_{applicationId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
             var webRootPath = _environment.WebRootPath;
             if (string.IsNullOrWhiteSpace(webRootPath))
                 throw new InvalidOperationException("wwwroot is not configured.");
@@ -902,7 +1032,7 @@ namespace RajFabAPI.Services
                 .UseAllAvailableWidth().SetBorder(Border.NO_BORDER).SetMarginBottom(12f);
 
             _ = topRow.AddCell(new PdfCell()
-                .Add(new Paragraph($"Manager Change Application No.:- {commencementCessationData.CommencementCessationData.ApplicationNumber ?? "-"}")
+                .Add(new Paragraph($"{Capitalize(commencementCessationData.CommencementCessationData.Type)} Application No.:- {commencementCessationData.CommencementCessationData.ApplicationNumber ?? "-"}")
                     .SetFont(boldFont).SetFontSize(10))
                 .SetBorder(Border.NO_BORDER));
 
@@ -937,7 +1067,7 @@ namespace RajFabAPI.Services
             // ═════════════════════════════════════════════════════════════════════════
             var subPara = new Paragraph();
             subPara.Add(new Text("Sub:- ").SetFont(boldFont).SetFontSize(12));
-            subPara.Add(new Text("Certificate of your Manager Change Application").SetFont(regularFont).SetFontSize(12));
+            subPara.Add(new Text($"Certificate of your {Capitalize(commencementCessationData.CommencementCessationData.Type)} Application").SetFont(regularFont).SetFontSize(12));
             _ = document.Add(subPara.SetMarginBottom(4f));
 
             // ═════════════════════════════════════════════════════════════════════════

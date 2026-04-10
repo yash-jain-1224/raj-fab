@@ -99,6 +99,7 @@ namespace RajFabAPI.DTOs
         public string AddressLine1 { get; set; }
         public string AddressLine2 { get; set; }
         public string DistrictName { get; set; }
+        public Guid SubDivisionId { get; set; }
         public string SubDivisionName { get; set; }
         public string TehsilName { get; set; }
         public string Area { get; set; }
@@ -112,6 +113,8 @@ namespace RajFabAPI.DTOs
         public string? ManufacturingDetail { get; set; }
         public Guid? FactoryTypeId { get; set; }
         public string? FactoryTypeName { get; set; }
+        public PersonBasicDto? ManagerDetails { get; set; }
+        public PersonBasicDto? OccupierDetails { get; set; }
     }
 
     public class EstablishmentRegistrationDetails

@@ -15,30 +15,34 @@ namespace RajFabAPI.Services
         private readonly ApplicationDbContext _db;
         private readonly ILogger<ApplicationApprovalRequestService> _logger;
         private readonly IEstablishmentRegistrationService _establishmentRegistrationService;
-        private readonly ICommencementCessationService _commencementCessationService;
         private readonly IFactoryMapApprovalService _factoryMapApprovalService;
         private readonly IFactoryLicenseService _factoryLicenseService;
         private readonly IManagerChangeService _managerChangeService;
+        private readonly ICommencementCessationService _commencementCessationService;
+        private readonly INonHazardousFactoryRegistrationService _nonHazardousFactoryRegistrationService;
         private readonly IBoilerRegistartionService _boilerRegistrationService;
+
         private readonly IHttpContextAccessor _httpContextAccessor;
 
         public ApplicationApprovalRequestService(ApplicationDbContext db, ILogger<ApplicationApprovalRequestService> logger,
             IEstablishmentRegistrationService establishmentRegistrationService,
-            ICommencementCessationService commencementCessationService,
             IFactoryMapApprovalService factoryMapApprovalService,
             IFactoryLicenseService factoryLicenseService,
             IManagerChangeService managerChangeService,
+            ICommencementCessationService commencementCessationService,
+            INonHazardousFactoryRegistrationService nonHazardousFactoryRegistrationService,
             IHttpContextAccessor httpContextAccessor
-            )
+        )
         {
             _db = db;
             _logger = logger;
             _establishmentRegistrationService = establishmentRegistrationService;
-            _commencementCessationService = commencementCessationService;
             _factoryMapApprovalService = factoryMapApprovalService;
             _factoryLicenseService = factoryLicenseService;
-            _httpContextAccessor = httpContextAccessor;
+            _commencementCessationService = commencementCessationService;
             _managerChangeService = managerChangeService;
+            _nonHazardousFactoryRegistrationService = nonHazardousFactoryRegistrationService;
+            _httpContextAccessor = httpContextAccessor;
         }
 
         public async Task<int> CreateAsync(CreateApplicationApprovalRequestDto dto)
@@ -678,7 +682,7 @@ namespace RajFabAPI.Services
 
                     select f
                 ).FirstOrDefaultAsync();
-                    
+
                 string? factoryTypeName = null;
                 if (detail?.FactoryTypeId.HasValue == true)
                 {
@@ -700,7 +704,7 @@ namespace RajFabAPI.Services
                 fileUrl = await _establishmentRegistrationService.GenerateObjectionLetter(
                     new EstablishmentObjectionLetterDto
                     {
-                        ManufacturingType =  factory.ManufacturingType,
+                        ManufacturingType = factory.ManufacturingType,
                         ApplicationId = reg.ApplicationId,
                         Date = DateTime.Today,
                         EstablishmentName = detail?.EstablishmentName ?? "",
@@ -879,7 +883,7 @@ namespace RajFabAPI.Services
             }
             else if (moduleName == ApplicationTypeNames.ManagerChange)
             {
-               var managerChangeData = await _managerChangeService.GetByIdAsync(Guid.Parse(applicationId));
+                var managerChangeData = await _managerChangeService.GetByIdAsync(Guid.Parse(applicationId));
                 if (managerChangeData == null) return;
 
                 var ManagerChangeObjectionLetterData = new ManagerChangeObjectionLetterDto
@@ -909,6 +913,10 @@ namespace RajFabAPI.Services
 
                 fileUrl = await _commencementCessationService.GenerateObjectionLetter(CommencementCessationObjectionLetterData, applicationId);
             }
+            else if (moduleName == ApplicationTypeNames.FactoryNonHazardous)
+            {
+                fileUrl = await _nonHazardousFactoryRegistrationService.GenerateNonHazardousObjectionLetter(Guid.Parse(applicationId), objections, signatoryName, signatoryDesignation, signatoryLocation);
+            }
             else if (moduleName == ApplicationTypeNames.BoilerRegistration)
             {
                 var app = await _db.BoilerRegistrations.FindAsync(applicationId);
@@ -916,7 +924,7 @@ namespace RajFabAPI.Services
 
                 var boiler = await _db.BoilerDetails
                     .FirstOrDefaultAsync(b => b.BoilerRegistrationId == app.Id);
-                var address = string.Join(", ", new string[] {     boiler?.AddressLine1 ,  boiler?.AddressLine2,  boiler?.Area,  boiler?.PinCode?.ToString() }.Where(x => !string.IsNullOrWhiteSpace(x)));
+                var address = string.Join(", ", new string[] { boiler?.AddressLine1, boiler?.AddressLine2, boiler?.Area, boiler?.PinCode?.ToString() }.Where(x => !string.IsNullOrWhiteSpace(x)));
 
                 fileUrl = await _boilerRegistrationService.GenerateObjectionLetter(
                     new BoilerObjectionLetterDto
@@ -983,6 +991,10 @@ namespace RajFabAPI.Services
             else if (module.Name == ApplicationTypeNames.FactoryCommencementCessation)
             {
                 await _commencementCessationService.UpdateStatusAndRemark(regId, status);
+            }
+            else if (module.Name == ApplicationTypeNames.FactoryNonHazardous)
+            {
+                await _nonHazardousFactoryRegistrationService.UpdateStatusAndRemark(regId, status);
             }
             else if (module.Name == ApplicationTypeNames.FactoryLicense ||
                      module.Name == ApplicationTypeNames.FactoryLicenseAmendment ||

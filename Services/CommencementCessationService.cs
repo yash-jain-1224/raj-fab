@@ -417,7 +417,6 @@ namespace RajFabAPI.Services
             {
                 ("Occupier Name", occupierData?.Name),
                 ("Designation", occupierData?.Designation),
-
                 ("Address", $"{occupierData?.AddressLine1}, {occupierData?.AddressLine2}"),
                 ("District", occupierData?.District),
                 ("Sub-division", occupierData?.Tehsil),

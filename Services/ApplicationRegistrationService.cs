@@ -20,15 +20,17 @@ namespace RajFabAPI.Services
         private readonly ApplicationDbContext _db;
         private readonly ILogger<ApplicationRegistrationService> _logger;
         private readonly IEstablishmentRegistrationService _establishmentService;
+        private readonly INonHazardousFactoryRegistrationService _nonHazardousFactoryRegistrationService;
         private readonly IApplicationWorkFlowService _applicationWorkFlowService;
         private readonly IWebHostEnvironment _environment;
-        public ApplicationRegistrationService(IWebHostEnvironment environment, ApplicationDbContext db, ILogger<ApplicationRegistrationService> logger, IEstablishmentRegistrationService establishmentService, IApplicationWorkFlowService applicationWorkFlowService)
+        public ApplicationRegistrationService(IWebHostEnvironment environment, ApplicationDbContext db, ILogger<ApplicationRegistrationService> logger, IEstablishmentRegistrationService establishmentService, IApplicationWorkFlowService applicationWorkFlowService, INonHazardousFactoryRegistrationService nonHazardousFactoryRegistrationService)
         {
             _db = db;
             _logger = logger;
             _establishmentService = establishmentService;
             _applicationWorkFlowService = applicationWorkFlowService;
             _environment = environment;
+            _nonHazardousFactoryRegistrationService = nonHazardousFactoryRegistrationService;
         }
 
         public async Task<List<ApplicationRegistrationDto>> GetAllAsync()
@@ -346,6 +348,37 @@ namespace RajFabAPI.Services
                         Status = appeal.Status,
                         CreatedDate = appRegistration.CreatedDate,
                         ApplicationId = appeal.Id,
+                        ApplicationTitle = estDetails?.EstablishmentName ?? "Appeal",
+                        IsESignCompletedOccupier = appRegistration.IsESignCompletedOccupier
+                    });
+                }
+                else if (
+                    appRegistration.ApplicationTypeName == ApplicationTypeNames.FactoryNonHazardous)
+                {
+                    
+                    var nonHazardousFactoryData = _db.NonHazardousFactoryRegistrations
+                        .FirstOrDefault(x => x.Id == Guid.Parse(appRegistration.ApplicationId));
+
+                    if (nonHazardousFactoryData == null)
+                        continue;
+
+                    // Get establishment using FactoryRegistrationNumber
+                    var estReg = _db.EstablishmentRegistrations
+                        .FirstOrDefault(x => x.RegistrationNumber == nonHazardousFactoryData.FactoryRegistrationNumber);
+
+                    var estDetails = estReg != null
+                        ? _db.EstablishmentDetails
+                            .FirstOrDefault(x => x.Id == estReg.EstablishmentDetailId)
+                        : null;
+
+                    applicationUserDashboardDtos.Add(new ApplicationUserDashboardDto
+                    {
+                        ApplicationRegistrationId = appRegistration.Id,
+                        ApplicationType = appRegistration.ApplicationTypeName, // FactoryLicense / Amendment / Renewal
+                        Status = nonHazardousFactoryData.Status,
+                        CreatedDate = appRegistration.CreatedDate,
+                        ApplicationId = nonHazardousFactoryData.Id.ToString(),
+                        ApplicationNumber = nonHazardousFactoryData.ApplicationNumber,
                         ApplicationTitle = estDetails?.EstablishmentName ?? "Appeal",
                         IsESignCompletedOccupier = appRegistration.IsESignCompletedOccupier
                     });
@@ -863,7 +896,34 @@ namespace RajFabAPI.Services
 
                         _logger.LogInformation("CommencementCessation ESign completed for ApplicationId: {ApplicationId}", appReg.ApplicationId);
                     }
+                    else if (module.Name == ApplicationTypeNames.FactoryNonHazardous)
+                    {
+                        _logger.LogInformation("Processing FactoryNonHazardous workflow for ApplicationId: {ApplicationId}", appReg.ApplicationId);
 
+                        var nhReg = await _nonHazardousFactoryRegistrationService.GetByIdAsync(Guid.Parse(appReg.ApplicationId));
+
+                        if (nhReg == null)
+                        {
+                            _logger.LogWarning("NonHazardousFactoryRegistration not found for ApplicationId: {ApplicationId}", appReg.ApplicationId);
+                            return false;
+                        }
+
+                        totalWorkers = (nhReg.ApplicationDetails.FactoryDetails.NumberOfWorker ?? 0);
+                        factoryTypeId = nhReg.ApplicationDetails.FactoryDetails.FactoryTypeId;
+                        subDivisionId = nhReg.ApplicationDetails.FactoryDetails.SubDivisionId;
+
+                        _logger.LogInformation(
+                            "NonHazardous Workers calculated: {Workers}, FactoryTypeId: {FactoryTypeId}, SubDivisionId: {SubDivisionId}",
+                            totalWorkers,
+                            factoryTypeId,
+                            subDivisionId
+                        );
+
+                        nhReg.ApplicationDetails.UpdatedAt = DateTime.Now;
+                        applicationUrl = nhReg.ApplicationDetails.ApplicationPDFUrl;
+
+                        _logger.LogInformation("NonHazardous ESign completed for ApplicationId: {ApplicationId}", appReg.ApplicationId);
+                    }
                     else if (module.Name == ApplicationTypeNames.Appeal)
                     {
                         _logger.LogInformation("Processing Appeal workflow for ApplicationId: {ApplicationId}", appReg.ApplicationId);
@@ -919,9 +979,7 @@ namespace RajFabAPI.Services
                         applicationUrl = appealReg.ApplicationPDFUrl;
 
                         _logger.LogInformation("Appeal ESign completed for ApplicationId: {ApplicationId}", appReg.ApplicationId);
-                    }
-
-                    else if (module.Name == ApplicationTypeNames.BoilerRegistration ||
+                    } else if (module.Name == ApplicationTypeNames.BoilerRegistration ||
                          module.Name == ApplicationTypeNames.BoilerAmendment ||
                         module.Name == ApplicationTypeNames.BoilerRenewal)
                     {

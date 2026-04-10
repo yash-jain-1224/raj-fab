@@ -198,7 +198,7 @@ CREATE TABLE FactoryMapApprovals
 );
 
 ALTER TABLE EstablishmentRegistrations
-ADD ApplicationPDFUrl NVARCHAR(MAX) NULL DEFAULT '',
+ADD ApplicationPDFUrl NVARCHAR(MAX) NULL DEFAULT '';
 
 ALTER TABLE CommencementCessationApplications
 ADD IsESignCompleted BIT NOT NULL CONSTRAINT DF_CommencementCessation_IsESignCompleted DEFAULT 0,
@@ -808,7 +808,7 @@ ON Certificates (ApplicationId);
 
 
 
-date -06-03-2026 ---------------------------------------------------------------------
+---------   06-03-2026
 
 CREATE TABLE [dbo].[EconomiserRegistrations](
 	[Id] [uniqueidentifier] NOT NULL,
@@ -1082,10 +1082,9 @@ WHERE Signature IS NULL;
 
 ALTER TABLE Certificates
 ADD CONSTRAINT DF_Certificates_Signature
-DEFAULT '' FOR Signature;
+DEFAULT ''
 
--------------------------------------------------------------
-09-03-2026
+------------- 09-03-2026
 
 CREATE TABLE [dbo].[BoilerDrawingApplications](
 	[Id] [uniqueidentifier] NOT NULL,
@@ -1249,8 +1248,7 @@ CREATE TABLE InspectorApplicationInspections (
 CREATE INDEX IX_Inspection_AssignmentId
 ON InspectorApplicationInspections(InspectorApplicationAssignmentId);
 
-------------------------------------------------------------------------
-10-03-2026
+----------------   10-03-2026
 
 CREATE TABLE CompetentPersonRegistrations
 (
@@ -1680,7 +1678,7 @@ ALTER TABLE EstablishmentRegistrations
 ADD ApplicationId NVARCHAR(50) NOT NULL DEFAULT '';
 
 ----------------------------------------------------------------
-13.03.2026
+-- 13.03.2026
 CREATE TABLE [dbo].[SMTCTrainerDetails](
 	[Id] [uniqueidentifier] NOT NULL,
 	[SMTCRegistrationId] [uniqueidentifier] NOT NULL,
@@ -1901,7 +1899,7 @@ ALTER TABLE FactoryMapApprovalChemicals
     ADD Unit NVARCHAR(50) NULL;
     
 --------------------------------------------------------------------
-18-03-2026
+-- 18-03-2026
 CREATE TABLE [dbo].[FactoryMapApprovalFiles] (
     [Id] NVARCHAR(50) NOT NULL PRIMARY KEY,
 
@@ -1926,8 +1924,7 @@ CREATE TABLE [dbo].[FactoryMapApprovalFiles] (
    
 );
 
----------------
-23-03-26
+--------------- 23-03-26
 ALTER TABLE BoilerManufactureRegistrations
 ADD 
     Amount DECIMAL(18,2),
@@ -2017,8 +2014,7 @@ CREATE TABLE BoilerDrawingClosures (
 
     IsActive BIT NOT NULL
 );
---------------------------------------
-30-03-2026
+-------------------------------------- 30-03-2026
 
 CREATE TABLE BoilerCategories (
     Id INT IDENTITY(1,1) PRIMARY KEY,
@@ -2190,34 +2186,25 @@ ALTER TABLE CommencementCessationApplication
 DROP COLUMN IsESignCompleted, ApplicationId;
 
 
-ALTER TABLE NonHazardousFactoryRegistrations
-DROP COLUMN 
-    ApplicantAddress,
-    AreaId,
-    DistrictId,
-    DivisionId,
-    FactoryAddress,
-    FactoryPincode,
-    ApplicationDate,
-    ApplicationPlace,
-    ApplicantSignature,
-    VerifyDate,
-    VerifyPlace,
-    VerifierSignature;
- 
+IF OBJECT_ID('NonHazardousFactoryRegistrations', 'U') IS NOT NULL
+BEGIN
+    DROP TABLE NonHazardousFactoryRegistrations;
+END
 
- ALTER TABLE NonHazardousFactoryRegistrations
-ADD
-    ApplicantAddressLine1 NVARCHAR(500) NULL,
-    ApplicantAddressLine2 NVARCHAR(500) NULL,
-    SubdivisionName NVARCHAR(100) NOT NULL DEFAULT '',
-    TehsilName NVARCHAR(100) NOT NULL DEFAULT '',
-    DistrictName NVARCHAR(100) NULL,
-    Area NVARCHAR(100) NULL,
-    Pincode NVARCHAR(500) NULL;
 
-	ALTER TABLE NonHazardousFactoryRegistrations
-ADD  ApplicationNumber NVARCHAR(100) NULL,
+CREATE TABLE NonHazardousFactoryRegistrations (
+    Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+
+    FactoryRegistrationNumber NVARCHAR(100) NOT NULL,
+
+    ApplicationNumber NVARCHAR(100) NULL,
     ApplicationPDFUrl NVARCHAR(500) NULL,
     ObjectionLetterUrl NVARCHAR(500) NULL,
-   Version DECIMAL(3,1) NOT NULL;
+
+    Version DECIMAL(18,2) NOT NULL DEFAULT 1.0,
+
+    Status NVARCHAR(50) NOT NULL DEFAULT 'Pending',
+
+    CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+    UpdatedAt DATETIME NOT NULL DEFAULT GETDATE()
+);

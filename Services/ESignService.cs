@@ -54,6 +54,7 @@ namespace RajFabAPI.Services
         private readonly IWebHostEnvironment _environment;
         private readonly IBoilerRegistartionService _boilerRegistrationService;
         private readonly IManagerChangeService _managerChangeService;
+        private readonly INonHazardousFactoryRegistrationService _nonHazardousFactoryRegistrationService;
 
         public ESignService(
             IMemoryCache cache, IEstablishmentRegistrationService estRegService, ApplicationDbContext db, IConfiguration config,
@@ -64,7 +65,8 @@ namespace RajFabAPI.Services
             IAppealService appealService,
             IWebHostEnvironment environment,
             IBoilerRegistartionService boilerRegistrationService,
-            IManagerChangeService managerChangeService)
+            IManagerChangeService managerChangeService,
+            INonHazardousFactoryRegistrationService nonHazardousFactoryRegistrationService)
         {
             _logger = logger;
             _cache = cache;
@@ -80,6 +82,7 @@ namespace RajFabAPI.Services
             _environment = environment;
             _boilerRegistrationService = boilerRegistrationService;
             _managerChangeService = managerChangeService;
+            _nonHazardousFactoryRegistrationService = nonHazardousFactoryRegistrationService;
         }
 
         public async Task<string> GenerateESignHtmlAsync(string applicationId)
@@ -217,7 +220,7 @@ namespace RajFabAPI.Services
 
                                 var response = await _factoryMapApprovalService.GetApplicationByIdAsync(applicationId);
                                 var res = await _estRegService.GetFactoryDetailsByFactoryRegistrationNumberAsync(response.Data.FactoryRegistrationNumber);
-                                
+
                                 signerName = res.Factory?.EmployerDetail?.Name ?? "Occupier";
                                 signerLocation = res.Factory?.DistrictName ?? "Rajasthan";
                                 if (!response.Success || response.Data == null)
@@ -335,6 +338,23 @@ namespace RajFabAPI.Services
 
                                 pdfBytes = await File.ReadAllBytesAsync(filePath);
                             }
+                            else if (applicationData.ModuleName == ApplicationTypeNames.FactoryNonHazardous)
+                            {
+                                _logger.LogInformation("Processing Factory Non-Hazardous PDF generation");
+
+                                var filePath = await _nonHazardousFactoryRegistrationService
+                                    .GenerateNonHazardousPdfAsync(Guid.Parse(applicationId));
+
+                                _logger.LogInformation("Generated PDF Path: {FilePath}", filePath);
+
+                                if (!File.Exists(filePath))
+                                {
+                                    _logger.LogError("PDF file not found at path: {FilePath}", filePath);
+                                    throw new Exception("Generated PDF not found");
+                                }
+
+                                pdfBytes = await File.ReadAllBytesAsync(filePath);
+                            }
 
                             else if (applicationData.ModuleName == ApplicationTypeNames.BoilerRegistration || applicationData.ModuleName == ApplicationTypeNames.BoilerAmendment || applicationData.ModuleName == ApplicationTypeNames.BoilerRenewal)
                             {
@@ -436,7 +456,7 @@ namespace RajFabAPI.Services
                                                 .FirstOrDefaultAsync(p => p.Id == mcRec.NewManagerId);
 
                                             var res = await _estRegService.GetFactoryDetailsByFactoryRegistrationNumberAsync(mcRec.FactoryRegistrationNumber.ToString());
-                                                                            
+
                                             if (mgrPerson != null)
                                             {
                                                 signerName = mgrPerson.Name ?? signerName;
@@ -666,7 +686,8 @@ namespace RajFabAPI.Services
                         certificate.Status = "Active";
                         await _db.SaveChangesAsync();
                         _logger.LogInformation("Certificate DB updated successfully");
-                    } else
+                    }
+                    else
                     {
                         var updateSuccess = await _applicationRegistrationService
                         .UpdateApplicationESignData(

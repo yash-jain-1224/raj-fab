@@ -38,4 +38,12 @@ namespace RajFabAPI.Models.BoilerModels
         public ICollection<PersonDetail>? Persons { get; set; }
     }
 
+    public class BoilerFee
+    {
+        public int Id { get; set; }
+        public decimal MaxHeatingSurfaceArea { get; set; }
+        public decimal Fees { get; set; }
+    }
+
+
 }

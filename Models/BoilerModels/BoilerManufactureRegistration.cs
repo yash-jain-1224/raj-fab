@@ -14,6 +14,7 @@ namespace RajFabAPI.Models.BoilerModels
         public string? ApplicationId { get; set; }
         public string ManufactureRegistrationNo { get; set; } = null!;
         public string ?BmClassification { get; set; }
+        public decimal Amount { get; set; }
         // 🔥 RENEWAL TRACKING
         public DateTime? ValidFrom { get; set; }
         public DateTime? ValidUpto { get; set; }

@@ -21,33 +21,44 @@ namespace RajFabAPI.Models.FactoryModels
         [MaxLength(255)]
         public string RelationName { get; set; }
         [MaxLength(500)]
-        public string ApplicantAddress { get; set; }
-        [Required]
-        [MaxLength(100)]
-        public string AreaId { get; set; }
-        [Required]
-        [MaxLength(100)]
-        public string DistrictId { get; set; }
-        [MaxLength(100)]
-        public string DivisionId { get; set; }
+        public string ApplicantAddressLine1 { get; set; }
+
         [MaxLength(500)]
-        public string FactoryAddress { get; set; }
-        [MaxLength(10)]
-        public string FactoryPincode { get; set; }
+        public string ApplicantAddressLine2 { get; set; }
+
+        [Required]
+        [MaxLength(100)]
+        public string SubdivisionName { get; set; }
+        [Required]
+        [MaxLength(100)]
+        public string TehsilName { get; set; }
+        [MaxLength(100)]
+
+        public string DistrictName { get; set; }
+        [MaxLength(100)]
+        public string Area { get; set; }
+        [MaxLength(500)]
+        
+        public string Pincode { get; set; }
+
+        // NEW FIELDS
+        [MaxLength(100)]
+        public string ApplicationNumber { get; set; }
+
+        [MaxLength(500)]
+        public string ApplicationPDFUrl { get; set; }
+
+        [MaxLength(500)]
+        public string ObjectionLetterUrl { get; set; }
+
+        public decimal Version { get; set; } = 1.0m;
         public bool DeclarationAccepted { get; set; }
         public bool RequiredInfoAccepted { get; set; }
         public bool VerifyAccepted { get; set; }
-        public bool WorkersLimitAccepted { get; set; }
-        public DateTime ApplicationDate { get; set; }
-        [MaxLength(100)]
-        public string ApplicationPlace { get; set; }
-        [MaxLength(255)]
-        public string ApplicantSignature { get; set; }
-        public DateTime VerifyDate { get; set; }
-        [MaxLength(100)]
-        public string VerifyPlace { get; set; }
-        [MaxLength(255)]
-        public string VerifierSignature { get; set; }
+        public bool WorkersLimitAccepted { get; set; }  
+        
+
+       
         [Required]
         [MaxLength(50)]
         public string Status { get; set; } = "Pending";

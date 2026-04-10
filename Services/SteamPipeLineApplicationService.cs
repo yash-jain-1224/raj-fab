@@ -5,6 +5,18 @@ using RajFabAPI.Models;
 using RajFabAPI.Services.Interface;
 using System.Text.Json;
 using static RajFabAPI.Constants.AppConstants;
+using iText.Kernel.Pdf;
+using iText.Kernel.Font;
+using iText.IO.Font.Constants;
+using iText.Layout;
+using iText.Layout.Element;
+using iText.Layout.Properties;
+using iText.Layout.Borders;
+using iText.Kernel.Colors;
+using iText.IO.Image;
+using iText.Kernel.Pdf.Canvas;
+using iText.Kernel.Pdf.Event;
+using RajFabAPI.Models.BoilerModels;
 
 namespace RajFabAPI.Services
 {
@@ -12,10 +24,12 @@ namespace RajFabAPI.Services
     {
         private readonly ApplicationDbContext _dbcontext;
         private readonly IWebHostEnvironment _environment;
+        private readonly IPaymentService _paymentService;
 
-        public SteamPipeLineApplicationService(ApplicationDbContext context)
+        public SteamPipeLineApplicationService(ApplicationDbContext context, IPaymentService paymentService)
         {
             _dbcontext = context;
+            _paymentService = paymentService;
         }
 
         private async Task<string> GenerateApplicationNumberAsync(string type)
@@ -68,12 +82,16 @@ namespace RajFabAPI.Services
             return $"STPL-{next:D5}";
         }
 
-        public async Task<string> SaveSteamPipeLineAsync(  CreateSteamPipeLineDto dto,    string? type,  string? steamPipeLineRegistrationNo)
+        public async Task<string> SaveSteamPipeLineAsync(  CreateSteamPipeLineDto dto, Guid userId, string? type,  string? steamPipeLineRegistrationNo)
         {
             if (dto == null)
                 throw new ArgumentNullException(nameof(dto));
 
             type = type?.ToLower() ?? "new";
+
+            var module = await _dbcontext.Set<FormModule>()
+                       .FirstOrDefaultAsync(m => m.Name == ApplicationTypeNames.Stplregistration)
+                       ?? throw new Exception("Stpl  Registration module not found in FormModules. Please ensure the module is seeded.");
 
             await using var tx = await _dbcontext.Database.BeginTransactionAsync();
 
@@ -144,7 +162,8 @@ namespace RajFabAPI.Services
                 }
                 var newApplicationId = await GenerateApplicationNumberAsync(type);
 
-                var version = type == "amend"  ? baseRecord!.Version + 0.1m : 1.0m;              
+                var version = type == "amend"  ? baseRecord!.Version + 0.1m : 1.0m;
+                const decimal stplRegistrationFee = 10000m;
 
                 var entity = new SteamPipeLineApplication
                 {
@@ -153,7 +172,7 @@ namespace RajFabAPI.Services
 
                     ApplicationId = newApplicationId,
                     SteamPipeLineRegistrationNo = registrationNo,
-
+                    Amount = stplRegistrationFee,
                     BoilerApplicationNo = dto.BoilerApplicationNo ?? baseRecord?.BoilerApplicationNo,
                     ProposedLayoutDescription = dto.ProposedLayout ?? baseRecord?.ProposedLayoutDescription,
                     ConsentLetterProvided = dto.ConsentLetterProvided ?? baseRecord?.ConsentLetterProvided,
@@ -198,8 +217,28 @@ namespace RajFabAPI.Services
                 await _dbcontext.SaveChangesAsync();
 
                 await tx.CommitAsync();
+                var user = await _dbcontext.Users
+                     .AsNoTracking()
+                     .FirstOrDefaultAsync(u => u.Id == userId)
+                     ?? throw new Exception("User not found.");
 
-                return entity.ApplicationId;
+                var html = await _paymentService.ActionRequestPaymentRPP(
+                    entity.Amount,
+                    user.FullName,
+                    user.Mobile,
+                    user.Email,
+                    user.Username,
+                    "4157FE34BBAE3A958D8F58CCBFAD7",
+                    "UWf6a7cDCP",
+                    entity.ApplicationId!,
+                    module.Id.ToString(),
+                    userId.ToString()
+                );
+
+                return html;
+
+
+                //return entity.ApplicationId;
             }
             catch
             {
@@ -209,10 +248,14 @@ namespace RajFabAPI.Services
         }
 
 
-        public async Task<string> RenewSteamPipeLineAsync(  RenewSteamPipeLineDto dto)
+        public async Task<string> RenewSteamPipeLineAsync(  RenewSteamPipeLineDto dto, Guid userId)
         {
             if (dto == null)
                 throw new ArgumentNullException(nameof(dto));
+
+            var module = await _dbcontext.Set<FormModule>()
+                       .FirstOrDefaultAsync(m => m.Name == ApplicationTypeNames.Stplrenewal)
+                       ?? throw new Exception("Stpl  Renew module not found in FormModules. Please ensure the module is seeded.");
 
             await using var tx = await _dbcontext.Database.BeginTransactionAsync();
 
@@ -316,7 +359,24 @@ namespace RajFabAPI.Services
                 await _dbcontext.SaveChangesAsync();
                 await tx.CommitAsync();
 
-                return entity.ApplicationId;
+                var user = await _dbcontext.Users
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(u => u.Id == userId)
+                    ?? throw new Exception("User not found.");
+
+                var html = await _paymentService.ActionRequestPaymentRPP(
+                    entity.Amount,
+                    user.FullName,
+                    user.Mobile,
+                    user.Email,
+                    user.Username,
+                    "4157FE34BBAE3A958D8F58CCBFAD7",
+                    "UWf6a7cDCP",
+                    entity.ApplicationId!,
+                    module.Id.ToString(),
+                    userId.ToString()
+                );
+                return html;
             }
             catch
             {
@@ -375,62 +435,7 @@ namespace RajFabAPI.Services
                 IsActive = x.IsActive
             };
         }
-        //public async Task<List<SteamPipeLineFullResponseDto>>GetSteamPipeLineByRegistrationNoAsync(string registrationNo)
-        //{
-        //    var list = await _dbcontext.SteamPipeLineApplications
-        //        .Where(x => x.SteamPipeLineRegistrationNo == registrationNo)
-        //        .OrderByDescending(x => x.Version)
-        //        .ToListAsync();
-
-        //    var result = new List<SteamPipeLineFullResponseDto>();
-
-        //    foreach (var x in list)
-        //    {
-        //        result.Add(new SteamPipeLineFullResponseDto
-        //        {
-        //            ApplicationId = x.ApplicationId,
-        //            SteamPipeLineRegistrationNo = x.SteamPipeLineRegistrationNo,
-
-        //            BoilerApplicationNo = x.BoilerApplicationNo,
-        //            ProposedLayoutDescription = x.ProposedLayoutDescription,
-        //            ConsentLetterProvided = x.ConsentLetterProvided,
-        //            SteamPipeLineDrawingNo = x.SteamPipeLineDrawingNo,
-        //            BoilerMakerRegistrationNo = x.BoilerMakerRegistrationNo,
-        //            ErectorName = x.ErectorName,
-
-        //            FactoryRegistrationNumber = x.FactoryRegistrationNumber,
-        //            Factorydetailjson = x.Factorydetailjson,
-
-        //            PipeLengthUpTo100mm = x.PipeLengthUpTo100mm,
-        //            PipeLengthAbove100mm = x.PipeLengthAbove100mm,
-
-        //            NoOfDeSuperHeaters = x.NoOfDeSuperHeaters,
-        //            NoOfSteamReceivers = x.NoOfSteamReceivers,
-        //            NoOfFeedHeaters = x.NoOfFeedHeaters,
-        //            NoOfSeparatelyFiredSuperHeaters = x.NoOfSeparatelyFiredSuperHeaters,
-
-        //            FormIIPath = x.FormIIPath,
-        //            FormIIIPath = x.FormIIIPath,
-        //            FormIIIAPath = x.FormIIIAPath,
-        //            FormIIIBPath = x.FormIIIBPath,
-        //            FormIVPath = x.FormIVPath,
-        //            FormIVAPath = x.FormIVAPath,
-        //            DrawingPath = x.DrawingPath,
-        //            SupportingDocumentsPath = x.SupportingDocumentsPath,
-
-        //            RenewalYears = x.RenewalYears,
-        //            ValidFrom = x.ValidFrom,
-        //            ValidUpto = x.ValidUpto,
-
-        //            Type = x.Type,
-        //            Version = x.Version,
-        //            Status = x.Status,
-        //            IsActive = x.IsActive
-        //        });
-        //    }
-
-        //    return result;
-        //}
+        
 
 
         public async Task<List<SteamPipeLineFullResponseDto>> GetAllSteamPipeLinesAsync()
@@ -485,7 +490,7 @@ namespace RajFabAPI.Services
         public async Task<SteamPipeLineFullResponseDto?> GetLatestApprovedByRegistrationNoAsync(string registrationNo)
         {
             var latest = await _dbcontext.SteamPipeLineApplications
-                .Where(x => x.SteamPipeLineRegistrationNo == registrationNo)
+                .Where(x => x.ApplicationId == registrationNo)
                 .OrderByDescending(x => x.Version)
                 .FirstOrDefaultAsync();
 
@@ -680,6 +685,307 @@ namespace RajFabAPI.Services
             }
         }
 
+    //    public async Task<string> GenerateSteamPipeLinePdfAsync(string applicationId)
+    //    {
+    //        var stpl = await _dbcontext.SteamPipeLineApplications
+    //            .FirstOrDefaultAsync(x => x.ApplicationId == applicationId);
 
+    //        if (stpl == null)
+    //            throw new Exception("Steam Pipeline application not found");
+
+    //        var rootPath = _environment?.WebRootPath;
+
+    //        if (string.IsNullOrEmpty(rootPath))
+    //        {
+    //            rootPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+    //        }
+
+    //        var folderName = "boiler-stpl-forms";
+    //        var folderPath = Path.Combine(rootPath, folderName);
+
+    //        // ? this WILL create folder if not exists
+    //        Directory.CreateDirectory(folderPath);
+
+    //        // ? IMPORTANT: sanitize filename (your applicationId has '/')
+    //        var safeAppId = applicationId.Replace("/", "_");
+
+    //        var fileName = $"boiler_stpl_{safeAppId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+    //        var filePath = Path.Combine(folderPath, fileName);
+
+
+
+
+    //        using var writer = new PdfWriter(filePath);
+    //        using var pdf = new PdfDocument(writer);
+    //        using var document = new Document(pdf);
+
+    //        document.SetMargins(40, 40, 40, 40);
+
+    //        var boldFont = PdfFontFactory.CreateFont(StandardFonts.HELVETICA_BOLD);
+    //        var regularFont = PdfFontFactory.CreateFont(StandardFonts.HELVETICA);
+
+    //        // ================= HEADER =================
+    //        document.Add(new Paragraph("Form-STPL")
+    //            .SetFont(boldFont).SetFontSize(13)
+    //            .SetTextAlignment(TextAlignment.CENTER));
+
+    //        document.Add(new Paragraph("(Steam Pipeline Registration Application)")
+    //            .SetFont(regularFont).SetFontSize(10)
+    //            .SetTextAlignment(TextAlignment.CENTER));
+
+    //        document.Add(new Paragraph("Application for Registration of Steam Pipeline")
+    //            .SetFont(boldFont).SetFontSize(10)
+    //            .SetTextAlignment(TextAlignment.CENTER)
+    //            .SetMarginBottom(10));
+
+    //        // ================= HEADER TABLE =================
+    //        var headerTable = new Table(new float[] { 360f, 160f })
+    //            .UseAllAvailableWidth()
+    //            .SetBorder(Border.NO_BORDER);
+
+    //        headerTable.AddCell(new Cell()
+    //            .Add(new Paragraph($"Application No: {stpl.ApplicationId}")
+    //            .SetFont(boldFont))
+    //            .SetBorder(Border.NO_BORDER));
+
+    //        headerTable.AddCell(new Cell()
+    //            .Add(new Paragraph($"Date: {DateTime.Now:dd-MM-yyyy}")
+    //            .SetFont(boldFont)
+    //            .SetTextAlignment(TextAlignment.RIGHT))
+    //            .SetBorder(Border.NO_BORDER));
+
+    //        document.Add(headerTable);
+
+    //        document.Add(new Paragraph("\n"));
+
+    //        // ================= SECTION 1 =================
+    //        AddTwoColumnSection(document, "1. General Details", new List<(string, string?)>
+    //{
+    //    ("Boiler Application No", stpl.BoilerApplicationNo),
+    //    ("Steam Pipeline Reg No", stpl.SteamPipeLineRegistrationNo),
+    //    ("Drawing No", stpl.SteamPipeLineDrawingNo),
+    //    ("Boiler Maker Reg No", stpl.BoilerMakerRegistrationNo),
+    //    ("Erector Name", stpl.ErectorName),
+    //    ("Factory Registration No", stpl.FactoryRegistrationNumber),       
+    //    ("Proposed Layout", stpl.ProposedLayoutDescription)
+    //}, boldFont, regularFont);
+
+    //        // ================= SECTION 2 =================
+    //        AddTwoColumnSection(document, "2. Technical Details", new List<(string, string?)>
+    //{
+    //    ("Pipe Length ?100mm", stpl.PipeLengthUpTo100mm?.ToString()),
+    //    ("Pipe Length >100mm", stpl.PipeLengthAbove100mm?.ToString()),
+    //    ("DeSuperHeaters", stpl.NoOfDeSuperHeaters?.ToString()),
+    //    ("Steam Receivers", stpl.NoOfSteamReceivers?.ToString()),
+    //    ("Feed Heaters", stpl.NoOfFeedHeaters?.ToString()),
+    //    ("Separately Fired SuperHeaters", stpl.NoOfSeparatelyFiredSuperHeaters?.ToString())
+    //}, boldFont, regularFont);
+
+    //        // ? Page break for better layout
+    //        document.Add(new AreaBreak(AreaBreakType.NEXT_PAGE));
+
+    //        // ================= SECTION 3 =================
+    //        AddTwoColumnSection(document, "3. Documents", new List<(string, string?)>
+    //{
+    //    ("Form II", stpl.FormIIPath),
+    //    ("Form III", stpl.FormIIIPath),
+    //    ("Form IIIA", stpl.FormIIIAPath),
+    //    ("Form IIIB", stpl.FormIIIBPath),
+    //    ("Form IV", stpl.FormIVPath),
+    //    ("Form IVA", stpl.FormIVAPath),
+    //    ("Drawing", stpl.DrawingPath),
+    //    ("Supporting Documents", stpl.SupportingDocumentsPath)
+    //}, boldFont, regularFont);
+
+    //        // ================= DECLARATION =================
+    //        document.Add(new Paragraph("4. Declaration")
+    //            .SetFont(boldFont)
+    //            .SetFontSize(10)
+    //            .SetMarginTop(10));
+
+    //        document.Add(new Paragraph("I hereby declare that the information provided is true and correct to the best of my knowledge.")
+    //            .SetFont(regularFont)
+    //            .SetFontSize(9));
+
+    //        document.Close();
+
+    //        return filePath;
+    //    }
+
+
+
+    //    private void AddTwoColumnSection(
+    //Document document,
+    //string title,
+    //List<(string Label, string? Value)> data,
+    //PdfFont boldFont,
+    //PdfFont regularFont)
+    //    {
+    //        document.Add(new Paragraph(title)
+    //            .SetFont(boldFont)
+    //            .SetFontSize(11)
+    //            .SetMarginTop(10));
+
+    //        var table = new Table(new float[] { 200f, 300f })
+    //            .UseAllAvailableWidth();
+
+    //        foreach (var item in data)
+    //        {
+    //            table.AddCell(new Cell()
+    //                .Add(new Paragraph(item.Label)
+    //                    .SetFont(boldFont)
+    //                    .SetFontSize(9)));
+
+    //            table.AddCell(new Cell()
+    //                .Add(new Paragraph(item.Value ?? "")
+    //                    .SetFont(regularFont)
+    //                    .SetFontSize(9)));
+    //        }
+
+    //        document.Add(table);
+    //    }
+
+        //public sealed class BoilerPageBorderAndFooterEventHandler : AbstractPdfDocumentEventHandler
+        //{
+        //    private readonly PdfFont _boldFont;
+        //    private readonly PdfFont _regularFont;
+        //    private readonly DateOnly _date;
+        //    private readonly string _postName;
+        //    private readonly string _userName;
+        //    private readonly byte[]? _qrBytes;
+
+        //    public BoilerPageBorderAndFooterEventHandler(
+        //        PdfFont boldFont,
+        //        PdfFont regularFont,
+        //        DateOnly date,
+        //        byte[]? qrBytes = null,
+        //        string postName = "",
+        //        string userName = "")
+        //    {
+        //        _boldFont = boldFont;
+        //        _regularFont = regularFont;
+        //        _date = date;
+        //        _qrBytes = qrBytes;
+        //        _postName = postName;
+        //        _userName = userName;
+        //    }
+
+        //    protected override void OnAcceptedEvent(AbstractPdfDocumentEvent @event)
+        //    {
+        //        if (@event is not PdfDocumentEvent docEvent) return;
+
+        //        var pdfDoc = docEvent.GetDocument();
+        //        var page = docEvent.GetPage();
+        //        var rect = page.GetPageSize();
+        //        var canvas = new PdfCanvas(page);
+
+        //        // ================= BORDER =================
+        //        canvas.SetStrokeColor(ColorConstants.BLACK)
+        //              .SetLineWidth(1.5f)
+        //              .Rectangle(25, 25, rect.GetWidth() - 50, rect.GetHeight() - 50)
+        //              .Stroke();
+
+        //        // ================= FOOTER LINE =================
+        //        float lineY = 70f;
+
+        //        canvas.SetStrokeColor(new DeviceRgb(180, 180, 180))
+        //              .SetLineWidth(0.5f)
+        //              .MoveTo(30, lineY)
+        //              .LineTo(rect.GetWidth() - 30, lineY)
+        //              .Stroke();
+
+        //        canvas.Release();
+
+        //        // ================= ABOVE LINE (QR) =================
+        //        float scannerHeight = 65f;
+        //        float zoneY = lineY + 4f;
+
+        //        if (_qrBytes != null)
+        //        {
+        //            using var qrCanvas = new Canvas(new PdfCanvas(page),
+        //                new iText.Kernel.Geom.Rectangle(30f, zoneY, scannerHeight, scannerHeight));
+
+        //            qrCanvas.Add(new Image(ImageDataFactory.Create(_qrBytes))
+        //                .ScaleToFit(scannerHeight, scannerHeight)
+        //                .SetHorizontalAlignment(HorizontalAlignment.LEFT));
+        //        }
+
+        //        // ================= BELOW LINE =================
+        //        float belowY = lineY - 4f - scannerHeight;
+        //        int pageNumber = pdfDoc.GetPageNumber(page);
+
+        //        float pageWidth = rect.GetWidth();
+        //        float totalWidth = pageWidth - 60f;
+        //        float colWidth = totalWidth / 4f;
+        //        float startX = 30f;
+
+        //        // ?? 1. DATE
+        //        using (var canvas1 = new Canvas(new PdfCanvas(page),
+        //            new iText.Kernel.Geom.Rectangle(startX, belowY, colWidth, scannerHeight)))
+        //        {
+        //            canvas1.Add(new Paragraph($"Dated: {_date}")
+        //                .SetFont(_regularFont)
+        //                .SetFontSize(7.5f)
+        //                .SetTextAlignment(TextAlignment.LEFT)
+        //                .SetMargin(0f)
+        //                .SetPaddingTop(6f));
+        //        }
+
+        //        // ?? 2. PAGE NUMBER
+        //        using (var canvas2 = new Canvas(new PdfCanvas(page),
+        //            new iText.Kernel.Geom.Rectangle(startX + colWidth, belowY, colWidth, scannerHeight)))
+        //        {
+        //            canvas2.Add(new Paragraph($"Page {pageNumber}")
+        //                .SetFont(_regularFont)
+        //                .SetFontSize(7.5f)
+        //                .SetTextAlignment(TextAlignment.CENTER)
+        //                .SetMargin(0f)
+        //                .SetPaddingTop(6f));
+        //        }
+
+        //        // ?? 3. SIGNATURE (NO NAME)
+        //        using (var canvas3 = new Canvas(new PdfCanvas(page),
+        //         new iText.Kernel.Geom.Rectangle(startX + (2 * colWidth), belowY, colWidth, scannerHeight)))
+        //        {
+        //            // Inspector text
+        //            canvas3.Add(new Paragraph("Inspector, Jaipur")
+        //                .SetFont(_regularFont)
+        //                .SetFontSize(7f)
+        //                .SetTextAlignment(TextAlignment.CENTER)
+        //                .SetMargin(0f)
+        //                .SetPaddingTop(4f));
+
+        //            // Signature label
+        //            canvas3.Add(new Paragraph("Signature / E-sign / Digital sign")
+        //                .SetFont(_regularFont)
+        //                .SetFontSize(6.5f)
+        //                .SetTextAlignment(TextAlignment.CENTER)
+        //                .SetMargin(0f)
+        //                .SetPaddingTop(2f));
+        //        }
+
+        //        // ?? 4. AUTHORITY SIGNATURE (POST + LABEL)
+        //        using (var canvas4 = new Canvas(new PdfCanvas(page),
+        //        new iText.Kernel.Geom.Rectangle(startX + (3 * colWidth), belowY, colWidth, scannerHeight)))
+        //        {
+        //            // Authority text
+        //            canvas4.Add(new Paragraph("Authority, Jaipur")
+        //                .SetFont(_regularFont)
+        //                .SetFontSize(7f)
+        //                .SetTextAlignment(TextAlignment.CENTER)
+        //                .SetMargin(0f)
+        //                .SetPaddingTop(4f));
+
+        //            // Signature label
+        //            canvas4.Add(new Paragraph("Signature / E-sign / Digital sign")
+        //                .SetFont(_regularFont)
+        //                .SetFontSize(6.5f)
+        //                .SetTextAlignment(TextAlignment.CENTER)
+        //                .SetMargin(0f)
+        //                .SetPaddingTop(2f));
+        //        }
+        //    }
+        //}
     }
+
 }

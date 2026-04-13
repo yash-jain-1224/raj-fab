@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using RajFabAPI.Models;
 
 namespace RajFabAPI.DTOs
 {
@@ -79,5 +80,10 @@ namespace RajFabAPI.DTOs
         public DateTime? ValidUpto { get; set; }
 
         public List<SMTCTrainerDto> Trainers { get; set; } = new();
+
+        public string? ApplicationPDFUrl { get; set; }
+        public string? ObjectionLetterUrl { get; set; }
+        public string? CertificateUrl { get; set; }
+        public List<Transaction> TransactionHistory { get; set; } = new();
     }
 }

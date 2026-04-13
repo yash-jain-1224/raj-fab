@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Eye, Plus, Building2, Pencil, TimerReset, XCircle } from "lucide-react";
+import { Eye, Plus, Building2, Pencil, TimerReset, XCircle, Download } from "lucide-react";
 import { format } from "date-fns";
 import {
   normalizeStatus,
@@ -199,6 +199,39 @@ export default function BoilerList() {
               >
                 <XCircle className="h-4 w-4 mr-2" />
                 Closure
+              </Button>
+            )}
+            {app.applicationPDFUrl && (
+              <Button
+                onClick={() => window.open(app.applicationPDFUrl, "_blank")}
+                size="sm"
+                variant="outline"
+                title="Download Application PDF"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Application
+              </Button>
+            )}
+            {app.certificateUrl && (
+              <Button
+                onClick={() => window.open(app.certificateUrl, "_blank")}
+                size="sm"
+                variant="outline"
+                title="Download Certificate"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Certificate
+              </Button>
+            )}
+            {app.objectionLetterUrl && (
+              <Button
+                onClick={() => window.open(app.objectionLetterUrl, "_blank")}
+                size="sm"
+                variant="outline"
+                title="Download Objection Letter"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Objection
               </Button>
             )}
             <Button

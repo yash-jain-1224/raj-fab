@@ -215,7 +215,7 @@ export default function BoilerManufactureDrawing() {
         {currentStep === 5 && (
           <div className="bg-white border p-6 text-sm">
             <table className="w-full border-collapse">
-
+              <tbody>
               <PreviewHeader title="General Information" />
               {renderRows(formData.generalInformation)}
 
@@ -227,7 +227,7 @@ export default function BoilerManufactureDrawing() {
 
               <PreviewHeader title="Attachments" />
               {renderFileRows(formData.attachments)}
-
+              </tbody>
             </table>
           </div>
         )}

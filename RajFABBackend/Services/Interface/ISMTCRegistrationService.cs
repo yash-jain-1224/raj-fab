@@ -13,6 +13,8 @@ namespace RajFabAPI.Services.Interface
         Task<SMTCRegistrationDetailsDto?> GetLatestApprovedByRegistrationNoAsync(string registrationNo);
         Task<SMTCRegistrationDetailsDto?> GetByApplicationIdAsync(string applicationId);
         Task<string> GenerateSmtcPdfAsync(string applicationId);
+        Task<string> GenerateObjectionLetter(BoilerObjectionLetterDto dto, string applicationId);
+        Task<string> GenerateCertificatePdfAsync(string applicationId, string postName, string userName);
 
 
 

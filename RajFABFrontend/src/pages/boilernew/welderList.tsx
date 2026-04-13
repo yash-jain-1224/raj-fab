@@ -178,6 +178,28 @@ export default function WelderList() {
                 <Download className="h-4 w-4" />
               </Button>
             )}
+            {app.certificateUrl && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => window.open(app.certificateUrl, "_blank")}
+                title="Download Certificate"
+              >
+                <Download className="h-4 w-4 mr-1" />
+                Cert
+              </Button>
+            )}
+            {app.objectionLetterUrl && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => window.open(app.objectionLetterUrl, "_blank")}
+                title="Download Objection Letter"
+              >
+                <Download className="h-4 w-4 mr-1" />
+                Obj
+              </Button>
+            )}
             <Button
               onClick={() =>
                 navigate(

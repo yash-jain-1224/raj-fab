@@ -512,11 +512,18 @@ BEGIN TRY
         END
         
         -- Convert DocumentTypes.Id from uniqueidentifier to nvarchar(450)
-        -- First add a temporary column
-        ALTER TABLE [DocumentTypes] ADD [Id_Temp] nvarchar(450);
-        
-        -- Convert GUID values to string representation
-        UPDATE [DocumentTypes] SET [Id_Temp] = CAST([Id] AS nvarchar(450));
+        -- First add a temporary column (guard: only if not already nvarchar)
+        IF COL_LENGTH(N'[dbo].[DocumentTypes]', 'Id_Temp') IS NULL
+            AND EXISTS (
+                SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_NAME = 'DocumentTypes' AND COLUMN_NAME = 'Id'
+                AND DATA_TYPE = 'uniqueidentifier'
+            )
+        BEGIN
+            ALTER TABLE [DocumentTypes] ADD [Id_Temp] nvarchar(450);
+            -- Convert GUID values to string representation
+            UPDATE [DocumentTypes] SET [Id_Temp] = CAST([Id] AS nvarchar(450));
+        END
         
         -- Update all foreign key references
         IF EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS 
@@ -549,27 +556,45 @@ BEGIN TRY
             WHERE TRY_CAST(pd.[DocumentTypeId] AS uniqueidentifier) IS NOT NULL;
         END
         
-        -- Drop the old column and rename temp column
-        ALTER TABLE [DocumentTypes] DROP CONSTRAINT [PK_DocumentTypes];
-        ALTER TABLE [DocumentTypes] DROP COLUMN [Id];
-        EXEC sp_rename 'DocumentTypes.Id_Temp', 'Id', 'COLUMN';
-        ALTER TABLE [DocumentTypes] ALTER COLUMN [Id] nvarchar(450) NOT NULL;
-        ALTER TABLE [DocumentTypes] ADD CONSTRAINT [PK_DocumentTypes] PRIMARY KEY ([Id]);
+        -- Drop the old column and rename temp column (only if Id_Temp exists and Id is still uniqueidentifier)
+        IF COL_LENGTH(N'[dbo].[DocumentTypes]', 'Id_Temp') IS NOT NULL
+        BEGIN
+            IF EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS WHERE TABLE_NAME='DocumentTypes' AND CONSTRAINT_TYPE='PRIMARY KEY')
+            BEGIN
+                ALTER TABLE [DocumentTypes] DROP CONSTRAINT [PK_DocumentTypes];
+            END
+            IF EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='DocumentTypes' AND COLUMN_NAME='Id' AND DATA_TYPE='uniqueidentifier')
+            BEGIN
+                ALTER TABLE [DocumentTypes] DROP COLUMN [Id];
+            END
+            IF COL_LENGTH(N'[dbo].[DocumentTypes]', 'Id_Temp') IS NOT NULL
+            BEGIN
+                EXEC sp_rename 'DocumentTypes.Id_Temp', 'Id', 'COLUMN';
+            END
+            ALTER TABLE [DocumentTypes] ALTER COLUMN [Id] nvarchar(450) NOT NULL;
+            IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS WHERE TABLE_NAME='DocumentTypes' AND CONSTRAINT_TYPE='PRIMARY KEY')
+            BEGIN
+                ALTER TABLE [DocumentTypes] ADD CONSTRAINT [PK_DocumentTypes] PRIMARY KEY ([Id]);
+            END
+        END
         
         -- Recreate foreign key constraints
         IF EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'BoilerDocumentTypes')
+        AND NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS WHERE CONSTRAINT_NAME = 'FK_BoilerDocumentTypes_DocumentTypes_DocumentTypeId')
         BEGIN
             ALTER TABLE [BoilerDocumentTypes] ADD CONSTRAINT [FK_BoilerDocumentTypes_DocumentTypes_DocumentTypeId] 
             FOREIGN KEY ([DocumentTypeId]) REFERENCES [DocumentTypes] ([Id]) ON DELETE CASCADE;
         END
         
         IF EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'FactoryTypeDocuments')
+        AND NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS WHERE CONSTRAINT_NAME = 'FK_FactoryTypeDocuments_DocumentTypes_DocumentTypeId')
         BEGIN
             ALTER TABLE [FactoryTypeDocuments] ADD CONSTRAINT [FK_FactoryTypeDocuments_DocumentTypes_DocumentTypeId] 
             FOREIGN KEY ([DocumentTypeId]) REFERENCES [DocumentTypes] ([Id]) ON DELETE CASCADE;
         END
         
         IF EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'ProcessDocuments')
+        AND NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS WHERE CONSTRAINT_NAME = 'FK_ProcessDocuments_DocumentTypes_DocumentTypeId')
         BEGIN
             ALTER TABLE [ProcessDocuments] ADD CONSTRAINT [FK_ProcessDocuments_DocumentTypes_DocumentTypeId] 
             FOREIGN KEY ([DocumentTypeId]) REFERENCES [DocumentTypes] ([Id]) ON DELETE CASCADE;

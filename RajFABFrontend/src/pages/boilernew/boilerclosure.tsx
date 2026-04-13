@@ -699,6 +699,7 @@ export default function BoilerClosureNew() {
         {currentStep === 6 && (
           <div className="bg-white border p-4 text-sm rounded-lg shadow-sm">
             <table className="w-full border border-gray-300">
+              <tbody>
               <PreviewHeader title="Application Details" />
               <PreviewRow label="Boiler Registration No." value={formData.boilerRegistrationNo} />
               <PreviewRow label="Application No." value={formData.applicationNo} />
@@ -717,6 +718,7 @@ export default function BoilerClosureNew() {
 
               <PreviewHeader title="Closure Details" />
               {renderRows(formData.closureDetails)}
+              </tbody>
             </table>
           </div>
         )}

@@ -570,12 +570,14 @@ export default function WelderTestApplication() {
         {currentStep === 7 && (
           <div className="bg-white border p-4 text-sm">
             <table className="w-full border border-collapse">
+              <tbody>
               <PreviewSection title="Employer Details" data={formData.employer} />
               <PreviewSection title="Welder Information" data={formData.welderInfo} />
               <PreviewSection title="Welder Address" data={formData.welderAddress} />
               <PreviewSection title="Experience" data={formData.experience} />
               <PreviewSection title="Kind of Test" data={formData.kindOfTest} />
               <PreviewSection title="Qualification Details" data={formData.qualification} />
+              </tbody>
             </table>
           </div>
         )}

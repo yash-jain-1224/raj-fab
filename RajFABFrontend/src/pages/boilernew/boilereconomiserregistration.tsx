@@ -537,8 +537,10 @@ export default function EconomiserRegistration() {
         {currentStep === 4 && (
           <div className="bg-white border p-4 text-sm">
             <table className="w-full border border-collapse">
+              <tbody>
               <PreviewSection title="Owner Details" data={formData.generalInformation} />
               <PreviewSection title="Economiser Technical Details" data={formData.economiserDetails} />
+              </tbody>
             </table>
           </div>
         )}

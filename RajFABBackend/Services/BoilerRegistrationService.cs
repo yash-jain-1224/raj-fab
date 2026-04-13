@@ -657,15 +657,30 @@ namespace RajFabAPI.Services
                 .OrderByDescending(x => x.ActionDate)
                 .ToListAsync();
 
+            var transactionHistory = await _dbcontext.Set<Transaction>()
+                .AsNoTracking()
+                .Where(x => x.ApplicationId == applicationId)
+                .OrderByDescending(x => x.CreatedAt)
+                .ToListAsync();
+
             string? certificateUrl = null;
-            if (!string.IsNullOrEmpty(registration.BoilerRegistrationNo))
+            var cert = await _dbcontext.Certificates
+                .AsNoTracking()
+                .Where(x => x.ApplicationId == applicationId ||
+                    (!string.IsNullOrEmpty(registration.BoilerRegistrationNo) && x.RegistrationNumber == registration.BoilerRegistrationNo))
+                .OrderByDescending(x => x.IssuedAt)
+                .FirstOrDefaultAsync();
+            certificateUrl = cert?.CertificateUrl;
+
+            string? objectionLetterUrl = registration.ObjectionLetterUrl;
+            if (string.IsNullOrEmpty(objectionLetterUrl))
             {
-                var cert = await _dbcontext.Certificates
+                var objLetter = await _dbcontext.ApplicationObjectionLetters
                     .AsNoTracking()
-                    .Where(x => x.RegistrationNumber == registration.BoilerRegistrationNo)
-                    .OrderByDescending(x => x.IssuedAt)
+                    .Where(x => x.ApplicationId == applicationId)
+                    .OrderByDescending(x => x.CreatedDate)
                     .FirstOrDefaultAsync();
-                certificateUrl = cert?.CertificateUrl;
+                objectionLetterUrl = objLetter?.FileUrl;
             }
 
             return new GetBoilerResponseDto
@@ -677,6 +692,7 @@ namespace RajFabAPI.Services
                 Type = registration.Type,
                 Version = registration.Version,
                 ApplicationPDFUrl = registration.ApplicationPDFUrl,
+                ObjectionLetterUrl = objectionLetterUrl,
                 CertificateUrl = certificateUrl,
 
                 BoilerDetail = registration.BoilerDetail == null ? null : new BoilerTechnicalDto
@@ -772,7 +788,8 @@ namespace RajFabAPI.Services
                     Email = maker.Email
                 },
 
-                ApplicationHistory = applicationHistory
+                ApplicationHistory = applicationHistory,
+                TransactionHistory = transactionHistory
             };
         }
 
@@ -1437,6 +1454,18 @@ namespace RajFabAPI.Services
             if (closure == null)
                 return null;
 
+            var applicationHistory = await _dbcontext.ApplicationHistories
+                .AsNoTracking()
+                .Where(x => x.ApplicationId == applicationId)
+                .OrderByDescending(x => x.ActionDate)
+                .ToListAsync();
+
+            var transactionHistory = await _dbcontext.Set<Transaction>()
+                .AsNoTracking()
+                .Where(x => x.ApplicationId == applicationId)
+                .OrderByDescending(x => x.CreatedAt)
+                .ToListAsync();
+
             return new BoilerClosureResponseDto
             {
                 ApplicationId = closure.ApplicationId,
@@ -1448,7 +1477,9 @@ namespace RajFabAPI.Services
                 Remarks = closure.Remarks,
                 ClosureReportPath = closure.ClosureReportPath,
                 Status = closure.Status,
-                CreatedAt = closure.CreatedAt
+                CreatedAt = closure.CreatedAt,
+                ApplicationHistory = applicationHistory,
+                TransactionHistory = transactionHistory
             };
         }
 
@@ -1637,6 +1668,18 @@ namespace RajFabAPI.Services
             if (repair == null)
                 return null;
 
+            var applicationHistory = await _dbcontext.ApplicationHistories
+                .AsNoTracking()
+                .Where(x => x.ApplicationId == applicationId)
+                .OrderByDescending(x => x.ActionDate)
+                .ToListAsync();
+
+            var transactionHistory = await _dbcontext.Set<Transaction>()
+                .AsNoTracking()
+                .Where(x => x.ApplicationId == applicationId)
+                .OrderByDescending(x => x.CreatedAt)
+                .ToListAsync();
+
             return new GetBoilerRepairDto
             {
                 ApplicationId = repair.ApplicationId,
@@ -1664,7 +1707,9 @@ namespace RajFabAPI.Services
                     Pincode = repair.PersonDetail.Pincode,
                     Mobile = repair.PersonDetail.Mobile,
                     Email = repair.PersonDetail.Email
-                }
+                },
+                ApplicationHistory = applicationHistory,
+                TransactionHistory = transactionHistory
             };
         }
 
@@ -1861,7 +1906,8 @@ namespace RajFabAPI.Services
         {
             if (dto == null) throw new ArgumentNullException(nameof(dto));
 
-            var fileName = $"boiler_objection_{registrationId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+            var safeRegId = registrationId.Replace("/", "_").Replace("\\", "_");
+            var fileName = $"boiler_objection_{safeRegId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
             var webRootPath = _environment.WebRootPath
                 ?? throw new InvalidOperationException("wwwroot is not configured.");
 
@@ -2009,6 +2055,77 @@ namespace RajFabAPI.Services
             return fileUrl;
         }
 
+        public async Task<string> GenerateCertificatePdfAsync(string applicationId, string postName, string userName)
+        {
+            var entity = await _dbcontext.BoilerRegistrations
+                .Include(b => b.BoilerDetail)
+                .FirstOrDefaultAsync(a => a.ApplicationId == applicationId);
+            if (entity == null) throw new Exception("Boiler Registration application not found");
+
+            var safeAppId = applicationId.Replace("/", "_").Replace("\\", "_");
+            var fileName = $"boiler_reg_certificate_{safeAppId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+            var webRootPath = _environment.WebRootPath ?? throw new InvalidOperationException("wwwroot is not configured.");
+            var uploadPath = Path.Combine(webRootPath, "certificates");
+            Directory.CreateDirectory(uploadPath);
+            var filePath = Path.Combine(uploadPath, fileName);
+
+            var httpContext = _httpContextAccessor.HttpContext ?? throw new InvalidOperationException("HTTP context unavailable");
+            var request = httpContext.Request;
+            var baseUrl = _config["BaseUrl"] ?? $"{request.Scheme}://{request.Host}";
+            var fileUrl = $"{baseUrl}/certificates/{fileName}";
+
+            var boldFont = PdfFontFactory.CreateFont(StandardFonts.HELVETICA_BOLD);
+            var regularFont = PdfFontFactory.CreateFont(StandardFonts.HELVETICA);
+            var footerDate = DateOnly.FromDateTime(DateTime.Today);
+
+            using var writer = new PdfWriter(filePath);
+            using var pdf = new PdfDocument(writer);
+            pdf.AddEventHandler(PdfDocumentEvent.END_PAGE, new BoilerCertFooterEventHandler(boldFont, regularFont, footerDate, postName, userName));
+            using var document = new Document(pdf);
+            document.SetMargins(40, 40, 130, 40);
+
+            // Header
+            var headerTable = new PdfTable(new float[] { 90f, 320f, 90f }).UseAllAvailableWidth().SetBorder(Border.NO_BORDER).SetMarginBottom(6f);
+            headerTable.AddCell(new PdfCell().SetBorder(Border.NO_BORDER));
+            var centerCell = new PdfCell().SetBorder(Border.NO_BORDER).SetTextAlignment(TextAlignment.CENTER);
+            centerCell.Add(new Paragraph("Government of Rajasthan").SetFont(boldFont).SetFontSize(12).SetTextAlignment(TextAlignment.CENTER).SetMarginBottom(1f));
+            centerCell.Add(new Paragraph("Factories and Boilers Inspection Department").SetFont(boldFont).SetFontSize(11).SetTextAlignment(TextAlignment.CENTER).SetMarginBottom(1f));
+            centerCell.Add(new Paragraph("6-C, Jhalana Institutional Area, Jaipur, 302004").SetFont(regularFont).SetFontSize(9).SetTextAlignment(TextAlignment.CENTER).SetMarginBottom(4f));
+            headerTable.AddCell(centerCell);
+            headerTable.AddCell(new PdfCell().SetBorder(Border.NO_BORDER));
+            document.Add(headerTable);
+
+            var topRow = new PdfTable(new float[] { 1f, 1f }).UseAllAvailableWidth().SetBorder(Border.NO_BORDER).SetMarginBottom(2f);
+            topRow.AddCell(new PdfCell().Add(new Paragraph($"Application No.:-  {entity.ApplicationId}").SetFont(boldFont).SetFontSize(10)).SetBorder(Border.NO_BORDER));
+            topRow.AddCell(new PdfCell().Add(new Paragraph($"Dated:-  {DateTime.Now:dd/MM/yyyy}").SetFont(boldFont).SetFontSize(10).SetTextAlignment(TextAlignment.RIGHT)).SetBorder(Border.NO_BORDER));
+            document.Add(topRow);
+
+            document.Add(new Paragraph($"Registration No.:-  {entity.BoilerRegistrationNo ?? "-"}").SetFont(boldFont).SetFontSize(10).SetMarginBottom(6f));
+
+            document.Add(new Paragraph("Sub:-  Registration of Boiler").SetFont(boldFont).SetFontSize(11).SetMarginBottom(2f));
+            document.Add(new Paragraph("The details of your boiler as per submitted documents are shown below:-").SetFont(regularFont).SetFontSize(11).SetMarginBottom(6f));
+
+            var blackBorder = new SolidBorder(new DeviceRgb(0, 0, 0), 0.75f);
+            PdfCell BlackCell(string text, PdfFont font, float size = 10f) => new PdfCell().Add(new Paragraph(text ?? "-").SetFont(font).SetFontSize(size)).SetBorderTop(blackBorder).SetBorderBottom(blackBorder).SetBorderLeft(blackBorder).SetBorderRight(blackBorder).SetPadding(5f);
+
+            var detailsTable = new PdfTable(new float[] { 150f, 350f }).UseAllAvailableWidth().SetMarginBottom(10f);
+            detailsTable.AddCell(BlackCell("Registration No", boldFont)); detailsTable.AddCell(BlackCell(entity.BoilerRegistrationNo ?? "-", regularFont));
+            detailsTable.AddCell(BlackCell("Maker Number", boldFont)); detailsTable.AddCell(BlackCell(entity.BoilerDetail?.MakerNumber ?? "-", regularFont));
+            detailsTable.AddCell(BlackCell("Boiler Type", boldFont)); detailsTable.AddCell(BlackCell(entity.BoilerDetail?.BoilerType?.ToString() ?? "-", regularFont));
+            detailsTable.AddCell(BlackCell("Heating Surface Area", boldFont)); detailsTable.AddCell(BlackCell(entity.BoilerDetail?.HeatingSurfaceArea?.ToString() ?? "-", regularFont));
+            detailsTable.AddCell(BlackCell("Evaporation Capacity", boldFont)); detailsTable.AddCell(BlackCell(entity.BoilerDetail?.EvaporationCapacity?.ToString() ?? "-", regularFont));
+            detailsTable.AddCell(BlackCell("Working Pressure", boldFont)); detailsTable.AddCell(BlackCell(entity.BoilerDetail?.IntendedWorkingPressure?.ToString() ?? "-", regularFont));
+            detailsTable.AddCell(BlackCell("Year Of Make", boldFont)); detailsTable.AddCell(BlackCell(entity.BoilerDetail?.YearOfMake?.ToString() ?? "-", regularFont));
+            document.Add(detailsTable);
+
+            document.Add(new Paragraph("Your Boiler is registered under the Indian Boilers Act, 1923 and the rules made thereunder.").SetFont(regularFont).SetFontSize(11).SetMarginBottom(20f));
+
+            var pageWidth = pdf.GetDefaultPageSize().GetWidth();
+            document.Add(new Paragraph("This is a computer generated certificate and bears scanned signature. No physical signature is required on this certificate. You can verify this certificate by visiting www.rajfab.rajasthan.gov.in and entering Application No./ID after clicking the link for verification on the page.").SetFont(regularFont).SetFontSize(6.5f).SetFontColor(ColorConstants.GRAY).SetTextAlignment(TextAlignment.JUSTIFIED).SetMultipliedLeading(1.1f).SetFixedPosition(35, 8, pageWidth - 70));
+
+            return fileUrl;
+        }
+
         private sealed class PageBorderEventHandler : AbstractPdfDocumentEventHandler
         {
             protected override void OnAcceptedEvent(AbstractPdfDocumentEvent @event)
@@ -2023,6 +2140,48 @@ namespace RajFabAPI.Services
                     .Rectangle(25, 25, rect.GetWidth() - 50, rect.GetHeight() - 50)
                     .Stroke();
                 canvas.Release();
+            }
+        }
+
+        private sealed class BoilerCertFooterEventHandler : AbstractPdfDocumentEventHandler
+        {
+            private readonly PdfFont _boldFont, _regularFont;
+            private readonly DateOnly _date;
+            private readonly string _postName, _userName;
+
+            public BoilerCertFooterEventHandler(PdfFont boldFont, PdfFont regularFont, DateOnly date, string postName, string userName)
+            { _boldFont = boldFont; _regularFont = regularFont; _date = date; _postName = postName; _userName = userName; }
+
+            protected override void OnAcceptedEvent(AbstractPdfDocumentEvent @event)
+            {
+                if (@event is not PdfDocumentEvent docEvent) return;
+                var pdfDoc = docEvent.GetDocument();
+                var page = docEvent.GetPage();
+                var rect = page.GetPageSize();
+                var pdfCanvas = new PdfCanvas(page);
+                float pw = rect.GetWidth(), ph = rect.GetHeight();
+
+                pdfCanvas.SetStrokeColor(ColorConstants.BLACK).SetLineWidth(1.5f).Rectangle(25, 25, pw - 50, ph - 50).Stroke();
+                float lineY = 70f;
+                pdfCanvas.SetStrokeColor(new DeviceRgb(180, 180, 180)).SetLineWidth(0.5f).MoveTo(30, lineY).LineTo(pw - 30, lineY).Stroke();
+
+                float zoneH = 65f, belowY = lineY - 4f - zoneH;
+                float signW = 180f, signX = pw - 30f - signW;
+                int pageNum = pdfDoc.GetPageNumber(page);
+
+                using (var c = new Canvas(pdfCanvas, new iText.Kernel.Geom.Rectangle(30f, belowY, 110f, zoneH)))
+                    c.Add(new Paragraph($"Dated: {_date}").SetFont(_regularFont).SetFontSize(7.5f).SetMargin(0f).SetPaddingTop(6f));
+                using (var c = new Canvas(pdfCanvas, new iText.Kernel.Geom.Rectangle(0f, belowY, pw, zoneH)))
+                    c.Add(new Paragraph($"Page {pageNum}").SetFont(_regularFont).SetFontSize(7.5f).SetTextAlignment(TextAlignment.CENTER).SetMargin(0f).SetPaddingTop(6f));
+                using (var c = new Canvas(pdfCanvas, new iText.Kernel.Geom.Rectangle(signX, belowY, signW, zoneH)))
+                {
+                    if (!string.IsNullOrWhiteSpace(_userName))
+                        c.Add(new Paragraph($"({_userName})").SetFont(_boldFont).SetFontSize(7f).SetTextAlignment(TextAlignment.CENTER).SetMargin(0f).SetPaddingTop(2f));
+                    if (!string.IsNullOrWhiteSpace(_postName))
+                        c.Add(new Paragraph(_postName).SetFont(_regularFont).SetFontSize(6.5f).SetTextAlignment(TextAlignment.CENTER).SetMargin(0f).SetPaddingTop(1f));
+                    c.Add(new Paragraph("Signature / E-sign / Digital sign").SetFont(_regularFont).SetFontSize(6.5f).SetTextAlignment(TextAlignment.CENTER).SetMargin(0f).SetPaddingTop(4f));
+                }
+                pdfCanvas.Release();
             }
         }
 

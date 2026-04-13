@@ -271,7 +271,7 @@ class BoilerApiService extends BaseApiService {
       });
   }
   async getBoilerClosureApplicationInfo(id: string): Promise<ApiResponse<BoilerApplication[]>> {
-    return this.request<ApiResponse<BoilerApplication[]>>(`/boilers/closure/applicationId?applicationId=${id}`);
+    return this.request<ApiResponse<BoilerApplication[]>>(`/boilers/closure/getbyid?applicationId=${id}`);
   }
 
   async getBoilerManufactureApplications(): Promise<ApiResponse<BoilerManufactureRegistrationList>> {

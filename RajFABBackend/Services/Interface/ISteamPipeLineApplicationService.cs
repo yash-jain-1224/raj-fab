@@ -13,6 +13,8 @@ namespace RajFabAPI.Services.Interface
         Task<string> UpdateSteamPipeLineAsync(string applicationId, CreateSteamPipeLineDto dto);
         Task<string> CloseSteamPipeLineAsync(CreateSteamPipeLineCloseDto dto);
         Task<string> GenerateStplPdfAsync(string applicationId);
+        Task<string> GenerateObjectionLetter(BoilerObjectionLetterDto dto, string applicationId);
+        Task<string> GenerateCertificatePdfAsync(string applicationId, string postName, string userName);
     }
 
 

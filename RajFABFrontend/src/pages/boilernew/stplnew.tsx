@@ -504,6 +504,7 @@ export default function StplNew() {
         {currentStep === 5 && (
           <div className="bg-white border p-6 text-sm rounded-lg">
             <table className="w-full border-collapse">
+              <tbody>
               <PreviewHeader title="Boiler Information" />
               {renderRows(formData.boilerGeneralInfo)}
 
@@ -518,6 +519,7 @@ export default function StplNew() {
 
               <PreviewHeader title="Attachments" />
               {renderRows(formData.attachments)}
+              </tbody>
             </table>
           </div>
         )}

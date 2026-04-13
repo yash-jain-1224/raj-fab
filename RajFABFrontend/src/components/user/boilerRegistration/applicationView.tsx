@@ -7,7 +7,22 @@ import {
 import formateDate from "@/utils/formatDate";
 import { ApplicationTimeline } from "@/components/admin/application-review/ApplicationTimeline";
 import { Button } from "@/components/ui/button";
-import { Download, Pencil } from "lucide-react";
+import { Download, Pencil, Eye } from "lucide-react";
+
+const renderDocument = (fileUrl: string | null | undefined) => {
+  if (!fileUrl) return "—";
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => window.open(fileUrl, "_blank")}
+      className="flex items-center gap-1 hover:bg-muted hover:text-primary"
+    >
+      <Eye className="w-4 h-4 text-primary" />
+      View
+    </Button>
+  );
+};
 
 export default function BoilerRegistationDetails({
   formId,
@@ -37,6 +52,26 @@ export default function BoilerRegistationDetails({
 
   // Cast data to any to access nested properties
   const appData = data as any;
+
+  const getTransactionStatusColor = (action: string) => {
+    switch (action?.toLowerCase()) {
+      case 'success':
+      case 'approved':
+        return 'border-green-500 text-green-700 bg-green-100';
+      case 'rejected':
+      case 'failed':
+        return 'border-red-500 text-red-700 bg-red-100';
+      case 'forwarded':
+        return 'border-blue-500 text-blue-700 bg-blue-100';
+      case 'remarked':
+      case 'pending':
+        return 'border-yellow-500 text-yellow-700 bg-yellow-100';
+      case 'submitted':
+        return 'border-purple-500 text-purple-700 bg-purple-100';
+      default:
+        return 'border-muted';
+    }
+  };
 
   const status = normalizeStatus(appData?.status);
   const canEdit =
@@ -132,11 +167,27 @@ export default function BoilerRegistationDetails({
   const documents = {
     boilerAttendantCertificate: appData.boilerDetail?.boilerAttendantCertificatePath || "",
     boilerOperationEngineerCertificate: appData.boilerDetail?.boilerOperationEngineerCertificatePath || "",
+    drawings: appData.drawingsPath || "",
+    specification: appData.specificationPath || "",
+    formIBC: appData.formI_B_CPath || "",
+    formID: appData.formI_DPath || "",
+    formIE: appData.formI_EPath || "",
+    formIVA: appData.formIV_APath || "",
+    formVA: appData.formV_APath || "",
+    testCertificates: appData.testCertificatesPath || "",
+    weldRepairCharts: appData.weldRepairChartsPath || "",
+    pipesCertificates: appData.pipesCertificatesPath || "",
+    tubesCertificates: appData.tubesCertificatesPath || "",
+    castingCertificate: appData.castingCertificatePath || "",
+    forgingCertificate: appData.forgingCertificatePath || "",
+    headersCertificate: appData.headersCertificatePath || "",
+    dishedEndsInspection: appData.dishedEndsInspectionPath || "",
   };
 
   const applicationTable = (
     <div className="bg-white border p-4 text-sm">
       <table className="w-full border border-collapse">
+        <tbody>
         {/* Factory Details */}
         <PreviewSection
           title="Factory Details"
@@ -175,14 +226,15 @@ export default function BoilerRegistationDetails({
           <tr key={key}>
             <td className="bg-gray-100 px-2 py-1 border">{labelize(key)}</td>
             <td className="px-2 py-1 border">
-              {typeof value === "string"
-                ? value
+              {typeof value === "string" && value
+                ? renderDocument(value)
                 : value instanceof File
                   ? value.name
                   : "-"}
             </td>
           </tr>
         ))}
+        </tbody>
       </table>
     </div>
   );
@@ -227,6 +279,16 @@ export default function BoilerRegistationDetails({
             Download Certificate
           </Button>
         )}
+        {appData?.objectionLetterUrl && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => window.open(appData.objectionLetterUrl, "_blank")}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Download Objection Letter
+          </Button>
+        )}
       </div>
 
       <div className={`grid grid-cols-1 md:grid-cols-3 gap-6`}>
@@ -237,6 +299,41 @@ export default function BoilerRegistationDetails({
           <ApplicationTimeline history={appData.applicationHistory} />
         )}
       </div>
+
+      {/* Transaction History */}
+      {Array.isArray(appData?.transactionHistory) && appData.transactionHistory.length > 0 && (
+        <div className="bg-white text-black p-8 border text-sm mt-6">
+          <div className="border mb-6">
+            <div className="bg-gray-200 font-semibold px-3 py-2 border-b">Transaction History</div>
+            {appData.transactionHistory.map((tx: any, index: number) => (
+              <div key={index} className="border-t pt-4 mt-4 first:border-t-0 first:pt-0 first:mt-0 m-2">
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="font-semibold text-sm">Transaction {index + 1}</h3>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase border-2 bg-background ${getTransactionStatusColor(tx?.status)}`}>
+                    {tx?.status}
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 border-b">
+                  <div className="p-2 font-semibold bg-gray-100 border-r">PRN Number</div>
+                  <div className="p-2 col-span-2">{tx?.prnNumber || "—"}</div>
+                </div>
+                <div className="grid grid-cols-3 border-b">
+                  <div className="p-2 font-semibold bg-gray-100 border-r">Amount</div>
+                  <div className="p-2 col-span-2">₹{tx?.amount ?? "—"}</div>
+                </div>
+                <div className="grid grid-cols-3 border-b">
+                  <div className="p-2 font-semibold bg-gray-100 border-r">Paid Amount</div>
+                  <div className="p-2 col-span-2">₹{tx?.paidAmount ?? "—"}</div>
+                </div>
+                <div className="grid grid-cols-3 border-b">
+                  <div className="p-2 font-semibold bg-gray-100 border-r">Transaction ID</div>
+                  <div className="p-2 col-span-2">{tx?.id || "—"}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

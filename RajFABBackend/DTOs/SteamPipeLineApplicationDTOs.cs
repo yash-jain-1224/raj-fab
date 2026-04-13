@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using RajFabAPI.Models;
 
 namespace RajFabAPI.DTOs
 {
@@ -93,7 +94,10 @@ namespace RajFabAPI.DTOs
         public string Status { get; set; } = string.Empty;
         public bool IsActive { get; set; }
 
-    
+        public string? ApplicationPDFUrl { get; set; }
+        public string? ObjectionLetterUrl { get; set; }
+        public string? CertificateUrl { get; set; }
+        public List<Transaction> TransactionHistory { get; set; } = new();
     }
     public class CreateSteamPipeLineCloseDto
     {

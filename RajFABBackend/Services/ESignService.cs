@@ -53,6 +53,13 @@ namespace RajFabAPI.Services
         private readonly ILogger<ESignService> _logger;
         private readonly IWebHostEnvironment _environment;
         private readonly IBoilerRegistartionService _boilerRegistrationService;
+        private readonly IBoilerDrawingService _boilerDrawingService;
+        private readonly IBoilerManufactureService _boilerManufactureService;
+        private readonly IBoilerRepairerService _boilerRepairerService;
+        private readonly IEconomiserService _economiserService;
+        private readonly ISteamPipeLineApplicationService _steamPipeLineService;
+        private readonly IWelderApplicationService _welderService;
+        private readonly ISMTCRegistrationService _smtcService;
 
         public ESignService(
             IMemoryCache cache, IEstablishmentRegistrationService estRegService, ApplicationDbContext db, IConfiguration config,
@@ -62,7 +69,14 @@ namespace RajFabAPI.Services
             ILogger<ESignService> logger,
             IAppealService appealService,
             IWebHostEnvironment environment,
-            IBoilerRegistartionService boilerRegistrationService)
+            IBoilerRegistartionService boilerRegistrationService,
+            IBoilerDrawingService boilerDrawingService,
+            IBoilerManufactureService boilerManufactureService,
+            IBoilerRepairerService boilerRepairerService,
+            IEconomiserService economiserService,
+            ISteamPipeLineApplicationService steamPipeLineService,
+            IWelderApplicationService welderService,
+            ISMTCRegistrationService smtcService)
         {
             _logger = logger;
             _cache = cache;
@@ -77,6 +91,13 @@ namespace RajFabAPI.Services
             _appealService = appealService;
             _environment = environment;
             _boilerRegistrationService = boilerRegistrationService;
+            _boilerDrawingService = boilerDrawingService;
+            _boilerManufactureService = boilerManufactureService;
+            _boilerRepairerService = boilerRepairerService;
+            _economiserService = economiserService;
+            _steamPipeLineService = steamPipeLineService;
+            _welderService = welderService;
+            _smtcService = smtcService;
         }
 
         public async Task<string> GenerateESignHtmlAsync(string applicationId)
@@ -252,6 +273,125 @@ namespace RajFabAPI.Services
                                 _logger.LogInformation("Processing Boiler Registration PDF generation");
 
                                 var filePath = await _boilerRegistrationService.GenerateBoilerApplicationPdfAsync(applicationId);
+
+                                _logger.LogInformation("Generated PDF Path: {FilePath}", filePath);
+
+                                if (!File.Exists(filePath))
+                                {
+                                    _logger.LogError("PDF file not found at path: {FilePath}", filePath);
+                                    throw new Exception("Generated PDF not found");
+                                }
+
+                                pdfBytes = await File.ReadAllBytesAsync(filePath);
+                            }
+
+                            else if (applicationData.ModuleName == ApplicationTypeNames.BoilerDrawingRegistration || applicationData.ModuleName == ApplicationTypeNames.BoierDrawingRenewal)
+                            {
+                                _logger.LogInformation("Processing Boiler Drawing PDF generation");
+
+                                var filePath = await _boilerDrawingService.GenerateDrawingPdfAsync(applicationId);
+
+                                _logger.LogInformation("Generated PDF Path: {FilePath}", filePath);
+
+                                if (!File.Exists(filePath))
+                                {
+                                    _logger.LogError("PDF file not found at path: {FilePath}", filePath);
+                                    throw new Exception("Generated PDF not found");
+                                }
+
+                                pdfBytes = await File.ReadAllBytesAsync(filePath);
+                            }
+
+                            else if (applicationData.ModuleName == ApplicationTypeNames.BoilerManufactureRegistration || applicationData.ModuleName == ApplicationTypeNames.BoilerManufactureAmend || applicationData.ModuleName == ApplicationTypeNames.BoilerManufactureRenewal)
+                            {
+                                _logger.LogInformation("Processing Boiler Manufacture PDF generation");
+
+                                var filePath = await _boilerManufactureService.GenerateManufacturePdfAsync(applicationId);
+
+                                _logger.LogInformation("Generated PDF Path: {FilePath}", filePath);
+
+                                if (!File.Exists(filePath))
+                                {
+                                    _logger.LogError("PDF file not found at path: {FilePath}", filePath);
+                                    throw new Exception("Generated PDF not found");
+                                }
+
+                                pdfBytes = await File.ReadAllBytesAsync(filePath);
+                            }
+
+                            else if (applicationData.ModuleName == ApplicationTypeNames.BoilerRepairerRegistration || applicationData.ModuleName == ApplicationTypeNames.BoilerRepairerRenew)
+                            {
+                                _logger.LogInformation("Processing Boiler Repairer PDF generation");
+
+                                var filePath = await _boilerRepairerService.GenerateRepairerPdfAsync(applicationId);
+
+                                _logger.LogInformation("Generated PDF Path: {FilePath}", filePath);
+
+                                if (!File.Exists(filePath))
+                                {
+                                    _logger.LogError("PDF file not found at path: {FilePath}", filePath);
+                                    throw new Exception("Generated PDF not found");
+                                }
+
+                                pdfBytes = await File.ReadAllBytesAsync(filePath);
+                            }
+
+                            else if (applicationData.ModuleName == ApplicationTypeNames.EconomiserRegistration || applicationData.ModuleName == ApplicationTypeNames.Economiserrenew)
+                            {
+                                _logger.LogInformation("Processing Economiser PDF generation");
+
+                                var filePath = await _economiserService.GenerateEconomiserPdfAsync(applicationId);
+
+                                _logger.LogInformation("Generated PDF Path: {FilePath}", filePath);
+
+                                if (!File.Exists(filePath))
+                                {
+                                    _logger.LogError("PDF file not found at path: {FilePath}", filePath);
+                                    throw new Exception("Generated PDF not found");
+                                }
+
+                                pdfBytes = await File.ReadAllBytesAsync(filePath);
+                            }
+
+                            else if (applicationData.ModuleName == ApplicationTypeNames.Stplregistration || applicationData.ModuleName == ApplicationTypeNames.StplAmendment || applicationData.ModuleName == ApplicationTypeNames.Stplrenew)
+                            {
+                                _logger.LogInformation("Processing Steam Pipe Line PDF generation");
+
+                                var filePath = await _steamPipeLineService.GenerateStplPdfAsync(applicationId);
+
+                                _logger.LogInformation("Generated PDF Path: {FilePath}", filePath);
+
+                                if (!File.Exists(filePath))
+                                {
+                                    _logger.LogError("PDF file not found at path: {FilePath}", filePath);
+                                    throw new Exception("Generated PDF not found");
+                                }
+
+                                pdfBytes = await File.ReadAllBytesAsync(filePath);
+                            }
+
+                            else if (applicationData.ModuleName == ApplicationTypeNames.WelderRegistration || applicationData.ModuleName == ApplicationTypeNames.WelderRenew)
+                            {
+                                _logger.LogInformation("Processing Welder PDF generation");
+
+                                var filePath = await _welderService.GenerateWelderPdfAsync(applicationId);
+
+                                _logger.LogInformation("Generated PDF Path: {FilePath}", filePath);
+
+                                if (!File.Exists(filePath))
+                                {
+                                    _logger.LogError("PDF file not found at path: {FilePath}", filePath);
+                                    throw new Exception("Generated PDF not found");
+                                }
+
+                                pdfBytes = await File.ReadAllBytesAsync(filePath);
+                            }
+
+                            else if (applicationData.ModuleName == ApplicationTypeNames.SMTCRegistration)
+                            {
+                                _logger.LogInformation("Processing SMTC PDF generation");
+
+                                var filePath = await _smtcService.GenerateSmtcPdfAsync(applicationId);
 
                                 _logger.LogInformation("Generated PDF Path: {FilePath}", filePath);
 

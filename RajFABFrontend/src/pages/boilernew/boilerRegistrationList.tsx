@@ -204,6 +204,16 @@ export default function BoilerRegistrationList() {
                 Certificate
               </Button>
             )}
+            {app.objectionLetterUrl && (
+              <Button
+                onClick={() => window.open(app.objectionLetterUrl, "_blank")}
+                size="sm"
+                variant="outline"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Objection
+              </Button>
+            )}
             <Button
               onClick={() =>
                 navigate(

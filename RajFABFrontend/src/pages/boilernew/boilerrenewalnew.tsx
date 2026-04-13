@@ -878,6 +878,7 @@ export default function BoilerRenewalNew() {
         {currentStep === 6 && (
           <div className="bg-white border p-4 text-sm">
             <table className="w-full border border-collapse">
+              <tbody>
               {/* Factory Details */}
               <PreviewSection
                 title="Factory Details"
@@ -943,6 +944,7 @@ export default function BoilerRenewalNew() {
                       "-"}
                 </td>
               </tr>
+              </tbody>
             </table>
           </div>
         )}

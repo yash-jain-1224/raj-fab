@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using RajFabAPI.Models;
 
 namespace RajFabAPI.DTOs
 {
@@ -87,6 +88,11 @@ namespace RajFabAPI.DTOs
         public string? Type { get; set; }
         public decimal Version { get; set; }
 
+        public string? ApplicationPDFUrl { get; set; }
+        public string? ObjectionLetterUrl { get; set; }
+        public string? CertificateUrl { get; set; }
+        public List<Transaction> TransactionHistory { get; set; } = new();
+
         public List<BoilerRepairerEngineerDto>? Engineers { get; set; }
         public List<BoilerRepairerWelderDto>? Welders { get; set; }
     }
@@ -127,6 +133,11 @@ namespace RajFabAPI.DTOs
 
         public List<BoilerRepairerEngineerDto>? Engineers { get; set; }
         public List<BoilerRepairerWelderDto>? Welders { get; set; }
+
+        public string? ApplicationPDFUrl { get; set; }
+        public string? ObjectionLetterUrl { get; set; }
+        public string? CertificateUrl { get; set; }
+        public List<Transaction> TransactionHistory { get; set; } = new();
     }
 
     public class BoilerRepairerRenewalDto

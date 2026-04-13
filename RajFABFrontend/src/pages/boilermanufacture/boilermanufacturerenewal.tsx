@@ -320,6 +320,7 @@ export default function BoilerManufactureRenewalNew() {
         {currentStep === 6 && (
           <div className="bg-white border p-4 text-sm">
             <table className="w-full border">
+              <tbody>
               <PreviewSection title="Registered Firm Details" data={formData.registeredFirmDetails} />
               <PreviewSection title="Occupier Details" data={formData.occupierDetails} />
               <PreviewSection title="Boiler Manufacturing Details" data={formData.boilerManufacturingDetails} />
@@ -342,6 +343,7 @@ export default function BoilerManufactureRenewalNew() {
                   </td>
                 </tr>
               ))}
+              </tbody>
             </table>
           </div>
         )}

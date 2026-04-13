@@ -577,14 +577,14 @@ export default function BoilerModificationNew() {
         )}
 
         {currentStep === 6 && (
-          <div className="bg-white border p-4 text-sm rounded-lg shadow-sm"><table className="w-full border border-gray-300">
+          <div className="bg-white border p-4 text-sm rounded-lg shadow-sm"><table className="w-full border border-gray-300"><tbody>
             <PreviewHeader title="Application Details" /><PreviewRow label="Boiler Registration No." value={formData.boilerRegistrationNo} /><PreviewRow label="Application No." value={formData.applicationNo} />
             <PreviewHeader title="Factory Details" />{renderRows(formData.generalInformation)}
             <PreviewHeader title="Owner Details" />{renderRows(formData.ownerInformation)}
             <PreviewHeader title="Maker Details" />{renderRows(formData.makerInformation)}
             <PreviewHeader title="Boiler Technical Details" />{renderRows(formData.boilerDetails)}
             <PreviewHeader title="Modification Details" />{renderRows(formData.repairerDetails)}
-          </table></div>
+          </tbody></table></div>
         )}
 
         <div className="flex justify-between">

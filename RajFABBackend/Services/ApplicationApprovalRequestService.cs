@@ -19,6 +19,13 @@ namespace RajFabAPI.Services
         private readonly IFactoryMapApprovalService _factoryMapApprovalService;
         private readonly IFactoryLicenseService _factoryLicenseService;
         private readonly IBoilerRegistartionService _boilerRegistrationService;
+        private readonly IBoilerDrawingService _boilerDrawingService;
+        private readonly IBoilerManufactureService _boilerManufactureService;
+        private readonly IBoilerRepairerService _boilerRepairerService;
+        private readonly IEconomiserService _economiserService;
+        private readonly ISteamPipeLineApplicationService _steamPipeLineService;
+        private readonly IWelderApplicationService _welderService;
+        private readonly ISMTCRegistrationService _smtcService;
         private readonly IHttpContextAccessor _httpContextAccessor;
 
         public ApplicationApprovalRequestService(ApplicationDbContext db, ILogger<ApplicationApprovalRequestService> logger,
@@ -26,6 +33,14 @@ namespace RajFabAPI.Services
             ICommencementCessationService commencementCessationService,
             IFactoryMapApprovalService factoryMapApprovalService,
             IFactoryLicenseService factoryLicenseService,
+            IBoilerRegistartionService boilerRegistrationService,
+            IBoilerDrawingService boilerDrawingService,
+            IBoilerManufactureService boilerManufactureService,
+            IBoilerRepairerService boilerRepairerService,
+            IEconomiserService economiserService,
+            ISteamPipeLineApplicationService steamPipeLineService,
+            IWelderApplicationService welderService,
+            ISMTCRegistrationService smtcService,
             IHttpContextAccessor httpContextAccessor
             )
         {
@@ -35,6 +50,14 @@ namespace RajFabAPI.Services
             _commencementCessationService = commencementCessationService;
             _factoryMapApprovalService = factoryMapApprovalService;
             _factoryLicenseService = factoryLicenseService;
+            _boilerRegistrationService = boilerRegistrationService;
+            _boilerDrawingService = boilerDrawingService;
+            _boilerManufactureService = boilerManufactureService;
+            _boilerRepairerService = boilerRepairerService;
+            _economiserService = economiserService;
+            _steamPipeLineService = steamPipeLineService;
+            _welderService = welderService;
+            _smtcService = smtcService;
             _httpContextAccessor = httpContextAccessor;
         }
 
@@ -909,7 +932,162 @@ namespace RajFabAPI.Services
                     applicationId.ToString()
                 );
             }
-            // Boiler and other modules — no objection letter
+            else if (moduleName == ApplicationTypeNames.BoilerDrawingRegistration ||
+                     moduleName == ApplicationTypeNames.BoierDrawingRenewal)
+            {
+                var app = await _db.BoilerDrawingApplications.FirstOrDefaultAsync(a => a.ApplicationId == applicationId);
+                if (app != null)
+                {
+                    fileUrl = await _boilerDrawingService.GenerateObjectionLetter(
+                        new BoilerObjectionLetterDto
+                        {
+                            ApplicationId = app.ApplicationId,
+                            Date = DateTime.Today,
+                            BoilerRegistrationNo = app.BoilerDrawingRegistrationNo,
+                            OwnerName = "",
+                            Address = "",
+                            BoilerType = app.BoilerType,
+                            HeatingSurfaceArea = decimal.TryParse(app.HeatingSurfaceArea, out var hsa) ? hsa : null,
+                            EvaporationCapacity = decimal.TryParse(app.EvaporationCapacity, out var ec) ? ec : null,
+                            WorkingPressure = decimal.TryParse(app.IntendedWorkingPressure, out var wp) ? wp : null,
+                            Objections = objections,
+                            SignatoryName = signatoryName,
+                            SignatoryDesignation = signatoryDesignation,
+                            SignatoryLocation = signatoryLocation
+                        }, applicationId);
+                }
+            }
+            else if (moduleName == ApplicationTypeNames.BoilerManufactureRegistration ||
+                     moduleName == ApplicationTypeNames.BoilerManufactureAmend ||
+                     moduleName == ApplicationTypeNames.BoilerManufactureRenewal)
+            {
+                var app = await _db.BoilerManufactureRegistrations.FirstOrDefaultAsync(a => a.ApplicationId == applicationId);
+                if (app != null)
+                {
+                    fileUrl = await _boilerManufactureService.GenerateObjectionLetter(
+                        new BoilerObjectionLetterDto
+                        {
+                            ApplicationId = app.ApplicationId,
+                            Date = DateTime.Today,
+                            BoilerRegistrationNo = app.ManufactureRegistrationNo,
+                            OwnerName = "",
+                            Address = "",
+                            BoilerCategory = app.BmClassification,
+                            Objections = objections,
+                            SignatoryName = signatoryName,
+                            SignatoryDesignation = signatoryDesignation,
+                            SignatoryLocation = signatoryLocation
+                        }, applicationId);
+                }
+            }
+            else if (moduleName == ApplicationTypeNames.BoilerRepairerRegistration ||
+                     moduleName == ApplicationTypeNames.BoilerRepairerRenew)
+            {
+                var app = await _db.BoilerRepairerRegistrations.FirstOrDefaultAsync(a => a.ApplicationId == applicationId);
+                if (app != null)
+                {
+                    fileUrl = await _boilerRepairerService.GenerateObjectionLetter(
+                        new BoilerObjectionLetterDto
+                        {
+                            ApplicationId = app.ApplicationId,
+                            Date = DateTime.Today,
+                            BoilerRegistrationNo = app.RepairerRegistrationNo,
+                            OwnerName = "",
+                            Address = "",
+                            BoilerCategory = app.BrClassification,
+                            Objections = objections,
+                            SignatoryName = signatoryName,
+                            SignatoryDesignation = signatoryDesignation,
+                            SignatoryLocation = signatoryLocation
+                        }, applicationId);
+                }
+            }
+            else if (moduleName == ApplicationTypeNames.EconomiserRegistration ||
+                     moduleName == ApplicationTypeNames.Economiserrenew)
+            {
+                var app = await _db.EconomiserRegistrations.FirstOrDefaultAsync(a => a.ApplicationId == applicationId);
+                if (app != null)
+                {
+                    fileUrl = await _economiserService.GenerateObjectionLetter(
+                        new BoilerObjectionLetterDto
+                        {
+                            ApplicationId = app.ApplicationId,
+                            Date = DateTime.Today,
+                            BoilerRegistrationNo = app.EconomiserRegistrationNo,
+                            OwnerName = "",
+                            Address = "",
+                            HeatingSurfaceArea = decimal.TryParse(app.TotalHeatingSurfaceArea, out var eHsa) ? eHsa : null,
+                            WorkingPressure = decimal.TryParse(app.PressureTo, out var eWp) ? eWp : null,
+                            Objections = objections,
+                            SignatoryName = signatoryName,
+                            SignatoryDesignation = signatoryDesignation,
+                            SignatoryLocation = signatoryLocation
+                        }, applicationId);
+                }
+            }
+            else if (moduleName == ApplicationTypeNames.Stplregistration ||
+                     moduleName == ApplicationTypeNames.StplAmendment ||
+                     moduleName == ApplicationTypeNames.Stplrenew)
+            {
+                var app = await _db.SteamPipeLineApplications.FirstOrDefaultAsync(a => a.ApplicationId == applicationId);
+                if (app != null)
+                {
+                    fileUrl = await _steamPipeLineService.GenerateObjectionLetter(
+                        new BoilerObjectionLetterDto
+                        {
+                            ApplicationId = app.ApplicationId,
+                            Date = DateTime.Today,
+                            BoilerRegistrationNo = app.SteamPipeLineRegistrationNo,
+                            OwnerName = "",
+                            Address = "",
+                            Objections = objections,
+                            SignatoryName = signatoryName,
+                            SignatoryDesignation = signatoryDesignation,
+                            SignatoryLocation = signatoryLocation
+                        }, applicationId);
+                }
+            }
+            else if (moduleName == ApplicationTypeNames.WelderRegistration ||
+                     moduleName == ApplicationTypeNames.WelderRenew)
+            {
+                var app = await _db.WelderApplications.FirstOrDefaultAsync(a => a.ApplicationId == applicationId);
+                if (app != null)
+                {
+                    fileUrl = await _welderService.GenerateObjectionLetter(
+                        new BoilerObjectionLetterDto
+                        {
+                            ApplicationId = app.ApplicationId,
+                            Date = DateTime.Today,
+                            BoilerRegistrationNo = app.WelderRegistrationNo,
+                            OwnerName = "",
+                            Address = "",
+                            Objections = objections,
+                            SignatoryName = signatoryName,
+                            SignatoryDesignation = signatoryDesignation,
+                            SignatoryLocation = signatoryLocation
+                        }, applicationId);
+                }
+            }
+            else if (moduleName == ApplicationTypeNames.SMTCRegistration)
+            {
+                var app = await _db.SMTCRegistrations.FirstOrDefaultAsync(a => a.ApplicationId == applicationId);
+                if (app != null)
+                {
+                    fileUrl = await _smtcService.GenerateObjectionLetter(
+                        new BoilerObjectionLetterDto
+                        {
+                            ApplicationId = app.ApplicationId,
+                            Date = DateTime.Today,
+                            BoilerRegistrationNo = app.SMTCRegistrationNo,
+                            OwnerName = "",
+                            Address = "",
+                            Objections = objections,
+                            SignatoryName = signatoryName,
+                            SignatoryDesignation = signatoryDesignation,
+                            SignatoryLocation = signatoryLocation
+                        }, applicationId);
+                }
+            }
 
             // Save history record
             if (!string.IsNullOrEmpty(fileUrl))

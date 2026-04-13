@@ -541,6 +541,7 @@ export default function BoilerErectorRenewal() {
         {currentStep === 6 && (
           <div className="bg-white border p-4 text-sm">
             <table className="w-full border">
+              <tbody>
               <PreviewSection title="Registered Firm Details" data={formData.registeredFirm} />
               <PreviewSection title="Occupier Details" data={formData.occupierDetails} />
               <PreviewSection title="Firm Details" data={formData.firmDetails} />
@@ -564,6 +565,7 @@ export default function BoilerErectorRenewal() {
                   </td>
                 </tr>
               ))}
+              </tbody>
             </table>
           </div>
         )}

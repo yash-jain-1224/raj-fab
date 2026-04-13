@@ -266,9 +266,6 @@ namespace RajFabAPI.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("EstablishmentRegistrationNumber")
-                        .IsUnique();
-
                     b.HasIndex("Email");
 
                     b.HasIndex("FactoryTypeId");

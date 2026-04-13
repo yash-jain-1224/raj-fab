@@ -2223,6 +2223,7 @@ export default function BoilerRegistrationNew() {
         {currentStep === 6 && (
           <div className="bg-white border p-4 text-sm">
             <table className="w-full border border-collapse">
+              <tbody>
               {/* Factory Details */}
               <PreviewSection
                 title="Factory Details"
@@ -2265,6 +2266,7 @@ export default function BoilerRegistrationNew() {
                   </td>
                 </tr>
               ))}
+              </tbody>
             </table>
           </div>
         )}

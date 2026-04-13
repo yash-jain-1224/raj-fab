@@ -324,6 +324,24 @@ export default function BoilerRegistrationDetails({ boilerId, applicationApprova
           Download Application PDF
         </Button>
       )}
+      {(boiler as any).certificateUrl && (
+        <Button
+          variant="outline"
+          className="ml-2"
+          onClick={() => window.open((boiler as any).certificateUrl, "_blank")}
+        >
+          Download Certificate
+        </Button>
+      )}
+      {(boiler as any).objectionLetterUrl && (
+        <Button
+          variant="outline"
+          className="ml-2"
+          onClick={() => window.open((boiler as any).objectionLetterUrl, "_blank")}
+        >
+          Download Objection Letter
+        </Button>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="col-span-2 space-y-6">

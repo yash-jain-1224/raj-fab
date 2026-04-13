@@ -861,7 +861,7 @@ export default function BoilerTransferNew() {
           <StepCard title="Preview Submitted Details">
             <div className="overflow-x-auto">
               <table className="w-full border text-sm">
-
+                <tbody>
                 {/* Transfer Source */}
                 <PreviewHeader title="Transfer Source Details" />
                 {renderRows(formData.transferSource)}
@@ -881,7 +881,7 @@ export default function BoilerTransferNew() {
                 {/* Transfer & Documents */}
                 <PreviewHeader title="Transfer & Documents" />
                 {renderRows(formData.transferClosureDetails)}
-
+                </tbody>
               </table>
             </div>
           </StepCard>

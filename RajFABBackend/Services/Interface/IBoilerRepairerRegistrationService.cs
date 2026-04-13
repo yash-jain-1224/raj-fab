@@ -12,7 +12,8 @@ namespace RajFabAPI.Services.Interface
         Task<BoilerRepairerResponseDto?> GetLatestApprovedByRegistrationNoAsync(string registrationNo);
         Task<List<BoilerRepairerResponseDto>> GetAllAsync();
         Task<string> GenerateRepairerPdfAsync(string applicationId);
-
+        Task<string> GenerateObjectionLetter(BoilerObjectionLetterDto dto, string applicationId);
+        Task<string> GenerateCertificatePdfAsync(string applicationId, string postName, string userName);
     }
 
 

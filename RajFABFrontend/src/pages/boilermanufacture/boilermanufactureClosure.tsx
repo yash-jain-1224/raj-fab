@@ -208,6 +208,7 @@ export default function BoilerManufactureClosureNew() {
           <StepCard title="Preview">
             <div className="bg-white border p-4 text-sm rounded-md">
               <table className="w-full border border-collapse">
+                <tbody>
                 <PreviewRow label="Application ID" value={formData.applicationId} />
                 <PreviewRow label="Manufacture Registration No" value={formData.manufactureRegistrationNo} />
                 <PreviewRow label="Factory Registration No" value={formData.factoryRegistrationNo} />
@@ -215,6 +216,7 @@ export default function BoilerManufactureClosureNew() {
                 <PreviewRow label="Closure Date" value={formData.closureDate} />
                 <PreviewRow label="Remarks" value={formData.remarks} />
                 <PreviewRow label="Document Path" value={formData.documentPath} />
+                </tbody>
               </table>
             </div>
           </StepCard>

@@ -14,10 +14,7 @@ namespace RajFabAPI.Services.Interface
         Task<EconomiserDetailsDto?> GetByApplicationIdAsync(string applicationId);
         Task<string> CloseEconomiserAsync(EconomiserClosureDto dto, Guid userId);
         Task<string> GenerateEconomiserPdfAsync(string applicationId);
-
-
+        Task<string> GenerateObjectionLetter(BoilerObjectionLetterDto dto, string applicationId);
+        Task<string> GenerateCertificatePdfAsync(string applicationId, string postName, string userName);
     }
-
-
-
 }

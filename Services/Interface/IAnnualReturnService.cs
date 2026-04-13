@@ -48,5 +48,12 @@ namespace RajFabAPI.Services.Interface
         /// <param name="id">The annual return ID to delete</param>
         /// <returns>Success status of the deletion</returns>
         Task<ApiResponseDto<bool>> DeleteAnnualReturnAsync(string id);
+
+        /// <summary>
+        /// Generates a Form-25 Annual Return PDF for the given annual return ID
+        /// </summary>
+        /// <param name="id">The annual return ID</param>
+        /// <returns>File path of the generated PDF</returns>
+        Task<string> GenerateAnnualReturnPdfAsync(string id);
     }
 }

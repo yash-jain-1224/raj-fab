@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Card,
@@ -7,21 +7,48 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Flame, Download, Eye } from "lucide-react";
+import { ArrowLeft, Flame, Download, Eye, CreditCard, FileSignature } from "lucide-react";
 import { useEconomiserApplicationByNumber } from "@/hooks/api/useEconomiser";
 import formatDate from "@/utils/formatDate";
 import { normalizeStatus, APPLICATION_STATUS } from "@/constants/applicationStatus";
 import { Badge } from "@/components/ui/badge";
+import { paymentApi } from "@/services/api/payment";
+import { eSignApi } from "@/services/api/eSign";
+import { toast } from "sonner";
 
 export default function EconomiserView() {
   const { applicationId } = useParams();
   const navigate = useNavigate();
+  const [actionLoading, setActionLoading] = useState(false);
 
   const {
     data: application,
     isLoading,
     error,
   } = useEconomiserApplicationByNumber(applicationId || "");
+
+  const handleAction = async (actionType: "payment" | "esign") => {
+    const appData = application as any;
+    if (!appData) return;
+    setActionLoading(true);
+    try {
+      let response: any;
+      if (actionType === "payment") {
+        response = await paymentApi.paymentByApplicationId(appData.applicationId);
+      } else {
+        response = await eSignApi.eSignByApplicationId(appData.applicationId);
+      }
+      if (response?.html) {
+        document.open();
+        document.write(response.html);
+        document.close();
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : `${actionType} failed`);
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (error) {
@@ -204,6 +231,19 @@ export default function EconomiserView() {
                   Download Objection Letter
                 </Button>
               )}
+              {appData?.isPaymentCompleted === false && (
+                <Button variant="outline" size="sm" onClick={() => handleAction("payment")} disabled={actionLoading}>
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Pay Now
+                </Button>
+              )}
+              {(appData?.isPaymentCompleted === undefined || appData?.isPaymentCompleted === true) &&
+                !appData?.isESignCompleted && (
+                  <Button variant="outline" size="sm" onClick={() => handleAction("esign")} disabled={actionLoading}>
+                    <FileSignature className="h-4 w-4 mr-2" />
+                    E-Sign
+                  </Button>
+                )}
             </div>
             <div className="bg-white border text-sm">
               <table className="w-full border-collapse">

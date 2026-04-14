@@ -192,6 +192,13 @@ export default function BoilerRepairNew() {
     try {
       const res: any = mode === "update" && changeReqId ? await updateBoilerForm({ applicationId: changeReqId, data: payload }) : await createBoilerForm(payload);
       if (res?.success) {
+        // Payment gateway: new applications return HTML for payment
+        if (!mode && res?.html) {
+          document.open();
+          document.write(res.html);
+          document.close();
+          return;
+        }
         toast.success(mode === "update" ? "Boiler repair application updated successfully" : "Boiler repair application submitted successfully");
         navigate("/user/boilerNew-services/modificationRepair/list");
       } else toast.error(res?.message || "Failed to submit application");

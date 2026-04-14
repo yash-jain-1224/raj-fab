@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Flame } from "lucide-react";
+import { ArrowLeft, Flame, Loader2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -17,6 +17,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useBoilersCreate } from "@/hooks/api/useBoilers";
+import { toast } from "sonner";
 
 /* ===================================================== */
 
@@ -24,6 +26,7 @@ export default function BoilerTransferNew() {
   const navigate = useNavigate();
   const totalSteps = 5;
   const [currentStep, setCurrentStep] = useState(1);
+  const { mutateAsync: createBoilerForm, isPending: isSubmitting } = useBoilersCreate();
 
   const [formData, setFormData] = useState({
     boilerRegistrationNo: "RJ 897",
@@ -109,16 +112,28 @@ export default function BoilerTransferNew() {
     }));
   };
 
-  const handleFinalSubmit = () => {
-    console.log("===== FINAL SUBMIT =====");
-    console.log(formData);
-
-    // 🔜 API integration later
-    // const payload = new FormData();
-    // payload.append(...)
-    // await api.post("/boiler/transfer", payload);
-
-    alert("Boiler Transfer Application Submitted Successfully");
+  const handleFinalSubmit = async () => {
+    try {
+      const payload = {
+        applicationType: "boiler-transfer",
+        ...formData,
+      };
+      const response = await createBoilerForm(payload as any);
+      if ((response as any)?.html) {
+        document.open();
+        document.write((response as any).html);
+        document.close();
+        return;
+      }
+      if ((response as any)?.success) {
+        toast.success("Boiler Transfer Application Submitted Successfully");
+        navigate("/user/boilerNew-services/list");
+      } else {
+        toast.error((response as any)?.message || "Failed to submit transfer application");
+      }
+    } catch (err: unknown) {
+      toast.error("Failed to submit transfer application");
+    }
   };
 
 

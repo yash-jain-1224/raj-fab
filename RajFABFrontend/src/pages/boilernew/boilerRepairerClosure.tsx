@@ -286,6 +286,13 @@ export default function BoilerRepairerClosure() {
         },
       });
       if (response?.success) {
+        // Payment gateway: new applications return HTML for payment
+        if (response?.html) {
+          document.open();
+          document.write(response.html);
+          document.close();
+          return;
+        }
         toast.success("Boiler repairer closure submitted successfully");
         navigate("/user/boilernew-services/erector/list");
       } else {

@@ -9,7 +9,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Flame } from "lucide-react";
+import { ArrowLeft, Flame, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { certificateFormsApi } from "@/services/api/certificateForms";
 
 /* ===================================================== */
 
@@ -17,6 +19,7 @@ export default function BoilerComponentFittingNew() {
   const navigate = useNavigate();
   const totalSteps = 6;
   const [currentStep, setCurrentStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     registeredFirmDetails: {
@@ -133,9 +136,34 @@ export default function BoilerComponentFittingNew() {
   const next = () => setCurrentStep((s) => Math.min(s + 1, totalSteps));
   const prev = () => setCurrentStep((s) => Math.max(s - 1, 1));
 
-  const submit = () => {
-    console.log("===== BOILER COMPONENT / FITTING SUBMIT =====");
-    console.log(formData);
+  const submit = async () => {
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        registeredFirmDetails: formData.registeredFirmDetails,
+        occupierDetails: formData.occupierDetails,
+        boilerComponentDetails: formData.boilerComponentDetails,
+        questionAnswers: formData.questionAnswers,
+      };
+      const response: any = await certificateFormsApi.createBoilerComponentFitting(payload);
+      if (response?.html) {
+        document.open();
+        document.write(response.html);
+        document.close();
+        return;
+      }
+      if (response?.success !== false) {
+        const appId = response?.applicationId ?? response?.data?.applicationId;
+        toast.success(`Boiler Component/Fitting registration submitted successfully!${appId ? ` Application ID: ${appId}` : ""}`);
+        navigate(-1);
+      } else {
+        toast.error(response?.message || "Submission failed. Please try again.");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Submission failed. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   /* ================= UI ================= */
@@ -344,8 +372,10 @@ export default function BoilerComponentFittingNew() {
           {currentStep < totalSteps ? (
             <Button onClick={next}>Next</Button>
           ) : (
-            <Button onClick={submit} className="bg-green-600">
-              Final Submit
+            <Button onClick={submit} className="bg-green-600" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Submitting...</>
+              ) : "Final Submit"}
             </Button>
           )}
         </div>

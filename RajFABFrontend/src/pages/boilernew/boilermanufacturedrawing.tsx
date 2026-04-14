@@ -9,7 +9,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Flame } from "lucide-react";
+import { ArrowLeft, Flame, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { certificateFormsApi } from "@/services/api/certificateForms";
 
 /* ===================================================== */
 
@@ -17,6 +19,7 @@ export default function BoilerManufactureDrawing() {
   const navigate = useNavigate();
   const totalSteps = 5;
   const [currentStep, setCurrentStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     applicationNo: "242/BTC/CIFB/2026",
@@ -73,16 +76,33 @@ export default function BoilerManufactureDrawing() {
   const next = () => setCurrentStep((s) => Math.min(s + 1, totalSteps));
   const prev = () => setCurrentStep((s) => Math.max(s - 1, 1));
 
-  const submit = () => {
-    console.clear();
-    console.log("===== BOILER MANUFACTURE DRAWING SUBMIT =====");
-    console.log(JSON.stringify(formData, null, 2));
-
-    Object.entries(formData.attachments).forEach(([k, v]) => {
-      if (v instanceof File) {
-        console.log(`${k}:`, v.name);
+  const submit = async () => {
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        generalInformation: formData.generalInformation,
+        addressInformation: formData.addressInformation,
+        boilerDrawingDetails: formData.boilerDrawingDetails,
+      };
+      const response: any = await certificateFormsApi.createBoilerManufactureDrawing(payload);
+      if (response?.html) {
+        document.open();
+        document.write(response.html);
+        document.close();
+        return;
       }
-    });
+      if (response?.success !== false) {
+        const appId = response?.applicationId ?? response?.data?.applicationId;
+        toast.success(`Boiler Manufacture Drawing submitted successfully!${appId ? ` Application ID: ${appId}` : ""}`);
+        navigate(-1);
+      } else {
+        toast.error(response?.message || "Submission failed. Please try again.");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Submission failed. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   /* ================= UI ================= */
@@ -244,8 +264,11 @@ export default function BoilerManufactureDrawing() {
             <Button
               onClick={submit}
               className="bg-gradient-to-r from-green-600 to-green-500"
+              disabled={isSubmitting}
             >
-              Submit
+              {isSubmitting ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Submitting...</>
+              ) : "Submit"}
             </Button>
           )}
         </div>

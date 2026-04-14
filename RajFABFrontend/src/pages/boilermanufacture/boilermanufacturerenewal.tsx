@@ -133,6 +133,14 @@ export default function BoilerManufactureRenewalNew() {
         manufactureRegistrationNo,
         renewalYears: Number(formData.boilerManufacturingDetails.experienceYears || 1),
       },
+    }, {
+      onSuccess: (response: any) => {
+        if (response?.html) {
+          document.open();
+          document.write(response.html);
+          document.close();
+        }
+      },
     });
   };
 

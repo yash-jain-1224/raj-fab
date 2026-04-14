@@ -314,7 +314,14 @@ export function BoilerRenewalForm() {
     console.log("Renewal Payload:", JSON.stringify(payload, null, 2));
 
     try {
-      await createBoilerForm(payload as any);
+      const response = await createBoilerForm(payload as any);
+      // Payment gateway: new applications return HTML for payment
+      if ((response as any)?.html) {
+        document.open();
+        document.write((response as any).html);
+        document.close();
+        return;
+      }
       navigate("/user/boiler-services");
     } catch (error) {
       console.error("Boiler Renewal API Error:", error);

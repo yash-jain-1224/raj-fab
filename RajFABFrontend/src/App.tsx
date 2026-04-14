@@ -132,6 +132,8 @@ import BoilerManufactureDrawing from "./pages/boilernew/boilermanufacturedrawing
 import StplNew from "./pages/boilernew/stplnew";
 import SteamPipelineList from "./pages/boilernew/steamPipelineList";
 import BoilerComponentFittingNew from "./pages/boilernew/boilercomponentfittingNew";
+import BoilerComponentFittingView from "./pages/boilernew/boilercomponentfittingView";
+import BoilerManufactureDrawingView from "./pages/boilernew/boilerManufactureDrawingView";
 import BoilerManufactureRegistrationNew from "./pages/boilermanufacture/BoilerManufactureRegistrationNew";
 import BoilerManufactureRenewalNew from "./pages/boilermanufacture/boilermanufacturerenewal";
 import BoilerManufactureClosureNew from "./pages/boilermanufacture/boilermanufactureClosure";
@@ -160,12 +162,14 @@ import CompetentPersonRegistrationForm from "./pages/Competant person/CompetentP
 import CompetentPersonListPage from "./pages/Competant person/CompetentPersonListPage";
 import CompetentPersonDetailsPage from "./pages/Competant person/CompetentPersonDetailsPage";
 import CompetentPersonEquipmentRegistrationForm from "./pages/Competant person/CompetentPersonEquipmentRegistrationForm";
+import CompetentPersonEquipmentView from "./pages/Competant person/CompetentPersonEquipmentView";
 import BOECertificateRegistrationForm from "./pages/user/BOECertificateRegistrationForm";
 import SMTCRegistrationForm from "./pages/user/SMTCRegistrationForm";
 import FOECertificateRegistrationForm from "./pages/user/FOECertificateRegistrationForm";
 import FOAttendantCertificateRegistration from "./pages/user/FOAttendantCertificateRegistration";
 import BOAttendantCertificateRegistration from "./pages/user/BOAttendantCertificateRegistration";
 import HazardousWorkerRegistration from "./pages/user/HazardousWorkerRegistration";
+import HazardousWorkerView from "./pages/user/HazardousWorkerView";
 import DocumentList from "./pages/user/Documents";
 
 const queryClient = new QueryClient({
@@ -615,6 +619,10 @@ const App = () => (
                     path="boiler-services/boilercomponentfitting"
                     element={<BoilerComponentFittingNew />}
                   />
+                  <Route
+                    path="boiler-services/boilercomponentfitting/:applicationId"
+                    element={<BoilerComponentFittingView />}
+                  />
 
                   <Route
                     path="boiler-services/boilermanufacturer/list"
@@ -675,6 +683,10 @@ const App = () => (
                     element={<CompetentPersonEquipmentRegistrationForm/>}
                   />
                   <Route
+                    path="competent-person-equipment/:applicationId"
+                    element={<CompetentPersonEquipmentView />}
+                  />
+                  <Route
                     path="boe-registration/create"
                     element={<BOECertificateRegistrationForm/>}
                   />
@@ -696,6 +708,10 @@ const App = () => (
                    <Route
                     path="HazardousWorkerRegistration/create"
                     element={<HazardousWorkerRegistration/>}
+                  />
+                  <Route
+                    path="HazardousWorkerRegistration/:applicationId"
+                    element={<HazardousWorkerView />}
                   />
 
                     <Route
@@ -727,6 +743,10 @@ const App = () => (
                   <Route
                     path="boilerNew-services/boilermanufacturedrawing"
                     element={<BoilerManufactureDrawing />}
+                  />
+                  <Route
+                    path="boilerNew-services/boilermanufacturedrawing/:applicationId"
+                    element={<BoilerManufactureDrawingView />}
                   />
 
                   <Route

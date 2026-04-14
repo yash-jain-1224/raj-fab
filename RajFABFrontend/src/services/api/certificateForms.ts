@@ -156,6 +156,85 @@ export interface FOAttendantCreateDto {
   }>;
 }
 
+// ── Boiler Component / Fitting ────────────────────────────────────────────────
+export interface BoilerComponentFittingCreateDto {
+  registeredFirmDetails: Record<string, string>;
+  occupierDetails: Record<string, string>;
+  boilerComponentDetails: Record<string, string>;
+  questionAnswers: Array<{ question: string; answer: string; details: string }>;
+}
+
+// ── Boiler Manufacture Drawing ────────────────────────────────────────────────
+export interface BoilerManufactureDrawingCreateDto {
+  generalInformation: Record<string, string>;
+  addressInformation: Record<string, string>;
+  boilerDrawingDetails: Record<string, string>;
+}
+
+// ── Hazardous Worker Registration ─────────────────────────────────────────────
+export interface HazardousWorkerCreateDto {
+  category: string;
+  personal: {
+    workerName: string;
+    fatherName: string;
+    dob: string;
+    gender: string;
+    mobile: string;
+    state: string;
+    district: string;
+    address: string;
+  };
+  identity: {
+    aadhaarNo: string;
+    bpl: string;
+    bplNo: string;
+    bhamashah: string;
+  };
+  documents: {
+    aadhaarCard: string;
+    bplCard: string;
+    bhamashahCard: string;
+    photo: string;
+  };
+  work: {
+    serviceType: string;
+    joiningDate: string;
+    safetyTraining: string;
+    ppes: string;
+    hazardousCategory: string;
+  };
+  medical: {
+    xray: boolean;
+    pft: boolean;
+    bloodTest: boolean;
+  };
+}
+
+// ── Competent Person Equipment ────────────────────────────────────────────────
+export interface CompetentPersonEquipmentCreateDto {
+  person: {
+    registartionNumber: string;
+    approvalDate: string;
+    category: string;
+    firmName: string;
+    address: string;
+    email: string;
+    mobile: string;
+    competencyCertificate: string;
+    personName: string;
+    dob: string;
+  };
+  equipments: Array<{
+    equipmentType: string;
+    equipmentName: string;
+    identificationNumber: string;
+    calibrationCertificateNo: string;
+    calibrationDate: string;
+    calibrationValidity: string;
+    calibrationCertificate: string;
+  }>;
+}
+
 class CertificateFormsApiService extends BaseApiService {
   // BOE
   async createBOE(dto: BOECreateDto): Promise<any> {
@@ -203,6 +282,54 @@ class CertificateFormsApiService extends BaseApiService {
 
   async getByApplicationIdFOAttendant(applicationId: string): Promise<any> {
     return this.request<any>(`/FOAttendantCertificate/application/${encodeURIComponent(applicationId)}`);
+  }
+
+  // Boiler Component / Fitting
+  async createBoilerComponentFitting(dto: BoilerComponentFittingCreateDto): Promise<any> {
+    return this.request<any>('/BoilerComponentFitting/create', {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    });
+  }
+
+  async getByApplicationIdBoilerComponentFitting(applicationId: string): Promise<any> {
+    return this.request<any>(`/BoilerComponentFitting/application/${encodeURIComponent(applicationId)}`);
+  }
+
+  // Boiler Manufacture Drawing
+  async createBoilerManufactureDrawing(dto: BoilerManufactureDrawingCreateDto): Promise<any> {
+    return this.request<any>('/BoilerManufactureDrawing/create', {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    });
+  }
+
+  async getByApplicationIdBoilerManufactureDrawing(applicationId: string): Promise<any> {
+    return this.request<any>(`/BoilerManufactureDrawing/application/${encodeURIComponent(applicationId)}`);
+  }
+
+  // Hazardous Worker Registration
+  async createHazardousWorker(dto: HazardousWorkerCreateDto): Promise<any> {
+    return this.request<any>('/HazardousWorker/create', {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    });
+  }
+
+  async getByApplicationIdHazardousWorker(applicationId: string): Promise<any> {
+    return this.request<any>(`/HazardousWorker/application/${encodeURIComponent(applicationId)}`);
+  }
+
+  // Competent Person Equipment
+  async createCompetentPersonEquipment(dto: CompetentPersonEquipmentCreateDto): Promise<any> {
+    return this.request<any>('/CompetentPersonEquipment/create', {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    });
+  }
+
+  async getByApplicationIdCompetentPersonEquipment(applicationId: string): Promise<any> {
+    return this.request<any>(`/CompetentPersonEquipment/application/${encodeURIComponent(applicationId)}`);
   }
 }
 

@@ -323,6 +323,13 @@ export default function BoilerRenewalNew() {
       onSuccess: (response: any) => {
         setIsSubmitting(false);
         if (response.success) {
+          // Payment gateway: backend returns HTML for new applications
+          if (response?.html) {
+            document.open();
+            document.write(response.html);
+            document.close();
+            return;
+          }
           toast.success("Boiler certificate renewed successfully!");
           navigate("/user/boilerNew-services/list");
         } else {

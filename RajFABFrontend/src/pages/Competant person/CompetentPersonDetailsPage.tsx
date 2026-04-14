@@ -3,9 +3,12 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Users } from "lucide-react";
+import { ArrowLeft, Users, Download, CreditCard, FileSignature } from "lucide-react";
 import { competentPersonApi } from "@/services/api/competentPerson";
+import { paymentApi } from "@/services/api/payment";
+import { eSignApi } from "@/services/api/eSign";
 import formatDate from "@/utils/formatDate";
+import { useState } from "react";
 
 function getStatusVariant(status?: string): "default" | "secondary" | "destructive" | "outline" {
   const s = status?.toLowerCase() ?? "";
@@ -37,12 +40,36 @@ function SectionHeader({ title }: { title: string }) {
 export default function CompetentPersonDetailsPage() {
   const navigate = useNavigate();
   const { "*": applicationId } = useParams();
+  const [actionLoading, setActionLoading] = useState(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["competentPerson", applicationId],
     queryFn: () => competentPersonApi.getByApplicationId(applicationId!),
     enabled: !!applicationId,
   });
+
+  const handleAction = async (actionType: "payment" | "esign") => {
+    if (!data) return;
+    const appData = data as any;
+    setActionLoading(true);
+    try {
+      let response: any;
+      if (actionType === "payment") {
+        response = await paymentApi.paymentByApplicationId(appData.applicationId);
+      } else {
+        response = await eSignApi.eSignByApplicationId(appData.applicationId);
+      }
+      if (response?.html) {
+        document.open();
+        document.write(response.html);
+        document.close();
+      }
+    } catch (err) {
+      console.error(`${actionType} failed`, err);
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -75,6 +102,7 @@ export default function CompetentPersonDetailsPage() {
     );
   }
 
+  const appData = data as any;
   const est = data.establishment;
   const occ = data.occupier;
 
@@ -99,6 +127,63 @@ export default function CompetentPersonDetailsPage() {
             </div>
           </CardHeader>
           <CardContent className="p-6 space-y-6">
+
+            {/* ── Action Buttons ── */}
+            <div className="flex gap-2 flex-wrap">
+              {appData?.applicationPDFUrl && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(appData.applicationPDFUrl, "_blank")}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download Application
+                </Button>
+              )}
+              {appData?.certificateUrl && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(appData.certificateUrl, "_blank")}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download Certificate
+                </Button>
+              )}
+              {appData?.objectionLetterUrl && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(appData.objectionLetterUrl, "_blank")}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download Objection Letter
+                </Button>
+              )}
+              {appData?.isPaymentCompleted === false && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleAction("payment")}
+                  disabled={actionLoading}
+                >
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Pay Now
+                </Button>
+              )}
+              {(appData?.isPaymentCompleted === undefined || appData?.isPaymentCompleted === true) &&
+                !appData?.isESignCompleted && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleAction("esign")}
+                    disabled={actionLoading}
+                  >
+                    <FileSignature className="h-4 w-4 mr-2" />
+                    E-Sign
+                  </Button>
+                )}
+            </div>
             <table className="w-full border-collapse">
               <SectionHeader title="Registration Info" />
               <InfoRow label="Application ID" value={data.applicationId} />

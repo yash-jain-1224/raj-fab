@@ -17,6 +17,7 @@ import { useModules } from "@/hooks/api";
 import { competentPersonApi } from "@/services/api/competentPerson";
 import PersonalAddressNew from "@/components/common/PersonalAddressNew";
 import { LocationProvider, useLocationContext } from "@/context/LocationContext";
+import { toast } from "sonner";
 
 type PersonForm = {
   name: string;
@@ -436,16 +437,27 @@ function CompetentPersonRegistrationFormInner() {
       let result: any;
       if (isEditMode && editRegistrationNo) {
         result = await competentPersonApi.amend(editRegistrationNo, payload);
-        const appId = result?.applicationId ?? result?.data?.applicationId;
-        alert(`Amendment submitted successfully!${appId ? `\nApplication ID: ${appId}` : ""}`);
       } else {
         result = await competentPersonApi.create(payload);
-        const appId = result?.applicationId ?? result?.data?.applicationId;
-        alert(`Registration submitted successfully!${appId ? `\nApplication ID: ${appId}` : ""}`);
+      }
+      // Payment gateway: if backend returns HTML, render it
+      if (result?.html) {
+        document.open();
+        document.write(result.html);
+        document.close();
+        return;
+      }
+      const appId = result?.applicationId ?? result?.data?.applicationId;
+      if (isEditMode) {
+        toast.success(`Amendment submitted successfully!${appId ? ` Application ID: ${appId}` : ""}`);
+      } else {
+        toast.success(`Registration submitted successfully!${appId ? ` Application ID: ${appId}` : ""}`);
       }
       navigate("/user/competent-person/list");
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Submission failed. Please try again.");
+      const msg = err instanceof Error ? err.message : "Submission failed. Please try again.";
+      setSubmitError(msg);
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }

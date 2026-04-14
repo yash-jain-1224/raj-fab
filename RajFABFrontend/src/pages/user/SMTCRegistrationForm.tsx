@@ -4,8 +4,20 @@ import {Card,CardHeader,CardTitle,CardContent} from "@/components/ui/card"
 import {Button} from "@/components/ui/button"
 import {Input} from "@/components/ui/input"
 import {Label} from "@/components/ui/label"
-import {ArrowLeft,Flame} from "lucide-react"
+import {ArrowLeft,Flame,Loader2} from "lucide-react"
 import {DocumentUploader} from "@/components/ui/DocumentUploader"
+import {toast} from "sonner"
+import {BaseApiService} from "@/services/api/base"
+
+class SmtcApiService extends BaseApiService {
+  async create(dto: unknown): Promise<any> {
+    return this.request<any>('/SMTC/create', {
+      method: 'POST',
+      body: JSON.stringify(dto),
+    });
+  }
+}
+const smtcApi = new SmtcApiService();
 
 /* TYPES */
 
@@ -35,6 +47,7 @@ const navigate=useNavigate()
 
 const totalSteps=4
 const [step,setStep]=useState(1)
+const [isSubmitting,setIsSubmitting]=useState(false)
 
 /* STEP1 FACTORY */
 
@@ -128,6 +141,33 @@ setTrainers(trainers.filter((_,i)=>i!==ti))
 
 const next=()=>setStep(s=>Math.min(s+1,totalSteps))
 const prev=()=>setStep(s=>Math.max(s-1,1))
+
+/* SUBMIT */
+
+const handleSubmit=async()=>{
+  setIsSubmitting(true)
+  try{
+    const payload={factory,trainers}
+    const response:any=await smtcApi.create(payload)
+    if(response?.html){
+      document.open()
+      document.write(response.html)
+      document.close()
+      return
+    }
+    if(response?.success!==false){
+      const appId=response?.applicationId??response?.data?.applicationId
+      toast.success(`SMTC registration submitted successfully!${appId?` Application ID: ${appId}`:""}`)
+      navigate(-1)
+    }else{
+      toast.error(response?.message||"Submission failed. Please try again.")
+    }
+  }catch(err){
+    toast.error(err instanceof Error?err.message:"Submission failed. Please try again.")
+  }finally{
+    setIsSubmitting(false)
+  }
+}
 
 return(
 
@@ -359,8 +399,10 @@ Previous
 )}
 
 {step===4&&(
-<Button className="bg-green-600">
-Submit
+<Button className="bg-green-600" onClick={handleSubmit} disabled={isSubmitting}>
+{isSubmitting?(
+  <><Loader2 className="h-4 w-4 mr-2 animate-spin"/>Submitting...</>
+):"Submit"}
 </Button>
 )}
 

@@ -104,7 +104,8 @@ namespace RajFabAPI.Services
                     string signerName = fullName ?? "";
                     string signerDesignation = "Occupier";
                     string signerLocation = "Jaipur, Rajasthan";
-                    string signerXcord = "415";   // occupier box x
+                    string signerXcord = "400";   // occupier box x
+                    // string signerXcord = "415";   // occupier box x
 
                     _logger.LogInformation("Fetching application data from DB");
 
@@ -412,7 +413,7 @@ namespace RajFabAPI.Services
 
                             if (isManagerTurn)
                             {
-                                signerXcord = "250";   // manager box x (left of occupier box)
+                                signerXcord = "235";   // manager box x (left of occupier box)
                                 signerDesignation = "Manager";
 
                                 if (applicationData.ModuleName == ApplicationTypeNames.FactoryLicense ||

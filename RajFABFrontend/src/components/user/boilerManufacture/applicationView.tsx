@@ -1,6 +1,9 @@
 import { boilerManufactureInfo } from "@/hooks/api/useBoilers";
 import { Button } from "@/components/ui/button";
-import { Download, Eye } from "lucide-react";
+import { Download, Eye, FileSignature, CreditCard } from "lucide-react";
+import { useState } from "react";
+import { eSignApi } from "@/services/api/eSign";
+import { paymentApi } from "@/services/api/payment";
 
 const renderDocument = (fileUrl: string | null | undefined) => {
   if (!fileUrl) return "—";
@@ -23,6 +26,7 @@ export default function BoilerManufactureDetails({
   formId: string;
 }) {
   const { data, isLoading } = boilerManufactureInfo(formId);
+  const [actionLoading, setActionLoading] = useState(false);
 
   if (isLoading) {
     return (
@@ -43,6 +47,27 @@ export default function BoilerManufactureDetails({
   }
 
   const appData = data as any;
+
+  const handleAction = async (actionType: "payment" | "esign") => {
+    setActionLoading(true);
+    try {
+      let response: any;
+      if (actionType === "payment") {
+        response = await paymentApi.paymentByApplicationId(appData.applicationId);
+      } else {
+        response = await eSignApi.eSignByApplicationId(appData.applicationId);
+      }
+      if (response?.html) {
+        document.open();
+        document.write(response.html);
+        document.close();
+      }
+    } catch (err) {
+      console.error(`${actionType} failed`, err);
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   const getTransactionStatusColor = (action: string) => {
     switch (action?.toLowerCase()) {
@@ -137,6 +162,29 @@ export default function BoilerManufactureDetails({
             Download Objection Letter
           </Button>
         )}
+        {appData?.isPaymentCompleted === false && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleAction("payment")}
+            disabled={actionLoading}
+          >
+            <CreditCard className="h-4 w-4 mr-2" />
+            Pay Now
+          </Button>
+        )}
+        {(appData?.isPaymentCompleted === undefined || appData?.isPaymentCompleted === true) &&
+          !appData?.isESignCompleted && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleAction("esign")}
+              disabled={actionLoading}
+            >
+              <FileSignature className="h-4 w-4 mr-2" />
+              E-Sign
+            </Button>
+          )}
       </div>
       <div className="bg-white border p-4 text-sm">
       <table className="w-full border border-collapse">

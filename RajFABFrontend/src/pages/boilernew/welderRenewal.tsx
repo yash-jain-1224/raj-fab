@@ -128,6 +128,12 @@ export default function WelderRenewal() {
         renewalYears: parseInt(formData.renewalYears),
       });
 
+      if (response?.html) {
+        document.open();
+        document.write(response.html);
+        document.close();
+        return;
+      }
       if (response?.success) {
         navigate("/user/boilernew-services/weldertest/list");
       }

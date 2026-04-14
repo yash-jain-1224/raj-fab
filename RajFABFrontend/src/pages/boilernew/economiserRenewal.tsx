@@ -119,6 +119,12 @@ export default function EconomiserRenewal() {
         renewalYears: parseInt(formData.renewalYears),
       });
 
+      if (response?.html) {
+        document.open();
+        document.write(response.html);
+        document.close();
+        return;
+      }
       if (response?.success) {
         navigate("/user/boilernew-services/economiser/list");
       }

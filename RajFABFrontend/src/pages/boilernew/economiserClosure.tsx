@@ -153,6 +153,12 @@ export default function EconomiserClosure() {
         documentPath: formData.closureDetails.documentPath,
       });
 
+      if (response?.html) {
+        document.open();
+        document.write(response.html);
+        document.close();
+        return;
+      }
       if (response?.success) {
         navigate("/user/boilernew-services/economiser/list");
       }

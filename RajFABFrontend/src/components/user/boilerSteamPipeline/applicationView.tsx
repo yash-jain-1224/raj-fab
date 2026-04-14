@@ -1,12 +1,37 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Download, Eye } from "lucide-react";
+import { Download, Eye, FileSignature, CreditCard } from "lucide-react";
 import { boilerSteamPipelinesInfo } from "@/hooks/api/useBoilers";
+import { useState } from "react";
+import { eSignApi } from "@/services/api/eSign";
+import { paymentApi } from "@/services/api/payment";
 
 export default function BoilerSteamPipelineDetails({ formId }: { formId: string }) {
   const { data, isLoading, error } = boilerSteamPipelinesInfo(formId || "skip");
+  const [actionLoading, setActionLoading] = useState(false);
   const appData = (data as any)?.data || data || {};
+
+  const handleAction = async (actionType: "payment" | "esign") => {
+    setActionLoading(true);
+    try {
+      let response: any;
+      if (actionType === "payment") {
+        response = await paymentApi.paymentByApplicationId(appData.applicationId);
+      } else {
+        response = await eSignApi.eSignByApplicationId(appData.applicationId);
+      }
+      if (response?.html) {
+        document.open();
+        document.write(response.html);
+        document.close();
+      }
+    } catch (err) {
+      console.error(`${actionType} failed`, err);
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   const getTransactionStatusColor = (action: string) => {
     switch (action?.toLowerCase()) {
@@ -112,6 +137,29 @@ export default function BoilerSteamPipelineDetails({ formId }: { formId: string 
             Download Objection Letter
           </Button>
         )}
+        {appData?.isPaymentCompleted === false && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleAction("payment")}
+            disabled={actionLoading}
+          >
+            <CreditCard className="h-4 w-4 mr-2" />
+            Pay Now
+          </Button>
+        )}
+        {(appData?.isPaymentCompleted === undefined || appData?.isPaymentCompleted === true) &&
+          !appData?.isESignCompleted && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleAction("esign")}
+              disabled={actionLoading}
+            >
+              <FileSignature className="h-4 w-4 mr-2" />
+              E-Sign
+            </Button>
+          )}
       </div>
 
       {/* Application Info */}

@@ -98,6 +98,13 @@ export default function BoilerManufactureClosureNew() {
         data: payload,
       });
 
+      if ((response as any)?.html) {
+        document.open();
+        document.write((response as any).html);
+        document.close();
+        return;
+      }
+
       if (response.success) {
         toast({
           title: "Closure submitted",

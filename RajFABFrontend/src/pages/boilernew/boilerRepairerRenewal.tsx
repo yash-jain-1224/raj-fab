@@ -51,6 +51,12 @@ export default function BoilerRepairerRenewal() {
           renewalYears: Number(renewalYears),
         },
       });
+      if (response?.html) {
+        document.open();
+        document.write(response.html);
+        document.close();
+        return;
+      }
       if (response?.success) {
         toast.success("Boiler repairer renewal submitted successfully");
         navigate("/user/boilernew-services/erector/list");

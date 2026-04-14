@@ -7,7 +7,10 @@ import {
 import formateDate from "@/utils/formatDate";
 import { ApplicationTimeline } from "@/components/admin/application-review/ApplicationTimeline";
 import { Button } from "@/components/ui/button";
-import { Download, Pencil, Eye } from "lucide-react";
+import { Download, Pencil, Eye, FileSignature, CreditCard } from "lucide-react";
+import { useState } from "react";
+import { eSignApi } from "@/services/api/eSign";
+import { paymentApi } from "@/services/api/payment";
 
 const renderDocument = (fileUrl: string | null | undefined) => {
   if (!fileUrl) return "—";
@@ -30,6 +33,7 @@ export default function BoilerRegistationDetails({
   formId: string;
 }) {
   const { data, isLoading } = getBoilerApplicationInfo(formId);
+  const [actionLoading, setActionLoading] = useState(false);
 
   const navigate = useNavigate();
   if (isLoading) {
@@ -78,6 +82,27 @@ export default function BoilerRegistationDetails({
     status === APPLICATION_STATUS.RETURNED_TO_APPLICANT ||
     status === APPLICATION_STATUS.OBJECTION_RAISED ||
     status === APPLICATION_STATUS.PENDING;
+
+  const handleAction = async (actionType: "payment" | "esign") => {
+    setActionLoading(true);
+    try {
+      let response: any;
+      if (actionType === "payment") {
+        response = await paymentApi.paymentByApplicationId(appData.applicationId);
+      } else {
+        response = await eSignApi.eSignByApplicationId(appData.applicationId);
+      }
+      if (response?.html) {
+        document.open();
+        document.write(response.html);
+        document.close();
+      }
+    } catch (err) {
+      console.error(`${actionType} failed`, err);
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   const Row = ({ label, value }: { label: string; value?: any }) => (
     <tr className="border-b">
@@ -289,6 +314,29 @@ export default function BoilerRegistationDetails({
             Download Objection Letter
           </Button>
         )}
+        {appData?.isPaymentCompleted === false && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleAction("payment")}
+            disabled={actionLoading}
+          >
+            <CreditCard className="h-4 w-4 mr-2" />
+            Pay Now
+          </Button>
+        )}
+        {(appData?.isPaymentCompleted === undefined || appData?.isPaymentCompleted === true) &&
+          !appData?.isESignCompleted && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleAction("esign")}
+              disabled={actionLoading}
+            >
+              <FileSignature className="h-4 w-4 mr-2" />
+              E-Sign
+            </Button>
+          )}
       </div>
 
       <div className={`grid grid-cols-1 md:grid-cols-3 gap-6`}>

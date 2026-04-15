@@ -6,7 +6,9 @@ using RajFabAPI.Models;
 using RajFabAPI.Models.BoilerModels;
 using RajFabAPI.Models.FactoryModels;
 using RajFabAPI.Services.Interface;
+using System.Text.Json;
 using static RajFabAPI.Constants.AppConstants;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace RajFabAPI.Services
 {
@@ -412,7 +414,7 @@ namespace RajFabAPI.Services
                                 ApplicationId = Guid.Parse(appRegistration.ApplicationId),
                                 CreatedDate = appRegistration.CreatedDate,
                                 ApplicationType = appRegistration.ApplicationTypeName,
-                                ApplicationTitle = "Map Approval",
+                                ApplicationTitle = "Plan Approval",
                                 ApplicationRegistrationNumber = mapApproval.AcknowledgementNumber,
                                 Status = item.Status,
                                 TotalEmployees = (mapApproval.MaxWorkerMale + mapApproval.MaxWorkerFemale)
@@ -737,11 +739,19 @@ namespace RajFabAPI.Services
                     factoryTypeName = ft?.Name;
                 }
 
-                var mapDetail = await _db.MapApprovalFactoryDetails
-                    .FirstOrDefaultAsync(d => d.FactoryMapApprovalId == applicationId);
+                var occupier = string.IsNullOrWhiteSpace(reg.OccupierDetails)
+                ? null
+                : JsonSerializer.Deserialize<OccupierDetailsModel>(reg.OccupierDetails);
+
+                var factory = string.IsNullOrWhiteSpace(reg.FactoryDetails)
+                    ? null
+                    : JsonSerializer.Deserialize<FactoryDetailsModel>(reg.FactoryDetails);
+
+                //var mapDetail = await _db.MapApprovalFactoryDetails
+                //    .FirstOrDefaultAsync(d => d.FactoryMapApprovalId == applicationId);
 
                 var address = string.Join(", ", new[]
-                    { mapDetail?.FactoryPlotNo, mapDetail?.FactoryPincode }
+                    { factory?.addressLine1, factory?.addressLine2, factory.subDivisionName, factory.tehsilName, factory.area, factory.districtName, factory.pincode }
                     .Where(x => !string.IsNullOrWhiteSpace(x)));
 
                 fileUrl = await _factoryMapApprovalService.GenerateObjectionLetter(
@@ -750,7 +760,7 @@ namespace RajFabAPI.Services
                         ApplicationId = reg.AcknowledgementNumber,
                         Date = DateTime.Today,
                         FactoryDetails = reg.FactoryDetails,
-                        EstablishmentName = mapDetail?.FactoryName ?? "",
+                        EstablishmentName = factory?.name ?? "",
                         EstablishmentAddress = address,
                         Subject = subject,
                         PlantParticulars = reg.PlantParticulars,

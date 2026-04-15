@@ -1866,7 +1866,7 @@ namespace RajFabAPI.Services
             try
             {
                 var moduleId = await _db.Set<FormModule>()
-                    .Where(m => m.Name == "New Establishment Registration")
+                    .Where(m => m.Name == ApplicationTypeNames.NewEstablishment)
                     .Select(m => m.Id)
                     .FirstOrDefaultAsync();
 

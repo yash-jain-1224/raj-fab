@@ -217,7 +217,7 @@ namespace RajFabAPI.Services
                             }
                             else if (applicationData.ModuleName == ApplicationTypeNames.MapApproval || applicationData.ModuleName == ApplicationTypeNames.MapApprovalAmendment)
                             {
-                                _logger.LogInformation("Processing Map Approval PDF generation");
+                                _logger.LogInformation("Processing Plan Approval PDF generation");
 
                                 var response = await _factoryMapApprovalService.GetApplicationByIdAsync(applicationId);
                                 var res = await _estRegService.GetFactoryDetailsByFactoryRegistrationNumberAsync(response.Data.FactoryRegistrationNumber);
@@ -226,7 +226,7 @@ namespace RajFabAPI.Services
                                 signerLocation = res.Factory?.DistrictName ?? "Rajasthan";
                                 if (!response.Success || response.Data == null)
                                 {
-                                    _logger.LogError("Map Approval data fetch failed. Message: {Message}",
+                                    _logger.LogError("Plan Approval data fetch failed. Message: {Message}",
                                         response.Message);
 
                                     throw new Exception(response.Message ?? "Unable to fetch application.");
@@ -1092,7 +1092,7 @@ namespace RajFabAPI.Services
 
                     if (!response.Success || response.Data == null)
                     {
-                        _logger.LogError("Map Approval data fetch failed. Message: {Message}",
+                        _logger.LogError("Plan Approval data fetch failed. Message: {Message}",
                             response.Message);
 
                         throw new Exception(response.Message ?? "Unable to fetch application.");

@@ -734,7 +734,7 @@ namespace RajFabAPI.Services
                 }
             }
 
-            return $"{prefix}{nextNumber}/CIFB/{year}";
+            return $"{prefix}{nextNumber:D6}/CIFB/{year}";
         }
 
         private async Task<Dictionary<string, string>> LoadDistricts(IEnumerable<string?> districtIds)
@@ -827,6 +827,7 @@ namespace RajFabAPI.Services
             {
                 Id = application.Id,
                 AcknowledgementNumber = application.AcknowledgementNumber,
+                FactoryRegistrationNumber = application.FactoryRegistrationNumber,
                 FactoryDetails = application.FactoryDetails != null ? application?.FactoryDetails : null,
                 OccupierDetails = application.OccupierDetails != null ? application.OccupierDetails : null,
                 PlantParticulars = application.PlantParticulars,
@@ -996,7 +997,7 @@ namespace RajFabAPI.Services
 
         private async Task<string> GenerateMapApprovalCertificatePdf(FactoryMapApproval application, MapApprovalCertificateRequestDto dto, string postName, string userName)
         {
-            var fileName = $"map_approval_certificate_{application.AcknowledgementNumber}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+            var fileName = $"plan_approval_certificate_{DateTime.Now:yyyyMMddHHmmss}.pdf";
 
             var webRootPath = _environment.WebRootPath;
             if (string.IsNullOrWhiteSpace(webRootPath))
@@ -1073,7 +1074,7 @@ namespace RajFabAPI.Services
                     .SetBorder(Border.NO_BORDER)
                     .SetMarginBottom(2f);
                 topRow.AddCell(new Cell()
-                    .Add(new Paragraph($"Plan Application No.:-  P-{application.AcknowledgementNumber}")
+                    .Add(new Paragraph($"Plan Application No.:-  {application.AcknowledgementNumber}")
                         .SetFont(boldFont).SetFontSize(10))
                     .SetBorder(Border.NO_BORDER));
                 topRow.AddCell(new Cell()
@@ -1082,7 +1083,7 @@ namespace RajFabAPI.Services
                     .SetBorder(Border.NO_BORDER));
                 document.Add(topRow);
 
-                document.Add(new Paragraph($"Plan No.:-  P-{application.AcknowledgementNumber}")
+                document.Add(new Paragraph($"Plan No.:-  {application.AcknowledgementNumber}")
                     .SetFont(boldFont).SetFontSize(10).SetMarginBottom(6f));
 
                 // ─── Factory name + address ───────────────────────────────────────────
@@ -1195,7 +1196,7 @@ namespace RajFabAPI.Services
             {
                 if (dto == null) throw new ArgumentNullException(nameof(dto));
 
-                var fileName = $"factory_map_{dto.AcknowledgementNumber}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+                var fileName = $"factory_plan_{DateTime.Now:yyyyMMddHHmmss}.pdf";
 
                 var webRootPath = _environment.WebRootPath;
                 if (string.IsNullOrWhiteSpace(webRootPath))
@@ -1280,7 +1281,7 @@ namespace RajFabAPI.Services
 
                 // Acknowledgement No + Date (right-aligned pair)
                 var ackTable = new Table(new float[] { 1f, 1f }).UseAllAvailableWidth().SetBorder(Border.NO_BORDER).SetMarginBottom(8);
-                ackTable.AddCell(new Cell().Add(new Paragraph($"Plan Application No: P-{dto.AcknowledgementNumber}")
+                ackTable.AddCell(new Cell().Add(new Paragraph($"Plan Application No: {dto.AcknowledgementNumber}")
                         .SetFont(boldFont).SetFontSize(9)).SetBorder(Border.NO_BORDER));
                 ackTable.AddCell(new Cell().Add(new Paragraph($"Date: {dto.CreatedAt.ToString("dd/MM/yyyy")}")
                         .SetFont(boldFont).SetFontSize(9).SetTextAlignment(TextAlignment.RIGHT)).SetBorder(Border.NO_BORDER));
@@ -1667,7 +1668,7 @@ namespace RajFabAPI.Services
                 var history = new ApplicationHistory
                 {
                     ApplicationId = applicationId,
-                    ApplicationType = "Map Approval",
+                    ApplicationType = "Plan Approval",
                     Action = "Application data updated",
                     Comments = "Application data updated by citizen",
                     ActionByName = "Applicant",
@@ -1747,7 +1748,7 @@ namespace RajFabAPI.Services
         }
 
         // ─────────────────────────────────────────────────────────────────────────────
-        // Generate Objection Letter — Map Approval
+        // Generate Objection Letter — Plan Approval
         // ─────────────────────────────────────────────────────────────────────────────
         public async Task<string> GenerateObjectionLetter(MapApprovalObjectionLetterDto dto, string applicationId)
         {
@@ -1839,7 +1840,7 @@ namespace RajFabAPI.Services
                 .UseAllAvailableWidth().SetBorder(Border.NO_BORDER).SetMarginBottom(12f);
 
             _ = topRow.AddCell(new PdfCell()
-                .Add(new Paragraph($"Plan Application No.:-  P-{dto.ApplicationId ?? "-"}")
+                .Add(new Paragraph($"Plan Application No.:-  {dto.ApplicationId ?? "-"}")
                     .SetFont(boldFont).SetFontSize(12))
                 .SetBorder(Border.NO_BORDER));
 
@@ -2256,7 +2257,7 @@ namespace RajFabAPI.Services
         }
 
         // ─────────────────────────────────────────────────────────────────────────────
-        // Per-page border + footer handler for Map Approval PDF
+        // Per-page border + footer handler for Plan Approval PDF
         // ─────────────────────────────────────────────────────────────────────────────
         private sealed class MapApprovalPageBorderAndFooterEventHandler : AbstractPdfDocumentEventHandler
         {

@@ -32,7 +32,7 @@ namespace RajFabAPI.DTOs
         public string Remark { get; set; }
     }
 
-    // ── Factory Map Approval Objection Letter ─────────────────────────────────
+    // ── Factory Plan Approval Objection Letter ─────────────────────────────────
     public class MapApprovalObjectionLetterDto
     {
         public string? ApplicationId { get; set; }

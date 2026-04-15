@@ -11,7 +11,7 @@ namespace RajFabAPI.Models
         [Required]
         public string RegistrationNumber { get; set; } = string.Empty;
         
-        // Map Approval Reference
+        // Plan Approval Reference
         public string? MapApprovalAcknowledgementNumber { get; set; }
         
         // Period of License

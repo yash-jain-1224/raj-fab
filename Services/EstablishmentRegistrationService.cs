@@ -3368,7 +3368,7 @@ namespace RajFabAPI.Services
             var dto = item.ApplicationDetails;
 
             // File name and paths
-            var fileName = $"establishment_{dto.RegistrationDetail.ApplicationRegistrationNumber}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+            var fileName = $"establishment_{dto.RegistrationDetail.ApplicationId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
             var webRootPath = _environment.WebRootPath;
             if (string.IsNullOrWhiteSpace(webRootPath))
                 throw new InvalidOperationException("wwwroot is not configured.");
@@ -4042,7 +4042,7 @@ namespace RajFabAPI.Services
         {
             if (dto == null) throw new ArgumentNullException(nameof(dto));
 
-            var fileName = $"certificate_{registrationId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+            var fileName = $"certificate_{dto.ApplicationId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
 
             var webRootPath = _environment.WebRootPath;
             if (string.IsNullOrWhiteSpace(webRootPath))
@@ -4463,7 +4463,7 @@ namespace RajFabAPI.Services
         {
             if (dto == null) throw new ArgumentNullException(nameof(dto));
 
-            var fileName = $"objection_establishment_registration_{registrationId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+            var fileName = $"objection_establishment_registration_{dto.ApplicationId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
             var webRootPath = _environment.WebRootPath;
             if (string.IsNullOrWhiteSpace(webRootPath))
                 throw new InvalidOperationException("wwwroot is not configured.");

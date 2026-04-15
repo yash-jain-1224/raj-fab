@@ -1981,14 +1981,24 @@ namespace RajFabAPI.Services
             document.Add(new Paragraph("Following objections are need to be removed related to your boiler")
                 .SetFont(regularFont).SetMarginTop(10));
 
-            if (dto.Objections != null && dto.Objections.Any())
-            {
-                for (int i = 0; i < dto.Objections.Count; i++)
+            var objections = JsonSerializer.Deserialize<Dictionary<string, DocumentStateDto>>(
+                dto.Objections,
+                new JsonSerializerOptions
                 {
-                    document.Add(new Paragraph($"{i + 1}. {dto.Objections[i]}")
-                        .SetFont(regularFont));
-                }
-            }
+                    PropertyNameCaseInsensitive = true
+                });
+
+            var remarksList = objections
+                .Where(x => x.Value.Checked)
+                .Select(x => $"{x.Key}: {x.Value.Remark}")
+                .ToList() ?? new List<string>();
+
+            string finalRemarks = string.Join("\n", remarksList);
+
+            document.Add(new Paragraph(finalRemarks)
+                .SetFont(regularFont)
+                .SetFontSize(12)
+                .SetMarginBottom(6f));
 
             // ================= CLOSING =================
             document.Add(new Paragraph(

@@ -17,12 +17,19 @@ namespace RajFabAPI.DTOs
         public string? Category { get; set; }
         public int? WorkerCount { get; set; }
 
-        public List<string> Objections { get; set; } = new();
+        //public string Objections { get; set; }
+        public string Objections { get; set; }
 
         public string? SignatureBase64 { get; set; }
         public string? SignatoryName { get; set; }
         public string? SignatoryDesignation { get; set; }
         public string? SignatoryLocation { get; set; }
+    }
+
+    public class DocumentStateDto
+    {
+        public bool Checked { get; set; }
+        public string Remark { get; set; }
     }
 
     // ── Factory Map Approval Objection Letter ─────────────────────────────────
@@ -43,7 +50,7 @@ namespace RajFabAPI.DTOs
         public int? MaxWorkers { get; set; }
         public string? AreaOfPremise { get; set; }
 
-        public List<string> Objections { get; set; } = new();
+        public string Objections { get; set; }
 
         public string? SignatureBase64 { get; set; }
         public string? SignatoryName { get; set; }
@@ -75,17 +82,17 @@ namespace RajFabAPI.DTOs
         public int? MaxWorkers { get; set; }                // from FactoryMapApproval table
         public string? FactoryTypeName { get; set; }        // from FactoryMapApproval table
 
-        public List<string> Objections { get; set; } = new();
+        public string Objections { get; set; }
 
         public string? SignatureBase64 { get; set; }
         public string? SignatoryName { get; set; }
         public string? SignatoryDesignation { get; set; }
         public string? SignatoryLocation { get; set; }
     }
-    
+
     public class ManagerChangeObjectionLetterDto
     {
-        public List<string> Objections { get; set; } = new();
+        public string Objections { get; set; }
         public string? SignatoryName { get; set; }
         public string? SignatoryDesignation { get; set; }
         public string? SignatoryLocation { get; set; }
@@ -110,8 +117,7 @@ namespace RajFabAPI.DTOs
         public decimal? WorkingPressure { get; set; }
         public int? YearOfMake { get; set; }
 
-        public List<string> Objections { get; set; } = new();
-
+        public string Objections { get; set; }
         // Signature
         public string? SignatureBase64 { get; set; }
         public string? SignatoryName { get; set; }

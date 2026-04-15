@@ -26,9 +26,9 @@ namespace RajFabAPI.Constants
 
         public static class ApplicationTypeNames
         {
-            public const string NewEstablishment = "New Establishment Registration";
-            public const string FactoryAmendment = "Factory Amendment";
-            public const string FactoryRenewal = "Factory Renewal";
+            public const string NewEstablishment = "Registration";
+            public const string FactoryAmendment = "Amendment";
+            public const string FactoryRenewal = "Renewal";
             public const string MapApproval = "Map Approval";
             public const string MapApprovalAmendment = "Map Approval Amendment";
             public const string ManagerChange = "Manager Change";

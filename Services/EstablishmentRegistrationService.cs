@@ -1,15 +1,16 @@
 using iText.Commons.Actions.Contexts;
 using iText.Kernel.Colors;
-using iText.Kernel.Pdf.Event;
 using iText.Kernel.Font;
 using iText.Kernel.Pdf;
 using iText.Kernel.Pdf.Canvas;
+using iText.Kernel.Pdf.Event;
 using iText.Layout;
 using iText.Layout.Borders;
 using iText.Layout.Element;
 using iText.Layout.Properties;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using RajFabAPI.Constants;
 using RajFabAPI.Data;
 using RajFabAPI.DTOs;
 using RajFabAPI.Models;
@@ -17,6 +18,7 @@ using RajFabAPI.Models.FactoryModels;
 using RajFabAPI.Services.Interface;
 using System.Data;
 using System.Diagnostics.Contracts;
+using System.Text.Json;
 using static RajFabAPI.Constants.AppConstants;
 using static System.Net.Mime.MediaTypeNames;
 using ImageDataFactory = iText.IO.Image.ImageDataFactory;
@@ -25,7 +27,6 @@ using PdfDoc = iText.Layout.Document;
 using PdfImage = iText.Layout.Element.Image;
 using PdfTable = iText.Layout.Element.Table;
 using Text = iText.Layout.Element.Text;
-using RajFabAPI.Constants;
 
 namespace RajFabAPI.Services
 {
@@ -1570,17 +1571,16 @@ namespace RajFabAPI.Services
                                 from f in _db.Set<FactoryDetail>().AsNoTracking()
                                 where f.Id == map.EntityId
 
-                                join area in _db.Set<Area>().AsNoTracking()
-                                    on f.SubDivisionId equals area.Id.ToString() into areaJoin
-                                from areaDetail in areaJoin.DefaultIfEmpty()
+                                join subDiv in _db.Set<City>().AsNoTracking()
+                                    on f.SubDivisionId equals subDiv.Id.ToString() into subDivJoin
+                                from subDivisionDetail in subDivJoin.DefaultIfEmpty()
 
-                                join district in _db.Set<District>().AsNoTracking()
-                                    on areaDetail.DistrictId equals district.Id into districtJoin
+                                join tehsil in _db.Set<Tehsil>().AsNoTracking()
+                                    on f.TehsilId equals tehsil.Id.ToString() into tehsilJoin
+                                from tehsilDetail in tehsilJoin.DefaultIfEmpty()
+
+                                join district in _db.Set<District>().AsNoTracking() on subDivisionDetail.DistrictId equals district.Id into districtJoin
                                 from districtDetail in districtJoin.DefaultIfEmpty()
-
-                                join division in _db.Set<Division>().AsNoTracking()
-                                    on districtDetail.DivisionId equals division.Id into divisionJoin
-                                from divisionDetail in divisionJoin.DefaultIfEmpty()
 
                                 select new FactoryDetailsDto
                                 {
@@ -1592,7 +1592,7 @@ namespace RajFabAPI.Services
                                     TehsilId = f.TehsilId,
                                     Area = f.Area,
 
-                                    DistrictId = areaDetail.DistrictId.ToString(),
+                                    DistrictId = districtDetail.Id.ToString(),
                                     DistrictName = districtDetail.Name,
 
                                     AddressLine1 = f.AddressLine1,
@@ -1624,6 +1624,9 @@ namespace RajFabAPI.Services
                                     ManufacturingType = factory.ManufacturingType,
                                     ManufacturingDetail = factory.ManufacturingDetail,
                                     SubDivisionId = factory.SubDivisionId,
+                                    SubDivisionName = factory.SubDivisionName,
+                                    TehsilId = factory.TehsilId,
+                                    TehsilName = factory.TehsilName,
                                     AddressLine1 = factory.AddressLine1,
                                     AddressLine2 = factory.AddressLine2,
                                     Area = factory.Area,
@@ -3255,8 +3258,8 @@ namespace RajFabAPI.Services
                 {
                     throw new Exception("Module not found");
                 }
-
-                var pdfUrl = await GenerateCertificate(dtoPaylod, registrationId, officePost.PostName + ", " + officePost.CityName, user.FullName);
+                var officePostName = officePost.PostName + ", " + officePost.CityName + ", Rajasthan";
+                var pdfUrl = await GenerateCertificate(dtoPaylod, registrationId, officePostName, user.FullName);
 
                 var maxVersion = await _db.Certificates
                     .Where(c => c.RegistrationNumber == estReg.RegistrationNumber)
@@ -3386,7 +3389,7 @@ namespace RajFabAPI.Services
             var boldFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA_BOLD);
             var regularFont = PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA);
             DateOnly footerDate = DateOnly.FromDateTime(DateTime.Today);
-            pdf.AddEventHandler(PdfDocumentEvent.END_PAGE, new PageBorderAndFooterEventHandler(boldFont, regularFont, footerDate));
+            pdf.AddEventHandler(PdfDocumentEvent.END_PAGE, new PageBorderAndFooterEventHandler(boldFont, regularFont, footerDate, null , "", "", dto.Factory.DistrictName));
             using var document = new PdfDoc(pdf);
             document.SetMargins(40, 40, 130, 40); // large bottom margin: footer(~65pt) + e-sign space(~65pt)
 
@@ -4594,18 +4597,24 @@ namespace RajFabAPI.Services
                 .SetFont(regularFont).SetFontSize(12)
                 .SetMarginBottom(12f));
 
-            // ═════════════════════════════════════════════════════════════════════════
-            // Numbered objections list
-            // ═════════════════════════════════════════════════════════════════════════
-            if (dto.Objections != null && dto.Objections.Any())
-            {
-                for (int i = 0; i < dto.Objections.Count; i++)
+            var objections = JsonSerializer.Deserialize<Dictionary<string, DocumentStateDto>>(
+                dto.Objections,
+                new JsonSerializerOptions
                 {
-                    _ = document.Add(new Paragraph($"{i + 1}.{dto.Objections[i]}")
-                        .SetFont(regularFont).SetFontSize(12)
-                        .SetMarginBottom(6f));
-                }
-            }
+                    PropertyNameCaseInsensitive = true
+                });
+
+            var remarksList = objections
+                .Where(x => x.Value.Checked)
+                .Select(x => $"{x.Key}: {x.Value.Remark}")
+                .ToList() ?? new List<string>();
+
+            string finalRemarks = string.Join("\n", remarksList);
+
+            document.Add(new Paragraph(finalRemarks)
+                .SetFont(regularFont)
+                .SetFontSize(12)
+                .SetMarginBottom(6f));
 
             _ = document.Add(new Paragraph("").SetMarginBottom(10f));
 
@@ -4754,9 +4763,10 @@ namespace RajFabAPI.Services
             private readonly DateOnly _date;
             private readonly string _postName;
             private readonly string _userName;
+            private readonly string _location;
             private readonly byte[]? _qrBytes;
 
-            public PageBorderAndFooterEventHandler(PdfFont boldFont, PdfFont regularFont, DateOnly date, byte[]? qrBytes = null, string postName = "", string userName = "")
+            public PageBorderAndFooterEventHandler(PdfFont boldFont, PdfFont regularFont, DateOnly date, byte[]? qrBytes = null, string postName = "", string userName = "", string location = "")
             {
                 _boldFont = boldFont;
                 _regularFont = regularFont;
@@ -4764,6 +4774,7 @@ namespace RajFabAPI.Services
                 _qrBytes = qrBytes;
                 _postName = postName;
                 _userName = userName;
+                _location = location;
             }
 
             protected override void OnAcceptedEvent(AbstractPdfDocumentEvent @event)
@@ -4862,13 +4873,15 @@ namespace RajFabAPI.Services
                             .SetTextAlignment(TextAlignment.CENTER)
                             .SetMargin(0f)
                             .SetPaddingTop(1f));
+                    } else
+                    {
+                        // Signature label (bottom)
+                        signLabelCanvas.Add(new Paragraph($"Signature / E-sign / Digital sign of Occupier \n {_location}, Rajasthan")
+                            .SetFont(_regularFont)
+                            .SetFontSize(6.5f)
+                            .SetTextAlignment(TextAlignment.CENTER)
+                            .SetMargin(0f));
                     }
-                    // Signature label (bottom)
-                    signLabelCanvas.Add(new Paragraph("Signature / E-sign / Digital sign")
-                        .SetFont(_regularFont)
-                        .SetFontSize(6.5f)
-                        .SetTextAlignment(TextAlignment.CENTER)
-                        .SetMargin(0f));
                 }
             }
         }

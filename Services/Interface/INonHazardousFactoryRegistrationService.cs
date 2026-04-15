@@ -14,7 +14,7 @@ namespace RajFabAPI.Services.Interface
         Task<string> UpdateAsync(Guid applicationId, CreateNonHazardousFactoryRegistrationRequest request, Guid userId);
         Task<bool> DeleteAsync(Guid id);
         Task<string> GenerateNonHazardousPdfAsync(Guid id);
-        Task<string> GenerateNonHazardousObjectionLetter(Guid id, List<string> objections, string signatoryName, string designation, string location);
+        Task<string> GenerateNonHazardousObjectionLetter(Guid id, string objections, string signatoryName, string designation, string location);
         Task<bool> UpdateStatusAndRemark(string Id, string status);
         Task<string> GenerateNonHazardousCertificateAsync(CertificateRequestDto dto, Guid userId, Guid id);
     }

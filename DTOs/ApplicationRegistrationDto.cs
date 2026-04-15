@@ -26,6 +26,7 @@ namespace RajFabAPI.DTOs
         public string ApplicationTitle { get; set; }
         public string ApplicationType { get; set; }
         public string ApplicationRegistrationNumber { get; set; }
+        public string? ApplicationNumber { get; set; }
         public string Status { get; set; }
         public int TotalEmployees { get; set; }
         public DateTime CreatedDate { get; set; }

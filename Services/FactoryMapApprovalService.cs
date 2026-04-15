@@ -1916,15 +1916,24 @@ namespace RajFabAPI.Services
             // ═════════════════════════════════════════════════════════════════════════
             // Numbered objections list
             // ═════════════════════════════════════════════════════════════════════════
-            if (dto.Objections != null && dto.Objections.Any())
-            {
-                for (int i = 0; i < dto.Objections.Count; i++)
+            var objections = JsonSerializer.Deserialize<Dictionary<string, DocumentStateDto>>(
+                dto.Objections,
+                new JsonSerializerOptions
                 {
-                    _ = document.Add(new Paragraph($"{i + 1}.{dto.Objections[i]}")
-                        .SetFont(regularFont).SetFontSize(12)
-                        .SetMarginBottom(6f));
-                }
-            }
+                    PropertyNameCaseInsensitive = true
+                });
+
+            var remarksList = objections
+                .Where(x => x.Value.Checked)
+                .Select(x => $"{x.Key}: {x.Value.Remark}")
+                .ToList() ?? new List<string>();
+
+            string finalRemarks = string.Join("\n", remarksList);
+
+            document.Add(new Paragraph(finalRemarks)
+                .SetFont(regularFont)
+                .SetFontSize(12)
+                .SetMarginBottom(6f));
 
             _ = document.Add(new Paragraph("").SetMarginBottom(10f));
 

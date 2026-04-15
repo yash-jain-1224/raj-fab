@@ -264,7 +264,7 @@ namespace RajFabAPI.Services
             try
             {
                 decimal newVersion;
-                string acknowledgementNumber;
+                //string acknowledgementNumber;
                 var applicationNumber = await GenerateApplicationNumberAsync();
 
                 if (isNew == false && !string.IsNullOrWhiteSpace(factoryMapApprovalId))
@@ -278,11 +278,11 @@ namespace RajFabAPI.Services
 
                     // Calculate next version
                     newVersion = Math.Round(lastApproved.Version + 0.1m, 1);
-                    acknowledgementNumber = lastApproved.AcknowledgementNumber;
+                    //acknowledgementNumber = lastApproved.AcknowledgementNumber;
                 }
                 else
                 {
-                    acknowledgementNumber = applicationNumber;
+                    //acknowledgementNumber = applicationNumber;
                     newVersion = 1.0m;
                 }
 
@@ -290,7 +290,7 @@ namespace RajFabAPI.Services
                 var application = new FactoryMapApproval
                 {
                     Id = Guid.NewGuid().ToString(),
-                    AcknowledgementNumber = acknowledgementNumber,
+                    AcknowledgementNumber = applicationNumber,
                     ApplicationNumber = applicationNumber,
                     PlantParticulars = request.PlantParticulars,
                     ProductName = request.FactoryTypeId,
@@ -426,7 +426,7 @@ namespace RajFabAPI.Services
                     ModuleId = module.Id,
                     UserId = userId,
                     ApplicationId = application.Id,
-                    ApplicationRegistrationNumber = acknowledgementNumber,
+                    ApplicationRegistrationNumber = applicationNumber,
                     CreatedDate = DateTime.Now,
                     UpdatedDate = DateTime.Now
                 };

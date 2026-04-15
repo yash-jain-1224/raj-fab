@@ -6,7 +6,9 @@ using RajFabAPI.Models;
 using RajFabAPI.Models.BoilerModels;
 using RajFabAPI.Models.FactoryModels;
 using RajFabAPI.Services.Interface;
+using System.Text.Json;
 using static RajFabAPI.Constants.AppConstants;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace RajFabAPI.Services
 {
@@ -375,10 +377,14 @@ namespace RajFabAPI.Services
                         var estDetailQuery = from estRegistration in _db.Set<EstablishmentRegistration>()
                                              join establishmentDetail in _db.Set<EstablishmentDetail>() on estRegistration.EstablishmentDetailId equals establishmentDetail.Id
                                              where estRegistration.EstablishmentRegistrationId.ToString() == appRegistration.ApplicationId
-                                             select establishmentDetail;
-                        var estDetailSingle = await estDetailQuery.FirstOrDefaultAsync();
+                                             select new
+                                             {
+                                                 establishmentDetail,
+                                                 estRegistration
+                                             };
+                        var estFullData = await estDetailQuery.FirstOrDefaultAsync();
 
-                        if (estDetailSingle != null)
+                        if (estFullData != null)
                         {
                             result.Add(new ApplicationApprovalDashboardDto
                             {
@@ -387,10 +393,11 @@ namespace RajFabAPI.Services
                                 ApplicationId = Guid.Parse(appRegistration.ApplicationId),
                                 CreatedDate = appRegistration.CreatedDate,
                                 ApplicationType = appRegistration.ApplicationTypeName,
-                                ApplicationTitle = estDetailSingle.EstablishmentName,
+                                ApplicationTitle = estFullData.establishmentDetail.EstablishmentName,
+                                ApplicationNumber = estFullData.estRegistration.ApplicationId,
                                 ApplicationRegistrationNumber = appRegistration.ApplicationRegistrationNumber,
                                 Status = item.Status,
-                                TotalEmployees = (estDetailSingle.TotalNumberOfEmployee + estDetailSingle.TotalNumberOfContractEmployee + estDetailSingle.TotalNumberOfInterstateWorker) ?? 0
+                                TotalEmployees = (estFullData.establishmentDetail.TotalNumberOfEmployee + estFullData.establishmentDetail.TotalNumberOfContractEmployee + estFullData.establishmentDetail.TotalNumberOfInterstateWorker) ?? 0
                             });
                         }
 
@@ -407,7 +414,7 @@ namespace RajFabAPI.Services
                                 ApplicationId = Guid.Parse(appRegistration.ApplicationId),
                                 CreatedDate = appRegistration.CreatedDate,
                                 ApplicationType = appRegistration.ApplicationTypeName,
-                                ApplicationTitle = "Map Approval",
+                                ApplicationTitle = "Plan Approval",
                                 ApplicationRegistrationNumber = mapApproval.AcknowledgementNumber,
                                 Status = item.Status,
                                 TotalEmployees = (mapApproval.MaxWorkerMale + mapApproval.MaxWorkerFemale)
@@ -652,11 +659,11 @@ namespace RajFabAPI.Services
             var nextVersion = await _db.ApplicationObjectionLetters
                 .CountAsync(l => l.ApplicationId == applicationId) + 1;
 
-            var objections = subject?
-                .Split('\n', StringSplitOptions.RemoveEmptyEntries)
-                .Select(o => o.Trim())
-                .Where(o => !string.IsNullOrEmpty(o))
-                .ToList() ?? new List<string>();
+            //var objections = subject?
+            //    .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            //    .Select(o => o.Trim())
+            //    .Where(o => !string.IsNullOrEmpty(o))
+            //    .ToList() ?? new List<string>();
 
             string? fileUrl = null;
 
@@ -713,7 +720,7 @@ namespace RajFabAPI.Services
                         FactoryType = factoryTypeName,
                         Category = categoryName,
                         WorkerCount = detail?.TotalNumberOfEmployee,
-                        Objections = objections,
+                        Objections = subject,
                         SignatoryName = signatoryName,
                         SignatoryDesignation = signatoryDesignation,
                         SignatoryLocation = signatoryLocation
@@ -732,11 +739,19 @@ namespace RajFabAPI.Services
                     factoryTypeName = ft?.Name;
                 }
 
-                var mapDetail = await _db.MapApprovalFactoryDetails
-                    .FirstOrDefaultAsync(d => d.FactoryMapApprovalId == applicationId);
+                var occupier = string.IsNullOrWhiteSpace(reg.OccupierDetails)
+                ? null
+                : JsonSerializer.Deserialize<OccupierDetailsModel>(reg.OccupierDetails);
+
+                var factory = string.IsNullOrWhiteSpace(reg.FactoryDetails)
+                    ? null
+                    : JsonSerializer.Deserialize<FactoryDetailsModel>(reg.FactoryDetails);
+
+                //var mapDetail = await _db.MapApprovalFactoryDetails
+                //    .FirstOrDefaultAsync(d => d.FactoryMapApprovalId == applicationId);
 
                 var address = string.Join(", ", new[]
-                    { mapDetail?.FactoryPlotNo, mapDetail?.FactoryPincode }
+                    { factory?.addressLine1, factory?.addressLine2, factory.subDivisionName, factory.tehsilName, factory.area, factory.districtName, factory.pincode }
                     .Where(x => !string.IsNullOrWhiteSpace(x)));
 
                 fileUrl = await _factoryMapApprovalService.GenerateObjectionLetter(
@@ -745,14 +760,14 @@ namespace RajFabAPI.Services
                         ApplicationId = reg.AcknowledgementNumber,
                         Date = DateTime.Today,
                         FactoryDetails = reg.FactoryDetails,
-                        EstablishmentName = mapDetail?.FactoryName ?? "",
+                        EstablishmentName = factory?.name ?? "",
                         EstablishmentAddress = address,
                         Subject = subject,
                         PlantParticulars = reg.PlantParticulars,
                         ProductName = factoryTypeName,
                         ManufacturingProcess = reg.ManufacturingProcess,
                         MaxWorkers = reg.MaxWorkerMale + reg.MaxWorkerFemale + reg.MaxWorkerTransgender,
-                        Objections = objections,
+                        Objections = subject,
                         SignatoryName = signatoryName,
                         SignatoryDesignation = signatoryDesignation,
                         SignatoryLocation = signatoryLocation
@@ -875,7 +890,7 @@ namespace RajFabAPI.Services
                         ManufacturingProcess = factoryDetail?.ManufacturingDetail ?? mapApprovalDetail?.ManufacturingProcess,
                         MaxWorkers = mapTotalWorkers,
                         FactoryTypeName = factoryTypeName,
-                        Objections = objections,
+                        Objections = subject,
                         SignatoryName = signatoryName,
                         SignatoryDesignation = signatoryDesignation,
                         SignatoryLocation = signatoryLocation
@@ -889,7 +904,7 @@ namespace RajFabAPI.Services
                 var ManagerChangeObjectionLetterData = new ManagerChangeObjectionLetterDto
                 {
                     ManagerChangeData = managerChangeData.ApplicationDetails,
-                    Objections = objections,
+                    Objections = subject,
                     SignatoryName = signatoryName,
                     SignatoryDesignation = signatoryDesignation,
                     SignatoryLocation = signatoryLocation
@@ -905,7 +920,7 @@ namespace RajFabAPI.Services
                 var CommencementCessationObjectionLetterData = new CommencementCessationObjectionLetterDto
                 {
                     CommencementCessationData = commencementCessationData,
-                    Objections = objections,
+                    Objections = subject,
                     SignatoryName = signatoryName,
                     SignatoryDesignation = signatoryDesignation,
                     SignatoryLocation = signatoryLocation
@@ -915,7 +930,7 @@ namespace RajFabAPI.Services
             }
             else if (moduleName == ApplicationTypeNames.FactoryNonHazardous)
             {
-                fileUrl = await _nonHazardousFactoryRegistrationService.GenerateNonHazardousObjectionLetter(Guid.Parse(applicationId), objections, signatoryName, signatoryDesignation, signatoryLocation);
+                fileUrl = await _nonHazardousFactoryRegistrationService.GenerateNonHazardousObjectionLetter(Guid.Parse(applicationId), subject, signatoryName, signatoryDesignation, signatoryLocation);
             }
             else if (moduleName == ApplicationTypeNames.BoilerRegistration)
             {
@@ -943,7 +958,7 @@ namespace RajFabAPI.Services
                         WorkingPressure = boiler?.IntendedWorkingPressure,
                         YearOfMake = boiler?.YearOfMake,
 
-                        Objections = objections,
+                        Objections = subject,
 
                         SignatoryName = signatoryName,
                         SignatoryDesignation = signatoryDesignation,

@@ -57,7 +57,7 @@ namespace RajFabAPI.Models
         [StringLength(20)]
         public string Status { get; set; } = "Pending"; // Pending, Approved, Rejected
 
-        // Set when a FactoryRegistration is created against this map approval
+        // Set when a FactoryRegistration is created against this Plan approval
         [StringLength(100)]
         public string? FactoryRegistrationNumber { get; set; }
 

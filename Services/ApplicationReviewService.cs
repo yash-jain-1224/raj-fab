@@ -37,7 +37,7 @@ namespace RajFabAPI.Services
             var userAreaNames = userAreaData.Select(x => x.Area.Name).Distinct().ToList();
             var userDistrictNames = userAreaData.Select(x => x.Area.District?.Name ?? "").Where(n => !string.IsNullOrEmpty(n)).Distinct().ToList();
 
-            //// Get Factory Map Approvals assigned to user or in user's district
+            //// Get Factory Plan Approvals assigned to user or in user's district
             //var mapApprovals = await _context.FactoryMapApprovals
             //    .Include(f => f.Documents)
             //    .Where(f => f.AssignedTo == userId || 
@@ -48,7 +48,7 @@ namespace RajFabAPI.Services
             //{
             //    Id = app.Id,
             //    ApplicationNumber = app.AcknowledgementNumber,
-            //    ApplicationType = "Factory Map Approval",
+            //    ApplicationType = "Factory Plan Approval",
             //    ApplicantName = app.ApplicantName,
             //    FactoryName = app.FactoryName,
             //    Status = app.Status,
@@ -107,7 +107,7 @@ namespace RajFabAPI.Services
             var areaName = areaData.Name;
             var districtName = areaData.District?.Name ?? "";
 
-            // Get Factory Map Approvals in this district
+            // Get Factory Plan Approvals in this district
             var mapApprovals = await _context.FactoryMapApprovals
                 //.Where(f => f.District == districtName)
                 .ToListAsync();
@@ -116,7 +116,7 @@ namespace RajFabAPI.Services
             {
                 Id = app.Id,
                 ApplicationNumber = app.AcknowledgementNumber,
-                ApplicationType = "Factory Map Approval",
+                ApplicationType = "Factory Plan Approval",
                 //ApplicantName = app.ApplicantName,
                 //FactoryName = app.FactoryName,
                 Status = app.Status,
@@ -163,7 +163,7 @@ namespace RajFabAPI.Services
         {
             var applications = new List<ApplicationSummaryDto>();
 
-            // Get all Factory Map Approvals
+            // Get all Factory Plan Approvals
             var mapApprovals = await _context.FactoryMapApprovals
                 //.Include(f => f.Documents)
                 .ToListAsync();
@@ -172,7 +172,7 @@ namespace RajFabAPI.Services
             {
                 Id = app.Id,
                 ApplicationNumber = app.AcknowledgementNumber,
-                ApplicationType = "Factory Map Approval",
+                ApplicationType = "Factory Plan Approval",
                 //ApplicantName = app.ApplicantName,
                 //FactoryName = app.FactoryName,
                 Status = app.Status,
@@ -367,7 +367,7 @@ namespace RajFabAPI.Services
 
                 return new ApplicationDetailDto
                 {
-                    ApplicationType = "Factory Map Approval",
+                    ApplicationType = "Factory Plan Approval",
                     //ApplicationData = cleanApplicationData,
                     History = history,
                     AvailableActions = userPermissions

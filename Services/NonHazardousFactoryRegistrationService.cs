@@ -1,11 +1,3 @@
-using RajFabAPI.DTOs;
-using RajFabAPI.Models.FactoryModels;
-using RajFabAPI.Services.Interface;
-using RajFabAPI.Data;
-using Microsoft.EntityFrameworkCore;
-using RajFabAPI.Models;
-using static RajFabAPI.Constants.AppConstants;
-
 using iText.IO.Font.Constants;
 using iText.Kernel.Colors;
 using iText.Kernel.Font;
@@ -16,9 +8,16 @@ using iText.Layout;
 using iText.Layout.Borders;
 using iText.Layout.Element;
 using iText.Layout.Properties;
+using Microsoft.EntityFrameworkCore;
+using RajFabAPI.Data;
+using RajFabAPI.DTOs;
+using RajFabAPI.Models;
+using RajFabAPI.Models.FactoryModels;
+using RajFabAPI.Services.Interface;
 using System.Data;
 using System.Security.Claims;
-
+using System.Text.Json;
+using static RajFabAPI.Constants.AppConstants;
 using ImageDataFactory = iText.IO.Image.ImageDataFactory;
 using PdfCell = iText.Layout.Element.Cell;
 using PdfDoc = iText.Layout.Document;
@@ -792,7 +791,7 @@ namespace RajFabAPI.Services
 
         public async Task<string> GenerateNonHazardousObjectionLetter(
             Guid id,
-            List<string> objections,
+            string objections,
             string signatoryName,
             string designation,
             string location)
@@ -903,15 +902,24 @@ namespace RajFabAPI.Services
             document.Add(new Paragraph("Following objections are to be complied:")
                 .SetFont(regularFont).SetFontSize(12)
                 .SetMarginTop(10));
+            var finalobjections = JsonSerializer.Deserialize<Dictionary<string, DocumentStateDto>>(
+                 objections,
+                 new JsonSerializerOptions
+                 {
+                     PropertyNameCaseInsensitive = true
+                 });
 
-            if (objections != null && objections.Any())
-            {
-                for (int i = 0; i < objections.Count; i++)
-                {
-                    document.Add(new Paragraph($"{i + 1}. {objections[i]}")
-                        .SetFont(regularFont).SetFontSize(12));
-                }
-            }
+            var remarksList = finalobjections
+                .Where(x => x.Value.Checked)
+                .Select(x => $"{x.Key}: {x.Value.Remark}")
+                .ToList() ?? new List<string>();
+
+            string finalRemarks = string.Join("\n", remarksList);
+
+            document.Add(new Paragraph(finalRemarks)
+                .SetFont(regularFont)
+                .SetFontSize(12)
+                .SetMarginBottom(6f));
 
             // ───────────── Closing ─────────────
             document.Add(new Paragraph("\nPlease comply with the above observations and submit required documents.")

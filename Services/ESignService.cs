@@ -104,7 +104,8 @@ namespace RajFabAPI.Services
                     string signerName = fullName ?? "";
                     string signerDesignation = "Occupier";
                     string signerLocation = "Jaipur, Rajasthan";
-                    string signerXcord = "415";   // occupier box x
+                    string signerXcord = "400";   // occupier box x
+                    // string signerXcord = "415";   // occupier box x
 
                     _logger.LogInformation("Fetching application data from DB");
 
@@ -216,7 +217,7 @@ namespace RajFabAPI.Services
                             }
                             else if (applicationData.ModuleName == ApplicationTypeNames.MapApproval || applicationData.ModuleName == ApplicationTypeNames.MapApprovalAmendment)
                             {
-                                _logger.LogInformation("Processing Map Approval PDF generation");
+                                _logger.LogInformation("Processing Plan Approval PDF generation");
 
                                 var response = await _factoryMapApprovalService.GetApplicationByIdAsync(applicationId);
                                 var res = await _estRegService.GetFactoryDetailsByFactoryRegistrationNumberAsync(response.Data.FactoryRegistrationNumber);
@@ -225,7 +226,7 @@ namespace RajFabAPI.Services
                                 signerLocation = res.Factory?.DistrictName ?? "Rajasthan";
                                 if (!response.Success || response.Data == null)
                                 {
-                                    _logger.LogError("Map Approval data fetch failed. Message: {Message}",
+                                    _logger.LogError("Plan Approval data fetch failed. Message: {Message}",
                                         response.Message);
 
                                     throw new Exception(response.Message ?? "Unable to fetch application.");
@@ -412,7 +413,7 @@ namespace RajFabAPI.Services
 
                             if (isManagerTurn)
                             {
-                                signerXcord = "250";   // manager box x (left of occupier box)
+                                signerXcord = "235";   // manager box x (left of occupier box)
                                 signerDesignation = "Manager";
 
                                 if (applicationData.ModuleName == ApplicationTypeNames.FactoryLicense ||
@@ -1091,7 +1092,7 @@ namespace RajFabAPI.Services
 
                     if (!response.Success || response.Data == null)
                     {
-                        _logger.LogError("Map Approval data fetch failed. Message: {Message}",
+                        _logger.LogError("Plan Approval data fetch failed. Message: {Message}",
                             response.Message);
 
                         throw new Exception(response.Message ?? "Unable to fetch application.");

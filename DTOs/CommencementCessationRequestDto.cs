@@ -59,7 +59,7 @@ namespace RajFabAPI.DTOs
 
     public class CommencementCessationObjectionLetterDto
     {
-        public List<string> Objections { get; set; } = new();
+        public string Objections { get; set; }
         public string? SignatoryName { get; set; }
         public string? SignatoryDesignation { get; set; }
         public string? SignatoryLocation { get; set; }

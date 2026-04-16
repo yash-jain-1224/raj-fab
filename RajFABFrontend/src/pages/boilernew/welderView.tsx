@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { paymentApi } from "@/services/api/payment";
 import { eSignApi } from "@/services/api/eSign";
 import { toast } from "sonner";
+import { ApplicationTimeline } from "@/components/admin/application-review/ApplicationTimeline";
 
 export default function WelderView() {
   const { applicationId } = useParams();
@@ -257,6 +258,10 @@ export default function WelderView() {
                 </tbody>
               </table>
             </div>
+
+            {appData?.applicationHistory?.length > 0 && (
+              <ApplicationTimeline history={appData.applicationHistory} />
+            )}
 
             {/* Transaction History */}
             {Array.isArray(appData?.transactionHistory) && appData.transactionHistory.length > 0 && (

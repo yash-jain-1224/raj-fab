@@ -5,6 +5,7 @@ import { boilerRepairerInfo } from "@/hooks/api/useBoilers";
 import { useState } from "react";
 import { eSignApi } from "@/services/api/eSign";
 import { paymentApi } from "@/services/api/payment";
+import { ApplicationTimeline } from "@/components/admin/application-review/ApplicationTimeline";
 
 const renderDocument = (fileUrl: string | null | undefined) => {
   if (!fileUrl) return "—";
@@ -216,6 +217,10 @@ export default function BoilerRepairerDetails({ formId }: { formId: string }) {
           </table>
         </CardContent>
       </Card>
+
+      {appData?.applicationHistory?.length > 0 && (
+        <ApplicationTimeline history={appData.applicationHistory} />
+      )}
 
       {/* Transaction History */}
       {Array.isArray(appData?.transactionHistory) && appData.transactionHistory.length > 0 && (

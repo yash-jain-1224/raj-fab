@@ -3,6 +3,7 @@ using RajFabAPI.Data;
 using RajFabAPI.DTOs;
 using RajFabAPI.Models;
 using RajFabAPI.Models.BoilerModels;
+using RajFabAPI.Models.CompetentPerson;
 using RajFabAPI.Services.Interface;
 using System.Security.Cryptography;
 using System.Text;
@@ -81,7 +82,9 @@ namespace RajFabAPI.Services
                 );
             }
 
-            if (module.Name == ApplicationTypeNames.BoilerRegistration)
+            if (module.Name == ApplicationTypeNames.BoilerRegistration ||
+                module.Name == ApplicationTypeNames.BoilerAmendment ||
+                module.Name == ApplicationTypeNames.BoilerRenewal)
             {
                 var boilerRegistration = await _db.Set<BoilerRegistration>()
                     .AsNoTracking()
@@ -100,6 +103,115 @@ namespace RajFabAPI.Services
                     module.Id.ToString(),
                     userId.ToString()
                 );
+            }
+
+            if (module.Name == ApplicationTypeNames.BoilerManufactureRegistration ||
+                module.Name == ApplicationTypeNames.BoilerManufactureAmend ||
+                module.Name == ApplicationTypeNames.BoilerManufactureRenewal)
+            {
+                var reg = await _db.Set<BoilerManufactureRegistration>()
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(r => r.ApplicationId == applicationId)
+                    ?? throw new Exception("Boiler Manufacture registration not found.");
+
+                return await ActionRequestPaymentRPP(reg.Amount, user.FullName, user.Mobile, user.Email, user.Username,
+                    "4157FE34BBAE3A958D8F58CCBFAD7", "UWf6a7cDCP", reg.ApplicationId!, module.Id.ToString(), userId.ToString());
+            }
+
+            if (module.Name == ApplicationTypeNames.BoilerRepairerRegistration ||
+                module.Name == ApplicationTypeNames.BoilerRepairerRenew)
+            {
+                var reg = await _db.Set<BoilerRepairerRegistration>()
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(r => r.ApplicationId == applicationId)
+                    ?? throw new Exception("Boiler Repairer registration not found.");
+
+                return await ActionRequestPaymentRPP(reg.Amount, user.FullName, user.Mobile, user.Email, user.Username,
+                    "4157FE34BBAE3A958D8F58CCBFAD7", "UWf6a7cDCP", reg.ApplicationId!, module.Id.ToString(), userId.ToString());
+            }
+
+            if (module.Name == ApplicationTypeNames.Stplregistration ||
+                module.Name == ApplicationTypeNames.StplAmendment ||
+                module.Name == ApplicationTypeNames.Stplrenew)
+            {
+                var reg = await _db.Set<SteamPipeLineApplication>()
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(r => r.ApplicationId == applicationId)
+                    ?? throw new Exception("STPL registration not found.");
+
+                return await ActionRequestPaymentRPP(reg.Amount, user.FullName, user.Mobile, user.Email, user.Username,
+                    "4157FE34BBAE3A958D8F58CCBFAD7", "UWf6a7cDCP", reg.ApplicationId!, module.Id.ToString(), userId.ToString());
+            }
+
+            if (module.Name == ApplicationTypeNames.EconomiserRegistration ||
+                module.Name == ApplicationTypeNames.Economiserrenew)
+            {
+                var reg = await _db.Set<EconomiserRegistration>()
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(r => r.ApplicationId == applicationId)
+                    ?? throw new Exception("Economiser registration not found.");
+
+                return await ActionRequestPaymentRPP(reg.Amount, user.FullName, user.Mobile, user.Email, user.Username,
+                    "4157FE34BBAE3A958D8F58CCBFAD7", "UWf6a7cDCP", reg.ApplicationId!, module.Id.ToString(), userId.ToString());
+            }
+
+            if (module.Name == ApplicationTypeNames.WelderRegistration ||
+                module.Name == ApplicationTypeNames.WelderRenew)
+            {
+                var reg = await _db.Set<WelderApplication>()
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(r => r.ApplicationId == applicationId)
+                    ?? throw new Exception("Welder registration not found.");
+
+                return await ActionRequestPaymentRPP(reg.Amount, user.FullName, user.Mobile, user.Email, user.Username,
+                    "4157FE34BBAE3A958D8F58CCBFAD7", "UWf6a7cDCP", reg.ApplicationId!, module.Id.ToString(), userId.ToString());
+            }
+
+            if (module.Name == ApplicationTypeNames.BoilerDrawingRegistration ||
+                module.Name == ApplicationTypeNames.BoierDrawingRenewal)
+            {
+                var reg = await _db.Set<BoilerDrawingApplication>()
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(r => r.ApplicationId == applicationId)
+                    ?? throw new Exception("Boiler Drawing registration not found.");
+
+                return await ActionRequestPaymentRPP(reg.Amount, user.FullName, user.Mobile, user.Email, user.Username,
+                    "4157FE34BBAE3A958D8F58CCBFAD7", "UWf6a7cDCP", reg.ApplicationId!, module.Id.ToString(), userId.ToString());
+            }
+
+            if (module.Name == ApplicationTypeNames.SMTCRegistration)
+            {
+                var reg = await _db.Set<SMTCRegistration>()
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(r => r.ApplicationId == applicationId)
+                    ?? throw new Exception("SMTC registration not found.");
+
+                return await ActionRequestPaymentRPP(reg.Amount, user.FullName, user.Mobile, user.Email, user.Username,
+                    "4157FE34BBAE3A958D8F58CCBFAD7", "UWf6a7cDCP", reg.ApplicationId!, module.Id.ToString(), userId.ToString());
+            }
+
+            if (module.Name == ApplicationTypeNames.CompetentPersonRegistration ||
+                module.Name == ApplicationTypeNames.CompetentPersonRenewal)
+            {
+                var reg = await _db.Set<CompetentPersonRegistration>()
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(r => r.ApplicationId == applicationId)
+                    ?? throw new Exception("Competent Person registration not found.");
+
+                return await ActionRequestPaymentRPP(reg.Amount, user.FullName, user.Mobile, user.Email, user.Username,
+                    "4157FE34BBAE3A958D8F58CCBFAD7", "UWf6a7cDCP", reg.ApplicationId!, module.Id.ToString(), userId.ToString());
+            }
+
+            if (module.Name == ApplicationTypeNames.CompetentEquipmentRegistration ||
+                module.Name == ApplicationTypeNames.CompetentEquipmentRenewal)
+            {
+                var reg = await _db.Set<CompetentEquipmentRegistration>()
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(r => r.ApplicationId == applicationId)
+                    ?? throw new Exception("Competent Equipment registration not found.");
+
+                return await ActionRequestPaymentRPP(reg.Amount, user.FullName, user.Mobile, user.Email, user.Username,
+                    "4157FE34BBAE3A958D8F58CCBFAD7", "UWf6a7cDCP", reg.ApplicationId!, module.Id.ToString(), userId.ToString());
             }
 
             throw new Exception("Unsupported module type.");

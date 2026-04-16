@@ -56,6 +56,16 @@ namespace RajFabAPI.Constants
             public const string BoierDrawingRenewal = "Boier Drawing Renewal";
             public const string BoilerInspection = "Boiler Inspection";
             public const string SMTCRegistration = "SMTC Registration";
+            public const string CompetentPersonRegistration = "Competent Person Registration";
+            public const string CompetentPersonRenewal = "Competent Person Renewal";
+            public const string CompetentEquipmentRegistration = "Competent Equipment Registration";
+            public const string CompetentEquipmentRenewal = "Competent Equipment Renewal";
+            public const string BOECertificate = "BOE Certificate";
+            public const string FOECertificate = "FOE Certificate";
+            public const string BOAttendantCertificate = "BO Attendant Certificate";
+            public const string FOAttendantCertificate = "FO Attendant Certificate";
+            public const string HazardousWorkerRegistration = "Hazardous Worker Registration";
+            public const string BoilerComponentFitting = "Boiler Component Fitting";
         }
 
         public static class BoilerApplicationType

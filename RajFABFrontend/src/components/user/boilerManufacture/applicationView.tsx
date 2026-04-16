@@ -4,6 +4,7 @@ import { Download, Eye, FileSignature, CreditCard } from "lucide-react";
 import { useState } from "react";
 import { eSignApi } from "@/services/api/eSign";
 import { paymentApi } from "@/services/api/payment";
+import { ApplicationTimeline } from "@/components/admin/application-review/ApplicationTimeline";
 
 const renderDocument = (fileUrl: string | null | undefined) => {
   if (!fileUrl) return "—";
@@ -186,6 +187,8 @@ export default function BoilerManufactureDetails({
             </Button>
           )}
       </div>
+      <div className={`grid grid-cols-1 md:grid-cols-3 gap-6`}>
+        <div className={appData?.applicationHistory?.length > 0 ? "col-span-2" : "col-span-3"}>
       <div className="bg-white border p-4 text-sm">
       <table className="w-full border border-collapse">
         <tbody>
@@ -289,6 +292,11 @@ export default function BoilerManufactureDetails({
         </tbody>
       </table>
     </div>
+        </div>
+        {appData?.applicationHistory?.length > 0 && (
+          <ApplicationTimeline history={appData.applicationHistory} />
+        )}
+      </div>
 
     {/* Transaction History */}
     {Array.isArray(appData?.transactionHistory) && appData.transactionHistory.length > 0 && (

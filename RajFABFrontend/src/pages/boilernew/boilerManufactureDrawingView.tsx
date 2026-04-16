@@ -10,6 +10,7 @@ import { paymentApi } from "@/services/api/payment";
 import { eSignApi } from "@/services/api/eSign";
 import { toast } from "sonner";
 import formatDate from "@/utils/formatDate";
+import { ApplicationTimeline } from "@/components/admin/application-review/ApplicationTimeline";
 
 function getStatusVariant(status?: string): "default" | "secondary" | "destructive" | "outline" {
   const s = status?.toLowerCase() ?? "";
@@ -236,6 +237,10 @@ export default function BoilerManufactureDrawingView() {
                 )}
               </tbody>
             </table>
+
+            {appData?.applicationHistory?.length > 0 && (
+              <ApplicationTimeline history={appData.applicationHistory} />
+            )}
 
             {/* Transaction History */}
             {Array.isArray(appData?.transactionHistory) && appData.transactionHistory.length > 0 && (

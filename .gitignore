@@ -32,3 +32,4 @@ RajFABBackend/publish/
 *.suo
 .vs/
 *.cache
+node_modules

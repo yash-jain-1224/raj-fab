@@ -6,6 +6,7 @@ import { boilerSteamPipelinesInfo } from "@/hooks/api/useBoilers";
 import { useState } from "react";
 import { eSignApi } from "@/services/api/eSign";
 import { paymentApi } from "@/services/api/payment";
+import { ApplicationTimeline } from "@/components/admin/application-review/ApplicationTimeline";
 
 export default function BoilerSteamPipelineDetails({ formId }: { formId: string }) {
   const { data, isLoading, error } = boilerSteamPipelinesInfo(formId || "skip");
@@ -266,6 +267,10 @@ export default function BoilerSteamPipelineDetails({ formId }: { formId: string 
           </table>
         </CardContent>
       </Card>
+
+      {appData?.applicationHistory?.length > 0 && (
+        <ApplicationTimeline history={appData.applicationHistory} />
+      )}
 
       {/* Transaction History */}
       {Array.isArray(appData?.transactionHistory) && appData.transactionHistory.length > 0 && (

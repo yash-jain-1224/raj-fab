@@ -16,6 +16,8 @@ import BoilerSteamPipelineDetails from "@/components/user/boilerSteamPipeline/ap
 import BoilerRepairerDetails from "@/components/user/boilerRepairer/applicationView";
 import EconomiserView from "../boilernew/economiserView";
 import WelderView from "../boilernew/welderView";
+import BoilerManufactureDrawingView from "../boilernew/boilerManufactureDrawingView";
+import BoilerComponentFittingView from "../boilernew/boilercomponentfittingView";
 
 export default function ApplicationView() {
   const navigate = useNavigate();
@@ -84,12 +86,13 @@ export default function ApplicationView() {
     boiler_manufacture_registration: <BoilerManufactureDetails formId={applicationId} />,
     boiler_manufacture_amendment: <BoilerManufactureDetails formId={applicationId} />,
     boiler_manufacture_renewal: <BoilerManufactureDetails formId={applicationId} />,
-    boiler_drawing_registration: <BoilerManufactureDetails formId={applicationId} />,
-    boier_drawing_renewal: <BoilerManufactureDetails formId={applicationId} />,
+    boiler_drawing_registration: <BoilerManufactureDrawingView />,
+    boier_drawing_renewal: <BoilerManufactureDrawingView />,
     boiler_amendment: <BoilerRegistationDetails formId={applicationId} />,
     boiler_renewal: <BoilerRegistationDetails formId={applicationId} />,
     boiler_inspection: <BoilerRegistationDetails formId={applicationId} />,
-    smtc_registration: <BoilerRegistationDetails formId={applicationId} />,
+    smtc_registration: <BoilerSteamPipelineDetails formId={applicationId} />,
+    boiler_component_fitting: <BoilerComponentFittingView />,
   };
 
   return (

@@ -53,12 +53,12 @@ namespace RajFabAPI.Services
         private readonly ILogger<ESignService> _logger;
         private readonly IWebHostEnvironment _environment;
         private readonly IBoilerRegistartionService _boilerRegistrationService;
-        private readonly IBoilerDrawingService _boilerDrawingService;
         private readonly IBoilerManufactureService _boilerManufactureService;
         private readonly IBoilerRepairerService _boilerRepairerService;
+        private readonly ISteamPipeLineApplicationService _stplService;
         private readonly IEconomiserService _economiserService;
-        private readonly ISteamPipeLineApplicationService _steamPipeLineService;
         private readonly IWelderApplicationService _welderService;
+        private readonly IBoilerDrawingService _boilerDrawingService;
         private readonly ISMTCRegistrationService _smtcService;
 
         public ESignService(
@@ -70,12 +70,12 @@ namespace RajFabAPI.Services
             IAppealService appealService,
             IWebHostEnvironment environment,
             IBoilerRegistartionService boilerRegistrationService,
-            IBoilerDrawingService boilerDrawingService,
             IBoilerManufactureService boilerManufactureService,
             IBoilerRepairerService boilerRepairerService,
+            ISteamPipeLineApplicationService stplService,
             IEconomiserService economiserService,
-            ISteamPipeLineApplicationService steamPipeLineService,
             IWelderApplicationService welderService,
+            IBoilerDrawingService boilerDrawingService,
             ISMTCRegistrationService smtcService)
         {
             _logger = logger;
@@ -91,12 +91,12 @@ namespace RajFabAPI.Services
             _appealService = appealService;
             _environment = environment;
             _boilerRegistrationService = boilerRegistrationService;
-            _boilerDrawingService = boilerDrawingService;
             _boilerManufactureService = boilerManufactureService;
             _boilerRepairerService = boilerRepairerService;
+            _stplService = stplService;
             _economiserService = economiserService;
-            _steamPipeLineService = steamPipeLineService;
             _welderService = welderService;
+            _boilerDrawingService = boilerDrawingService;
             _smtcService = smtcService;
         }
 
@@ -284,123 +284,61 @@ namespace RajFabAPI.Services
 
                                 pdfBytes = await File.ReadAllBytesAsync(filePath);
                             }
-
-                            else if (applicationData.ModuleName == ApplicationTypeNames.BoilerDrawingRegistration || applicationData.ModuleName == ApplicationTypeNames.BoierDrawingRenewal)
-                            {
-                                _logger.LogInformation("Processing Boiler Drawing PDF generation");
-
-                                var filePath = await _boilerDrawingService.GenerateDrawingPdfAsync(applicationId);
-
-                                _logger.LogInformation("Generated PDF Path: {FilePath}", filePath);
-
-                                if (!File.Exists(filePath))
-                                {
-                                    _logger.LogError("PDF file not found at path: {FilePath}", filePath);
-                                    throw new Exception("Generated PDF not found");
-                                }
-
-                                pdfBytes = await File.ReadAllBytesAsync(filePath);
-                            }
-
-                            else if (applicationData.ModuleName == ApplicationTypeNames.BoilerManufactureRegistration || applicationData.ModuleName == ApplicationTypeNames.BoilerManufactureAmend || applicationData.ModuleName == ApplicationTypeNames.BoilerManufactureRenewal)
+                            else if (applicationData.ModuleName == ApplicationTypeNames.BoilerManufactureRegistration ||
+                                     applicationData.ModuleName == ApplicationTypeNames.BoilerManufactureAmend ||
+                                     applicationData.ModuleName == ApplicationTypeNames.BoilerManufactureRenewal)
                             {
                                 _logger.LogInformation("Processing Boiler Manufacture PDF generation");
-
                                 var filePath = await _boilerManufactureService.GenerateManufacturePdfAsync(applicationId);
-
-                                _logger.LogInformation("Generated PDF Path: {FilePath}", filePath);
-
-                                if (!File.Exists(filePath))
-                                {
-                                    _logger.LogError("PDF file not found at path: {FilePath}", filePath);
-                                    throw new Exception("Generated PDF not found");
-                                }
-
+                                if (!File.Exists(filePath)) throw new Exception("Generated PDF not found");
                                 pdfBytes = await File.ReadAllBytesAsync(filePath);
                             }
-
-                            else if (applicationData.ModuleName == ApplicationTypeNames.BoilerRepairerRegistration || applicationData.ModuleName == ApplicationTypeNames.BoilerRepairerRenew)
+                            else if (applicationData.ModuleName == ApplicationTypeNames.BoilerRepairerRegistration ||
+                                     applicationData.ModuleName == ApplicationTypeNames.BoilerRepairerRenew)
                             {
                                 _logger.LogInformation("Processing Boiler Repairer PDF generation");
-
                                 var filePath = await _boilerRepairerService.GenerateRepairerPdfAsync(applicationId);
-
-                                _logger.LogInformation("Generated PDF Path: {FilePath}", filePath);
-
-                                if (!File.Exists(filePath))
-                                {
-                                    _logger.LogError("PDF file not found at path: {FilePath}", filePath);
-                                    throw new Exception("Generated PDF not found");
-                                }
-
+                                if (!File.Exists(filePath)) throw new Exception("Generated PDF not found");
                                 pdfBytes = await File.ReadAllBytesAsync(filePath);
                             }
-
-                            else if (applicationData.ModuleName == ApplicationTypeNames.EconomiserRegistration || applicationData.ModuleName == ApplicationTypeNames.Economiserrenew)
+                            else if (applicationData.ModuleName == ApplicationTypeNames.Stplregistration ||
+                                     applicationData.ModuleName == ApplicationTypeNames.StplAmendment ||
+                                     applicationData.ModuleName == ApplicationTypeNames.Stplrenew)
+                            {
+                                _logger.LogInformation("Processing STPL PDF generation");
+                                var filePath = await _stplService.GenerateStplPdfAsync(applicationId);
+                                if (!File.Exists(filePath)) throw new Exception("Generated PDF not found");
+                                pdfBytes = await File.ReadAllBytesAsync(filePath);
+                            }
+                            else if (applicationData.ModuleName == ApplicationTypeNames.EconomiserRegistration ||
+                                     applicationData.ModuleName == ApplicationTypeNames.Economiserrenew)
                             {
                                 _logger.LogInformation("Processing Economiser PDF generation");
-
                                 var filePath = await _economiserService.GenerateEconomiserPdfAsync(applicationId);
-
-                                _logger.LogInformation("Generated PDF Path: {FilePath}", filePath);
-
-                                if (!File.Exists(filePath))
-                                {
-                                    _logger.LogError("PDF file not found at path: {FilePath}", filePath);
-                                    throw new Exception("Generated PDF not found");
-                                }
-
+                                if (!File.Exists(filePath)) throw new Exception("Generated PDF not found");
                                 pdfBytes = await File.ReadAllBytesAsync(filePath);
                             }
-
-                            else if (applicationData.ModuleName == ApplicationTypeNames.Stplregistration || applicationData.ModuleName == ApplicationTypeNames.StplAmendment || applicationData.ModuleName == ApplicationTypeNames.Stplrenew)
-                            {
-                                _logger.LogInformation("Processing Steam Pipe Line PDF generation");
-
-                                var filePath = await _steamPipeLineService.GenerateStplPdfAsync(applicationId);
-
-                                _logger.LogInformation("Generated PDF Path: {FilePath}", filePath);
-
-                                if (!File.Exists(filePath))
-                                {
-                                    _logger.LogError("PDF file not found at path: {FilePath}", filePath);
-                                    throw new Exception("Generated PDF not found");
-                                }
-
-                                pdfBytes = await File.ReadAllBytesAsync(filePath);
-                            }
-
-                            else if (applicationData.ModuleName == ApplicationTypeNames.WelderRegistration || applicationData.ModuleName == ApplicationTypeNames.WelderRenew)
+                            else if (applicationData.ModuleName == ApplicationTypeNames.WelderRegistration ||
+                                     applicationData.ModuleName == ApplicationTypeNames.WelderRenew)
                             {
                                 _logger.LogInformation("Processing Welder PDF generation");
-
                                 var filePath = await _welderService.GenerateWelderPdfAsync(applicationId);
-
-                                _logger.LogInformation("Generated PDF Path: {FilePath}", filePath);
-
-                                if (!File.Exists(filePath))
-                                {
-                                    _logger.LogError("PDF file not found at path: {FilePath}", filePath);
-                                    throw new Exception("Generated PDF not found");
-                                }
-
+                                if (!File.Exists(filePath)) throw new Exception("Generated PDF not found");
                                 pdfBytes = await File.ReadAllBytesAsync(filePath);
                             }
-
+                            else if (applicationData.ModuleName == ApplicationTypeNames.BoilerDrawingRegistration ||
+                                     applicationData.ModuleName == ApplicationTypeNames.BoierDrawingRenewal)
+                            {
+                                _logger.LogInformation("Processing Boiler Drawing PDF generation");
+                                var filePath = await _boilerDrawingService.GenerateDrawingPdfAsync(applicationId);
+                                if (!File.Exists(filePath)) throw new Exception("Generated PDF not found");
+                                pdfBytes = await File.ReadAllBytesAsync(filePath);
+                            }
                             else if (applicationData.ModuleName == ApplicationTypeNames.SMTCRegistration)
                             {
                                 _logger.LogInformation("Processing SMTC PDF generation");
-
                                 var filePath = await _smtcService.GenerateSmtcPdfAsync(applicationId);
-
-                                _logger.LogInformation("Generated PDF Path: {FilePath}", filePath);
-
-                                if (!File.Exists(filePath))
-                                {
-                                    _logger.LogError("PDF file not found at path: {FilePath}", filePath);
-                                    throw new Exception("Generated PDF not found");
-                                }
-
+                                if (!File.Exists(filePath)) throw new Exception("Generated PDF not found");
                                 pdfBytes = await File.ReadAllBytesAsync(filePath);
                             }
 
@@ -1029,9 +967,37 @@ namespace RajFabAPI.Services
                     var filePath = await _factoryLicenseService
                         .GenerateFactoryLicensePdf(response);
                 }
-                else if (Module.Name == ApplicationTypeNames.BoilerRegistration)
+                else if (Module.Name == ApplicationTypeNames.BoilerRegistration || Module.Name == ApplicationTypeNames.BoilerAmendment || Module.Name == ApplicationTypeNames.BoilerRenewal)
                 {
                     await _boilerRegistrationService.GenerateBoilerApplicationPdfAsync(applicationId);
+                }
+                else if (Module.Name == ApplicationTypeNames.BoilerManufactureRegistration || Module.Name == ApplicationTypeNames.BoilerManufactureAmend || Module.Name == ApplicationTypeNames.BoilerManufactureRenewal)
+                {
+                    await _boilerManufactureService.GenerateManufacturePdfAsync(applicationId);
+                }
+                else if (Module.Name == ApplicationTypeNames.BoilerRepairerRegistration || Module.Name == ApplicationTypeNames.BoilerRepairerRenew)
+                {
+                    await _boilerRepairerService.GenerateRepairerPdfAsync(applicationId);
+                }
+                else if (Module.Name == ApplicationTypeNames.Stplregistration || Module.Name == ApplicationTypeNames.StplAmendment || Module.Name == ApplicationTypeNames.Stplrenew)
+                {
+                    await _stplService.GenerateStplPdfAsync(applicationId);
+                }
+                else if (Module.Name == ApplicationTypeNames.EconomiserRegistration || Module.Name == ApplicationTypeNames.Economiserrenew)
+                {
+                    await _economiserService.GenerateEconomiserPdfAsync(applicationId);
+                }
+                else if (Module.Name == ApplicationTypeNames.WelderRegistration || Module.Name == ApplicationTypeNames.WelderRenew)
+                {
+                    await _welderService.GenerateWelderPdfAsync(applicationId);
+                }
+                else if (Module.Name == ApplicationTypeNames.BoilerDrawingRegistration || Module.Name == ApplicationTypeNames.BoierDrawingRenewal)
+                {
+                    await _boilerDrawingService.GenerateDrawingPdfAsync(applicationId);
+                }
+                else if (Module.Name == ApplicationTypeNames.SMTCRegistration)
+                {
+                    await _smtcService.GenerateSmtcPdfAsync(applicationId);
                 }
 
                 // Use LogContext to automatically enrich all logs with Txn and PRN

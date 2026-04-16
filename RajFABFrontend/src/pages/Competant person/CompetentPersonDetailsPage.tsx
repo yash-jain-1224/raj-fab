@@ -9,6 +9,7 @@ import { paymentApi } from "@/services/api/payment";
 import { eSignApi } from "@/services/api/eSign";
 import formatDate from "@/utils/formatDate";
 import { useState } from "react";
+import { ApplicationTimeline } from "@/components/admin/application-review/ApplicationTimeline";
 
 function getStatusVariant(status?: string): "default" | "secondary" | "destructive" | "outline" {
   const s = status?.toLowerCase() ?? "";
@@ -255,6 +256,28 @@ export default function CompetentPersonDetailsPage() {
                   </Card>
                 ))}
               </div>
+            )}
+
+            {/* Transaction History */}
+            {Array.isArray(appData?.transactionHistory) && appData.transactionHistory.length > 0 && (
+              <div className="border rounded-lg overflow-hidden mt-4">
+                <div className="bg-muted font-semibold px-3 py-2 text-sm">Transaction History</div>
+                {appData.transactionHistory.map((tx: any, index: number) => (
+                  <div key={index} className="border-t px-3 py-3 text-sm">
+                    <div className="flex justify-between">
+                      <span className="font-medium">Transaction {index + 1}</span>
+                      <Badge variant="outline">{tx?.status}</Badge>
+                    </div>
+                    {tx?.amount && <p className="text-muted-foreground mt-1">Amount: ₹{tx.amount}</p>}
+                    {tx?.date && <p className="text-muted-foreground">Date: {formatDate(tx.date)}</p>}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Application Timeline */}
+            {Array.isArray(appData?.applicationHistory) && appData.applicationHistory.length > 0 && (
+              <ApplicationTimeline history={appData.applicationHistory} />
             )}
           </CardContent>
         </Card>

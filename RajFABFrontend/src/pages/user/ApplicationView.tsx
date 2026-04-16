@@ -18,6 +18,8 @@ import EconomiserView from "../boilernew/economiserView";
 import WelderView from "../boilernew/welderView";
 import BoilerManufactureDrawingView from "../boilernew/boilerManufactureDrawingView";
 import BoilerComponentFittingView from "../boilernew/boilercomponentfittingView";
+import CompetentPersonDetailsPage from "../Competant person/CompetentPersonDetailsPage";
+import CompetentPersonEquipmentView from "../Competant person/CompetentPersonEquipmentView";
 
 export default function ApplicationView() {
   const navigate = useNavigate();
@@ -93,6 +95,10 @@ export default function ApplicationView() {
     boiler_inspection: <BoilerRegistationDetails formId={applicationId} />,
     smtc_registration: <BoilerSteamPipelineDetails formId={applicationId} />,
     boiler_component_fitting: <BoilerComponentFittingView />,
+    competent_person_registration: <CompetentPersonDetailsPage />,
+    competent_person_renewal: <CompetentPersonDetailsPage />,
+    competent_equipment_registration: <CompetentPersonEquipmentView />,
+    competent_equipment_renewal: <CompetentPersonEquipmentView />,
   };
 
   return (

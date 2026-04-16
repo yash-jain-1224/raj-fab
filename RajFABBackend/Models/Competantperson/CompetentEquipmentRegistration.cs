@@ -30,6 +30,10 @@ namespace RajFabAPI.Models.CompetentPerson
 
         public decimal Amount { get; set; } = 0;
 
+        public string? ApplicationPDFUrl { get; set; }
+        public string? CertificateUrl { get; set; }
+        public string? ObjectionLetterUrl { get; set; }
+
         public DateTime CreatedAt { get; set; } = DateTime.Now;
 
         public DateTime UpdatedAt { get; set; } = DateTime.Now;

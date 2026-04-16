@@ -1,3 +1,12 @@
+using iText.Kernel.Pdf;
+using iText.Kernel.Pdf.Event;
+using iText.Kernel.Colors;
+using iText.Kernel.Font;
+using iText.IO.Font.Constants;
+using iText.Layout;
+using iText.Layout.Element;
+using iText.Layout.Properties;
+using iText.Layout.Borders;
 using Microsoft.EntityFrameworkCore;
 using RajFabAPI.Data;
 using RajFabAPI.DTOs;
@@ -7,6 +16,8 @@ using RajFabAPI.Models.BoilerModels;
 using RajFabAPI.Models.CompetentPerson;
 using RajFabAPI.Services.Interface;
 using System.Text.Json;
+using PdfTable = iText.Layout.Element.Table;
+using PdfCell = iText.Layout.Element.Cell;
 
 namespace RajFabAPI.Services
 {
@@ -14,11 +25,15 @@ namespace RajFabAPI.Services
     {
         private readonly ApplicationDbContext _dbcontext;
         private readonly IWebHostEnvironment _environment;
+        private readonly IConfiguration _config;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public CompetantPersonRegistartionService(ApplicationDbContext dbcontext, IWebHostEnvironment environment)
+        public CompetantPersonRegistartionService(ApplicationDbContext dbcontext, IWebHostEnvironment environment, IConfiguration config, IHttpContextAccessor httpContextAccessor)
         {
             _dbcontext = dbcontext;
             _environment = environment;
+            _config = config;
+            _httpContextAccessor = httpContextAccessor;
         }
 
         private async Task<string> GenerateCompetentRegistrationNoAsync()
@@ -550,6 +565,201 @@ namespace RajFabAPI.Services
             }
 
             return result;
+        }
+
+        public async Task<string> GenerateCompetentPersonPdfAsync(string applicationId)
+        {
+            var entity = await _dbcontext.CompetentPersonRegistrations
+                .FirstOrDefaultAsync(a => a.ApplicationId == applicationId);
+            if (entity == null) throw new Exception("Competent Person registration not found");
+
+            var establishment = await _dbcontext.CompetantEstablishmentDetails.FirstOrDefaultAsync(x => x.RegistrationId == entity.Id);
+            var occupier = await _dbcontext.CompetantOccupierDetails.FirstOrDefaultAsync(x => x.RegistrationId == entity.Id);
+            var persons = await _dbcontext.CompetantPersonDetails.Where(x => x.RegistrationId == entity.Id).ToListAsync();
+
+            var uploadPath = Path.Combine(_environment.WebRootPath, "competent-person-forms");
+            Directory.CreateDirectory(uploadPath);
+            var fileName = $"competent_person_application_{entity.Id}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+            var filePath = Path.Combine(uploadPath, fileName);
+
+            var httpContext = _httpContextAccessor.HttpContext ?? throw new InvalidOperationException("HTTP context unavailable");
+            var request = httpContext.Request;
+            var baseUrl = _config["BaseUrl"] ?? $"{request.Scheme}://{request.Host}";
+            var fileUrl = $"{baseUrl}/competent-person-forms/{fileName}";
+
+            var sections = new List<PdfSection>
+            {
+                new PdfSection { Title = "Application Info", Rows = new List<(string, string?)> {
+                    ("Application Id", entity.ApplicationId),
+                    ("Registration No", entity.CompetentRegistrationNo),
+                    ("Registration Type", entity.RegistrationType),
+                    ("Type", entity.Type),
+                    ("Status", entity.Status),
+                    ("Version", entity.Version.ToString()),
+                    ("Renewal Years", entity.RenewalYears.ToString()),
+                    ("Valid Upto", entity.ValidUpto?.ToString("dd/MM/yyyy"))
+                }}
+            };
+
+            if (establishment != null)
+            {
+                sections.Add(new PdfSection { Title = "Establishment Details", Rows = new List<(string, string?)> {
+                    ("Establishment Name", establishment.EstablishmentName),
+                    ("Email", establishment.Email),
+                    ("Mobile", establishment.Mobile),
+                    ("Address", $"{establishment.AddressLine1} {establishment.AddressLine2}"),
+                    ("Pincode", establishment.Pincode)
+                }});
+            }
+
+            if (occupier != null)
+            {
+                sections.Add(new PdfSection { Title = "Occupier Details", Rows = new List<(string, string?)> {
+                    ("Name", occupier.Name),
+                    ("Designation", occupier.Designation),
+                    ("Email", occupier.Email),
+                    ("Mobile", occupier.Mobile),
+                    ("Address", $"{occupier.AddressLine1} {occupier.AddressLine2}"),
+                    ("Pincode", occupier.Pincode)
+                }});
+            }
+
+            if (persons.Any())
+            {
+                foreach (var (p, idx) in persons.Select((p, i) => (p, i)))
+                {
+                    sections.Add(new PdfSection { Title = $"Person {idx + 1}", Rows = new List<(string, string?)> {
+                        ("Name", p.Name),
+                        ("Father Name", p.FatherName),
+                        ("DOB", p.DOB?.ToString("dd/MM/yyyy")),
+                        ("Qualification", p.Qualification),
+                        ("Engineering", p.Engineering),
+                        ("Experience", p.Experience?.ToString()),
+                        ("Email", p.Email),
+                        ("Mobile", p.Mobile)
+                    }});
+                }
+            }
+
+            BoilerPdfHelper.GeneratePdf(filePath, "Form-CP1", "(See Indian Boilers Act, 1923)", "Application for Competent Person Registration", entity.ApplicationId ?? "-", entity.CreatedAt, sections);
+
+            entity.ApplicationPDFUrl = fileUrl;
+            entity.UpdatedAt = DateTime.Now;
+            await _dbcontext.SaveChangesAsync();
+            return filePath;
+        }
+
+        public async Task<string> GenerateObjectionLetter(BoilerObjectionLetterDto dto, string applicationId)
+        {
+            if (dto == null) throw new ArgumentNullException(nameof(dto));
+            var safeAppId = applicationId.Replace("/", "_").Replace("\\", "_");
+            var fileName = $"competent_person_objection_{safeAppId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+            var webRootPath = _environment.WebRootPath ?? throw new InvalidOperationException("wwwroot is not configured.");
+            var uploadPath = Path.Combine(webRootPath, "boiler-objection-letters");
+            Directory.CreateDirectory(uploadPath);
+            var filePath = Path.Combine(uploadPath, fileName);
+
+            var httpContext = _httpContextAccessor.HttpContext ?? throw new InvalidOperationException("HTTP context unavailable");
+            var request = httpContext.Request;
+            var baseUrl = _config["BaseUrl"] ?? $"{request.Scheme}://{request.Host}";
+            var fileUrl = $"{baseUrl}/boiler-objection-letters/{fileName}";
+
+            var boldFont = iText.Kernel.Font.PdfFontFactory.CreateFont(StandardFonts.HELVETICA_BOLD);
+            var regularFont = iText.Kernel.Font.PdfFontFactory.CreateFont(StandardFonts.HELVETICA);
+
+            using var writer = new PdfWriter(filePath);
+            using var pdf = new iText.Kernel.Pdf.PdfDocument(writer);
+            using var document = new Document(pdf);
+            document.SetMargins(50, 50, 65, 50);
+
+            document.Add(new Paragraph("Government of Rajasthan").SetFont(boldFont).SetFontSize(14).SetTextAlignment(TextAlignment.CENTER));
+            document.Add(new Paragraph("Factories and Boilers Inspection Department").SetFont(boldFont).SetFontSize(13).SetTextAlignment(TextAlignment.CENTER));
+            document.Add(new Paragraph("6-C, Jhalana Institutional Area, Jaipur, 302004").SetFont(regularFont).SetFontSize(12).SetTextAlignment(TextAlignment.CENTER).SetMarginBottom(10));
+
+            var topTable = new PdfTable(new float[] { 1, 1 }).UseAllAvailableWidth();
+            topTable.AddCell(new PdfCell().Add(new Paragraph($"Application Id:- {dto.ApplicationId}").SetFont(boldFont)).SetBorder(Border.NO_BORDER));
+            topTable.AddCell(new PdfCell().Add(new Paragraph($"Dated:- {dto.Date:dd/MM/yyyy}").SetFont(boldFont).SetTextAlignment(TextAlignment.RIGHT)).SetBorder(Border.NO_BORDER));
+            document.Add(topTable);
+
+            document.Add(new Paragraph(dto.OwnerName ?? "-").SetFont(regularFont));
+            document.Add(new Paragraph(dto.Address ?? "-").SetFont(regularFont).SetMarginBottom(10));
+
+            var subject = new Paragraph();
+            subject.Add(new Text("Sub:- ").SetFont(boldFont));
+            subject.Add(new Text("Competent Person Registration").SetFont(regularFont));
+            document.Add(subject);
+
+            document.Add(new Paragraph("Following objections need to be removed:").SetFont(regularFont).SetMarginTop(10));
+            if (dto.Objections != null)
+                for (int i = 0; i < dto.Objections.Count; i++)
+                    document.Add(new Paragraph($"{i + 1}. {dto.Objections[i]}").SetFont(regularFont));
+
+            document.Add(new Paragraph("Please comply with the above observations and submit relevant documents").SetFont(regularFont).SetMarginTop(15));
+            document.Add(new Paragraph("\n\n"));
+            document.Add(new Paragraph($"({dto.SignatoryName})").SetTextAlignment(TextAlignment.RIGHT));
+            document.Add(new Paragraph(dto.SignatoryDesignation).SetTextAlignment(TextAlignment.RIGHT));
+            document.Add(new Paragraph(dto.SignatoryLocation).SetTextAlignment(TextAlignment.RIGHT));
+
+            var pageWidth = pdf.GetDefaultPageSize().GetWidth();
+            document.Add(new Paragraph("This is a computer generated document. No physical signature is required.").SetFontSize(8).SetFixedPosition(35, 30, pageWidth - 70));
+            document.Close();
+            return fileUrl;
+        }
+
+        public async Task<string> GenerateCertificatePdfAsync(string applicationId, string postName, string userName)
+        {
+            var entity = await _dbcontext.CompetentPersonRegistrations.FirstOrDefaultAsync(a => a.ApplicationId == applicationId);
+            if (entity == null) throw new Exception("Competent Person application not found");
+
+            var safeAppId = (entity.ApplicationId ?? applicationId).Replace("/", "_").Replace("\\", "_");
+            var fileName = $"competent_person_certificate_{safeAppId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+            var webRootPath = _environment.WebRootPath ?? throw new InvalidOperationException("wwwroot is not configured.");
+            var uploadPath = Path.Combine(webRootPath, "certificates");
+            Directory.CreateDirectory(uploadPath);
+            var filePath = Path.Combine(uploadPath, fileName);
+
+            var httpContext = _httpContextAccessor.HttpContext ?? throw new InvalidOperationException("HTTP context unavailable");
+            var request = httpContext.Request;
+            var baseUrl = _config["BaseUrl"] ?? $"{request.Scheme}://{request.Host}";
+            var fileUrl = $"{baseUrl}/certificates/{fileName}";
+
+            var boldFont = iText.Kernel.Font.PdfFontFactory.CreateFont(StandardFonts.HELVETICA_BOLD);
+            var regularFont = iText.Kernel.Font.PdfFontFactory.CreateFont(StandardFonts.HELVETICA);
+
+            using var writer = new PdfWriter(filePath);
+            using var pdf = new iText.Kernel.Pdf.PdfDocument(writer);
+            using var document = new Document(pdf);
+            document.SetMargins(40, 40, 130, 40);
+
+            document.Add(new Paragraph("Government of Rajasthan").SetFont(boldFont).SetFontSize(12).SetTextAlignment(TextAlignment.CENTER).SetMarginBottom(1f));
+            document.Add(new Paragraph("Factories and Boilers Inspection Department").SetFont(boldFont).SetFontSize(11).SetTextAlignment(TextAlignment.CENTER).SetMarginBottom(1f));
+            document.Add(new Paragraph("6-C, Jhalana Institutional Area, Jaipur, 302004").SetFont(regularFont).SetFontSize(9).SetTextAlignment(TextAlignment.CENTER).SetMarginBottom(10f));
+
+            var topRow = new PdfTable(new float[] { 1f, 1f }).UseAllAvailableWidth().SetBorder(Border.NO_BORDER).SetMarginBottom(2f);
+            topRow.AddCell(new PdfCell().Add(new Paragraph($"Application No.:-  {entity.ApplicationId}").SetFont(boldFont).SetFontSize(10)).SetBorder(Border.NO_BORDER));
+            topRow.AddCell(new PdfCell().Add(new Paragraph($"Dated:-  {DateTime.Now:dd/MM/yyyy}").SetFont(boldFont).SetFontSize(10).SetTextAlignment(TextAlignment.RIGHT)).SetBorder(Border.NO_BORDER));
+            document.Add(topRow);
+
+            document.Add(new Paragraph($"Registration No.:-  {entity.CompetentRegistrationNo ?? "-"}").SetFont(boldFont).SetFontSize(10).SetMarginBottom(6f));
+            document.Add(new Paragraph("Sub:-  Approval of Competent Person Registration").SetFont(boldFont).SetFontSize(11).SetMarginBottom(2f));
+            document.Add(new Paragraph("Your Competent Person Registration is approved under the Indian Boilers Act, 1923 and the rules made thereunder.").SetFont(regularFont).SetFontSize(11).SetMarginBottom(6f));
+
+            var blackBorder = new SolidBorder(new DeviceRgb(0, 0, 0), 0.75f);
+            PdfCell BlackCell(string text, iText.Kernel.Font.PdfFont font, float size = 10f) => new PdfCell().Add(new Paragraph(text ?? "-").SetFont(font).SetFontSize(size)).SetBorderTop(blackBorder).SetBorderBottom(blackBorder).SetBorderLeft(blackBorder).SetBorderRight(blackBorder).SetPadding(5f);
+
+            var detailsTable = new PdfTable(new float[] { 150f, 350f }).UseAllAvailableWidth().SetMarginBottom(10f);
+            detailsTable.AddCell(BlackCell("Registration Type", boldFont)); detailsTable.AddCell(BlackCell(entity.RegistrationType ?? "-", regularFont));
+            detailsTable.AddCell(BlackCell("Type", boldFont)); detailsTable.AddCell(BlackCell(entity.Type ?? "-", regularFont));
+            detailsTable.AddCell(BlackCell("Valid Upto", boldFont)); detailsTable.AddCell(BlackCell(entity.ValidUpto?.ToString("dd/MM/yyyy") ?? "-", regularFont));
+            document.Add(detailsTable);
+
+            document.Add(new Paragraph($"\n\n({userName})").SetTextAlignment(TextAlignment.RIGHT));
+            document.Add(new Paragraph(postName).SetTextAlignment(TextAlignment.RIGHT));
+
+            var pageWidth = pdf.GetDefaultPageSize().GetWidth();
+            document.Add(new Paragraph("This is a computer generated certificate. No physical signature is required.").SetFont(regularFont).SetFontSize(6.5f).SetFontColor(ColorConstants.GRAY).SetTextAlignment(TextAlignment.JUSTIFIED).SetFixedPosition(35, 8, pageWidth - 70));
+
+            return fileUrl;
         }
     }
 }

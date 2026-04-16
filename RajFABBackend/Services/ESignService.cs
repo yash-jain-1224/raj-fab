@@ -60,6 +60,8 @@ namespace RajFabAPI.Services
         private readonly IWelderApplicationService _welderService;
         private readonly IBoilerDrawingService _boilerDrawingService;
         private readonly ISMTCRegistrationService _smtcService;
+        private readonly ICompetantPersonRegistartionService _competentPersonService;
+        private readonly ICompetantPersonEquipmentRegistartionService _competentEquipmentService;
 
         public ESignService(
             IMemoryCache cache, IEstablishmentRegistrationService estRegService, ApplicationDbContext db, IConfiguration config,
@@ -76,7 +78,9 @@ namespace RajFabAPI.Services
             IEconomiserService economiserService,
             IWelderApplicationService welderService,
             IBoilerDrawingService boilerDrawingService,
-            ISMTCRegistrationService smtcService)
+            ISMTCRegistrationService smtcService,
+            ICompetantPersonRegistartionService competentPersonService,
+            ICompetantPersonEquipmentRegistartionService competentEquipmentService)
         {
             _logger = logger;
             _cache = cache;
@@ -98,6 +102,8 @@ namespace RajFabAPI.Services
             _welderService = welderService;
             _boilerDrawingService = boilerDrawingService;
             _smtcService = smtcService;
+            _competentPersonService = competentPersonService;
+            _competentEquipmentService = competentEquipmentService;
         }
 
         public async Task<string> GenerateESignHtmlAsync(string applicationId)
@@ -338,6 +344,22 @@ namespace RajFabAPI.Services
                             {
                                 _logger.LogInformation("Processing SMTC PDF generation");
                                 var filePath = await _smtcService.GenerateSmtcPdfAsync(applicationId);
+                                if (!File.Exists(filePath)) throw new Exception("Generated PDF not found");
+                                pdfBytes = await File.ReadAllBytesAsync(filePath);
+                            }
+                            else if (applicationData.ModuleName == ApplicationTypeNames.CompetentPersonRegistration ||
+                                     applicationData.ModuleName == ApplicationTypeNames.CompetentPersonRenewal)
+                            {
+                                _logger.LogInformation("Processing Competent Person PDF generation");
+                                var filePath = await _competentPersonService.GenerateCompetentPersonPdfAsync(applicationId);
+                                if (!File.Exists(filePath)) throw new Exception("Generated PDF not found");
+                                pdfBytes = await File.ReadAllBytesAsync(filePath);
+                            }
+                            else if (applicationData.ModuleName == ApplicationTypeNames.CompetentEquipmentRegistration ||
+                                     applicationData.ModuleName == ApplicationTypeNames.CompetentEquipmentRenewal)
+                            {
+                                _logger.LogInformation("Processing Competent Equipment PDF generation");
+                                var filePath = await _competentEquipmentService.GenerateCompetentEquipmentPdfAsync(applicationId);
                                 if (!File.Exists(filePath)) throw new Exception("Generated PDF not found");
                                 pdfBytes = await File.ReadAllBytesAsync(filePath);
                             }

@@ -12,5 +12,9 @@ namespace RajFabAPI.Services.Interface
 
         Task<CompetentEquipmentDetailsDto?> GetLatestApprovedByRegistrationNoAsync(string registrationNo);
         Task<CompetentEquipmentDetailsDto?> GetByApplicationIdAsync(string applicationId);
+
+        Task<string> GenerateCompetentEquipmentPdfAsync(string applicationId);
+        Task<string> GenerateObjectionLetter(BoilerObjectionLetterDto dto, string applicationId);
+        Task<string> GenerateCertificatePdfAsync(string applicationId, string postName, string userName);
     }
 }

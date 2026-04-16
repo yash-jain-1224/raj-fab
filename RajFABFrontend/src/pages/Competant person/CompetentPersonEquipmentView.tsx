@@ -10,6 +10,7 @@ import { paymentApi } from "@/services/api/payment";
 import { eSignApi } from "@/services/api/eSign";
 import { toast } from "sonner";
 import formatDate from "@/utils/formatDate";
+import { ApplicationTimeline } from "@/components/admin/application-review/ApplicationTimeline";
 
 function getStatusVariant(status?: string): "default" | "secondary" | "destructive" | "outline" {
   const s = status?.toLowerCase() ?? "";
@@ -232,6 +233,11 @@ export default function CompetentPersonEquipmentView() {
                   </div>
                 ))}
               </div>
+            )}
+
+            {/* Application Timeline */}
+            {Array.isArray(appData?.applicationHistory) && appData.applicationHistory.length > 0 && (
+              <ApplicationTimeline history={appData.applicationHistory} />
             )}
           </CardContent>
         </Card>

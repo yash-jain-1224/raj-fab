@@ -1133,7 +1133,9 @@ namespace RajFabAPI.Services
             {
                 await _factoryLicenseService.UpdateStatusAndRemark(regId, status);
             }
-            else if (module.Name == ApplicationTypeNames.BoilerRegistration)
+            else if (module.Name == ApplicationTypeNames.BoilerRegistration ||
+                     module.Name == ApplicationTypeNames.BoilerAmendment ||
+                     module.Name == ApplicationTypeNames.BoilerRenewal)
             {
                 var boilerReg = await _db.BoilerRegistrations
                     .FirstOrDefaultAsync(x => x.ApplicationId == regId);
@@ -1142,6 +1144,115 @@ namespace RajFabAPI.Services
                 {
                     boilerReg.Status = status;
                     boilerReg.UpdatedAt = DateTime.Now;
+                    await _db.SaveChangesAsync();
+                }
+            }
+            else if (module.Name == ApplicationTypeNames.BoilerManufactureRegistration ||
+                     module.Name == ApplicationTypeNames.BoilerManufactureAmend ||
+                     module.Name == ApplicationTypeNames.BoilerManufactureRenewal)
+            {
+                var reg = await _db.BoilerManufactureRegistrations
+                    .FirstOrDefaultAsync(x => x.ApplicationId == regId);
+                if (reg != null)
+                {
+                    reg.Status = status;
+                    reg.UpdatedAt = DateTime.Now;
+                    await _db.SaveChangesAsync();
+                }
+            }
+            else if (module.Name == ApplicationTypeNames.BoilerRepairerRegistration ||
+                     module.Name == ApplicationTypeNames.BoilerRepairerRenew)
+            {
+                var reg = await _db.BoilerRepairerRegistrations
+                    .FirstOrDefaultAsync(x => x.ApplicationId == regId);
+                if (reg != null)
+                {
+                    reg.Status = status;
+                    reg.UpdatedAt = DateTime.Now;
+                    await _db.SaveChangesAsync();
+                }
+            }
+            else if (module.Name == ApplicationTypeNames.Stplregistration ||
+                     module.Name == ApplicationTypeNames.StplAmendment ||
+                     module.Name == ApplicationTypeNames.Stplrenew)
+            {
+                var reg = await _db.SteamPipeLineApplications
+                    .FirstOrDefaultAsync(x => x.ApplicationId == regId);
+                if (reg != null)
+                {
+                    reg.Status = status;
+                    reg.UpdatedAt = DateTime.Now;
+                    await _db.SaveChangesAsync();
+                }
+            }
+            else if (module.Name == ApplicationTypeNames.EconomiserRegistration ||
+                     module.Name == ApplicationTypeNames.Economiserrenew)
+            {
+                var reg = await _db.EconomiserRegistrations
+                    .FirstOrDefaultAsync(x => x.ApplicationId == regId);
+                if (reg != null)
+                {
+                    reg.Status = status;
+                    reg.UpdatedDate = DateTime.Now;
+                    await _db.SaveChangesAsync();
+                }
+            }
+            else if (module.Name == ApplicationTypeNames.WelderRegistration ||
+                     module.Name == ApplicationTypeNames.WelderRenew)
+            {
+                var reg = await _db.WelderApplications
+                    .FirstOrDefaultAsync(x => x.ApplicationId == regId);
+                if (reg != null)
+                {
+                    reg.Status = status;
+                    reg.UpdatedDate = DateTime.Now;
+                    await _db.SaveChangesAsync();
+                }
+            }
+            else if (module.Name == ApplicationTypeNames.BoilerDrawingRegistration ||
+                     module.Name == ApplicationTypeNames.BoierDrawingRenewal)
+            {
+                var reg = await _db.BoilerDrawingApplications
+                    .FirstOrDefaultAsync(x => x.ApplicationId == regId);
+                if (reg != null)
+                {
+                    reg.Status = status;
+                    reg.UpdatedDate = DateTime.Now;
+                    await _db.SaveChangesAsync();
+                }
+            }
+            else if (module.Name == ApplicationTypeNames.SMTCRegistration)
+            {
+                var reg = await _db.SMTCRegistrations
+                    .FirstOrDefaultAsync(x => x.ApplicationId == regId);
+                if (reg != null)
+                {
+                    reg.Status = status;
+                    reg.UpdatedAt = DateTime.Now;
+                    await _db.SaveChangesAsync();
+                }
+            }
+            else if (module.Name == ApplicationTypeNames.CompetentPersonRegistration ||
+                     module.Name == ApplicationTypeNames.CompetentPersonRenewal)
+            {
+                var reg = await _db.CompetentPersonRegistrations
+                    .FirstOrDefaultAsync(x => x.ApplicationId == regId);
+                if (reg != null)
+                {
+                    reg.Status = status;
+                    reg.UpdatedAt = DateTime.Now;
+                    await _db.SaveChangesAsync();
+                }
+            }
+            else if (module.Name == ApplicationTypeNames.CompetentEquipmentRegistration ||
+                     module.Name == ApplicationTypeNames.CompetentEquipmentRenewal)
+            {
+                var reg = await _db.CompetentEquipmentRegistrations
+                    .FirstOrDefaultAsync(x => x.ApplicationId == regId);
+                if (reg != null)
+                {
+                    reg.Status = status;
+                    reg.UpdatedAt = DateTime.Now;
                     await _db.SaveChangesAsync();
                 }
             }

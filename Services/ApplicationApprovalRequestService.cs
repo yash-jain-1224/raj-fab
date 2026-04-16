@@ -958,7 +958,7 @@ namespace RajFabAPI.Services
                         WorkingPressure = boiler?.IntendedWorkingPressure,
                         YearOfMake = boiler?.YearOfMake,
 
-                        Objections = subject,
+                        Objections = new List<string> { subject },
 
                         SignatoryName = signatoryName,
                         SignatoryDesignation = signatoryDesignation,

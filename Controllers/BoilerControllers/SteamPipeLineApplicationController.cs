@@ -78,7 +78,9 @@ namespace RajFabAPI.Controllers.SteamPipeLineApplicationControllers
         [HttpPost("renew")]
         public async Task<IActionResult> Renew( [FromBody] RenewSteamPipeLineDto dto)
         {
-            var appId = await _service.RenewSteamPipeLineAsync(dto);
+            var userId = User.FindFirst("userId")?.Value;
+            var userIdGuid = Guid.TryParse(userId, out var parsedGuid) ? parsedGuid : Guid.Empty;
+            var appId = await _service.RenewSteamPipeLineAsync(dto, userIdGuid);
 
             return Ok(new
             {

@@ -420,6 +420,21 @@ namespace RajFabAPI.Services
             return result;
         }
 
+        public async Task<string> GenerateSmtcPdfAsync(string applicationId)
+        {
+            throw new NotImplementedException("GenerateSmtcPdfAsync is not yet implemented.");
+        }
+
+        public async Task<string> GenerateObjectionLetter(BoilerObjectionLetterDto dto, string registrationId)
+        {
+            throw new NotImplementedException("GenerateObjectionLetter is not yet implemented.");
+        }
+
+        public async Task<string> GenerateCertificatePdfAsync(string applicationId, string inspectorDesignation, string inspectorName)
+        {
+            throw new NotImplementedException("GenerateCertificatePdfAsync is not yet implemented.");
+        }
+
     }
 
 }

@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { ArrowLeft, Flame, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { certificateFormsApi } from "@/services/api/certificateForms";
+import { validateForm, validateRequired, hasErrors, type ValidationErrors } from "@/utils/formValidation";
 
 /* ===================================================== */
 
@@ -20,6 +21,9 @@ export default function BoilerManufactureDrawing() {
   const totalSteps = 5;
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [generalErrors, setGeneralErrors] = useState<ValidationErrors>({});
+  const [addressErrors, setAddressErrors] = useState<ValidationErrors>({});
+  const [drawingErrors, setDrawingErrors] = useState<ValidationErrors>({});
 
   const [formData, setFormData] = useState({
     applicationNo: "242/BTC/CIFB/2026",
@@ -73,7 +77,35 @@ export default function BoilerManufactureDrawing() {
     }));
   };
 
-  const next = () => setCurrentStep((s) => Math.min(s + 1, totalSteps));
+  const validateCurrentStep = (): boolean => {
+    if (currentStep === 1) {
+      const errs = validateRequired(
+        formData.generalInformation as Record<string, unknown>,
+        ["factoryName", "factoryRegistrationNumber", "ownerName"]
+      );
+      setGeneralErrors(errs);
+      if (hasErrors(errs)) { toast.error("Please fill all required fields"); return false; }
+    }
+    if (currentStep === 2) {
+      const errs = validateForm(
+        formData.addressInformation as Record<string, unknown>,
+        ["district", "pinCode", "mobile"]
+      );
+      setAddressErrors(errs);
+      if (hasErrors(errs)) { toast.error("Please fill all required fields correctly"); return false; }
+    }
+    if (currentStep === 3) {
+      const errs = validateRequired(
+        formData.boilerDrawingDetails as Record<string, unknown>,
+        ["makerNumber", "boilerType", "drawingNo"]
+      );
+      setDrawingErrors(errs);
+      if (hasErrors(errs)) { toast.error("Please fill all required fields"); return false; }
+    }
+    return true;
+  };
+
+  const next = () => { if (validateCurrentStep()) setCurrentStep((s) => Math.min(s + 1, totalSteps)); };
   const prev = () => setCurrentStep((s) => Math.max(s - 1, 1));
 
   const submit = async () => {
@@ -153,12 +185,13 @@ export default function BoilerManufactureDrawing() {
             <StepCard title="General Information">
               <TwoCol>
                 {Object.entries(formData.generalInformation).map(([k, v]) => (
-                  <Field key={k} label={labelize(k)}>
+                  <Field key={k} label={labelize(k)} required error={generalErrors[k]}>
                     <Input
                       value={v}
                       onChange={(e) =>
                         updateFormData("generalInformation", k, e.target.value)
                       }
+                      className={generalErrors[k] ? "border-destructive" : ""}
                     />
                   </Field>
                 ))}
@@ -172,12 +205,13 @@ export default function BoilerManufactureDrawing() {
           <StepCard title="Address and Contact Information">
             <TwoCol>
               {Object.entries(formData.addressInformation).map(([k, v]) => (
-                <Field key={k} label={labelize(k)}>
+                <Field key={k} label={labelize(k)} required={["district","pinCode","mobile"].includes(k)} error={addressErrors[k]}>
                   <Input
                     value={v}
                     onChange={(e) =>
                       updateFormData("addressInformation", k, e.target.value)
                     }
+                    className={addressErrors[k] ? "border-destructive" : ""}
                   />
                 </Field>
               ))}
@@ -190,12 +224,13 @@ export default function BoilerManufactureDrawing() {
           <StepCard title="Basic Details of Manufacturer Boiler Drawing">
             <TwoCol>
               {Object.entries(formData.boilerDrawingDetails).map(([k, v]) => (
-                <Field key={k} label={labelize(k)}>
+                <Field key={k} label={labelize(k)} required={["makerNumber","boilerType","drawingNo"].includes(k)} error={drawingErrors[k]}>
                   <Input
                     value={v}
                     onChange={(e) =>
                       updateFormData("boilerDrawingDetails", k, e.target.value)
                     }
+                    className={drawingErrors[k] ? "border-destructive" : ""}
                   />
                 </Field>
               ))}
@@ -294,11 +329,15 @@ function TwoCol({ children }: any) {
   return <div className="grid md:grid-cols-2 gap-4">{children}</div>;
 }
 
-function Field({ label, children }: any) {
+function Field({ label, children, error, required = false }: any) {
   return (
     <div className="space-y-1">
-      <Label>{label}</Label>
+      <Label className={error ? "text-destructive" : ""}>
+        {label}
+        {required && <span className="text-destructive ml-1">*</span>}
+      </Label>
       {children}
+      {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
   );
 }

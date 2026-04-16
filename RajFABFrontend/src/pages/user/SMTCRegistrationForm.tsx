@@ -8,6 +8,7 @@ import {ArrowLeft,Flame,Loader2} from "lucide-react"
 import {DocumentUploader} from "@/components/ui/DocumentUploader"
 import {toast} from "sonner"
 import {BaseApiService} from "@/services/api/base"
+import {validateForm,validateRequired,hasErrors,type ValidationErrors} from "@/utils/formValidation"
 
 class SmtcApiService extends BaseApiService {
   async create(dto: unknown): Promise<any> {
@@ -48,6 +49,8 @@ const navigate=useNavigate()
 const totalSteps=4
 const [step,setStep]=useState(1)
 const [isSubmitting,setIsSubmitting]=useState(false)
+const [factoryErrors,setFactoryErrors]=useState<ValidationErrors>({})
+const [trainerErrors,setTrainerErrors]=useState<ValidationErrors>({})
 
 /* STEP1 FACTORY */
 
@@ -139,7 +142,34 @@ setTrainers(trainers.filter((_,i)=>i!==ti))
 
 /* NAV */
 
-const next=()=>setStep(s=>Math.min(s+1,totalSteps))
+const validateCurrentStep=():boolean=>{
+  if(step===1){
+    const errs=validateForm(factory,["factoryRegistrationNo","factoryName","factoryAddress","factoryDistrict","factoryManagerName","factoryManagerMobile"])
+    if(factory.factoryManagerMobile && !/^\d{10}$/.test(factory.factoryManagerMobile)){
+      errs.factoryManagerMobile="Mobile must be exactly 10 digits"
+    }
+    setFactoryErrors(errs)
+    if(hasErrors(errs)){toast.error("Please fill all required fields correctly");return false}
+  }
+  if(step===2){
+    if(!facility.trainingCenterAvailable.trim()){toast.error("Please indicate if training center is available");return false}
+    if(!facility.seatingCapacity.trim()){toast.error("Seating capacity is required");return false}
+  }
+  if(step===3){
+    const errs:ValidationErrors={}
+    trainers.forEach((t,i)=>{
+      if(!t.trainerName.trim()) errs[`trainer_${i}_name`]="Trainer name is required"
+      if(!t.mobile.trim()) errs[`trainer_${i}_mobile`]="Mobile is required"
+      else if(!/^\d{10}$/.test(t.mobile)) errs[`trainer_${i}_mobile`]="Mobile must be 10 digits"
+      if(!t.totalYearsExperience.trim()) errs[`trainer_${i}_exp`]="Experience is required"
+    })
+    setTrainerErrors(errs)
+    if(hasErrors(errs)){toast.error("Please fill all required trainer fields");return false}
+  }
+  return true
+}
+
+const next=()=>{if(validateCurrentStep()) setStep(s=>Math.min(s+1,totalSteps))}
 const prev=()=>setStep(s=>Math.max(s-1,1))
 
 /* SUBMIT */
@@ -212,12 +242,27 @@ style={{width:`${(step/totalSteps)*100}%`}}/>
 <StepCard title="Factory Details">
 
 <TwoCol>
-{Object.entries(factory).map(([k,v])=>(
-<Field key={k} label={labelize(k)}>
-<Input value={v}
-onChange={(e)=>updateFactory(k,e.target.value)}/>
+<Field label="Factory Registration No" required error={factoryErrors.factoryRegistrationNo}>
+<Input value={factory.factoryRegistrationNo} onChange={(e)=>updateFactory("factoryRegistrationNo",e.target.value)} className={factoryErrors.factoryRegistrationNo?"border-destructive":""}/>
 </Field>
-))}
+<Field label="Factory Name" required error={factoryErrors.factoryName}>
+<Input value={factory.factoryName} onChange={(e)=>updateFactory("factoryName",e.target.value)} className={factoryErrors.factoryName?"border-destructive":""}/>
+</Field>
+<Field label="Factory Address" required error={factoryErrors.factoryAddress}>
+<Input value={factory.factoryAddress} onChange={(e)=>updateFactory("factoryAddress",e.target.value)} className={factoryErrors.factoryAddress?"border-destructive":""}/>
+</Field>
+<Field label="Factory Area" error={factoryErrors.factoryArea}>
+<Input value={factory.factoryArea} onChange={(e)=>updateFactory("factoryArea",e.target.value)}/>
+</Field>
+<Field label="Factory District" required error={factoryErrors.factoryDistrict}>
+<Input value={factory.factoryDistrict} onChange={(e)=>updateFactory("factoryDistrict",e.target.value)} className={factoryErrors.factoryDistrict?"border-destructive":""}/>
+</Field>
+<Field label="Factory Manager Name" required error={factoryErrors.factoryManagerName}>
+<Input value={factory.factoryManagerName} onChange={(e)=>updateFactory("factoryManagerName",e.target.value)} className={factoryErrors.factoryManagerName?"border-destructive":""}/>
+</Field>
+<Field label="Factory Manager Mobile" required error={factoryErrors.factoryManagerMobile}>
+<Input value={factory.factoryManagerMobile} onChange={(e)=>updateFactory("factoryManagerMobile",e.target.value)} className={factoryErrors.factoryManagerMobile?"border-destructive":""}/>
+</Field>
 </TwoCol>
 
 </StepCard>
@@ -282,9 +327,11 @@ Remove
 
 <TwoCol>
 
-<Field label="Trainer Name">
+<Field label="Trainer Name" required>
 <Input value={trainer.trainerName}
-onChange={(e)=>updateTrainer(ti,"trainerName",e.target.value)}/>
+onChange={(e)=>updateTrainer(ti,"trainerName",e.target.value)}
+className={trainerErrors[`trainer_${ti}_name`]?"border-destructive":""}/>
+{trainerErrors[`trainer_${ti}_name`] && <p className="text-xs text-destructive">{trainerErrors[`trainer_${ti}_name`]}</p>}
 </Field>
 
 <Field label="Total Years Experience">
@@ -292,9 +339,11 @@ onChange={(e)=>updateTrainer(ti,"trainerName",e.target.value)}/>
 onChange={(e)=>updateTrainer(ti,"totalYearsExperience",e.target.value)}/>
 </Field>
 
-<Field label="Mobile">
+<Field label="Mobile" required>
 <Input value={trainer.mobile}
-onChange={(e)=>updateTrainer(ti,"mobile",e.target.value)}/>
+onChange={(e)=>updateTrainer(ti,"mobile",e.target.value)}
+className={trainerErrors[`trainer_${ti}_mobile`]?"border-destructive":""}/>
+{trainerErrors[`trainer_${ti}_mobile`] && <p className="text-xs text-destructive">{trainerErrors[`trainer_${ti}_mobile`]}</p>}
 </Field>
 
 
@@ -432,11 +481,12 @@ function TwoCol({children}:any){
 return <div className="grid md:grid-cols-2 gap-4">{children}</div>
 }
 
-function Field({label,children}:any){
+function Field({label,children,error,required=false}:any){
 return(
 <div className="space-y-1">
-<Label>{label}</Label>
+<Label className={error?"text-destructive":""}>{label}{required && <span className="text-destructive ml-1">*</span>}</Label>
 {children}
+{error && <p className="text-xs text-destructive">{error}</p>}
 </div>
 )
 }

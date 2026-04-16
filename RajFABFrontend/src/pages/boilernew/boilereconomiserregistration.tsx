@@ -19,6 +19,7 @@ import {
 import { ArrowLeft, Flame, Loader2 } from "lucide-react";
 import { DocumentUploader } from "@/components/ui/DocumentUploader";
 import { toast } from "sonner";
+import { validateForm, validateRequired, hasErrors, type ValidationErrors } from "@/utils/formValidation";
 import { useParams } from "react-router-dom";
 import {
   useCreateEconomiser,
@@ -52,7 +53,9 @@ export default function EconomiserRegistration() {
   const isEditMode = !!changeReqId;
   const totalSteps = 4;
   const [currentStep, setCurrentStep] = useState(1);
-  
+  const [generalErrors, setGeneralErrors] = useState<ValidationErrors>({});
+  const [ecoErrors, setEcoErrors] = useState<ValidationErrors>({});
+
   const createMutation = useCreateEconomiser();
   const amendMutation = useAmendEconomiser();
 
@@ -155,7 +158,27 @@ export default function EconomiserRegistration() {
     }));
   };
 
-  const next = () => setCurrentStep((s) => Math.min(s + 1, totalSteps));
+  const validateCurrentStep = (): boolean => {
+    if (currentStep === 1) {
+      const errs = validateForm(
+        formData.generalInformation as Record<string, unknown>,
+        ["factoryName", "occupierName", "addressLine1", "district", "pinCode", "mobile", "email"]
+      );
+      setGeneralErrors(errs);
+      if (hasErrors(errs)) { toast.error("Please fill all required fields correctly"); return false; }
+    }
+    if (currentStep === 2) {
+      const errs = validateRequired(
+        formData.economiserDetails as Record<string, unknown>,
+        ["makersNumber", "makersName", "yearOfMake", "erectionType"]
+      );
+      setEcoErrors(errs);
+      if (hasErrors(errs)) { toast.error("Please fill all required fields"); return false; }
+    }
+    return true;
+  };
+
+  const next = () => { if (validateCurrentStep()) setCurrentStep((s) => Math.min(s + 1, totalSteps)); };
   const prev = () => setCurrentStep((s) => Math.max(s - 1, 1));
 
   const handleSubmit = () => {
@@ -260,7 +283,7 @@ export default function EconomiserRegistration() {
         {currentStep === 1 && (
           <StepCard title="Owner Details">
             <TwoCol>
-              <Field label="Full Name of the Factory (Situation of Economiser)" required>
+              <Field label="Full Name of the Factory (Situation of Economiser)" required error={generalErrors.factoryName}>
                 <Input
                   placeholder="Enter full factory name"
                   value={formData.generalInformation.factoryName}
@@ -270,7 +293,7 @@ export default function EconomiserRegistration() {
                 />
               </Field>
 
-              <Field label="Factory Registration Number (If registered else 0)" required>
+              <Field label="Factory Registration Number (If registered else 0)" required error={generalErrors.factoryRegistrationNumber}>
                 <Input
                   placeholder="Enter registration number or 0"
                   value={formData.generalInformation.factoryRegistrationNumber}
@@ -280,7 +303,7 @@ export default function EconomiserRegistration() {
                 />
               </Field>
 
-              <Field label="Name of Occupier" required>
+              <Field label="Name of Occupier" required error={generalErrors.occupierName}>
                 <Input
                   placeholder="Enter occupier name"
                   value={formData.generalInformation.occupierName}
@@ -290,7 +313,7 @@ export default function EconomiserRegistration() {
                 />
               </Field>
 
-              <Field label="Address Line 1" required>
+              <Field label="Address Line 1" required error={generalErrors.addressLine1}>
                 <Input
                   placeholder="House No., Building Name, Street Name"
                   value={formData.generalInformation.addressLine1}
@@ -300,7 +323,7 @@ export default function EconomiserRegistration() {
                 />
               </Field>
 
-              <Field label="Address Line 2" required>
+              <Field label="Address Line 2" required error={generalErrors.addressLine2}>
                 <Input
                   placeholder="Locality"
                   value={formData.generalInformation.addressLine2}
@@ -310,7 +333,7 @@ export default function EconomiserRegistration() {
                 />
               </Field>
 
-              <Field label="District" required>
+              <Field label="District" required error={generalErrors.district}>
                 <Input
                   placeholder="Enter district"
                   value={formData.generalInformation.district}
@@ -320,7 +343,7 @@ export default function EconomiserRegistration() {
                 />
               </Field>
 
-              <Field label="Sub Division" required>
+              <Field label="Sub Division" required error={generalErrors.subDivision}>
                 <Input
                   placeholder="Enter sub division"
                   value={formData.generalInformation.subDivision}
@@ -330,7 +353,7 @@ export default function EconomiserRegistration() {
                 />
               </Field>
 
-              <Field label="Tehsil" required>
+              <Field label="Tehsil" required error={generalErrors.tehsil}>
                 <Input
                   placeholder="Enter tehsil"
                   value={formData.generalInformation.tehsil}
@@ -340,7 +363,7 @@ export default function EconomiserRegistration() {
                 />
               </Field>
 
-              <Field label="Area" required>
+              <Field label="Area" required error={generalErrors.area}>
                 <Input
                   placeholder="Enter area"
                   value={formData.generalInformation.area}
@@ -350,7 +373,7 @@ export default function EconomiserRegistration() {
                 />
               </Field>
 
-              <Field label="PIN Code" required>
+              <Field label="PIN Code" required error={generalErrors.pinCode}>
                 <Input
                   placeholder="Enter 6-digit PIN code"
                   value={formData.generalInformation.pinCode}
@@ -360,7 +383,7 @@ export default function EconomiserRegistration() {
                 />
               </Field>
 
-              <Field label="Mobile" required>
+              <Field label="Mobile" required error={generalErrors.mobile}>
                 <Input
                   placeholder="Enter mobile number"
                   value={formData.generalInformation.mobile}
@@ -370,7 +393,7 @@ export default function EconomiserRegistration() {
                 />
               </Field>
 
-              <Field label="Telephone" required>
+              <Field label="Telephone" required error={generalErrors.telephone}>
                 <Input
                   placeholder="Enter telephone number"
                   value={formData.generalInformation.telephone}
@@ -380,7 +403,7 @@ export default function EconomiserRegistration() {
                 />
               </Field>
 
-              <Field label="Email" required>
+              <Field label="Email" required error={generalErrors.email}>
                 <Input
                   placeholder="Enter email address"
                   value={formData.generalInformation.email}
@@ -398,7 +421,7 @@ export default function EconomiserRegistration() {
           <StepCard title="Technical Details of Economiser">
             <TwoCol>
 
-              <Field label="Maker’s Number" required>
+              <Field label="Maker’s Number" required error={ecoErrors.makersNumber}>
                 <Input
                   placeholder="Enter maker’s number"
                   value={formData.economiserDetails.makersNumber}
@@ -408,7 +431,7 @@ export default function EconomiserRegistration() {
                 />
               </Field>
 
-              <Field label="Maker’s Name" required>
+              <Field label="Maker’s Name" required error={ecoErrors.makersName}>
                 <Input
                   placeholder="Enter maker’s name"
                   value={formData.economiserDetails.makersName}
@@ -418,7 +441,7 @@ export default function EconomiserRegistration() {
                 />
               </Field>
 
-              <Field label="Maker’s Address (Address Line 1)" required>
+              <Field label="Maker’s Address (Address Line 1)" required error={ecoErrors.makersAddress}>
                 <Input
                   placeholder="Enter maker’s address"
                   value={formData.economiserDetails.makersAddress}
@@ -428,7 +451,7 @@ export default function EconomiserRegistration() {
                 />
               </Field>
 
-              <Field label="Year of Make" required>
+              <Field label="Year of Make" required error={ecoErrors.yearOfMake}>
                 <Input
                   placeholder="Enter year of manufacture"
                   value={formData.economiserDetails.yearOfMake}
@@ -584,14 +607,15 @@ function TwoCol({ children }: any) {
   return <div className="grid md:grid-cols-2 gap-4">{children}</div>;
 }
 
-function Field({ label, children, required = false }: any) {
+function Field({ label, children, required = false, error }: any) {
   return (
     <div className="space-y-1">
-      <Label>
+      <Label className={error ? "text-destructive" : ""}>
         {label}
         {required && <span className="text-destructive ml-1">*</span>}
       </Label>
       {children}
+      {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
   );
 }

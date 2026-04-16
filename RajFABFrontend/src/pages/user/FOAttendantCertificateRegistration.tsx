@@ -8,6 +8,7 @@ import {ArrowLeft,Flame,Loader2} from "lucide-react"
 import {DocumentUploader} from "@/components/ui/DocumentUploader"
 import {toast} from "sonner"
 import {certificateFormsApi} from "@/services/api/certificateForms"
+import {validateForm,validateRequired,hasErrors,type ValidationErrors} from "@/utils/formValidation"
 
 /* TYPES */
 
@@ -40,6 +41,8 @@ const navigate=useNavigate()
 const totalSteps=5
 const [step,setStep]=useState(1)
 const [isSubmitting,setIsSubmitting]=useState(false)
+const [personErrors,setPersonErrors]=useState<ValidationErrors>({})
+const [foaErrors,setFoaErrors]=useState<ValidationErrors>({})
 
 /* PERSONAL */
 
@@ -150,9 +153,43 @@ const updateFoAttendant=(field:string,value:string)=>{
 setFoAttendant(prev=>({...prev,[field]:value}))
 }
 
+/* VALIDATION */
+
+const validateCurrentStep=():boolean=>{
+if(step===1){
+const errs=validateForm(person,["name","fatherName","dob","address","permanentAddress","email","mobile"])
+setPersonErrors(errs)
+if(hasErrors(errs)){toast.error("Please fill all required fields correctly");return false}
+}
+if(step===2){
+for(let i=0;i<experience.length;i++){
+const e=experience[i]
+if(!e.factoryName.trim()||!e.state.trim()||!e.from.trim()||!e.to.trim()){
+toast.error(`Experience ${i+1}: Factory Name, State, From and To dates are required`)
+return false
+}
+}
+}
+if(step===3){
+for(let i=0;i<qualification.length;i++){
+const q=qualification[i]
+if(!q.degree.trim()||!q.university.trim()||!q.year.trim()){
+toast.error(`Qualification ${i+1}: Degree, University and Year are required`)
+return false
+}
+}
+}
+if(step===4){
+const errs=validateRequired(foAttendant,["state","foAttendantNo","date"])
+setFoaErrors(errs)
+if(hasErrors(errs)){toast.error("Please fill all required fields");return false}
+}
+return true
+}
+
 /* NAV */
 
-const next=()=>setStep(s=>Math.min(s+1,totalSteps))
+const next=()=>{if(validateCurrentStep()) setStep(s=>Math.min(s+1,totalSteps))}
 const prev=()=>setStep(s=>Math.max(s-1,1))
 
 /* SUBMIT */
@@ -231,11 +268,27 @@ style={{width:`${(step/totalSteps)*100}%`}}/>
 
 <TwoCol>
 
-{Object.entries(person).map(([k,v])=>(
-<Field key={k} label={labelize(k)}>
-<Input value={v} onChange={(e)=>updatePerson(k,e.target.value)}/>
+<Field label="Name" required error={personErrors.name}>
+<Input value={person.name} onChange={(e)=>updatePerson("name",e.target.value)} className={personErrors.name?"border-destructive":""}/>
 </Field>
-))}
+<Field label="Father Name" required error={personErrors.fatherName}>
+<Input value={person.fatherName} onChange={(e)=>updatePerson("fatherName",e.target.value)} className={personErrors.fatherName?"border-destructive":""}/>
+</Field>
+<Field label="Date of Birth" required error={personErrors.dob}>
+<Input type="date" value={person.dob} onChange={(e)=>updatePerson("dob",e.target.value)} className={personErrors.dob?"border-destructive":""}/>
+</Field>
+<Field label="Address" required error={personErrors.address}>
+<Input value={person.address} onChange={(e)=>updatePerson("address",e.target.value)} className={personErrors.address?"border-destructive":""}/>
+</Field>
+<Field label="Permanent Address" required error={personErrors.permanentAddress}>
+<Input value={person.permanentAddress} onChange={(e)=>updatePerson("permanentAddress",e.target.value)} className={personErrors.permanentAddress?"border-destructive":""}/>
+</Field>
+<Field label="Email" required error={personErrors.email}>
+<Input value={person.email} onChange={(e)=>updatePerson("email",e.target.value)} className={personErrors.email?"border-destructive":""}/>
+</Field>
+<Field label="Mobile" required error={personErrors.mobile}>
+<Input value={person.mobile} onChange={(e)=>updatePerson("mobile",e.target.value)} className={personErrors.mobile?"border-destructive":""}/>
+</Field>
 
 </TwoCol>
 
@@ -366,24 +419,17 @@ Add Qualification
 
 <TwoCol>
 
-<Field label="State">
-<Input value={foAttendant.state} onChange={(e)=>updateFoAttendant("state",e.target.value)}/>
+<Field label="State" required error={foaErrors.state}>
+<Input value={foAttendant.state} onChange={(e)=>updateFoAttendant("state",e.target.value)} className={foaErrors.state?"border-destructive":""}/>
 </Field>
-
-<Field label="FO Attendant No">
-<Input value={foAttendant.foAttendantNo} onChange={(e)=>updateFoAttendant("foAttendantNo",e.target.value)}/>
+<Field label="FO Attendant No" required error={foaErrors.foAttendantNo}>
+<Input value={foAttendant.foAttendantNo} onChange={(e)=>updateFoAttendant("foAttendantNo",e.target.value)} className={foaErrors.foAttendantNo?"border-destructive":""}/>
 </Field>
-
-<Field label="Date">
-<Input type="date" value={foAttendant.date} onChange={(e)=>updateFoAttendant("date",e.target.value)}/>
+<Field label="Date" required error={foaErrors.date}>
+<Input type="date" value={foAttendant.date} onChange={(e)=>updateFoAttendant("date",e.target.value)} className={foaErrors.date?"border-destructive":""}/>
 </Field>
-
 <Field label="Certificate">
-<DocumentUploader
-label=""
-value={foAttendant.certificate}
-onChange={(url)=>updateFoAttendant("certificate",url)}
-/>
+<DocumentUploader label="" value={foAttendant.certificate} onChange={(url)=>updateFoAttendant("certificate",url)}/>
 </Field>
 
 </TwoCol>
@@ -482,11 +528,12 @@ function TwoCol({children}:any){
 return <div className="grid md:grid-cols-2 gap-4">{children}</div>
 }
 
-function Field({label,children}:any){
+function Field({label,children,error,required=false}:any){
 return(
 <div className="space-y-1">
-<Label>{label}</Label>
+<Label className={error?"text-destructive":""}>{label}{required && <span className="text-destructive ml-1">*</span>}</Label>
 {children}
+{error && <p className="text-xs text-destructive">{error}</p>}
 </div>
 )
 }

@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft, Flame } from "lucide-react";
+import { toast } from "sonner";
+import { validateRequired, hasErrors, type ValidationErrors } from "@/utils/formValidation";
 
 /* ===================================================== */
 
@@ -15,6 +17,10 @@ export default function BoilerRepairerFormXIII() {
 
   const totalSteps = 6;
   const [currentStep, setCurrentStep] = useState(1);
+  const [step1Errors, setStep1Errors] = useState<ValidationErrors>({});
+
+  const [firmName, setFirmName] = useState("");
+  const [firmAddress, setFirmAddress] = useState({ houseNo: "", locality: "", district: "", sdo: "", tehsil: "", area: "", pinCode: "" });
 
   const [approved, setApproved] = useState("");
   const [rejected, setRejected] = useState("");
@@ -23,7 +29,26 @@ export default function BoilerRepairerFormXIII() {
   const [engineers, setEngineers] = useState([{}]);
   const [welders, setWelders] = useState([{}]);
 
-  const next = () => setCurrentStep((s) => Math.min(s + 1, totalSteps));
+  const validateCurrentStep = (): boolean => {
+    if (currentStep === 1) {
+      const errs: ValidationErrors = {};
+      if (!firmName.trim()) errs.firmName = "Company name is required";
+      if (!firmAddress.district.trim()) errs.district = "District is required";
+      if (!firmAddress.pinCode.trim()) errs.pinCode = "PIN Code is required";
+      else if (!/^\d{6}$/.test(firmAddress.pinCode)) errs.pinCode = "PIN Code must be 6 digits";
+      setStep1Errors(errs);
+      if (hasErrors(errs)) { toast.error("Please fill all required fields correctly"); return false; }
+    }
+    if (currentStep === 4) {
+      if (engineers.length === 0) { toast.error("At least one engineer is required"); return false; }
+    }
+    if (currentStep === 5) {
+      if (welders.length === 0) { toast.error("At least one welder is required"); return false; }
+    }
+    return true;
+  };
+
+  const next = () => { if (validateCurrentStep()) setCurrentStep((s) => Math.min(s + 1, totalSteps)); };
   const prev = () => setCurrentStep((s) => Math.max(s - 1, 1));
 
   /* ================= UI ================= */
@@ -67,10 +92,18 @@ export default function BoilerRepairerFormXIII() {
         {currentStep === 1 && (
           <>
             <StepCard title="1. Registered Name of Firm (Permanent Address)">
-              <Field label="Company Name">
-                <Input />
+              <Field label="Company Name" required error={step1Errors.firmName}>
+                <Input value={firmName} onChange={(e) => setFirmName(e.target.value)} className={step1Errors.firmName ? "border-destructive" : ""} />
               </Field>
-              <AddressBlock />
+              <TwoCol>
+                <Field label="House No"><Input value={firmAddress.houseNo} onChange={(e) => setFirmAddress(p => ({ ...p, houseNo: e.target.value }))} /></Field>
+                <Field label="Locality"><Input value={firmAddress.locality} onChange={(e) => setFirmAddress(p => ({ ...p, locality: e.target.value }))} /></Field>
+                <Field label="District" required error={step1Errors.district}><Input value={firmAddress.district} onChange={(e) => setFirmAddress(p => ({ ...p, district: e.target.value }))} className={step1Errors.district ? "border-destructive" : ""} /></Field>
+                <Field label="SDO"><Input value={firmAddress.sdo} onChange={(e) => setFirmAddress(p => ({ ...p, sdo: e.target.value }))} /></Field>
+                <Field label="Tehsil"><Input value={firmAddress.tehsil} onChange={(e) => setFirmAddress(p => ({ ...p, tehsil: e.target.value }))} /></Field>
+                <Field label="Area"><Input value={firmAddress.area} onChange={(e) => setFirmAddress(p => ({ ...p, area: e.target.value }))} /></Field>
+                <Field label="Pin Code" required error={step1Errors.pinCode}><Input value={firmAddress.pinCode} onChange={(e) => setFirmAddress(p => ({ ...p, pinCode: e.target.value }))} className={step1Errors.pinCode ? "border-destructive" : ""} /></Field>
+              </TwoCol>
             </StepCard>
 
             <StepCard title="Address of Workshop">
@@ -224,11 +257,15 @@ function StepCard({ title, children }: any) {
   );
 }
 
-function Field({ label, children }: any) {
+function Field({ label, children, required = false, error }: any) {
   return (
     <div className="space-y-1">
-      <Label>{label}</Label>
+      <Label className={error ? "text-destructive" : ""}>
+        {label}
+        {required && <span className="text-destructive ml-1">*</span>}
+      </Label>
       {children}
+      {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
   );
 }

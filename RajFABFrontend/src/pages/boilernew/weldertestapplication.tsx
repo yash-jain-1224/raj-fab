@@ -19,6 +19,7 @@ import {
 import { ArrowLeft, Flame, Loader2 } from "lucide-react";
 import { DocumentUploader } from "@/components/ui/DocumentUploader";
 import { toast } from "sonner";
+import { validateForm, validateRequired, hasErrors, type ValidationErrors } from "@/utils/formValidation";
 import { 
   useCreateWelder, 
   useAmendWelder, 
@@ -32,7 +33,9 @@ export default function WelderTestApplication() {
   const isEditMode = !!changeReqId;
   const totalSteps = 7;
   const [currentStep, setCurrentStep] = useState(1);
-  
+  const [employerErrors, setEmployerErrors] = useState<ValidationErrors>({});
+  const [welderInfoErrors, setWelderInfoErrors] = useState<ValidationErrors>({});
+
   const createMutation = useCreateWelder();
   const amendMutation = useAmendWelder();
 
@@ -190,8 +193,43 @@ export default function WelderTestApplication() {
     }));
   };
 
-  const validateStep = () => {
-    // Implement step validation logic if necessary
+  const validateStep = (): boolean => {
+    if (currentStep === 1) {
+      const errs = validateForm(
+        formData.employer as Record<string, unknown>,
+        ["employerName", "firmName", "district", "pincode", "mobile"]
+      );
+      if (formData.employer.pincode && !/^\d{6}$/.test(formData.employer.pincode)) errs.pincode = "PIN Code must be 6 digits";
+      if (formData.employer.mobile && !/^\d{10}$/.test(formData.employer.mobile)) errs.mobile = "Mobile must be 10 digits";
+      setEmployerErrors(errs);
+      if (hasErrors(errs)) { toast.error("Please fill all required fields correctly"); return false; }
+    }
+    if (currentStep === 2) {
+      const errs = validateRequired(
+        formData.welderInfo as Record<string, unknown>,
+        ["name", "fatherName", "dob"]
+      );
+      setWelderInfoErrors(errs);
+      if (hasErrors(errs)) { toast.error("Please fill all required fields"); return false; }
+    }
+    if (currentStep === 3) {
+      const addr = formData.welderAddress;
+      if (!addr.district.trim() || !addr.pincode.trim() || !addr.mobile.trim()) {
+        toast.error("District, PIN Code and Mobile are required for welder address");
+        return false;
+      }
+      if (addr.pincode && !/^\d{6}$/.test(addr.pincode)) { toast.error("Welder PIN Code must be 6 digits"); return false; }
+      if (addr.mobile && !/^\d{10}$/.test(addr.mobile)) { toast.error("Welder Mobile must be 10 digits"); return false; }
+    }
+    if (currentStep === 4) {
+      if (!formData.experience.years.trim()) { toast.error("Years of experience is required"); return false; }
+    }
+    if (currentStep === 5) {
+      if (!formData.kindOfTest.testType.trim()) { toast.error("Test type is required"); return false; }
+    }
+    if (currentStep === 6) {
+      if (!formData.qualification.processOfWelding.trim()) { toast.error("Process of welding is required"); return false; }
+    }
     return true;
   };
 

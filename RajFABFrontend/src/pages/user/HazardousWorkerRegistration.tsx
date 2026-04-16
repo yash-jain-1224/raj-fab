@@ -8,6 +8,7 @@ import {ArrowLeft,Flame,Loader2} from "lucide-react"
 import {DocumentUploader} from "@/components/ui/DocumentUploader"
 import {toast} from "sonner"
 import {certificateFormsApi} from "@/services/api/certificateForms"
+import {validateForm,validateRequired,hasErrors,type ValidationErrors} from "@/utils/formValidation"
 
 export default function HazardousWorkerRegistration(){
 
@@ -16,6 +17,10 @@ const navigate=useNavigate()
 const totalSteps=5
 const [step,setStep]=useState(1)
 const [isSubmitting,setIsSubmitting]=useState(false)
+const [categoryError,setCategoryError]=useState("")
+const [personalErrors,setPersonalErrors]=useState<ValidationErrors>({})
+const [identityErrors,setIdentityErrors]=useState<ValidationErrors>({})
+const [workErrors,setWorkErrors]=useState<ValidationErrors>({})
 
 /* CATEGORY */
 
@@ -78,7 +83,33 @@ const updateDocument=(f:string,v:any)=>setDocuments(p=>({...p,[f]:v}))
 const updateWork=(f:string,v:any)=>setWork(p=>({...p,[f]:v}))
 const updateMedical=(f:string,v:any)=>setMedical(p=>({...p,[f]:v}))
 
-const next=()=>setStep(s=>Math.min(s+1,totalSteps))
+const validateCurrentStep=():boolean=>{
+  if(step===1){
+    if(!category){setCategoryError("Please select a category");toast.error("Please select a category");return false}
+    setCategoryError("")
+  }
+  if(step===2){
+    const errs=validateForm(personal,["workerName","fatherName","dob","gender","mobile","state","district","address"])
+    if(personal.mobile && !/^\d{10}$/.test(personal.mobile)) errs.mobile="Mobile must be exactly 10 digits"
+    setPersonalErrors(errs)
+    if(hasErrors(errs)){toast.error("Please fill all required fields correctly");return false}
+  }
+  if(step===3){
+    const errs:ValidationErrors={}
+    if(!identity.aadhaarNo.trim()) errs.aadhaarNo="Aadhaar number is required"
+    else if(!/^\d{12}$/.test(identity.aadhaarNo)) errs.aadhaarNo="Aadhaar must be 12 digits"
+    setIdentityErrors(errs)
+    if(hasErrors(errs)){toast.error("Please fill all required fields correctly");return false}
+  }
+  if(step===4){
+    const errs=validateRequired(work,["serviceType","joiningDate","hazardousCategory"])
+    setWorkErrors(errs)
+    if(hasErrors(errs)){toast.error("Please fill all required fields");return false}
+  }
+  return true
+}
+
+const next=()=>{if(validateCurrentStep()) setStep(s=>Math.min(s+1,totalSteps))}
 const prev=()=>setStep(s=>Math.max(s-1,1))
 
 const handleSubmit=async()=>{
@@ -159,18 +190,19 @@ style={{width:`${(step/totalSteps)*100}%`}}/>
 <label className="flex gap-2">
 <input type="radio"
 checked={category==="Hazardous"}
-onChange={()=>setCategory("Hazardous")}/>
+onChange={()=>{setCategory("Hazardous");setCategoryError("")}}/>
 Hazardous Waste
 </label>
 
 <label className="flex gap-2">
 <input type="radio"
 checked={category==="E-Waste"}
-onChange={()=>setCategory("E-Waste")}/>
+onChange={()=>{setCategory("E-Waste");setCategoryError("")}}/>
 E-Waste
 </label>
 
 </div>
+{categoryError && <p className="text-xs text-destructive mt-2">{categoryError}</p>}
 
 </StepCard>
 
@@ -184,42 +216,34 @@ E-Waste
 
 <TwoCol>
 
-<Field label="Worker Name">
-<Input value={personal.workerName} onChange={e=>updatePersonal("workerName",e.target.value)}/>
+<Field label="Worker Name" required error={personalErrors.workerName}>
+<Input value={personal.workerName} onChange={e=>updatePersonal("workerName",e.target.value)} className={personalErrors.workerName?"border-destructive":""}/>
 </Field>
-
-<Field label="Father Name">
-<Input value={personal.fatherName} onChange={e=>updatePersonal("fatherName",e.target.value)}/>
+<Field label="Father Name" required error={personalErrors.fatherName}>
+<Input value={personal.fatherName} onChange={e=>updatePersonal("fatherName",e.target.value)} className={personalErrors.fatherName?"border-destructive":""}/>
 </Field>
-
-<Field label="Date of Birth">
-<Input type="date" value={personal.dob} onChange={e=>updatePersonal("dob",e.target.value)}/>
+<Field label="Date of Birth" required error={personalErrors.dob}>
+<Input type="date" value={personal.dob} onChange={e=>updatePersonal("dob",e.target.value)} className={personalErrors.dob?"border-destructive":""}/>
 </Field>
-
-<Field label="Gender">
-<select className="w-full border rounded p-2"
-value={personal.gender}
-onChange={e=>updatePersonal("gender",e.target.value)}>
+<Field label="Gender" required error={personalErrors.gender}>
+<select className={`w-full border rounded p-2 ${personalErrors.gender?"border-destructive":""}`}
+value={personal.gender} onChange={e=>updatePersonal("gender",e.target.value)}>
 <option value="">Select</option>
 <option>Male</option>
 <option>Female</option>
 </select>
 </Field>
-
-<Field label="Mobile">
-<Input value={personal.mobile} onChange={e=>updatePersonal("mobile",e.target.value)}/>
+<Field label="Mobile" required error={personalErrors.mobile}>
+<Input value={personal.mobile} onChange={e=>updatePersonal("mobile",e.target.value)} className={personalErrors.mobile?"border-destructive":""}/>
 </Field>
-
-<Field label="State">
-<Input value={personal.state} onChange={e=>updatePersonal("state",e.target.value)}/>
+<Field label="State" required error={personalErrors.state}>
+<Input value={personal.state} onChange={e=>updatePersonal("state",e.target.value)} className={personalErrors.state?"border-destructive":""}/>
 </Field>
-
-<Field label="District">
-<Input value={personal.district} onChange={e=>updatePersonal("district",e.target.value)}/>
+<Field label="District" required error={personalErrors.district}>
+<Input value={personal.district} onChange={e=>updatePersonal("district",e.target.value)} className={personalErrors.district?"border-destructive":""}/>
 </Field>
-
-<Field label="Address">
-<Input value={personal.address} onChange={e=>updatePersonal("address",e.target.value)}/>
+<Field label="Address" required error={personalErrors.address}>
+<Input value={personal.address} onChange={e=>updatePersonal("address",e.target.value)} className={personalErrors.address?"border-destructive":""}/>
 </Field>
 
 </TwoCol>
@@ -289,9 +313,10 @@ onChange={url=>updateDocument("bhamashahCard",url)}/>
 </Field>
 )}
 
-<Field label="Aadhaar Number">
+<Field label="Aadhaar Number" required error={identityErrors.aadhaarNo}>
 <Input value={identity.aadhaarNo}
-onChange={e=>updateIdentity("aadhaarNo",e.target.value)}/>
+onChange={e=>updateIdentity("aadhaarNo",e.target.value)}
+className={identityErrors.aadhaarNo?"border-destructive":""}/>
 </Field>
 
 <Field label="Upload Aadhaar Card">
@@ -320,10 +345,9 @@ onChange={url=>updateDocument("photo",url)}/>
 
 <TwoCol>
 
-<Field label="Type of Service">
-<select className="w-full border rounded p-2"
-value={work.serviceType}
-onChange={e=>updateWork("serviceType",e.target.value)}>
+<Field label="Type of Service" required error={workErrors.serviceType}>
+<select className={`w-full border rounded p-2 ${workErrors.serviceType?"border-destructive":""}`}
+value={work.serviceType} onChange={e=>updateWork("serviceType",e.target.value)}>
 <option value="">Select</option>
 <option>Waste Handling</option>
 <option>Waste Segregation</option>
@@ -332,10 +356,8 @@ onChange={e=>updateWork("serviceType",e.target.value)}>
 </select>
 </Field>
 
-<Field label="Joining Date">
-<Input type="date"
-value={work.joiningDate}
-onChange={e=>updateWork("joiningDate",e.target.value)}/>
+<Field label="Joining Date" required error={workErrors.joiningDate}>
+<Input type="date" value={work.joiningDate} onChange={e=>updateWork("joiningDate",e.target.value)} className={workErrors.joiningDate?"border-destructive":""}/>
 </Field>
 
 <Field label="Safety Training">
@@ -368,10 +390,9 @@ onChange={()=>updateWork("ppes","No")}/> No
 </div>
 </Field>
 
-<Field label="Hazardous Category">
-<select className="w-full border rounded p-2"
-value={work.hazardousCategory}
-onChange={e=>updateWork("hazardousCategory",e.target.value)}>
+<Field label="Hazardous Category" required error={workErrors.hazardousCategory}>
+<select className={`w-full border rounded p-2 ${workErrors.hazardousCategory?"border-destructive":""}`}
+value={work.hazardousCategory} onChange={e=>updateWork("hazardousCategory",e.target.value)}>
 <option value="">Select</option>
 <option>Chemical Waste</option>
 <option>Industrial Waste</option>
@@ -492,11 +513,12 @@ function TwoCol({children}:any){
 return <div className="grid md:grid-cols-2 gap-4">{children}</div>
 }
 
-function Field({label,children}:any){
+function Field({label,children,error,required=false}:any){
 return(
 <div className="space-y-1">
-<Label>{label}</Label>
+<Label className={error?"text-destructive":""}>{label}{required && <span className="text-destructive ml-1">*</span>}</Label>
 {children}
+{error && <p className="text-xs text-destructive">{error}</p>}
 </div>
 )
 }

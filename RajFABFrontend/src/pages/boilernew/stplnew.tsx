@@ -18,6 +18,7 @@ import type {
   SteamPipelineUpdatePayload,
 } from "@/types/boiler";
 import { toast } from "sonner";
+import { validateForm, validateRequired, hasErrors, type ValidationErrors } from "@/utils/formValidation";
 
 type StplFormData = {
   boilerGeneralInfo: {
@@ -115,6 +116,8 @@ export default function StplNew() {
   const totalSteps = 5;
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<StplFormData>(initialFormData);
+  const [generalErrors, setGeneralErrors] = useState<ValidationErrors>({});
+  const [factoryErrors, setFactoryErrors] = useState<ValidationErrors>({});
 
   const { mutateAsync: createStpl, isPending: isCreating } =
     boilerSteamPipelinesCreate();
@@ -217,7 +220,37 @@ export default function StplNew() {
     }));
   };
 
-  const next = () => setCurrentStep((s) => Math.min(s + 1, totalSteps));
+  const validateCurrentStep = (): boolean => {
+    if (currentStep === 1) {
+      const errs = validateRequired(
+        formData.boilerGeneralInfo as any,
+        ["boilerApplicationNo", "steamPipeLineDrawingNo", "boilerMakerRegistrationNo", "erectorName"]
+      );
+      setGeneralErrors(errs);
+      if (hasErrors(errs)) { toast.error("Please fill all required fields"); return false; }
+    }
+    if (currentStep === 2) {
+      const errs = validateForm(
+        formData.factoryAndAddressInfo as any,
+        ["factoryName", "factoryRegistrationNumber", "ownerName", "district", "pinCode", "mobile"]
+      );
+      setFactoryErrors(errs);
+      if (hasErrors(errs)) { toast.error("Please fill all required fields correctly"); return false; }
+    }
+    if (currentStep === 3) {
+      const pd = formData.pipelineDetails;
+      if (!pd.pipeLengthUpTo100mm.trim() && !pd.pipeLengthAbove100mm.trim()) {
+        toast.error("At least one pipeline length must be provided");
+        return false;
+      }
+    }
+    if (currentStep === 4) {
+      // Fittings are optional but attachments step — no block
+    }
+    return true;
+  };
+
+  const next = () => { if (validateCurrentStep()) setCurrentStep((s) => Math.min(s + 1, totalSteps)); };
   const prev = () => setCurrentStep((s) => Math.max(s - 1, 1));
 
   const toNumber = (value: string) => {
@@ -352,7 +385,7 @@ export default function StplNew() {
         {currentStep === 1 && (
           <StepCard title="General Information (Boiler)">
             <TwoCol>
-              <Field label="Boiler Application No.">
+              <Field label="Boiler Application No." required error={generalErrors.boilerApplicationNo}>
                 <Input
                   placeholder="Enter boiler application number"
                   value={formData.boilerGeneralInfo.boilerApplicationNo}
@@ -366,7 +399,7 @@ export default function StplNew() {
                 />
               </Field>
 
-              <Field label="Steam Pipe Line Drawing No.">
+              <Field label="Steam Pipe Line Drawing No." required error={generalErrors.steamPipeLineDrawingNo}>
                 <Input
                   placeholder="Enter drawing number"
                   value={formData.boilerGeneralInfo.steamPipeLineDrawingNo}
@@ -380,7 +413,7 @@ export default function StplNew() {
                 />
               </Field>
 
-              <Field label="Boiler Maker Registration No.">
+              <Field label="Boiler Maker Registration No." required error={generalErrors.boilerMakerRegistrationNo}>
                 <Input
                   placeholder="Enter maker registration number"
                   value={formData.boilerGeneralInfo.boilerMakerRegistrationNo}
@@ -394,7 +427,7 @@ export default function StplNew() {
                 />
               </Field>
 
-              <Field label="Name of Erector">
+              <Field label="Name of Erector" required error={generalErrors.erectorName}>
                 <Input
                   placeholder="Enter erector name"
                   value={formData.boilerGeneralInfo.erectorName}
@@ -441,7 +474,7 @@ export default function StplNew() {
           <StepCard title="Factory & Address Information">
             <TwoCol>
               {Object.entries(formData.factoryAndAddressInfo).map(([key, value]) => (
-                <Field key={key} label={labelize(key)}>
+                <Field key={key} label={labelize(key)} required={["factoryName","factoryRegistrationNumber","ownerName","district","pinCode","mobile"].includes(key)} error={factoryErrors[key]}>
                   <Input
                     value={value}
                     onChange={(e) =>
@@ -580,11 +613,15 @@ function TwoCol({ children }: any) {
   return <div className="grid md:grid-cols-2 gap-4">{children}</div>;
 }
 
-function Field({ label, children }: any) {
+function Field({ label, children, error, required = false }: any) {
   return (
     <div className="space-y-1">
-      <Label>{label}</Label>
+      <Label className={error ? "text-destructive" : ""}>
+        {label}
+        {required && <span className="text-destructive ml-1">*</span>}
+      </Label>
       {children}
+      {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
   );
 }

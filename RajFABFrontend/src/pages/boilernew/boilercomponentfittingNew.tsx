@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { ArrowLeft, Flame, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { certificateFormsApi } from "@/services/api/certificateForms";
+import { validateForm, validateRequired, hasErrors, type ValidationErrors } from "@/utils/formValidation";
 
 /* ===================================================== */
 
@@ -20,6 +21,9 @@ export default function BoilerComponentFittingNew() {
   const totalSteps = 6;
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [firmErrors, setFirmErrors] = useState<ValidationErrors>({});
+  const [occupierErrors, setOccupierErrors] = useState<ValidationErrors>({});
+  const [componentErrors, setComponentErrors] = useState<ValidationErrors>({});
 
   const [formData, setFormData] = useState({
     registeredFirmDetails: {
@@ -133,7 +137,41 @@ export default function BoilerComponentFittingNew() {
     setFormData({ ...formData, questionAnswers: arr });
   };
 
-  const next = () => setCurrentStep((s) => Math.min(s + 1, totalSteps));
+  const validateCurrentStep = (): boolean => {
+    if (currentStep === 1) {
+      const errs = validateForm(
+        formData.registeredFirmDetails as Record<string, unknown>,
+        ["firmName", "district", "pincode", "mobile"]
+      );
+      if (formData.registeredFirmDetails.mobile && !/^\d{10}$/.test(formData.registeredFirmDetails.mobile)) {
+        errs.mobile = "Mobile must be exactly 10 digits";
+      }
+      if (formData.registeredFirmDetails.pincode && !/^\d{6}$/.test(formData.registeredFirmDetails.pincode)) {
+        errs.pincode = "PIN Code must be exactly 6 digits";
+      }
+      setFirmErrors(errs);
+      if (hasErrors(errs)) { toast.error("Please fill all required fields correctly"); return false; }
+    }
+    if (currentStep === 2) {
+      const errs = validateRequired(
+        formData.occupierDetails as Record<string, unknown>,
+        ["occupierName", "district", "mobile"]
+      );
+      setOccupierErrors(errs);
+      if (hasErrors(errs)) { toast.error("Please fill all required fields"); return false; }
+    }
+    if (currentStep === 3) {
+      const errs = validateRequired(
+        formData.boilerComponentDetails as Record<string, unknown>,
+        ["componentDetails", "maxDesignPressure"]
+      );
+      setComponentErrors(errs);
+      if (hasErrors(errs)) { toast.error("Please fill all required fields"); return false; }
+    }
+    return true;
+  };
+
+  const next = () => { if (validateCurrentStep()) setCurrentStep((s) => Math.min(s + 1, totalSteps)); };
   const prev = () => setCurrentStep((s) => Math.max(s - 1, 1));
 
   const submit = async () => {
@@ -208,12 +246,13 @@ export default function BoilerComponentFittingNew() {
           <StepCard title="Registered Firm Details">
             <TwoCol>
               {Object.entries(formData.registeredFirmDetails).map(([k, v]) => (
-                <Field key={k} label={labelize(k)}>
+                <Field key={k} label={labelize(k)} required={["firmName","district","pincode","mobile"].includes(k)} error={firmErrors[k]}>
                   <Input
                     value={v}
                     onChange={(e) =>
                       updateSection("registeredFirmDetails", k, e.target.value)
                     }
+                    className={firmErrors[k] ? "border-destructive" : ""}
                   />
                 </Field>
               ))}
@@ -226,12 +265,13 @@ export default function BoilerComponentFittingNew() {
           <StepCard title="Details of Occupier of Manufacturing Firm">
             <TwoCol>
               {Object.entries(formData.occupierDetails).map(([k, v]) => (
-                <Field key={k} label={labelize(k)}>
+                <Field key={k} label={labelize(k)} required={["occupierName","district","mobile"].includes(k)} error={occupierErrors[k]}>
                   <Input
                     value={v}
                     onChange={(e) =>
                       updateSection("occupierDetails", k, e.target.value)
                     }
+                    className={occupierErrors[k] ? "border-destructive" : ""}
                   />
                 </Field>
               ))}
@@ -244,12 +284,13 @@ export default function BoilerComponentFittingNew() {
           <StepCard title="Details of Boiler Components / Fittings">
             <TwoCol>
               {Object.entries(formData.boilerComponentDetails).map(([k, v]) => (
-                <Field key={k} label={labelize(k)}>
+                <Field key={k} label={labelize(k)} required={["componentDetails","maxDesignPressure"].includes(k)} error={componentErrors[k]}>
                   <Input
                     value={v}
                     onChange={(e) =>
                       updateSection("boilerComponentDetails", k, e.target.value)
                     }
+                    className={componentErrors[k] ? "border-destructive" : ""}
                   />
                 </Field>
               ))}
@@ -401,11 +442,15 @@ function TwoCol({ children }: any) {
   return <div className="grid md:grid-cols-2 gap-4">{children}</div>;
 }
 
-function Field({ label, children }: any) {
+function Field({ label, children, error, required = false }: any) {
   return (
     <div>
-      <Label>{label}</Label>
+      <Label className={error ? "text-destructive" : ""}>
+        {label}
+        {required && <span className="text-destructive ml-1">*</span>}
+      </Label>
       {children}
+      {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
   );
 }

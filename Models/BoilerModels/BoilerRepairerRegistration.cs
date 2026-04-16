@@ -14,7 +14,7 @@ namespace RajFabAPI.Models.BoilerModels
         public string? ApplicationId { get; set; }
         public string RepairerRegistrationNo { get; set; } = null!;
         public string? BrClassification { get; set; }
-        public Decimal Amount { get; set; }
+
         public string? EstablishmentJson { get; set; }
         // 🔥 RENEWAL TRACKING
         public DateTime? ValidFrom { get; set; }
@@ -38,6 +38,12 @@ namespace RajFabAPI.Models.BoilerModels
 
         public string? QualityControlType { get; set; }
         public string? QualityControlDetailsjson { get; set; }
+
+        public decimal Amount { get; set; } = 0;
+        public bool IsPaymentCompleted { get; set; } = false;
+        public bool IsESignCompleted { get; set; } = false;
+        [MaxLength(500)]
+        public string? ApplicationPDFUrl { get; set; }
 
         public string Status { get; set; } = "Pending";
         public string? Type { get; set; } = "new";

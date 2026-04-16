@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using RajFabAPI.Models;
 
 namespace RajFabAPI.DTOs
 {
@@ -127,6 +128,11 @@ namespace RajFabAPI.DTOs
         public string? Status { get; set; }
         public string? Type { get; set; }
         public decimal Version { get; set; }
+
+        public string? ApplicationPDFUrl { get; set; }
+        public string? ObjectionLetterUrl { get; set; }
+        public string? CertificateUrl { get; set; }
+        public List<Transaction> TransactionHistory { get; set; } = new();
 
         public string? EstablishmentJson { get; set; }
         public string? ManufacturingFacilityjson { get; set; }

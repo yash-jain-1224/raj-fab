@@ -13,7 +13,9 @@ namespace RajFabAPI.Services.Interface
         Task<BoilerDrawingDetailsDto?> GetLatestApprovedByRegistrationNoAsync(string registrationNo);
         Task<string> CloseBoilerDrawingAsync(BoilerDrawingClosureDto dto, Guid userId);
         Task<List<BoilerDrawingDetailsDto>> GetAllAsync();
-
+        Task<string> GenerateDrawingPdfAsync(string applicationId);
+        Task<string> GenerateObjectionLetter(BoilerObjectionLetterDto dto, string applicationId);
+        Task<string> GenerateCertificatePdfAsync(string applicationId, string postName, string userName);
     }
 
 

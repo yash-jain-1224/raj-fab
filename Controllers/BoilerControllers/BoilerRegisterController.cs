@@ -13,12 +13,10 @@ namespace RajFabAPI.Controllers.BoilerControllers
     public class BoilerRegisterController : ControllerBase
     {
         private readonly IBoilerRegistartionService _boilerService;
-        private readonly IESignService _eSignService;
 
-        public BoilerRegisterController(IBoilerRegistartionService boilerService, IESignService eSignService)
+        public BoilerRegisterController(IBoilerRegistartionService boilerService)
         {
             _boilerService = boilerService;
-            _eSignService = eSignService;
         }
 
         [HttpPost("create")]
@@ -165,12 +163,16 @@ namespace RajFabAPI.Controllers.BoilerControllers
         {
             var userId = Guid.Parse(User.FindFirst("UserId")!.Value);
 
-            var appId = await _boilerService.CreateClosureAsync(dto, userId);
+            var result = await _boilerService.CreateClosureAsync(dto, userId);
+
+            if (result != null && result.Contains("<html", StringComparison.OrdinalIgnoreCase))
+                return Ok(new { success = true, html = result });
 
             return Ok(new
             {
+                success = true,
                 Message = "Boiler closure application submitted.",
-                ApplicationId = appId
+                ApplicationId = result
             });
         }
 
@@ -207,9 +209,19 @@ namespace RajFabAPI.Controllers.BoilerControllers
         {
             var userId = Guid.Parse(User.FindFirst("UserId")!.Value);
 
-            var appId = await _boilerService.CreateRepairAsync(dto, userId);
+            var result = await _boilerService.CreateRepairAsync(dto, userId);
 
-            return Ok(new { ApplicationId = appId });
+            if (result != null && result.Contains("<html", StringComparison.OrdinalIgnoreCase))
+                return Ok(new { success = true, html = result });
+
+            return Ok(new { success = true, ApplicationId = result });
+        }
+
+        [HttpPost("generate-pdf/{applicationId}")]
+        public async Task<IActionResult> GeneratePdf(string applicationId)
+        {
+            var filePath = await _boilerService.GenerateBoilerApplicationPdfAsync(System.Net.WebUtility.UrlDecode(applicationId));
+            return Ok(new { success = true, message = "PDF generated successfully" });
         }
 
         [HttpGet("repairmodification/all")]
@@ -238,19 +250,6 @@ namespace RajFabAPI.Controllers.BoilerControllers
             await _boilerService.UpdateRepairAsync(WebUtility.UrlDecode(applicationId), dto, userId);
 
             return Ok(new { message = "Repair updated successfully." });
-        }
-
-        [HttpPost("generate-boiler-certificate/{*registrationId}")]
-        public async Task<IActionResult> GenerateBoilerCertificate(  [FromBody] BoilerCertificateRequestDto dto,  string registrationId)
-        {
-            var userId = User.FindFirst("userId")?.Value;
-            var userGuid = Guid.TryParse(userId, out var g) ? g : Guid.Empty;
-
-            var certId = await _boilerService.GenerateBoilerCertificateAsync(dto, userGuid, WebUtility.UrlDecode(registrationId));
-
-            //var html = await _eSignService.GenerateCertificateESignHtmlAsync(certId);
-
-            return Ok(new { certId });
         }
     }
 }

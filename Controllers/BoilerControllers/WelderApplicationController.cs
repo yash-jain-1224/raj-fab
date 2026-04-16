@@ -31,6 +31,12 @@ namespace RajFabAPI.Controllers.WelderApplicationControllers
 
                 var applicationId = await _service.SaveWelderAsync(dto, userIdGuid, "new", null);
 
+                // If result contains HTML (payment gateway redirect), return it
+                if (applicationId != null && applicationId.Contains("<html", StringComparison.OrdinalIgnoreCase))
+                {
+                    return Ok(new { success = true, html = applicationId });
+                }
+
                 return Ok(new
                 {
                     success = true,
@@ -156,8 +162,22 @@ namespace RajFabAPI.Controllers.WelderApplicationControllers
             return Ok(result);
         }
 
+        [HttpPost("generate-pdf/{applicationId}")]
+        public async Task<IActionResult> GeneratePdf(string applicationId)
+        {
+            try
+            {
+                var filePath = await _service.GenerateWelderPdfAsync(WebUtility.UrlDecode(applicationId));
+                return Ok(new { success = true, filePath, message = "PDF generated successfully." });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+        }
+
         [HttpPost("close")]
-      
+
         public async Task<IActionResult> CloseWelder([FromBody] WelderClosureDto dto)
         {
             try

@@ -32,8 +32,15 @@ namespace RajFabAPI.Controllers.BoilerControllers
             // ?? Always NEW for this API
             var applicationId = await _manufactureService.SaveManufactureAsync( dto, userIdGuid, "new", null);
 
+            // If result contains HTML (payment gateway redirect), return it
+            if (applicationId != null && applicationId.Contains("<html", StringComparison.OrdinalIgnoreCase))
+            {
+                return Ok(new { success = true, html = applicationId });
+            }
+
             return Ok(new
             {
+                success = true,
                 message = "Boiler Manufacture application created successfully",
                 applicationId = applicationId
             });
@@ -136,6 +143,13 @@ namespace RajFabAPI.Controllers.BoilerControllers
             var result = await _manufactureService.GetAllAsync();
 
             return Ok(result);
+        }
+
+        [HttpPost("generate-pdf/{applicationId}")]
+        public async Task<IActionResult> GeneratePdf(string applicationId)
+        {
+            var filePath = await _manufactureService.GenerateManufacturePdfAsync(WebUtility.UrlDecode(applicationId));
+            return Ok(new { success = true, message = "PDF generated successfully" });
         }
 
     }

@@ -14,8 +14,6 @@ namespace RajFabAPI.Models.BoilerModels
 
         public string? BoilerDrawingRegistrationNo { get; set; }
 
-        public decimal Amount { get; set; }
-
         /* ================= FACTORY ================= */
 
         public string? FactoryRegistrationNumber { get; set; }
@@ -51,6 +49,12 @@ namespace RajFabAPI.Models.BoilerModels
         public DateTime? ValidFrom { get; set; }
 
         public DateTime? ValidUpto { get; set; }
+
+        public decimal Amount { get; set; } = 0;
+        public bool IsPaymentCompleted { get; set; } = false;
+        public bool IsESignCompleted { get; set; } = false;
+        [MaxLength(500)]
+        public string? ApplicationPDFUrl { get; set; }
 
         /* ================= WORKFLOW ================= */
 

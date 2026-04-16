@@ -31,8 +31,15 @@ namespace RajFabAPI.Controllers.SMTCRegisterController
 
             var applicationId = await _service.SaveSMTCAsync(dto, userIdGuid, "new", null);
 
+            // If result contains HTML (payment gateway redirect), return it
+            if (applicationId != null && applicationId.Contains("<html", StringComparison.OrdinalIgnoreCase))
+            {
+                return Ok(new { success = true, html = applicationId });
+            }
+
             return Ok(new
             {
+                success = true,
                 message = "SMTC application submitted successfully",
                 applicationId
             });
@@ -86,6 +93,13 @@ namespace RajFabAPI.Controllers.SMTCRegisterController
             var result = await _service.GetAllAsync();
 
             return Ok(result);
+        }
+
+        [HttpPost("generate-pdf/{applicationId}")]
+        public async Task<IActionResult> GeneratePdf(string applicationId)
+        {
+            var filePath = await _service.GenerateSmtcPdfAsync(WebUtility.UrlDecode(applicationId));
+            return Ok(new { success = true, message = "PDF generated successfully" });
         }
     }
 }

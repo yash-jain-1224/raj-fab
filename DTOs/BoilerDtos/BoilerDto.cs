@@ -44,6 +44,7 @@ namespace RajFabAPI.DTOs
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
         public string? ApplicationPDFUrl { get; set; }
+        public string? ObjectionLetterUrl { get; set; }
         public string? CertificateUrl { get; set; }
 
         public BoilerTechnicalDto? BoilerDetail { get; set; }
@@ -52,6 +53,7 @@ namespace RajFabAPI.DTOs
         public PersonDetailDto? Maker { get; set; }
 
         public List<ApplicationHistory> ApplicationHistory { get; set; } = new();
+        public List<Transaction> TransactionHistory { get; set; } = new();
     }
 
     public class BoilerTechnicalDto
@@ -152,6 +154,9 @@ namespace RajFabAPI.DTOs
 
         public string Status { get; set; } = null!;
         public DateTime CreatedAt { get; set; }
+
+        public List<ApplicationHistory> ApplicationHistory { get; set; } = new();
+        public List<Transaction> TransactionHistory { get; set; } = new();
     }
     public class CreateBoilerRepairDto
 {
@@ -193,6 +198,9 @@ public class BoilerRepairResponseDto
         public DateTime CreatedAt { get; set; }
 
         public PersonDetailDto? Repairer { get; set; }
+
+        public List<ApplicationHistory> ApplicationHistory { get; set; } = new();
+        public List<Transaction> TransactionHistory { get; set; } = new();
     }
 
     public class UpdateBoilerRepairDto
@@ -204,35 +212,5 @@ public class BoilerRepairResponseDto
         public string? RepairDocumentPath { get; set; }
 
         public PersonDetailDto? RepairerDetail { get; set; }
-    }
-
-    public class BoilerCertificateDto
-    {
-        public string? ApplicationId { get; set; }
-        public string? BoilerRegistrationNo { get; set; }
-
-        public string? BoilerType { get; set; }
-        public decimal? HeatingSurfaceArea { get; set; }
-        public string? YearOfMake { get; set; }
-
-        public string? EvaporationCapacity { get; set; }
-
-        public string? OwnerName { get; set; }
-        public string? Address { get; set; }
-
-        public string? Repairs { get; set; }
-        public string? Remarks { get; set; }
-
-        public decimal? MaxPressure { get; set; }
-        public DateTime? StartDate { get; set; }
-        public DateTime? EndDate { get; set; }
-
-        public decimal? SafetyValvePressure { get; set; }
-
-        public decimal? Fee { get; set; }
-    }
-    public class BoilerCertificateRequestDto
-    {
-        public string? Remarks { get; set; }
     }
 }
